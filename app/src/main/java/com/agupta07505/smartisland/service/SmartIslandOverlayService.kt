@@ -90,6 +90,14 @@ class SmartIslandOverlayService : LifecycleService() {
         super.onDestroy()
     }
 
+    private val statusBarHeight: Float
+        get() {
+            val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+            val heightPx = if (resourceId > 0) resources.getDimensionPixelSize(resourceId) else 0
+            val heightDp = heightPx / resources.displayMetrics.density
+            return if (heightDp > 0f) heightDp else 24f
+        }
+
     private fun ensureCollapsedWindow() {
         if (islandView != null) return
         if (!Settings.canDrawOverlays(this)) return
@@ -103,6 +111,7 @@ class SmartIslandOverlayService : LifecycleService() {
                     expandedFlow = expandedState,
                     notificationsFlow = notificationsState,
                     selectedIndexFlow = selectedIndexState,
+                    statusBarHeight = statusBarHeight,
                     onPageSelected = { index ->
                         setSelectedNotificationIndex(index)
                     },
@@ -145,7 +154,7 @@ class SmartIslandOverlayService : LifecycleService() {
             ((settings.width + 48f) * density).toInt()
         }
         val h = if (expanded) {
-            (160f * density).toInt()
+            ((160f + statusBarHeight) * density).toInt()
         } else {
             ((settings.height + 36f) * density).toInt()
         }
@@ -381,6 +390,7 @@ private fun OverlayIsland(
     expandedFlow: StateFlow<Boolean>,
     notificationsFlow: StateFlow<List<IslandNotification>>,
     selectedIndexFlow: StateFlow<Int>,
+    statusBarHeight: Float,
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onToggleExpanded: () -> Unit,
@@ -399,6 +409,7 @@ private fun OverlayIsland(
         onPageSelected = onPageSelected,
         onOpenNotification = onOpenNotification,
         onToggleExpanded = onToggleExpanded,
+        statusBarHeight = statusBarHeight,
         modifier = modifier
     )
 }

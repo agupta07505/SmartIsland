@@ -66,19 +66,21 @@ fun IslandExpandedContent(
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onCollapse: () -> Unit,
+    statusBarHeight: Dp,
     modifier: Modifier = Modifier
 ) {
     if (notifications.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize()) {
-            EmptyExpanded()
+        Column(modifier = modifier.fillMaxSize()) {
+            Spacer(modifier = Modifier.height(statusBarHeight))
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-                    .size(22.dp)
-                    .clip(CircleShape)
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(34.dp))
                     .background(Color.Black)
-            )
+            ) {
+                EmptyExpanded()
+            }
         }
         return
     }
@@ -102,63 +104,64 @@ fun IslandExpandedContent(
 
     val bottomPadding = if (notifications.size > 1) 24.dp else 14.dp
 
-    Box(modifier = modifier.fillMaxSize()) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            val notification = notifications.getOrNull(page)
-            if (notification != null) {
-                when (notification.mode) {
-                    IslandMode.Notification -> NotificationExpanded(
-                        notification = notification,
-                        bottomPadding = bottomPadding,
-                        onOpenNotification = { onOpenNotification(notification) },
-                        onCollapse = onCollapse
-                    )
-                    IslandMode.IncomingCall -> IncomingCallExpanded(
-                        notification = notification,
-                        bottomPadding = bottomPadding,
-                        onCollapse = onCollapse
-                    )
-                    IslandMode.Music -> MusicExpanded(
-                        notification = notification,
-                        bottomPadding = bottomPadding
-                    )
-                    IslandMode.Empty -> EmptyExpanded()
-                }
-            }
-        }
-
+    Column(modifier = modifier.fillMaxSize()) {
+        Spacer(modifier = Modifier.height(statusBarHeight))
+        
         Box(
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 8.dp)
-                .size(22.dp)
-                .clip(CircleShape)
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(RoundedCornerShape(34.dp))
                 .background(Color.Black)
-        )
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val notification = notifications.getOrNull(page)
+                if (notification != null) {
+                    when (notification.mode) {
+                        IslandMode.Notification -> NotificationExpanded(
+                            notification = notification,
+                            bottomPadding = bottomPadding,
+                            onOpenNotification = { onOpenNotification(notification) },
+                            onCollapse = onCollapse
+                        )
+                        IslandMode.IncomingCall -> IncomingCallExpanded(
+                            notification = notification,
+                            bottomPadding = bottomPadding,
+                            onCollapse = onCollapse
+                        )
+                        IslandMode.Music -> MusicExpanded(
+                            notification = notification,
+                            bottomPadding = bottomPadding
+                        )
+                        IslandMode.Empty -> EmptyExpanded()
+                    }
+                }
+            }
 
-        // Three dots indicator at the bottom center when more than one notification exists
-        if (notifications.size > 1) {
-            Row(
-                Modifier
-                    .height(16.dp)
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 6.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(notifications.size) { iteration ->
-                    val color = if (pagerState.currentPage == iteration) Color.White else Color.Gray
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .size(6.dp)
-                    )
+            // Three dots indicator at the bottom center when more than one notification exists
+            if (notifications.size > 1) {
+                Row(
+                    Modifier
+                        .height(16.dp)
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(notifications.size) { iteration ->
+                        val color = if (pagerState.currentPage == iteration) Color.White else Color.Gray
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .size(6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -170,7 +173,7 @@ private fun EmptyExpanded() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 18.dp, top = 40.dp, end = 18.dp, bottom = 16.dp),
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.Center
     ) {
         Text("Smart Island", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
@@ -189,7 +192,7 @@ private fun NotificationExpanded(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 18.dp, top = 40.dp, end = 18.dp, bottom = bottomPadding),
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
@@ -317,7 +320,7 @@ private fun IncomingCallExpanded(
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 18.dp, top = 40.dp, end = 12.dp, bottom = bottomPadding),
+            .padding(start = 18.dp, top = 20.dp, end = 12.dp, bottom = bottomPadding),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -384,7 +387,7 @@ private fun MusicExpanded(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 18.dp, top = 40.dp, end = 18.dp, bottom = bottomPadding)
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             val artwork = notification?.largeIcon ?: notification?.icon

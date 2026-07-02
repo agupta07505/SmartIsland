@@ -37,6 +37,7 @@ fun IslandOverlayView(
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onToggleExpanded: () -> Unit,
+    statusBarHeight: Float,
     modifier: Modifier = Modifier
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
@@ -60,7 +61,7 @@ fun IslandOverlayView(
         if (it) expandedWidth else settings.width.dp
     }
     val height by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandHeight") {
-        if (it) 160.dp else settings.height.dp
+        if (it) (160.dp + statusBarHeight.dp) else settings.height.dp
     }
     val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
         if (it) 34.dp else settings.cornerRadius.dp
@@ -95,12 +96,10 @@ fun IslandOverlayView(
             },
         contentAlignment = Alignment.TopCenter
     ) {
-        // Inner Box: The actual visible pill
+        // Inner Box: The actual visible pill container (no background here so that top status bar region is transparent)
         Box(
             modifier = Modifier
                 .size(width = width, height = height)
-                .clip(RoundedCornerShape(radius))
-                .background(Color.Black)
         ) {
             // Collapsed content layer (purely visual, no gesture handlers)
             if (collapsedAlpha > 0f) {
@@ -108,6 +107,8 @@ fun IslandOverlayView(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer { alpha = collapsedAlpha }
+                        .clip(RoundedCornerShape(radius))
+                        .background(Color.Black)
                 ) {
                     IslandCollapsedContent(mode = activeMode, notification = activeNotification)
                 }
@@ -127,7 +128,8 @@ fun IslandOverlayView(
                         selectedIndex = selectedIndex,
                         onPageSelected = onPageSelected,
                         onOpenNotification = onOpenNotification,
-                        onCollapse = onToggleExpanded
+                        onCollapse = onToggleExpanded,
+                        statusBarHeight = statusBarHeight.dp
                     )
                 }
             }
