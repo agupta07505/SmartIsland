@@ -235,25 +235,16 @@ private fun NotificationExpanded(
                 )
             }
 
-            // Down Arrow Button (to open in-app notification) - Cute 24.dp custom button
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF222222))
-                    .clickable { onOpenNotification() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+            // Time text on top right
+            Text(
+                text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
+                color = Color(0xFFB7C0CA),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 8.dp)
+            )
         }
 
-        // Bottom Section: Action buttons (left) and Time (right)
+        // Bottom Section: Action buttons (left) and Down Arrow Button (right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -296,13 +287,22 @@ private fun NotificationExpanded(
                 Spacer(modifier = Modifier.weight(1f))
             }
 
-            // Right part of Bottom Section: Time text
-            Text(
-                text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
-                color = Color(0xFFB7C0CA),
-                fontSize = 11.sp,
-                modifier = Modifier.padding(start = 12.dp)
-            )
+            // Down Arrow Button on bottom right
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF222222))
+                    .clickable { onOpenNotification() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = "Open App",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
