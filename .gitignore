@@ -6,3 +6,4 @@ local.properties
 *.iml
 .idea/
 .vscode
+debug-helper/
