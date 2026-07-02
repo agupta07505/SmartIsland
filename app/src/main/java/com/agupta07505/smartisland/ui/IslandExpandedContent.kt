@@ -47,8 +47,8 @@ fun IslandExpandedContent(
     Box(modifier = modifier.fillMaxSize()) {
         when (mode) {
             IslandMode.Notification -> NotificationExpanded(notification)
-            IslandMode.IncomingCall -> IncomingCallExpanded()
-            IslandMode.Music -> MusicExpanded()
+            IslandMode.IncomingCall -> IncomingCallExpanded(notification)
+            IslandMode.Music -> MusicExpanded(notification)
             IslandMode.Empty -> EmptyExpanded()
         }
         Box(
@@ -139,7 +139,7 @@ private fun NotificationExpanded(notification: IslandNotification?) {
 }
 
 @Composable
-private fun IncomingCallExpanded() {
+private fun IncomingCallExpanded(notification: IslandNotification?) {
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -148,7 +148,9 @@ private fun IncomingCallExpanded() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "CallerName",
+            text = notification?.title?.takeIf { it.isNotBlank() }
+                ?: notification?.text?.takeIf { it.isNotBlank() }
+                ?: "Incoming call",
             color = Color.White,
             fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
@@ -160,7 +162,12 @@ private fun IncomingCallExpanded() {
 }
 
 @Composable
-private fun MusicExpanded() {
+private fun MusicExpanded(notification: IslandNotification?) {
+    val progress = if (notification?.progressMax?.let { it > 0 } == true) {
+        (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0.58f
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -177,14 +184,27 @@ private fun MusicExpanded() {
                 Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = Color.White)
             }
             Column(Modifier.weight(1f)) {
-                Text("SongName", color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                Text("ArtistName", color = Color(0xFFD5DAE0), maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 12.sp)
+                Text(
+                    notification?.title?.takeIf { it.isNotBlank() } ?: "Song",
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    notification?.text?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Artist",
+                    color = Color(0xFFD5DAE0),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 12.sp
+                )
             }
         }
         Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("02:05", color = Color.White, fontSize = 10.sp)
-            LinearProgressIndicator(progress = { 0.58f }, modifier = Modifier.weight(1f).height(3.dp), color = Color.White, trackColor = Color(0xFF667085))
+            LinearProgressIndicator(progress = { progress }, modifier = Modifier.weight(1f).height(3.dp), color = Color.White, trackColor = Color(0xFF667085))
             Text("05:47", color = Color.White, fontSize = 10.sp)
         }
         Row(

@@ -50,7 +50,7 @@ fun IslandOverlayView(
         modifier = modifier
             .size(width = width, height = height)
             .clip(RoundedCornerShape(radius))
-            .background(Color(0xFF020B12))
+            .background(Color.Black)
             .clickable(onClick = onToggleExpanded)
     ) {
         if (expanded) {

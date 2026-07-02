@@ -7,7 +7,6 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
-import android.view.View
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
@@ -30,7 +29,6 @@ import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandOverlayView
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -40,7 +38,6 @@ class SmartIslandOverlayService : LifecycleService() {
     private lateinit var windowManager: WindowManager
     private lateinit var repository: SmartIslandSettingsRepository
     private var islandView: ComposeView? = null
-    private var outsideTapView: View? = null
     private val overlayOwners = OverlayViewTreeOwners()
     private val settingsState = MutableStateFlow(SmartIslandSettings.Default)
     private val expandedState = MutableStateFlow(false)
@@ -54,7 +51,7 @@ class SmartIslandOverlayService : LifecycleService() {
         repository = SmartIslandSettingsRepository(applicationContext)
         overlayOwners.resume()
         startForeground(NOTIFICATION_ID, buildServiceNotification())
-        pendingNotification?.let { applyNotification(it) }
+        pendingNotification?.let { applyNotification(it, pendingMode) }
 
         lifecycleScope.launch {
             repository.settings.collect { settings ->
@@ -71,7 +68,6 @@ class SmartIslandOverlayService : LifecycleService() {
 
     override fun onDestroy() {
         removeCollapsedWindow()
-        removeOutsideTapWindow()
         overlayOwners.destroy()
         if (instance?.get() == this) instance = null
         super.onDestroy()
@@ -100,18 +96,12 @@ class SmartIslandOverlayService : LifecycleService() {
 
     private fun expand() {
         if (expandedState.value || !Settings.canDrawOverlays(this)) return
-        ensureOutsideTapWindow()
-        bringIslandToFront()
         expandedState.value = true
     }
 
     private fun collapse() {
         if (!expandedState.value) return
         expandedState.value = false
-        lifecycleScope.launch {
-            delay(260)
-            removeOutsideTapWindow()
-        }
     }
 
     private fun updateCollapsedLayout(settings: SmartIslandSettings) {
@@ -124,29 +114,6 @@ class SmartIslandOverlayService : LifecycleService() {
             runCatching { windowManager.removeView(view) }
         }
         islandView = null
-    }
-
-    private fun ensureOutsideTapWindow() {
-        if (outsideTapView != null) return
-        outsideTapView = View(this).apply {
-            setOnClickListener { collapse() }
-        }
-        windowManager.addView(outsideTapView, fullScreenParams())
-    }
-
-    private fun removeOutsideTapWindow() {
-        outsideTapView?.let { view ->
-            runCatching { windowManager.removeView(view) }
-        }
-        outsideTapView = null
-    }
-
-    private fun bringIslandToFront() {
-        val view = islandView ?: return
-        runCatching {
-            windowManager.removeView(view)
-            windowManager.addView(view, collapsedParams(settingsState.value))
-        }
     }
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
@@ -162,20 +129,6 @@ class SmartIslandOverlayService : LifecycleService() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = settings.xOffset.dpToPx()
             y = settings.yOffset.dpToPx()
-        }
-    }
-
-    private fun fullScreenParams(): WindowManager.LayoutParams {
-        return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
         }
     }
 
@@ -204,9 +157,9 @@ class SmartIslandOverlayService : LifecycleService() {
             .build()
     }
 
-    private fun applyNotification(notification: IslandNotification) {
+    private fun applyNotification(notification: IslandNotification, mode: IslandMode) {
         notificationState.value = notification
-        modeState.value = IslandMode.Notification
+        modeState.value = mode
     }
 
     private fun showDemoMode(mode: IslandMode) {
@@ -234,10 +187,12 @@ class SmartIslandOverlayService : LifecycleService() {
         private const val NOTIFICATION_ID = 8105
         private var instance: WeakReference<SmartIslandOverlayService>? = null
         private var pendingNotification: IslandNotification? = null
+        private var pendingMode: IslandMode = IslandMode.Notification
 
-        fun updateNotification(notification: IslandNotification) {
+        fun updateNotification(notification: IslandNotification, mode: IslandMode = IslandMode.Notification) {
             pendingNotification = notification
-            instance?.get()?.applyNotification(notification)
+            pendingMode = mode
+            instance?.get()?.applyNotification(notification, mode)
         }
 
         fun showDemo(mode: IslandMode) {

@@ -64,7 +64,14 @@ fun IslandCollapsedContent(
                 IslandMode.IncomingCall -> {
                     Icon(Icons.Rounded.Call, contentDescription = null, tint = Color(0xFF7FD35E), modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text("10:20", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        notification?.title?.takeIf { it.isNotBlank() } ?: "Call",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(modifier = Modifier.size(34.dp))
                 }
                 IslandMode.Music -> {
@@ -78,7 +85,13 @@ fun IslandCollapsedContent(
                         Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                     Spacer(modifier = Modifier.size(40.dp))
-                    Text("05:47", color = Color.White, fontSize = 11.sp)
+                    Text(
+                        notification?.title?.takeIf { it.isNotBlank() } ?: "Music",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
                 IslandMode.Empty -> Unit
             }

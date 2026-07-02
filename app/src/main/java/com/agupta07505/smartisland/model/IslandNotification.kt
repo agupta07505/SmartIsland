@@ -9,5 +9,8 @@ data class IslandNotification(
     val text: String,
     val timeMillis: Long,
     val icon: Bitmap? = null,
-    val actions: List<String> = emptyList()
+    val actions: List<String> = emptyList(),
+    val category: String? = null,
+    val progress: Int = 0,
+    val progressMax: Int = 0
 )
