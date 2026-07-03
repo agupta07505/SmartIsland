@@ -10,6 +10,9 @@ import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -46,12 +49,17 @@ fun IslandOverlayView(
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onToggleExpanded: () -> Unit,
+    onDismissNotification: () -> Unit,
     statusBarHeight: Float,
     modifier: Modifier = Modifier
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
     // even though pointerInput(Unit) never restarts its coroutine
     val currentOnToggle by rememberUpdatedState(onToggleExpanded)
+    val currentOnDismiss by rememberUpdatedState(onDismissNotification)
+
+    val scope = rememberCoroutineScope()
+    var dragOffset by remember { mutableStateOf(0f) }
 
     val displayMetrics = LocalContext.current.resources.displayMetrics
     val expandedWidth = ((displayMetrics.widthPixels / displayMetrics.density) * 0.95f).dp
@@ -139,7 +147,7 @@ fun IslandOverlayView(
                 .height(height)
                 .graphicsLayer {
                     translationX = settings.xOffset.dp.toPx()
-                    translationY = yOffset.toPx()
+                    translationY = yOffset.toPx() + dragOffset
                 }
                 .clip(RoundedCornerShape(radius))
                 .background(Color.Black)
@@ -147,6 +155,51 @@ fun IslandOverlayView(
                     detectTapGestures {
                         SmartIslandOverlayService.resetTimer()
                     }
+                }
+                .pointerInput(displayMetrics.density) {
+                    var dragAccumulator = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            dragAccumulator = 0f
+                        },
+                        onVerticalDrag = { change, dragAmount ->
+                            dragAccumulator += dragAmount
+                            if (expanded && dragAccumulator < 0f) {
+                                change.consume()
+                                dragOffset = dragAccumulator.coerceIn(-100f * displayMetrics.density, 0f)
+                            }
+                        },
+                        onDragEnd = {
+                            val threshold = -35f * displayMetrics.density
+                            if (expanded && dragOffset < threshold) {
+                                currentOnDismiss()
+                            }
+                            scope.launch {
+                                androidx.compose.animation.core.Animatable(dragOffset).animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                ) {
+                                    dragOffset = value
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch {
+                                androidx.compose.animation.core.Animatable(dragOffset).animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                ) {
+                                    dragOffset = value
+                                }
+                            }
+                        }
+                    )
                 },
             contentAlignment = Alignment.TopCenter
         ) {

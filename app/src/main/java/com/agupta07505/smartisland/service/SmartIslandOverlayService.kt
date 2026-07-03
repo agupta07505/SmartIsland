@@ -120,7 +120,8 @@ class SmartIslandOverlayService : LifecycleService() {
                     onOpenNotification = { notification ->
                         openNotification(notification)
                     },
-                    onToggleExpanded = { toggleExpanded() }
+                    onToggleExpanded = { toggleExpanded() },
+                    onDismissNotification = { dismissCurrentNotification() }
                 )
             }
             try {
@@ -376,6 +377,17 @@ class SmartIslandOverlayService : LifecycleService() {
         collapse()
     }
 
+    private fun dismissCurrentNotification() {
+        val list = notificationsState.value
+        val index = selectedIndexState.value
+        if (list.isNotEmpty() && index in list.indices) {
+            val notification = list[index]
+            removeNotification(notification.key)
+            SmartIslandNotificationListenerService.cancelSystemNotification(notification.key)
+        }
+        collapse()
+    }
+
     private fun showDemoMode(mode: IslandMode) {
         val demoNotification = when (mode) {
             IslandMode.Notification -> IslandNotification(
@@ -477,6 +489,7 @@ private fun OverlayIsland(
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onToggleExpanded: () -> Unit,
+    onDismissNotification: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val settings by settingsFlow.collectAsState()
@@ -492,6 +505,7 @@ private fun OverlayIsland(
         onPageSelected = onPageSelected,
         onOpenNotification = onOpenNotification,
         onToggleExpanded = onToggleExpanded,
+        onDismissNotification = onDismissNotification,
         statusBarHeight = statusBarHeight,
         modifier = modifier
     )
