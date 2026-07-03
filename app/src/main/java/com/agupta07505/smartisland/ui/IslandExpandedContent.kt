@@ -369,14 +369,19 @@ private fun IncomingCallExpanded(
                 onCollapse()
             }
         )
-        CircleActionButton(
-            color = Color(0xFF79C943),
-            icon = Icons.Rounded.Call,
-            onClick = { 
-                notification.sendFirstAction(context, "answer", "accept") 
-                onCollapse()
-            }
-        )
+        if (notification?.actionIntents?.any { action ->
+                action.title.contains("answer", ignoreCase = true) ||
+                action.title.contains("accept", ignoreCase = true)
+            } == true) {
+            CircleActionButton(
+                color = Color(0xFF79C943),
+                icon = Icons.Rounded.Call,
+                onClick = { 
+                    notification.sendFirstAction(context, "answer", "accept") 
+                    onCollapse()
+                }
+            )
+        }
     }
 }
 

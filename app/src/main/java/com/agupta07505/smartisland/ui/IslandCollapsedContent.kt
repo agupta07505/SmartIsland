@@ -25,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -137,12 +139,8 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.IncomingCall -> {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF7FD35E))
-                    )
+                    val time = notification?.timeMillis ?: System.currentTimeMillis()
+                    CallTimer(postTimeMillis = time, color = Color(0xFF7FD35E))
                 }
                 IslandMode.Music -> {
                     AudioVisualizer(
@@ -236,4 +234,25 @@ private fun AudioVisualizer(
 
 internal fun formatNotificationTime(timeMillis: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timeMillis))
+}
+
+@Composable
+private fun CallTimer(postTimeMillis: Long, color: Color) {
+    var elapsedSeconds by remember(postTimeMillis) {
+        mutableStateOf(((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L))
+    }
+    LaunchedEffect(postTimeMillis) {
+        while (true) {
+            elapsedSeconds = ((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L)
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    val minutes = elapsedSeconds / 60
+    val seconds = elapsedSeconds % 60
+    Text(
+        text = "%02d:%02d".format(minutes, seconds),
+        color = color,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold
+    )
 }

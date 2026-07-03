@@ -105,7 +105,7 @@ graph TD
   * **Center Slot:** Solid black circle to match/hide the physical front camera hole cutout.
   * **Right Slot:** Contextual indicators:
     * Notification: Blue dot.
-    * Call: Green dot.
+    * Call: Active call timer displaying elapsed duration in `MM:SS` format (green text).
     * Music: Live 3-bar Audio Visualizer animation powered by Compose `infiniteRepeatable` states.
 
 ### 4.4. `IslandExpandedContent`

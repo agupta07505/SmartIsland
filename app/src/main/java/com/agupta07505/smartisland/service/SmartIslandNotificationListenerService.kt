@@ -64,6 +64,18 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             isHeadsUp = ranking.importance >= NotificationManager.IMPORTANCE_HIGH
         }
 
+        // If it is an ongoing call, do not cancel it (do not treat as heads-up)
+        // so that it stays in the system tray and we receive the removal event when it ends.
+        if (mode == IslandMode.IncomingCall) {
+            val isIncoming = notification.actions?.any { action ->
+                val label = action.title?.toString()?.lowercase().orEmpty()
+                label.contains("answer") || label.contains("accept") || label.contains("take")
+            } == true
+            if (!isIncoming) {
+                isHeadsUp = false
+            }
+        }
+
         SmartIslandOverlayService.updateNotification(
             IslandNotification(
                 key = sbn.key,
@@ -72,7 +84,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
                 text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
                     ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty(),
-                timeMillis = sbn.postTime,
+                timeMillis = if (notification.`when` != 0L) notification.`when` else sbn.postTime,
                 icon = loadAppIconBitmap(sbn.packageName),
                 largeIcon = mediaInfo?.artwork ?: notification.loadLargeIconBitmap(),
                 actions = notification.actions?.mapNotNull { it.title?.toString() }.orEmpty(),
