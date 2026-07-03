@@ -123,6 +123,61 @@ class SmartIslandOverlayService : LifecycleService() {
                     onToggleExpanded = { toggleExpanded() }
                 )
             }
+            try {
+                val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
+                val addListenerMethod = android.view.ViewTreeObserver::class.java.getMethod("addOnComputeInternalInsetsListener", listenerClass)
+                val proxyListener = java.lang.reflect.Proxy.newProxyInstance(
+                    classLoader,
+                    arrayOf(listenerClass)
+                ) { _, method, args ->
+                    // CRITICAL: Wrap entire body in try-catch. Any exception escaping
+                    // a Proxy becomes UndeclaredThrowableException and crashes the app
+                    // during ViewRootImpl layout traversals.
+                    try {
+                        if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
+                            val info = args[0] ?: return@newProxyInstance null
+                            val setTouchableInsetsMethod = info.javaClass.getMethod("setTouchableInsets", Int::class.javaPrimitiveType)
+                            if (!expandedState.value) {
+                                setTouchableInsetsMethod.invoke(info, 3) // 3 is TOUCHABLE_INSETS_REGION
+
+                                // Try multiple field names for touchableRegion across OEM ROMs
+                                val touchableRegionField = sequenceOf("touchableRegion", "mTouchableRegion")
+                                    .mapNotNull { name ->
+                                        runCatching { info.javaClass.getDeclaredField(name).apply { isAccessible = true } }.getOrNull()
+                                    }
+                                    .firstOrNull()
+
+                                if (touchableRegionField != null) {
+                                    val touchableRegion = touchableRegionField.get(info) as? android.graphics.Region
+                                    if (touchableRegion != null) {
+                                        val density = resources.displayMetrics.density
+                                        val w = ((settingsState.value.width + 48f) * density).toInt()
+                                        val h = ((settingsState.value.height + 36f) * density).toInt()
+                                        val xOffsetPx = (settingsState.value.xOffset * density).toInt()
+                                        val yOffsetPx = (settingsState.value.yOffset * density).toInt()
+
+                                        val screenWidth = resources.displayMetrics.widthPixels
+                                        val left = (screenWidth - w) / 2 + xOffsetPx
+                                        val right = left + w
+                                        val top = 0
+                                        val bottom = h
+
+                                        touchableRegion.set(left, top, right, bottom)
+                                    }
+                                }
+                            } else {
+                                setTouchableInsetsMethod.invoke(info, 0) // 0 is TOUCHABLE_INSETS_FRAME
+                            }
+                        }
+                    } catch (_: Throwable) {
+                        // Silently ignore — touchable region is best-effort, not critical
+                    }
+                    null
+                }
+                addListenerMethod.invoke(viewTreeObserver, proxyListener)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
         windowManager.addView(islandView, collapsedParams(settingsState.value))
@@ -167,19 +222,13 @@ class SmartIslandOverlayService : LifecycleService() {
         val view = islandView ?: return
         val displayMetrics = resources.displayMetrics
         val density = displayMetrics.density
-        // Fix #2: Never use WRAP_CONTENT — it causes window bounds to fluctuate
-        // during Compose animations, making Android deliver touches to the wrong window.
-        // Always use explicit pixel dimensions so the touch target is rock-solid.
-        // We add padding when collapsed (+48dp width, +36dp height) to act as a highly forgiving touch target.
-        val w = if (expanded) {
-            WindowManager.LayoutParams.MATCH_PARENT
-        } else {
-            ((settings.width + 48f) * density).toInt()
-        }
+        // Width is always MATCH_PARENT to prevent horizontal resize shifts/jumps
+        val w = WindowManager.LayoutParams.MATCH_PARENT
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
-            ((settings.height + 36f) * density).toInt()
+            // Add statusBarHeight so the pill (translated down by yOffset) stays within the touch window
+            ((settings.height + 36f) * density).toInt() + statusBarHeight.dpToPx()
         }
         val params = WindowManager.LayoutParams(
             w, h,
@@ -190,7 +239,7 @@ class SmartIslandOverlayService : LifecycleService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = settings.xOffset.dpToPx()
+            x = 0
             y = settings.yOffset.dpToPx()
         }
         runCatching { windowManager.updateViewLayout(view, params) }
@@ -206,8 +255,9 @@ class SmartIslandOverlayService : LifecycleService() {
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
         return WindowManager.LayoutParams(
-            ((settings.width + 48f) * density).toInt(),
-            ((settings.height + 36f) * density).toInt(),
+            WindowManager.LayoutParams.MATCH_PARENT,
+            // Add statusBarHeight so the pill (translated down by statusBarHeight) stays within the touch window
+            ((settings.height + 36f) * density).toInt() + statusBarHeight.dpToPx(),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -215,7 +265,7 @@ class SmartIslandOverlayService : LifecycleService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = settings.xOffset.dpToPx()
+            x = 0
             y = settings.yOffset.dpToPx()
         }
     }

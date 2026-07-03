@@ -138,6 +138,7 @@ fun IslandOverlayView(
                 .width(width)
                 .height(height)
                 .graphicsLayer {
+                    translationX = settings.xOffset.dp.toPx()
                     translationY = yOffset.toPx()
                 }
                 .clip(RoundedCornerShape(radius))
