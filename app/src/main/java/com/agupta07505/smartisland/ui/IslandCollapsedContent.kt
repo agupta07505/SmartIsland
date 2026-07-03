@@ -59,7 +59,7 @@ fun IslandCollapsedContent(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 12.dp)
+                .padding(start = 8.dp)
                 .graphicsLayer {
                     translationX = translationXLeft
                 },
@@ -94,13 +94,13 @@ fun IslandCollapsedContent(
                             contentDescription = null,
                             modifier = Modifier
                                 .size(22.dp)
-                                .clip(RoundedCornerShape(5.dp))
+                                .clip(CircleShape)
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .size(22.dp)
-                                .clip(RoundedCornerShape(5.dp))
+                                .clip(CircleShape)
                                 .background(Color(0xFFFF6B9A)),
                             contentAlignment = Alignment.Center
                         ) {
