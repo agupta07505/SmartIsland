@@ -78,15 +78,12 @@ fun IslandExpandedContent(
     modifier: Modifier = Modifier
 ) {
     if (notifications.isEmpty()) {
-        Column(modifier = modifier.fillMaxWidth().wrapContentHeight()) {
-            Spacer(modifier = Modifier.height(statusBarHeight))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-            ) {
-                EmptyExpanded()
-            }
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            EmptyExpanded()
         }
         return
     }
@@ -111,10 +108,9 @@ fun IslandExpandedContent(
         onPageSelected(pagerState.currentPage)
     }
 
-    val bottomPadding = if (notifications.size > 1) 24.dp else 14.dp
+    val bottomPadding = if (notifications.size > 1) 36.dp else 16.dp
 
     Column(modifier = modifier.fillMaxWidth().wrapContentHeight()) {
-        Spacer(modifier = Modifier.height(statusBarHeight))
 
         // Interpolate height between pages based on swipe progress
         val currentPage = pagerState.currentPage

@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,14 +45,24 @@ import java.util.Locale
 fun IslandCollapsedContent(
     mode: IslandMode,
     notification: IslandNotification?,
+    collapsedAlpha: Float,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current
+    val maxTranslationPx = with(density) { 48.dp.toPx() }
+    val translationProgress = 1f - collapsedAlpha
+    val translationXLeft = translationProgress * maxTranslationPx
+    val translationXRight = -translationProgress * maxTranslationPx
+
     Box(modifier = modifier.fillMaxSize()) {
         // Left Slot (Icon / Glyphs)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 12.dp),
+                .padding(start = 12.dp)
+                .graphicsLayer {
+                    translationX = translationXLeft
+                },
             contentAlignment = Alignment.Center
         ) {
             when (mode) {
@@ -109,7 +121,10 @@ fun IslandCollapsedContent(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 12.dp),
+                .padding(end = 12.dp)
+                .graphicsLayer {
+                    translationX = translationXRight
+                },
             contentAlignment = Alignment.Center
         ) {
             when (mode) {

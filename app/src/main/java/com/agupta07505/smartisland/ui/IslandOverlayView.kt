@@ -58,15 +58,15 @@ fun IslandOverlayView(
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
     val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.7f,
+        dampingRatio = 0.6f,
         stiffness = 300f
     )
     val sizeSpecInt = spring<androidx.compose.ui.unit.IntSize>(
-        dampingRatio = 0.7f,
+        dampingRatio = 0.6f,
         stiffness = 300f
     )
     val sizeSpecFloat = spring<Float>(
-        dampingRatio = 0.7f,
+        dampingRatio = 0.6f,
         stiffness = 300f
     )
     val alphaSpec = tween<Float>(
@@ -81,6 +81,9 @@ fun IslandOverlayView(
     }
     val height by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandHeight") {
         if (it) (expandedHeight ?: 160.dp) else settings.height.dp
+    }
+    val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
+        if (it) statusBarHeight.dp else 0.dp
     }
     val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
         if (it) 34.dp else settings.cornerRadius.dp
@@ -134,6 +137,9 @@ fun IslandOverlayView(
             modifier = Modifier
                 .width(width)
                 .height(height)
+                .graphicsLayer {
+                    translationY = yOffset.toPx()
+                }
                 .clip(RoundedCornerShape(radius))
                 .background(Color.Black)
                 .pointerInput(Unit) {
@@ -154,7 +160,11 @@ fun IslandOverlayView(
                             scaleY = collapsedAlpha * 0.1f + 0.9f
                         }
                 ) {
-                    IslandCollapsedContent(mode = activeMode, notification = activeNotification)
+                    IslandCollapsedContent(
+                        mode = activeMode,
+                        notification = activeNotification,
+                        collapsedAlpha = collapsedAlpha
+                    )
                 }
             }
 
