@@ -33,3 +33,6 @@ secrets.properties
 lint-results*.html
 lint-results*.xml
 test-results/
+
+# Socials
+socials.txt
