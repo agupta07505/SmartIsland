@@ -9,9 +9,11 @@
   <img src="https://img.shields.io/badge/Kotlin-JVM%2017-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin JVM 17" />
   <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white" alt="Jetpack Compose Material 3" />
   <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GNU GPLv3" />
+  <img src="https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github" alt="Total Downloads" />
 </p>
 
 <p align="center">
+  <a href="#downloads--safety">Downloads</a> |
   <a href="#features">Features</a> |
   <a href="#getting-started">Getting Started</a> |
   <a href="#privacy-and-permissions">Privacy</a> |
@@ -25,6 +27,12 @@
 Smart Island is an open-source Android app that adds a small animated pill near the status bar. It listens for notification events locally, groups active items, and expands into a richer view for quick actions, media details, incoming calls, and notification previews.
 
 The project is designed to be transparent, hackable, and privacy-conscious: notification data is processed on the device, settings are stored locally, and the app currently does not request the Android `INTERNET` permission.
+
+## Downloads & Safety
+
+* **Download APK**: Obtain the pre-compiled application package directly from the [GitHub Releases (Latest)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
+* **Total Downloads**: ![Total Downloads](https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github)
+* **Security Verification**: To ensure transparency and safety, you can inspect the files using [VirusTotal](https://www.virustotal.com) or review the automatic building and packaging logs under the GitHub Actions tab.
 
 ## Screenshots
 
