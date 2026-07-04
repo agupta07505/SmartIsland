@@ -69,14 +69,14 @@ jobs:
 
       - name: Rename Debug APK
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev'
-        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/smart-island-debug.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/SmartIsland-Debug.apk
 
       - name: Upload Debug APK Artifact
         if: github.event_name == 'pull_request' || github.ref == 'refs/heads/dev'
         uses: actions/upload-artifact@v4
         with:
-          name: smart-island-debug-apk
-          path: app/build/outputs/apk/debug/smart-island-debug.apk
+          name: SmartIsland-Debug-apk
+          path: app/build/outputs/apk/debug/SmartIsland-Debug.apk
           if-no-files-found: error
 
       - name: Validate Release Signing Secrets
