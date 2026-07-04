@@ -37,9 +37,9 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 ## Screenshots
 
 <p align="center">
-  <img src="debug-helper/smartIsland%20assets/WhatsApp%20Image%202026-07-04%20at%2014.39.35.jpeg" width="30%" alt="Screenshot 1" />
-  <img src="debug-helper/smartIsland%20assets/WhatsApp%20Image%202026-07-04%20at%2014.39.35%20(1).jpeg" width="30%" alt="Screenshot 2" />
-  <img src="debug-helper/smartIsland%20assets/WhatsApp%20Image%202026-07-04%20at%2014.39.36.jpeg" width="30%" alt="Screenshot 3" />
+  <img src="/assets/screenshots/Home.jpeg" width="30%" alt="Screenshot 1" />
+  <img src="/assets/screenshots/Settings.jpeg" width="30%" alt="Screenshot 2" />
+  <img src="/assets/screenshots/SmartIsland.jpeg" width="30%" alt="Screenshot 3" />
 </p>
 
 ## Features
