@@ -82,6 +82,7 @@ import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import kotlinx.coroutines.launch
 
+
 @Composable
 fun SmartIslandHomeScreen() {
     val context = LocalContext.current
@@ -266,7 +267,7 @@ fun SmartIslandHomeScreen() {
                     label = "Request a Feature",
                     icon = Icons.Rounded.Feedback,
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?title=%5BFeature%20Request%5D%20&labels=enhancement"))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?template=feature_request.md"))
                         runCatching { context.startActivity(intent) }
                     }
                 )
@@ -274,7 +275,7 @@ fun SmartIslandHomeScreen() {
                     label = "Report a Bug",
                     icon = Icons.Rounded.BugReport,
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?title=%5BBug%5D%20&labels=bug"))
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?template=bug_report.md"))
                         runCatching { context.startActivity(intent) }
                     }
                 )

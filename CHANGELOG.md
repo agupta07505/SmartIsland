@@ -19,3 +19,12 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 - Notification listener integration for notification, incoming-call, and media modes.
 - Local customization for island size, position, and corner radius.
 - Demo states for notification, call, and music previews.
+- App screenshots added to the README to showcase UI features.
+
+### Changed
+
+- Replaced default launcher icon with custom adaptive and legacy icons generated from the transparent logo (`logo.png`) on a pure black background.
+
+### Fixed
+
+- Fixed support/feedback links in the app to correctly load GitHub issue templates (`bug_report.md` and `feature_request.md`).
