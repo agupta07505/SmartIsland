@@ -9,22 +9,34 @@ package com.agupta07505.smartisland.service
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 
 class SmartIslandNotificationListenerService : NotificationListenerService() {
     private val suppressedKeys = mutableSetOf<String>()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val repository by lazy { SmartIslandSettingsRepository(applicationContext) }
 
     override fun onCreate() {
         super.onCreate()
@@ -33,11 +45,19 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onDestroy() {
         if (instance?.get() == this) instance = null
+        serviceScope.cancel()
         super.onDestroy()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        runCatching { handleNotificationPosted(sbn) }
+        if (sbn.packageName == packageName) return
+        serviceScope.launch {
+            runCatching {
+                if (!canProcessNotifications()) return@runCatching
+                val overlayStarted = ensureOverlayServiceRunning()
+                handleNotificationPosted(sbn, allowHeadsUpSuppression = overlayStarted)
+            }
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
@@ -51,7 +71,33 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    private fun handleNotificationPosted(sbn: StatusBarNotification) {
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        serviceScope.launch {
+            runCatching {
+                if (!canProcessNotifications()) return@runCatching
+                activeNotifications
+                    .filter { it.packageName != packageName }
+                    .forEach { handleNotificationPosted(it, allowHeadsUpSuppression = false) }
+                ensureOverlayServiceRunning()
+            }
+        }
+    }
+
+    private suspend fun canProcessNotifications(): Boolean {
+        val settings = repository.settings.first()
+        return settings.enabled && Settings.canDrawOverlays(this)
+    }
+
+    private fun ensureOverlayServiceRunning(): Boolean =
+        runCatching {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, SmartIslandOverlayService::class.java)
+            )
+        }.isSuccess
+
+    private fun handleNotificationPosted(sbn: StatusBarNotification, allowHeadsUpSuppression: Boolean) {
         if (sbn.packageName == packageName) return
 
         val notification = sbn.notification
@@ -68,7 +114,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val ranking = Ranking()
         val rankingMap = currentRanking
         if (rankingMap != null && rankingMap.getRanking(sbn.key, ranking)) {
-            isHeadsUp = ranking.importance >= NotificationManager.IMPORTANCE_HIGH
+            isHeadsUp = allowHeadsUpSuppression && ranking.importance >= NotificationManager.IMPORTANCE_HIGH
         }
 
         // If it is an ongoing call, do not cancel it (do not treat as heads-up)
