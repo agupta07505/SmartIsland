@@ -447,10 +447,37 @@ private fun MusicExpanded(
     val getRepeatModeReflect = remember {
         { ctrl: android.media.session.MediaController? ->
             if (ctrl != null) {
-                runCatching {
+                // 1. Try framework repeat mode
+                var mode = runCatching {
                     val method = ctrl.javaClass.getMethod("getRepeatMode")
                     method.invoke(ctrl) as Int
                 }.getOrDefault(0)
+                
+                // 2. Try AndroidX repeat mode extras (Spotify/YT Music fallback)
+                if (mode == 0) {
+                    val extras = ctrl.extras
+                    if (extras != null) {
+                        mode = extras.getInt("androidx.media.MediaSessionCompat.Extras.KEY_REPEAT_MODE", 0)
+                    }
+                }
+                
+                // 3. Try custom action states in playbackState fallback
+                if (mode == 0) {
+                    val customActions = ctrl.playbackState?.customActions.orEmpty()
+                    val activeRepeatAction = customActions.firstOrNull { action ->
+                        val actionName = action.action.lowercase()
+                        actionName.contains("repeat") || actionName.contains("loop")
+                    }
+                    if (activeRepeatAction != null) {
+                        val title = activeRepeatAction.name.toString().lowercase()
+                        if (title.contains("one") || title.contains("single") || title.contains("track")) {
+                            mode = 1 // loop one
+                        } else if (title.contains("all") || title.contains("playlist") || title.contains("on") || title.contains("enable")) {
+                            mode = 2 // loop all
+                        }
+                    }
+                }
+                mode
             } else {
                 0
             }
@@ -509,6 +536,12 @@ private fun MusicExpanded(
             override fun onMetadataChanged(metadata: android.media.MediaMetadata?) {
                 isLiked = resolveLikeState(controller)
             }
+            override fun onExtrasChanged(extras: android.os.Bundle?) {
+                repeatMode = getRepeatModeReflect(controller)
+            }
+            override fun onQueueChanged(queue: MutableList<android.media.session.MediaSession.QueueItem>?) {
+                repeatMode = getRepeatModeReflect(controller)
+            }
             // Public method invoked by platform dynamically at runtime via reflection
             fun onRepeatModeChanged(mode: Int) {
                 repeatMode = mode
@@ -558,7 +591,9 @@ private fun MusicExpanded(
                 val transportControls = controller.transportControls
                 val method = transportControls.javaClass.getMethod("setRepeatMode", Int::class.javaPrimitiveType)
                 method.invoke(transportControls, nextMode)
-                
+            } catch (_: Exception) {}
+            
+            try {
                 // 2. Custom repeat toggle action fallback
                 val customActions = controller.playbackState?.customActions.orEmpty()
                 val repeatAction = customActions.firstOrNull { action ->
@@ -591,15 +626,16 @@ private fun MusicExpanded(
                         .clip(RoundedCornerShape(8.dp))
                 )
             } else {
-                Box(
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White,
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFF6B9A)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Rounded.MusicNote, contentDescription = null, tint = Color.White)
-                }
+                        .background(Color(0xFFFF6B9A))
+                        .padding(8.dp)
+                )
             }
             Column(Modifier.weight(1f)) {
                 Text(
