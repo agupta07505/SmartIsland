@@ -46,7 +46,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
@@ -61,7 +61,7 @@ import androidx.compose.material.icons.rounded.Feedback
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.RateReview
 import androidx.compose.material.icons.rounded.Gavel
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -155,7 +155,7 @@ fun SmartIslandHomeScreen() {
         label = "SectionTransition"
     ) { targetSection ->
         if (targetSection == null) {
-            // Main Dashboard View - shifted top padding down slightly for cool appearance
+            // Main Dashboard View
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -250,7 +250,7 @@ fun SmartIslandHomeScreen() {
                     }
                 }
 
-                // Categories heading shifted slightly down
+                // Categories heading
                 Text(
                     text = "Configure Features",
                     style = MaterialTheme.typography.titleSmall,
@@ -595,27 +595,50 @@ fun SmartIslandHomeScreen() {
 
 @Composable
 private fun HeaderSection() {
+    val context = LocalContext.current
+    // Safely load adaptive launcher icon of the app as an ImageBitmap to prevent loadVectorResource crashes
+    val appIcon = remember(context) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 144
+            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 144
+            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, width, height)
+            drawable.draw(canvas)
+            bitmap.asImageBitmap()
+        }.getOrNull()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // App Logo inside a sleek Black Rounded Square Box as requested
+        // App Logo inside a sleek Black Rounded Square Box
         Box(
             modifier = Modifier
                 .padding(bottom = 12.dp)
-                .size(72.dp)
+                .size(72.dp) // Fixed background size
                 .background(Color.Black, shape = RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(id = com.agupta07505.smartisland.R.mipmap.ic_launcher),
-                contentDescription = "App Logo",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(10.dp))
-            )
+            if (appIcon != null) {
+                Image(
+                    bitmap = appIcon,
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(60.dp) // Increased image size so it looks filled (thin border)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .background(Color(0xFF2563EB), shape = RoundedCornerShape(12.dp))
+                )
+            }
         }
         Text(
             text = "Smart Island",
@@ -732,7 +755,7 @@ private fun SectionDetailScreen(
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.Rounded.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back",
                     tint = Color(0xFF101828)
                 )
@@ -856,7 +879,7 @@ private fun GithubIcon(tint: Color = Color.Black) {
             cubicTo(14.172f * scaleX, 16.724f * scaleY, 14.491f * scaleX, 17.334f * scaleY, 14.491f * scaleX, 18.267f * scaleY)
             cubicTo(14.491f * scaleX, 19.603f * scaleY, 14.479f * scaleX, 20.682f * scaleY, 14.479f * scaleX, 21.01f * scaleY)
             cubicTo(14.479f * scaleX, 21.277f * scaleY, 14.659f * scaleX, 21.589f * scaleY, 15.167f * scaleX, 21.489f * scaleY)
-            cubicTo(19.141f * scaleX, 20.16f * scaleY, 22f * scaleX, 16.418f * scaleY, 22f * scaleX, 12f * scaleY)
+            cubicTo(19.141f * scaleX, 20.16f * scaleY, 22f * scaleX, 12f * scaleY, 22f * scaleX, 12f * scaleY)
             cubicTo(22f * scaleX, 6.477f * scaleY, 17.523f * scaleX, 2f * scaleY, 12f * scaleX, 2f * scaleY)
             close()
         }

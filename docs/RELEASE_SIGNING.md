@@ -65,8 +65,8 @@ Manual release build:
 Tag release:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
 When a tag starting with `v` is pushed, the workflow builds signed artifacts and publishes them to a GitHub release. Pushes to `main` also publish/update a release using the app `versionName`; pushes to `dev` build a debug APK artifact only.
@@ -86,7 +86,7 @@ That file is created inside GitHub's temporary runner environment, used for sign
 The workflow uploads one signed release APK:
 
 ```text
-SmartIsland-v1.0.apk
+SmartIsland-v2.0.apk
 ```
 
 The version part comes from `versionName` in `app/build.gradle.kts`.
