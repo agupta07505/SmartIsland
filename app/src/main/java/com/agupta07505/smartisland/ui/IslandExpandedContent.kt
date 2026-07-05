@@ -447,22 +447,24 @@ private fun MusicExpanded(
     val getRepeatModeReflect = remember {
         { ctrl: android.media.session.MediaController? ->
             if (ctrl != null) {
-                // 1. Try framework repeat mode
-                var mode = runCatching {
-                    val method = ctrl.javaClass.getMethod("getRepeatMode")
-                    method.invoke(ctrl) as Int
-                }.getOrDefault(0)
+                var mode = -1
                 
-                // 2. Try AndroidX repeat mode extras (Spotify/YT Music fallback)
-                if (mode == 0) {
-                    val extras = ctrl.extras
-                    if (extras != null) {
-                        mode = extras.getInt("androidx.media.MediaSessionCompat.Extras.KEY_REPEAT_MODE", 0)
-                    }
+                // 1. Try AndroidX repeat mode extras first (highly accurate for modern apps like Spotify/YT Music)
+                val extras = ctrl.extras
+                if (extras != null && extras.containsKey("androidx.media.MediaSessionCompat.Extras.KEY_REPEAT_MODE")) {
+                    mode = extras.getInt("androidx.media.MediaSessionCompat.Extras.KEY_REPEAT_MODE", -1)
                 }
                 
-                // 3. Try custom action states in playbackState fallback
-                if (mode == 0) {
+                // 2. Try standard framework repeat mode if extras not found or invalid
+                if (mode == -1) {
+                    mode = runCatching {
+                        val method = ctrl.javaClass.getMethod("getRepeatMode")
+                        method.invoke(ctrl) as Int
+                    }.getOrDefault(-1)
+                }
+                
+                // 3. Try custom action states fallback
+                if (mode == -1 || mode == 0) {
                     val customActions = ctrl.playbackState?.customActions.orEmpty()
                     val activeRepeatAction = customActions.firstOrNull { action ->
                         val actionName = action.action.lowercase()
@@ -474,10 +476,12 @@ private fun MusicExpanded(
                             mode = 1 // loop one
                         } else if (title.contains("all") || title.contains("playlist") || title.contains("on") || title.contains("enable")) {
                             mode = 2 // loop all
+                        } else {
+                            mode = 0
                         }
                     }
                 }
-                mode
+                if (mode == -1) 0 else mode
             } else {
                 0
             }
@@ -586,26 +590,30 @@ private fun MusicExpanded(
         }
         repeatMode = nextMode
         if (controller != null) {
+            var standardInvoked = false
             try {
-                // 1. Set Repeat Mode via reflection
+                // 1. Try framework standard repeat mode setter via reflection
                 val transportControls = controller.transportControls
                 val method = transportControls.javaClass.getMethod("setRepeatMode", Int::class.javaPrimitiveType)
                 method.invoke(transportControls, nextMode)
-            } catch (_: Exception) {}
+                standardInvoked = true
+            } catch (e: Exception) {}
             
-            try {
-                // 2. Custom repeat toggle action fallback
-                val customActions = controller.playbackState?.customActions.orEmpty()
-                val repeatAction = customActions.firstOrNull { action ->
-                    val actionName = action.action.lowercase()
-                    val title = action.name.toString().lowercase()
-                    actionName.contains("repeat") || actionName.contains("loop") ||
-                    title.contains("repeat") || title.contains("loop")
-                }
-                if (repeatAction != null) {
-                    controller.transportControls.sendCustomAction(repeatAction.action, null)
-                }
-            } catch (_: Exception) {}
+            if (!standardInvoked) {
+                try {
+                    // 2. Custom repeat toggle action fallback (only when standard method cannot be resolved)
+                    val customActions = controller.playbackState?.customActions.orEmpty()
+                    val repeatAction = customActions.firstOrNull { action ->
+                        val actionName = action.action.lowercase()
+                        val title = action.name.toString().lowercase()
+                        actionName.contains("repeat") || actionName.contains("loop") ||
+                        title.contains("repeat") || title.contains("loop")
+                    }
+                    if (repeatAction != null) {
+                        controller.transportControls.sendCustomAction(repeatAction.action, null)
+                    }
+                } catch (e: Exception) {}
+            }
         }
     }
 
