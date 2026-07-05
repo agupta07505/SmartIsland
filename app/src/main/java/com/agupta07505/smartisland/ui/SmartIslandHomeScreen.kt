@@ -20,6 +20,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.Offset
@@ -152,13 +155,13 @@ fun SmartIslandHomeScreen() {
         label = "SectionTransition"
     ) { targetSection ->
         if (targetSection == null) {
-            // Main Dashboard View
+            // Main Dashboard View - shifted top padding down slightly for cool appearance
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color(0xFFF7F8FA))
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Spacer(Modifier.height(12.dp))
@@ -246,6 +249,15 @@ fun SmartIslandHomeScreen() {
                         }
                     }
                 }
+
+                // Categories heading shifted slightly down
+                Text(
+                    text = "Configure Features",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color(0xFF667085),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
+                )
 
                 // Topic Sections
                 SectionRow(
@@ -589,18 +601,20 @@ private fun HeaderSection() {
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Futuristic floating pill visual mockup
+        // App Logo inside a sleek Black Rounded Square Box as requested
         Box(
             modifier = Modifier
                 .padding(bottom = 12.dp)
-                .size(width = 120.dp, height = 36.dp)
-                .background(Color(0xFF101828), shape = RoundedCornerShape(18.dp)),
+                .size(72.dp)
+                .background(Color.Black, shape = RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Box(
+            Image(
+                painter = painterResource(id = com.agupta07505.smartisland.R.mipmap.ic_launcher),
+                contentDescription = "App Logo",
                 modifier = Modifier
-                    .size(10.dp)
-                    .background(Color(0xFF222222), shape = CircleShape)
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
             )
         }
         Text(
@@ -611,7 +625,7 @@ private fun HeaderSection() {
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "A premium floating experiences for Android notifications",
+            text = "Smart Island reimagines Android notifications with a beautiful floating experience, interactive controls, and fluid animations—keeping everything important just a glance away.",
             color = Color(0xFF667085),
             style = MaterialTheme.typography.bodyMedium
         )
@@ -702,12 +716,13 @@ private fun SectionDetailScreen(
     onBack: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    // Increased top padding to 36dp to shift detail headers slightly down to look cool
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF7F8FA))
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 16.dp)
     ) {
         Row(
             modifier = Modifier
