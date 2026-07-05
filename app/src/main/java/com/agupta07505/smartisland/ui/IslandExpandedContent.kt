@@ -274,7 +274,7 @@ private fun NotificationExpanded(
                 )
             }
 
-            // Time text on top right
+            // Time text on top right using the internal helper in IslandCollapsedContent
             Text(
                 text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
                 color = Color(0xFFB7C0CA),
@@ -405,34 +405,43 @@ private fun MusicExpanded(
     val positionMs = notification?.mediaPositionMs
     val durationMs = notification?.mediaDurationMs
     
-    var livePositionMs by remember(positionMs, notification?.mediaIsPlaying) {
-        mutableStateOf(positionMs)
+    val controller = remember(notification?.mediaToken) {
+        notification?.mediaToken?.let { token ->
+            runCatching { android.media.session.MediaController(context, token) }.getOrNull()
+        }
     }
 
-    if (notification?.mediaIsPlaying == true && positionMs != null) {
-        LaunchedEffect(notification) {
-            val startTime = android.os.SystemClock.elapsedRealtime()
-            val startPosition = positionMs
+    val getEstimatedPosition = remember {
+        { ctrl: android.media.session.MediaController?, fallbackPos: Long? ->
+            val state = ctrl?.playbackState
+            if (state != null && state.state == android.media.session.PlaybackState.STATE_PLAYING) {
+                val elapsed = android.os.SystemClock.elapsedRealtime() - state.lastPositionUpdateTime
+                (state.position + (elapsed * state.playbackSpeed).toLong()).coerceAtLeast(0L)
+            } else {
+                state?.position ?: fallbackPos ?: 0L
+            }
+        }
+    }
+
+    var livePositionMs by remember(positionMs, controller) {
+        mutableStateOf(getEstimatedPosition(controller, positionMs))
+    }
+
+    if (notification?.mediaIsPlaying == true) {
+        LaunchedEffect(controller, positionMs) {
             while (true) {
-                val elapsed = android.os.SystemClock.elapsedRealtime() - startTime
-                livePositionMs = startPosition + elapsed
+                livePositionMs = getEstimatedPosition(controller, positionMs)
                 kotlinx.coroutines.delay(500)
             }
         }
     }
 
     val progress = when {
-        durationMs != null && durationMs > 0 && livePositionMs != null ->
-            (livePositionMs!!.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+        durationMs != null && durationMs > 0 ->
+            (livePositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
         notification?.progressMax?.let { it > 0 } == true ->
             (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0f, 1f)
         else -> 0f
-    }
-
-    val controller = remember(notification?.mediaToken) {
-        notification?.mediaToken?.let { token ->
-            runCatching { android.media.session.MediaController(context, token) }.getOrNull()
-        }
     }
 
     val getRepeatModeReflect = remember {
@@ -466,6 +475,27 @@ private fun MusicExpanded(
         }
     }
 
+    val resolveLikeState = remember(getIsHeartedReflect) {
+        { ctrl: android.media.session.MediaController? ->
+            if (ctrl != null) {
+                val ratingIsHearted = getIsHeartedReflect(ctrl.metadata)
+                if (ratingIsHearted) {
+                    true
+                } else {
+                    val customActions = ctrl.playbackState?.customActions.orEmpty()
+                    customActions.any { action ->
+                        val actionName = action.action.lowercase()
+                        val title = action.name.toString().lowercase()
+                        actionName.contains("unlike") || actionName.contains("remove") ||
+                        title.contains("unlike") || title.contains("remove")
+                    }
+                }
+            } else {
+                false
+            }
+        }
+    }
+
     var isLiked by remember(notification?.key) { mutableStateOf(false) }
     var repeatMode by remember(notification?.key) { mutableStateOf(0) }
 
@@ -474,13 +504,18 @@ private fun MusicExpanded(
         val callback = object : android.media.session.MediaController.Callback() {
             override fun onPlaybackStateChanged(state: android.media.session.PlaybackState?) {
                 repeatMode = getRepeatModeReflect(controller)
+                isLiked = resolveLikeState(controller)
             }
             override fun onMetadataChanged(metadata: android.media.MediaMetadata?) {
-                isLiked = getIsHeartedReflect(metadata)
+                isLiked = resolveLikeState(controller)
+            }
+            // Public method invoked by platform dynamically at runtime via reflection
+            fun onRepeatModeChanged(mode: Int) {
+                repeatMode = mode
             }
         }
         repeatMode = getRepeatModeReflect(controller)
-        isLiked = getIsHeartedReflect(controller.metadata)
+        isLiked = resolveLikeState(controller)
         controller.registerCallback(callback)
         onDispose {
             controller.unregisterCallback(callback)
@@ -519,9 +554,22 @@ private fun MusicExpanded(
         repeatMode = nextMode
         if (controller != null) {
             try {
+                // 1. Set Repeat Mode via reflection
                 val transportControls = controller.transportControls
                 val method = transportControls.javaClass.getMethod("setRepeatMode", Int::class.javaPrimitiveType)
                 method.invoke(transportControls, nextMode)
+                
+                // 2. Custom repeat toggle action fallback
+                val customActions = controller.playbackState?.customActions.orEmpty()
+                val repeatAction = customActions.firstOrNull { action ->
+                    val actionName = action.action.lowercase()
+                    val title = action.name.toString().lowercase()
+                    actionName.contains("repeat") || actionName.contains("loop") ||
+                    title.contains("repeat") || title.contains("loop")
+                }
+                if (repeatAction != null) {
+                    controller.transportControls.sendCustomAction(repeatAction.action, null)
+                }
             } catch (_: Exception) {}
         }
     }
