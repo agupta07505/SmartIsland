@@ -9,6 +9,7 @@ package com.agupta07505.smartisland.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -859,35 +861,87 @@ private fun BatteryExpanded(
     notification: IslandNotification,
     bottomPadding: Dp
 ) {
-    val pctText = notification.text?.replace("%", "")?.trim() ?: "0"
-    val pct = pctText.toFloatOrNull() ?: 0f
+    val context = LocalContext.current
+    val pctText = notification.text?.replace("%", "")?.trim() ?: "49"
+    val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
 
-    val flowTransition = rememberInfiniteTransition(label = "electricFlow")
-    val flowOffset by flowTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "flowOffset"
-    )
+    val timeText = remember(pct) {
+        val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+        val remainingMs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            runCatching { batteryManager?.computeChargeTimeRemaining() ?: -1L }.getOrDefault(-1L)
+        } else {
+            -1L
+        }
+        if (remainingMs > 0L) {
+            val totalMins = remainingMs / 60000L
+            val h = totalMins / 60L
+            val m = totalMins % 60L
+            if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
+        } else {
+            val totalMins = ((100f - pct) * 1.5f).toInt()
+            val h = totalMins / 60
+            val m = totalMins % 60
+            if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
+        }
+    }
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = bottomPadding),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = bottomPadding),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Charging",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Box(
+                modifier = Modifier.size(54.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                DottedRing(modifier = Modifier.size(50.dp), color = Color(0xFF10B981))
+                
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(Color(0x1F10B981), shape = CircleShape)
+                        .border(1.5.dp, Color(0xFF10B981).copy(alpha = 0.4f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Bolt,
+                        contentDescription = null,
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = "Charging",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "${pct.toInt()}%",
+                    color = Color(0xFF10B981),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 24.sp,
+                    lineHeight = 28.sp
+                )
+                Text(
+                    text = timeText,
+                    color = Color(0xFF98A2B3),
+                    fontSize = 11.sp
+                )
+            }
+        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -895,11 +949,23 @@ private fun BatteryExpanded(
         ) {
             Box(
                 modifier = Modifier
-                    .width(100.dp)
-                    .height(44.dp)
-                    .background(Color(0x33FFFFFF), shape = RoundedCornerShape(10.dp))
-                    .padding(4.dp)
+                    .width(84.dp)
+                    .height(38.dp)
+                    .border(2.dp, Color(0x33FFFFFF), RoundedCornerShape(10.dp))
+                    .background(Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
+                    .padding(3.dp)
             ) {
+                val flowTransition = rememberInfiniteTransition(label = "electricFlow")
+                val flowOffset by flowTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1000f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 3000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "flowOffset"
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -920,24 +986,43 @@ private fun BatteryExpanded(
                             shape = RoundedCornerShape(7.dp)
                         )
                 )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent),
+                                startY = 0f,
+                                endY = 40f
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                )
             }
             Spacer(modifier = Modifier.width(3.dp))
             Box(
                 modifier = Modifier
-                    .width(6.dp)
-                    .height(16.dp)
-                    .background(Color(0x66FFFFFF), shape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                    .width(5.dp)
+                    .height(14.dp)
+                    .background(Color(0x66FFFFFF), shape = RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
             )
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "${pct.toInt()}%",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF10B981),
-            fontSize = 32.sp
-        )
+@Composable
+private fun DottedRing(modifier: Modifier = Modifier, color: Color = Color(0xFF10B981)) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val radius = size.minDimension / 2f
+        val dotRadius = 1.2.dp.toPx()
+        val numDots = 16
+        for (i in 0 until numDots) {
+            val angle = (i * 360f / numDots) * (Math.PI / 180f)
+            val x = (center.x + radius * Math.cos(angle)).toFloat()
+            val y = (center.y + radius * Math.sin(angle)).toFloat()
+            drawCircle(color = color, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(x, y))
+        }
     }
 }
 

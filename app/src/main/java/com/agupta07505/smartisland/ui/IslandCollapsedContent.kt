@@ -23,12 +23,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -137,17 +141,23 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.Battery -> {
-                    Icon(
-                        Icons.Rounded.BatteryChargingFull,
-                        contentDescription = "Charging",
-                        tint = Color(0xFF10B981),
-                        modifier = Modifier
-                            .size(16.dp)
-                            .graphicsLayer {
-                                scaleX = pulseScale
-                                scaleY = pulseScale
-                            }
-                    )
+                    Box(
+                        modifier = Modifier.size(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DottedRing(modifier = Modifier.size(22.dp), color = Color(0xFF10B981))
+                        Icon(
+                            Icons.Rounded.Bolt,
+                            contentDescription = "Charging",
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier
+                                .size(14.dp)
+                                .graphicsLayer {
+                                    scaleX = pulseScale
+                                    scaleY = pulseScale
+                                }
+                        )
+                    }
                 }
                 IslandMode.Empty -> Unit
             }
@@ -183,18 +193,36 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.Battery -> {
-                    Text(
-                        text = notification?.text ?: "",
-                        color = Color(0xFF10B981),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(16.dp)
+                                .background(Color(0x33FFFFFF))
+                        )
+                        Text(
+                            text = notification?.text ?: "49%",
+                            color = Color(0xFF10B981),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
+                        val pct = pctText.toFloatOrNull() ?: 49f
+                        val progress = (pct / 100f).coerceIn(0f, 1f)
+                        CircularProgressArc(
+                            progress = progress,
+                            modifier = Modifier.size(14.dp),
+                            color = Color(0xFF10B981)
+                        )
+                    }
                 }
                 IslandMode.Empty -> Unit
             }
         }
 
-        // Central Notch / Camera cutout mimic
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -202,6 +230,49 @@ fun IslandCollapsedContent(
                 .clip(CircleShape)
                 .background(Color.Black)
         )
+    }
+}
+
+@Composable
+private fun CircularProgressArc(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    color: Color = Color(0xFF10B981)
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val strokeWidth = 1.5.dp.toPx()
+        drawArc(
+            color = color.copy(alpha = 0.15f),
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = Stroke(width = strokeWidth)
+        )
+        drawArc(
+            color = color,
+            startAngle = -90f,
+            sweepAngle = 360f * progress,
+            useCenter = false,
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        )
+    }
+}
+
+@Composable
+private fun DottedRing(modifier: Modifier = Modifier, color: Color = Color(0xFF10B981)) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val radius = size.minDimension / 2f
+        val dotRadius = 1.2.dp.toPx()
+        val numDots = 16
+        for (i in 0 until numDots) {
+            val angle = (i * 360f / numDots) * (Math.PI / 180f)
+            val x = (center.x + radius * Math.cos(angle)).toFloat()
+            val y = (center.y + radius * Math.sin(angle)).toFloat()
+            drawCircle(color = color, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(x, y))
+        }
     }
 }
 
