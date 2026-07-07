@@ -141,11 +141,14 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.Battery -> {
+                    val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
+                    val pct = pctText.toFloatOrNull() ?: 49f
+                    val progress = (pct / 100f).coerceIn(0f, 1f)
                     Box(
                         modifier = Modifier.size(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        DottedRing(modifier = Modifier.size(22.dp), color = Color(0xFF10B981))
+                        DottedRing(progress = progress, modifier = Modifier.size(22.dp), color = Color(0xFF10B981))
                         Icon(
                             Icons.Rounded.Bolt,
                             contentDescription = "Charging",
@@ -209,14 +212,6 @@ fun IslandCollapsedContent(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
-                        val pct = pctText.toFloatOrNull() ?: 49f
-                        val progress = (pct / 100f).coerceIn(0f, 1f)
-                        CircularProgressArc(
-                            progress = progress,
-                            modifier = Modifier.size(14.dp),
-                            color = Color(0xFF10B981)
-                        )
                     }
                 }
                 IslandMode.Empty -> Unit
@@ -234,44 +229,23 @@ fun IslandCollapsedContent(
 }
 
 @Composable
-private fun CircularProgressArc(
+private fun DottedRing(
     progress: Float,
     modifier: Modifier = Modifier,
     color: Color = Color(0xFF10B981)
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val strokeWidth = 1.5.dp.toPx()
-        drawArc(
-            color = color.copy(alpha = 0.15f),
-            startAngle = -90f,
-            sweepAngle = 360f,
-            useCenter = false,
-            style = Stroke(width = strokeWidth)
-        )
-        drawArc(
-            color = color,
-            startAngle = -90f,
-            sweepAngle = 360f * progress,
-            useCenter = false,
-            style = Stroke(
-                width = strokeWidth,
-                cap = StrokeCap.Round
-            )
-        )
-    }
-}
-
-@Composable
-private fun DottedRing(modifier: Modifier = Modifier, color: Color = Color(0xFF10B981)) {
-    androidx.compose.foundation.Canvas(modifier = modifier) {
         val radius = size.minDimension / 2f
         val dotRadius = 1.2.dp.toPx()
         val numDots = 16
+        val activeDotsCount = (numDots * progress).toInt()
         for (i in 0 until numDots) {
-            val angle = (i * 360f / numDots) * (Math.PI / 180f)
+            val angle = (-90f + i * 360f / numDots) * (Math.PI / 180f)
             val x = (center.x + radius * Math.cos(angle)).toFloat()
             val y = (center.y + radius * Math.sin(angle)).toFloat()
-            drawCircle(color = color, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(x, y))
+            val isActive = i < activeDotsCount
+            val dotColor = if (isActive) color else Color(0x33FFFFFF)
+            drawCircle(color = dotColor, radius = dotRadius, center = androidx.compose.ui.geometry.Offset(x, y))
         }
     }
 }
