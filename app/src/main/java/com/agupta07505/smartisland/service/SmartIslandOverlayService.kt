@@ -13,6 +13,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
@@ -55,6 +56,7 @@ class SmartIslandOverlayService : LifecycleService() {
     private val notificationsState = MutableStateFlow<List<IslandNotification>>(emptyList())
     private val selectedIndexState = MutableStateFlow(0)
     private var autoCollapseJob: kotlinx.coroutines.Job? = null
+    private lateinit var systemEventReceiver: SystemEventReceiver
 
     override fun onCreate() {
         super.onCreate()
@@ -63,6 +65,14 @@ class SmartIslandOverlayService : LifecycleService() {
         val app = application as SmartIslandApp
         repository = app.settingsRepository
         notificationRepository = app.notificationRepository
+        
+        systemEventReceiver = SystemEventReceiver(notificationRepository)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(Intent.ACTION_BATTERY_CHANGED)
+        }
+        registerReceiver(systemEventReceiver, filter)
 
         overlayOwners.resume()
         startForeground(NOTIFICATION_ID, buildServiceNotification())
@@ -125,6 +135,7 @@ class SmartIslandOverlayService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(systemEventReceiver)
         removeCollapsedWindow()
         overlayOwners.destroy()
         super.onDestroy()

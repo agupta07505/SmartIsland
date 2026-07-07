@@ -102,6 +102,15 @@ class SmartIslandNotificationRepository {
                     IslandNotificationAction("Next", null)
                 )
             )
+            IslandMode.Battery -> IslandNotification(
+                key = "demo_battery",
+                packageName = "com.android.systemui",
+                appName = "System",
+                title = "Charging",
+                text = "85%",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Battery
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

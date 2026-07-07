@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -124,6 +125,14 @@ fun IslandCollapsedContent(
                         }
                     }
                 }
+                IslandMode.Battery -> {
+                    Icon(
+                        Icons.Rounded.BatteryChargingFull,
+                        contentDescription = "Charging",
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -155,6 +164,14 @@ fun IslandCollapsedContent(
                     AudioVisualizer(
                         isPlaying = notification?.mediaIsPlaying == true,
                         color = Color(0xFFFF6B9A)
+                    )
+                }
+                IslandMode.Battery -> {
+                    Text(
+                        text = notification?.text ?: "",
+                        color = Color(0xFF10B981),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 IslandMode.Empty -> Unit

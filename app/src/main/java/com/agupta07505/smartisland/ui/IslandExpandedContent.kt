@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -187,6 +190,10 @@ fun IslandExpandedContent(
                                 onCollapse = onCollapse
                             )
                             IslandMode.Music -> MusicExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding
+                            )
+                            IslandMode.Battery -> BatteryExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding
                             )
@@ -839,3 +846,71 @@ private fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent
         }
     }
 }
+
+@Composable
+private fun BatteryExpanded(
+    notification: IslandNotification,
+    bottomPadding: Dp
+) {
+    val pctText = notification.text?.replace("%", "")?.trim() ?: "0"
+    val pct = pctText.toFloatOrNull() ?: 0f
+    val progress = (pct / 100f).coerceIn(0f, 1f)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = bottomPadding),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Charging",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(44.dp)
+                    .background(Color(0x33FFFFFF), shape = RoundedCornerShape(10.dp))
+                    .padding(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color(0xFF34D399), Color(0xFF10B981))
+                            ),
+                            shape = RoundedCornerShape(7.dp)
+                        )
+                )
+            }
+            Spacer(modifier = Modifier.width(3.dp))
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(16.dp)
+                    .background(Color(0x66FFFFFF), shape = RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "${pct.toInt()}%",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF10B981),
+            fontSize = 32.sp
+        )
+    }
+}
+

@@ -11,5 +11,6 @@ enum class IslandMode {
     Empty,
     Notification,
     IncomingCall,
-    Music
+    Music,
+    Battery
 }
