@@ -212,23 +212,12 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.Battery -> {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(16.dp)
-                                .background(Color(0x33FFFFFF))
-                        )
-                        Text(
-                            text = notification?.text ?: "49%",
-                            color = Color(0xFF10B981),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = notification?.text ?: "49%",
+                        color = Color(0xFF10B981),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
                 IslandMode.Empty -> Unit
             }
