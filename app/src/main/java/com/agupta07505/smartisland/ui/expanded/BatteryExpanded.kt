@@ -95,6 +95,19 @@ fun BatteryExpanded(
         label = "dottedRingRotation"
     )
 
+    /*
+     * ⚠️ HIDDEN API: BatteryManager.computeChargeTimeRemaining()
+     *
+     * This is a non-SDK interface restricted on Android 9+ (API 28+).
+     * Behavior varies by device:
+     *   - Some devices: returns accurate remaining time in milliseconds
+     *   - Most devices: returns -1 (hidden API blocked)
+     *   - Some OEMs: may throw or return 0
+     *
+     * We fall back to a heuristic: ~1.5 minutes per remaining percent.
+     * This is intentionally a rough estimate — it does not account for
+     * varying charge speeds (fast charging, wireless, etc.).
+     */
     val timeText = remember(pct) {
         val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
         val remainingMs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {

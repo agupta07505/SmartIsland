@@ -21,10 +21,6 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.Toast
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.LifecycleService
@@ -35,22 +31,25 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.agupta07505.smartisland.MainActivity
 import com.agupta07505.smartisland.R
-import com.agupta07505.smartisland.SmartIslandApp
+import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
-import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
-import com.agupta07505.smartisland.ui.IslandOverlayView
 import com.agupta07505.smartisland.ui.IslandViewModel
-import kotlinx.coroutines.flow.collectLatest
+import com.agupta07505.smartisland.ui.OverlayIsland
 import com.agupta07505.smartisland.util.runCatchingLogged
+import androidx.window.layout.WindowMetricsCalculator
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SmartIslandOverlayService : LifecycleService() {
     private lateinit var windowManager: WindowManager
-    private lateinit var repository: SmartIslandSettingsRepository
-    private lateinit var notificationRepository: com.agupta07505.smartisland.data.INotificationRepository
+    @Inject lateinit var repository: SmartIslandSettingsRepository
+    @Inject lateinit var notificationRepository: INotificationRepository
     private var islandView: ComposeView? = null
     private val overlayOwners = OverlayViewTreeOwners()
     private lateinit var systemEventReceiver: SystemEventReceiver
@@ -89,10 +88,6 @@ class SmartIslandOverlayService : LifecycleService() {
         }
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        
-        val app = application as SmartIslandApp
-        repository = app.settingsRepository
-        notificationRepository = app.notificationRepository
 
         // CRASH FIX: resume lifecycle BEFORE ViewModel
         overlayOwners.resume()
@@ -148,7 +143,7 @@ class SmartIslandOverlayService : LifecycleService() {
                 if (expanded) {
                     updateWindowLayoutParams(true, viewModel.settings.value)
                 } else {
-                    kotlinx.coroutines.delay(500)
+                    kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
                     updateWindowLayoutParams(false, viewModel.settings.value)
                 }
             }
@@ -163,7 +158,17 @@ class SmartIslandOverlayService : LifecycleService() {
         runCatchingLogged(TAG, "unregisterReceiver screenStateReceiver failed") {
             unregisterReceiver(screenStateReceiver)
         }
-        removeCollapsedWindow()
+        // Retry remove up to 3 times with 100ms delay
+        repeat(3) {
+            if (islandView != null) {
+                removeCollapsedWindow()
+                if (islandView == null) return@repeat
+                Thread.sleep(100)
+            }
+        }
+        if (islandView != null) {
+            android.util.Log.e(TAG, "Failed to remove overlay window after 3 attempts")
+        }
         overlayOwners.destroy()
         super.onDestroy()
     }
@@ -185,6 +190,10 @@ class SmartIslandOverlayService : LifecycleService() {
             }
             return
         }
+        // FIX: Use WindowMetricsCalculator for correct bounds on foldables and
+        // multi-window mode, instead of displayMetrics which reports full display.
+        val windowMetrics = WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(this)
         try {
             islandView = ComposeView(this).apply {
                 installOverlayViewTreeOwners()
@@ -231,7 +240,7 @@ class SmartIslandOverlayService : LifecycleService() {
                                                 val h = ((viewModel.settings.value.height + 16f) * density).toInt()
                                                 val xOffsetPx = (viewModel.settings.value.xOffset * density).toInt()
 
-                                                val screenWidth = resources.displayMetrics.widthPixels
+                                                val screenWidth = windowMetrics.bounds.width()
                                                 val left = (screenWidth - w) / 2 + xOffsetPx
                                                 val right = left + w
                                                 val top = 0
@@ -266,6 +275,7 @@ class SmartIslandOverlayService : LifecycleService() {
 
     private fun updateWindowLayoutParams(expanded: Boolean, settings: SmartIslandSettings) {
         val view = islandView ?: return
+        val screenWidth = currentWindowBounds().width()
         val density = resources.displayMetrics.density
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
@@ -273,7 +283,7 @@ class SmartIslandOverlayService : LifecycleService() {
             ((settings.height + 16f) * density).toInt()
         }
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            screenWidth,
             h,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -292,16 +302,24 @@ class SmartIslandOverlayService : LifecycleService() {
     }
 
     private fun removeCollapsedWindow() {
-        islandView?.let { view ->
-            runCatchingLogged(TAG, "Failed to remove view") { windowManager.removeView(view) }
+        val view = islandView ?: return
+        val removed = runCatchingLogged(TAG, "Failed to remove view") {
+            windowManager.removeView(view)
+        } != null
+        if (removed) {
+            islandView = null
+        } else {
+            // If removeView fails, the view is still attached. Don't null the reference
+            // so we can retry or at least avoid leaking a dangling window.
+            android.util.Log.w(TAG, "removeCollapsedWindow: removeView failed, keeping reference for retry")
         }
-        islandView = null
     }
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
+        val screenWidth = currentWindowBounds().width()
         val density = resources.displayMetrics.density
         return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            screenWidth,
             ((settings.height + 16f) * density).toInt(),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -317,11 +335,10 @@ class SmartIslandOverlayService : LifecycleService() {
     }
 
     private fun buildServiceNotification(): android.app.Notification {
-        val channelId = "smart_island_overlay"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId,
-                "Smart Island overlay",
+                OVERLAY_CHANNEL_ID,
+                OVERLAY_CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_LOW
             )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -332,7 +349,7 @@ class SmartIslandOverlayService : LifecycleService() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        return androidx.core.app.NotificationCompat.Builder(this, channelId)
+        return androidx.core.app.NotificationCompat.Builder(this, OVERLAY_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_smart_island)
             .setContentTitle("Smart Island is running")
             .setContentText("Floating island overlay is active.")
@@ -393,13 +410,13 @@ class SmartIslandOverlayService : LifecycleService() {
                 return
             }
             runCatchingLogged(TAG, "Failed to set launch bounds") {
-                val displayMetrics = resources.displayMetrics
-                val screenWidth = displayMetrics.widthPixels
-                val screenHeight = displayMetrics.heightPixels
+                val bounds = currentWindowBounds()
+                val screenWidth = bounds.width()
+                val screenHeight = bounds.height()
                 val w = (screenWidth * 0.90f).toInt()
                 val h = (screenHeight * 0.65f).toInt()
-                val left = (screenWidth - w) / 2
-                val top = (screenHeight - h) / 2
+                val left = bounds.left + (screenWidth - w) / 2
+                val top = bounds.top + (screenHeight - h) / 2
                 options.setLaunchBounds(android.graphics.Rect(left, top, left + w, top + h))
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -429,6 +446,11 @@ class SmartIslandOverlayService : LifecycleService() {
         viewModel.collapse()
     }
 
+    private fun currentWindowBounds(): android.graphics.Rect =
+        WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(this)
+            .bounds
+
     private fun Float.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     private fun ComposeView.installOverlayViewTreeOwners() {
@@ -441,33 +463,8 @@ class SmartIslandOverlayService : LifecycleService() {
         private const val TAG = "SmartIslandOverlayService"
         private const val NOTIFICATION_ID = 8105
         private const val WINDOWING_MODE_FREEFORM = 5
+        private const val OVERLAY_CHANNEL_ID = "smart_island_overlay"
+        private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
+        private const val AUTO_COLLAPSE_DELAY_MS = 500L
     }
-}
-
-@Composable
-private fun OverlayIsland(
-    viewModel: IslandViewModel,
-    statusBarHeight: Float,
-    onOpenNotification: (IslandNotification) -> Unit,
-    onOpenFloatingWindow: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val settings by viewModel.settings.collectAsState()
-    val expanded by viewModel.expanded.collectAsState()
-    val notifications by viewModel.notifications.collectAsState()
-    val selectedIndex by viewModel.selectedIndex.collectAsState()
-
-    IslandOverlayView(
-        settings = settings,
-        expanded = expanded,
-        notifications = notifications,
-        selectedIndex = selectedIndex,
-        onPageSelected = { index -> viewModel.setSelectedNotificationIndex(index) },
-        onOpenNotification = onOpenNotification,
-        onToggleExpanded = { viewModel.toggleExpanded() },
-        onDismissNotification = { viewModel.dismissCurrentNotification() },
-        onOpenFloatingWindow = onOpenFloatingWindow,
-        statusBarHeight = statusBarHeight,
-        modifier = modifier
-    )
 }

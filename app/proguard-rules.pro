@@ -22,3 +22,28 @@
     public void setLaunchWindowingMode(int);
     public void setPendingIntentBackgroundActivityStartMode(int);
 }
+
+# ── MediaController reflection used in MusicExpanded ──
+# Keep repeat mode methods accessed via reflection
+-keep class android.media.session.MediaController {
+    public int getRepeatMode();
+}
+-keep class android.media.session.MediaController$TransportControls {
+    public void setRepeatMode(int);
+}
+# Keep Rating.isHearted() accessed via reflection
+-keep class android.media.Rating {
+    public boolean isHearted();
+}
+# Keep MediaMetadata.getRating() used to obtain Rating object
+-keep class android.media.MediaMetadata {
+    public android.media.Rating getRating(java.lang.String);
+}
+# Keep PlaybackState custom actions and extras
+-keep class android.media.session.PlaybackState {
+    public java.util.List getCustomActions();
+}
+-keep class android.media.session.PlaybackState$CustomAction {
+    public java.lang.String getAction();
+    public java.lang.CharSequence getName();
+}

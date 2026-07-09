@@ -38,7 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.agupta07505.smartisland.SmartIslandApp
+import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.formatNotificationTime
@@ -138,7 +138,7 @@ fun NotificationExpanded(
                                     } else {
                                         Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                     }
-                                    val repo = (context.applicationContext as SmartIslandApp).notificationRepository
+                                    val repo = SmartIslandRepositories.notificationRepository(context)
                                     repo.removeNotification(notification.key)
                                     repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
                                     onCollapse()

@@ -8,11 +8,7 @@
 package com.agupta07505.smartisland
 
 import android.app.Application
-import com.agupta07505.smartisland.data.INotificationRepository
-import com.agupta07505.smartisland.data.SmartIslandNotificationRepository
-import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import dagger.hilt.android.HiltAndroidApp
 
-class SmartIslandApp : Application() {
-    val settingsRepository by lazy { SmartIslandSettingsRepository(applicationContext) }
-    val notificationRepository: INotificationRepository by lazy { SmartIslandNotificationRepository() }
-}
+@HiltAndroidApp
+class SmartIslandApp : Application()

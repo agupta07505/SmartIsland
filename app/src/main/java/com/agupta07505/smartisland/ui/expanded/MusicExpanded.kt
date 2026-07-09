@@ -51,7 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.agupta07505.smartisland.SmartIslandApp
+import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.WavyMusicSeekBar
 import com.agupta07505.smartisland.ui.bounceClick
@@ -346,7 +346,7 @@ fun MusicExpanded(
                                 ctrl.transportControls.seekTo(newPosition)
                             }
                         } else {
-                            (context.applicationContext as SmartIslandApp).notificationRepository.sendCommand(
+                            SmartIslandRepositories.notificationRepository(context).sendCommand(
                                 com.agupta07505.smartisland.data.SmartIslandCommand.SeekTo(notification.packageName, newPosition)
                             )
                         }

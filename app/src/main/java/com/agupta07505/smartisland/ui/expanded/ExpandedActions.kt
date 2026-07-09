@@ -11,8 +11,7 @@ import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.content.Context
 import android.os.Build
-import android.widget.Toast
-import com.agupta07505.smartisland.SmartIslandApp
+import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.SmartIslandCommand
@@ -25,16 +24,16 @@ fun IslandNotification?.sendFirstAction(context: Context, vararg keywords: Strin
     } ?: return
     if (action.pendingIntent != null) {
         triggerAction(context, this.packageName, action.pendingIntent, action.title, this.contentIntent)
-        val app = context.applicationContext as SmartIslandApp
-        app.notificationRepository.resetTimer()
+        val notificationRepository = SmartIslandRepositories.notificationRepository(context)
+        notificationRepository.resetTimer()
         if (this.mode == IslandMode.Music) {
             // prune stale music keys immediately
-            app.notificationRepository.notifications.value
+            notificationRepository.notifications.value
                 .filter { it.mode == IslandMode.Music && it.packageName == this.packageName && it.key != this.key }
-                .forEach { app.notificationRepository.removeNotification(it.key) }
+                .forEach { notificationRepository.removeNotification(it.key) }
         } else {
-            app.notificationRepository.removeNotification(this.key)
-            app.notificationRepository.sendCommand(SmartIslandCommand.CancelNotification(this.key))
+            notificationRepository.removeNotification(this.key)
+            notificationRepository.sendCommand(SmartIslandCommand.CancelNotification(this.key))
         }
     }
 }

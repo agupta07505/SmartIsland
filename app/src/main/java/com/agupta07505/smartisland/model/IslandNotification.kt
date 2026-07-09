@@ -19,7 +19,6 @@ data class IslandNotification(
     val timeMillis: Long,
     val icon: Bitmap? = null,
     val largeIcon: Bitmap? = null,
-    val actions: List<String> = emptyList(),
     val actionIntents: List<IslandNotificationAction> = emptyList(),
     val category: String? = null,
     val progress: Int = 0,
@@ -30,7 +29,11 @@ data class IslandNotification(
     val mediaToken: android.media.session.MediaSession.Token? = null,
     val mode: IslandMode = IslandMode.Notification,
     val contentIntent: PendingIntent? = null
-)
+) {
+    // Derived: no need to store separately
+    val actions: List<String>
+        get() = actionIntents.map { it.title }
+}
 
 data class IslandNotificationAction(
     val title: String,

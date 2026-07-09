@@ -80,8 +80,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.agupta07505.smartisland.R
-import com.agupta07505.smartisland.SmartIslandApp
+import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import com.agupta07505.smartisland.ui.sections.AboutSection
@@ -99,17 +101,27 @@ private enum class HomeSection {
 }
 
 @Composable
-fun SmartIslandHomeScreen() {
+fun SmartIslandHomeScreen(
+    repository: SmartIslandSettingsRepository? = null,
+    notificationRepository: INotificationRepository? = null
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    
-    val app = context.applicationContext as? SmartIslandApp
-    val repository = remember(app, context) {
-        app?.settingsRepository ?: com.agupta07505.smartisland.data.SmartIslandSettingsRepository(context.applicationContext)
+
+    val resolvedRepository = remember(repository, context) {
+        repository ?: runCatching {
+            SmartIslandRepositories.settingsRepository(context)
+        }.getOrElse {
+            SmartIslandSettingsRepository(context.applicationContext)
+        }
     }
-    val notificationRepository = remember(app) { app?.notificationRepository }
+    val resolvedNotificationRepository = remember(notificationRepository, context) {
+        notificationRepository ?: runCatching {
+            SmartIslandRepositories.notificationRepository(context)
+        }.getOrNull()
+    }
     
-    val settings by repository.settings.collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default)
+    val settings by resolvedRepository.settings.collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default)
     val scope = rememberCoroutineScope()
 
     val isDark = isSystemInDarkTheme()
@@ -148,7 +160,7 @@ fun SmartIslandHomeScreen() {
                 android.util.Log.e("SmartIslandHome", "Failed to start overlay service", e)
                 // Disable setting to prevent crash loop
                 try {
-                    repository.setEnabled(false)
+                    resolvedRepository.setEnabled(false)
                 } catch (_: Exception) {}
                 android.widget.Toast.makeText(
                     context,
@@ -226,7 +238,7 @@ fun SmartIslandHomeScreen() {
                             checked = settings.enabled,
                             enabled = overlayGranted,
                             onCheckedChange = { enabled ->
-                                scope.launch { repository.setEnabled(enabled) }
+                                scope.launch { resolvedRepository.setEnabled(enabled) }
                             }
                         )
                     }
@@ -255,7 +267,7 @@ fun SmartIslandHomeScreen() {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 ElevatedButton(
-                                    onClick = { notificationRepository?.showDemo(IslandMode.Notification) },
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Notification) },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -263,7 +275,7 @@ fun SmartIslandHomeScreen() {
                                     Text(stringResource(R.string.btn_notify), fontSize = 11.sp)
                                 }
                                 ElevatedButton(
-                                    onClick = { notificationRepository?.showDemo(IslandMode.IncomingCall) },
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.IncomingCall) },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Rounded.Call, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -276,7 +288,7 @@ fun SmartIslandHomeScreen() {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 ElevatedButton(
-                                    onClick = { notificationRepository?.showDemo(IslandMode.Music) },
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Music) },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -284,7 +296,7 @@ fun SmartIslandHomeScreen() {
                                     Text(stringResource(R.string.btn_music), fontSize = 11.sp)
                                 }
                                 ElevatedButton(
-                                    onClick = { notificationRepository?.showDemo(IslandMode.Battery) },
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Battery) },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(Icons.Rounded.BatteryChargingFull, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -404,7 +416,7 @@ fun SmartIslandHomeScreen() {
                             activeSection = null
                         }
                     ) {
-                        PositionsSection(settings = settings, repository = repository)
+                        PositionsSection(settings = settings, repository = resolvedRepository)
                     }
                 }
                 HomeSection.Support -> {
@@ -578,4 +590,3 @@ fun SmartIslandHomeScreenDarkPreview() {
         SmartIslandHomeScreen()
     }
 }
-

@@ -77,7 +77,7 @@ fun IslandCollapsedContent(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 8.dp)
+                .padding(start = LEFT_SLOT_PADDING_START_DP.dp)
                 .graphicsLayer {
                     translationX = translationXLeft
                 },
@@ -142,7 +142,7 @@ fun IslandCollapsedContent(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 12.dp)
+                .padding(end = RIGHT_SLOT_PADDING_END_DP.dp)
                 .graphicsLayer {
                     translationX = translationXRight
                 },
@@ -182,7 +182,7 @@ fun IslandCollapsedContent(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(20.dp)
+                .size(CENTER_DOT_SIZE_DP.dp)
                 .clip(CircleShape)
                 .background(Color.Black)
         )
@@ -331,5 +331,8 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
     )
 }
 
+// Collapsed content animation
 private val COLLAPSED_TRANSLATION_MAX_DP = 32.dp
-
+private const val LEFT_SLOT_PADDING_START_DP = 8
+private const val RIGHT_SLOT_PADDING_END_DP = 12
+private const val CENTER_DOT_SIZE_DP = 20

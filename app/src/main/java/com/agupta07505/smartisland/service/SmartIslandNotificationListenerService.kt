@@ -24,11 +24,13 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
-import com.agupta07505.smartisland.SmartIslandApp
 import com.agupta07505.smartisland.data.SmartIslandCommand
+import com.agupta07505.smartisland.data.INotificationRepository
+import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,12 +38,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Collections
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SmartIslandNotificationListenerService : NotificationListenerService() {
     private val suppressedKeys = Collections.synchronizedSet(mutableSetOf<String>())
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val repository by lazy { (application as SmartIslandApp).settingsRepository }
-    private val notificationRepository by lazy { (application as SmartIslandApp).notificationRepository }
+    @Inject lateinit var repository: SmartIslandSettingsRepository
+    @Inject lateinit var notificationRepository: INotificationRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -155,7 +159,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 timeMillis = if (notification.`when` != 0L) notification.`when` else sbn.postTime,
                 icon = loadAppIconBitmap(sbn.packageName),
                 largeIcon = mediaInfo?.artwork ?: notification.loadLargeIconBitmap(),
-                actions = notification.actions?.mapNotNull { it.title?.toString() }.orEmpty(),
                 actionIntents = notification.actions?.mapNotNull { action ->
                     action.title?.toString()?.let { title ->
                         IslandNotificationAction(title = title, pendingIntent = action.actionIntent)
@@ -341,5 +344,4 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         private const val LARGE_ICON_BITMAP_SIZE = 128
     }
 }
-
 
