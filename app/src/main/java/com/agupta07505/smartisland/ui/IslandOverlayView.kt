@@ -60,6 +60,7 @@ fun IslandOverlayView(
     expanded: Boolean,
     notifications: List<IslandNotification>,
     selectedIndex: Int,
+    windowWidthIsMatchParent: Boolean,
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onToggleExpanded: () -> Unit,
@@ -166,7 +167,7 @@ fun IslandOverlayView(
                     .width(width)
                     .height(height)
                     .graphicsLayer {
-                        translationX = settings.xOffset.dp.toPx()
+                        translationX = if (windowWidthIsMatchParent) settings.xOffset.dp.toPx() else 0f
                         translationY = yOffset.toPx() + dragOffset
                         alpha = collapsedAlpha
                     }
@@ -208,7 +209,7 @@ fun IslandOverlayView(
                 .width(width)
                 .height(height)
                 .graphicsLayer {
-                    translationX = settings.xOffset.dp.toPx()
+                    translationX = if (windowWidthIsMatchParent) settings.xOffset.dp.toPx() else 0f
                     translationY = yOffset.toPx() + dragOffset
                 }
                 .clip(RoundedCornerShape(radius))

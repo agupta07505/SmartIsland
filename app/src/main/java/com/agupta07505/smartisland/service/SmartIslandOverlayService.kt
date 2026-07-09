@@ -254,6 +254,7 @@ class SmartIslandOverlayService : LifecycleService() {
             }
             runCatchingLogged(TAG, "windowManager.addView failed – stopping service") {
                 windowManager.addView(islandView, collapsedParams(viewModel.settings.value))
+                viewModel.setWindowWidthIsMatchParent(Build.VERSION.SDK_INT < 35)
             } ?: run {
                 islandView = null
                 stopSelf()
@@ -296,7 +297,10 @@ class SmartIslandOverlayService : LifecycleService() {
             x = if (expanded) 0 else if (Build.VERSION.SDK_INT >= 35) (settings.xOffset * density).toInt() else 0
             y = settings.yOffset.dpToPx()
         }
-        runCatchingLogged(TAG, "Failed to update view layout") { windowManager.updateViewLayout(view, params) }
+        runCatchingLogged(TAG, "Failed to update view layout") { 
+            windowManager.updateViewLayout(view, params) 
+            viewModel.setWindowWidthIsMatchParent(expanded || Build.VERSION.SDK_INT < 35)
+        }
     }
 
     private fun removeCollapsedWindow() {
@@ -469,12 +473,14 @@ private fun OverlayIsland(
     val expanded by viewModel.expanded.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val selectedIndex by viewModel.selectedIndex.collectAsState()
+    val windowWidthIsMatchParent by viewModel.windowWidthIsMatchParent.collectAsState()
 
     IslandOverlayView(
         settings = settings,
         expanded = expanded,
         notifications = notifications,
         selectedIndex = selectedIndex,
+        windowWidthIsMatchParent = windowWidthIsMatchParent,
         onPageSelected = { index -> viewModel.setSelectedNotificationIndex(index) },
         onOpenNotification = onOpenNotification,
         onToggleExpanded = { viewModel.toggleExpanded() },

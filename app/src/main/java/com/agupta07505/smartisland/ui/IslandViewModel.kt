@@ -42,6 +42,11 @@ class IslandViewModel(
 
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
+    val windowWidthIsMatchParent = MutableStateFlow(false)
+
+    fun setWindowWidthIsMatchParent(value: Boolean) {
+        windowWidthIsMatchParent.value = value
+    }
 
     val mode: StateFlow<IslandMode> = combine(notifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty
@@ -96,7 +101,12 @@ class IslandViewModel(
         expanded.value = false
     }
 
+    private var lastToggleTimeMs = 0L
+
     fun toggleExpanded() {
+        val now = System.currentTimeMillis()
+        if (now - lastToggleTimeMs < 350L) return
+        lastToggleTimeMs = now
         expanded.value = !expanded.value
     }
 
