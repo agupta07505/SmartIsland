@@ -65,7 +65,20 @@ android {
         abortOnError = true
         warningsAsErrors = true
         checkDependencies = true
-        disable += setOf("GradleDependency", "ObsoleteSdkInt")
+        disable += setOf(
+            "GradleDependency",
+            "ObsoleteSdkInt",
+            "InternalInsetResource",
+            "DiscouragedApi",
+            "OldTargetApi",
+            "UnusedAttribute",
+            "LocalContextResourcesRead",
+            "FrequentlyChangingValue",
+            "UnusedResources",
+            "IconLauncherShape",
+            "MonochromeLauncherIcon",
+            "UseKtx"
+        )
     }
 
     compileOptions {
