@@ -43,6 +43,7 @@ import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandOverlayView
 import com.agupta07505.smartisland.ui.IslandViewModel
+import kotlinx.coroutines.flow.collectLatest
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.launch
 
@@ -143,14 +144,12 @@ class SmartIslandOverlayService : LifecycleService() {
         }
 
         lifecycleScope.launch {
-            viewModel.expanded.collect { expanded ->
+            viewModel.expanded.collectLatest { expanded ->
                 if (expanded) {
                     updateWindowLayoutParams(true, viewModel.settings.value)
                 } else {
                     kotlinx.coroutines.delay(500)
-                    if (!viewModel.expanded.value) {
-                        updateWindowLayoutParams(false, viewModel.settings.value)
-                    }
+                    updateWindowLayoutParams(false, viewModel.settings.value)
                 }
             }
         }
@@ -254,7 +253,6 @@ class SmartIslandOverlayService : LifecycleService() {
             }
             runCatchingLogged(TAG, "windowManager.addView failed – stopping service") {
                 windowManager.addView(islandView, collapsedParams(viewModel.settings.value))
-                viewModel.setWindowWidthIsMatchParent(Build.VERSION.SDK_INT < 35)
             } ?: run {
                 islandView = null
                 stopSelf()
@@ -268,24 +266,15 @@ class SmartIslandOverlayService : LifecycleService() {
 
     private fun updateWindowLayoutParams(expanded: Boolean, settings: SmartIslandSettings) {
         val view = islandView ?: return
-        val displayMetrics = resources.displayMetrics
-        val density = displayMetrics.density
-        val w = if (expanded) {
-            WindowManager.LayoutParams.MATCH_PARENT
-        } else {
-            if (Build.VERSION.SDK_INT >= 35) {
-                ((settings.width + 32f) * density).toInt()
-            } else {
-                WindowManager.LayoutParams.MATCH_PARENT
-            }
-        }
+        val density = resources.displayMetrics.density
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
             ((settings.height + 16f) * density).toInt()
         }
         val params = WindowManager.LayoutParams(
-            w, h,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            h,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
@@ -294,12 +283,11 @@ class SmartIslandOverlayService : LifecycleService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = if (expanded) 0 else if (Build.VERSION.SDK_INT >= 35) (settings.xOffset * density).toInt() else 0
+            x = 0
             y = settings.yOffset.dpToPx()
         }
         runCatchingLogged(TAG, "Failed to update view layout") { 
             windowManager.updateViewLayout(view, params) 
-            viewModel.setWindowWidthIsMatchParent(expanded || Build.VERSION.SDK_INT < 35)
         }
     }
 
@@ -312,13 +300,8 @@ class SmartIslandOverlayService : LifecycleService() {
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
-        val w = if (Build.VERSION.SDK_INT >= 35) {
-            ((settings.width + 32f) * density).toInt()
-        } else {
-            WindowManager.LayoutParams.MATCH_PARENT
-        }
         return WindowManager.LayoutParams(
-            w,
+            WindowManager.LayoutParams.MATCH_PARENT,
             ((settings.height + 16f) * density).toInt(),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -328,7 +311,7 @@ class SmartIslandOverlayService : LifecycleService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = if (Build.VERSION.SDK_INT >= 35) (settings.xOffset * density).toInt() else 0
+            x = 0
             y = settings.yOffset.dpToPx()
         }
     }
@@ -473,14 +456,12 @@ private fun OverlayIsland(
     val expanded by viewModel.expanded.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val selectedIndex by viewModel.selectedIndex.collectAsState()
-    val windowWidthIsMatchParent by viewModel.windowWidthIsMatchParent.collectAsState()
 
     IslandOverlayView(
         settings = settings,
         expanded = expanded,
         notifications = notifications,
         selectedIndex = selectedIndex,
-        windowWidthIsMatchParent = windowWidthIsMatchParent,
         onPageSelected = { index -> viewModel.setSelectedNotificationIndex(index) },
         onOpenNotification = onOpenNotification,
         onToggleExpanded = { viewModel.toggleExpanded() },

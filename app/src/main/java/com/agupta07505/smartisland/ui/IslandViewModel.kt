@@ -42,11 +42,6 @@ class IslandViewModel(
 
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
-    val windowWidthIsMatchParent = MutableStateFlow(false)
-
-    fun setWindowWidthIsMatchParent(value: Boolean) {
-        windowWidthIsMatchParent.value = value
-    }
 
     val mode: StateFlow<IslandMode> = combine(notifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty
