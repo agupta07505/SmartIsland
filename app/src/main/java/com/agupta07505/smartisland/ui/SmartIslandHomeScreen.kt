@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -110,6 +111,19 @@ fun SmartIslandHomeScreen() {
     
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default)
     val scope = rememberCoroutineScope()
+
+    val isDark = isSystemInDarkTheme()
+    val permissionsBg = if (isDark) Color(0xFF1E1B4B) else Color(0xFFE0E7FF)
+    val permissionsTint = if (isDark) Color(0xFF818CF8) else Color(0xFF4F46E5)
+    
+    val positionsBg = if (isDark) Color(0xFF064E3B) else Color(0xFFD1FAE5)
+    val positionsTint = if (isDark) Color(0xFF34D399) else Color(0xFF059669)
+    
+    val supportBg = if (isDark) Color(0xFF78350F) else Color(0xFFFEF3C7)
+    val supportTint = if (isDark) Color(0xFFFBBF24) else Color(0xFFD97706)
+    
+    val aboutBg = if (isDark) Color(0xFF581C87) else Color(0xFFF3E8FF)
+    val aboutTint = if (isDark) Color(0xFFC084FC) else Color(0xFF7C3AED)
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var notificationGranted by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
 
@@ -205,7 +219,7 @@ fun SmartIslandHomeScreen() {
                             Text(
                                 text = if (overlayGranted) stringResource(R.string.overlay_ready) else stringResource(R.string.grant_overlay),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF667085)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
@@ -228,7 +242,7 @@ fun SmartIslandHomeScreen() {
                         Text(
                             text = stringResource(R.string.quick_test_controls),
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color(0xFF667085),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
@@ -285,7 +299,7 @@ fun SmartIslandHomeScreen() {
                 Text(
                     text = stringResource(R.string.configure_features),
                     style = MaterialTheme.typography.titleSmall,
-                    color = Color(0xFF667085),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
                 )
@@ -294,8 +308,8 @@ fun SmartIslandHomeScreen() {
                     title = stringResource(R.string.sec_permissions),
                     description = stringResource(R.string.sec_permissions_desc),
                     icon = Icons.Rounded.Lock,
-                    iconBgColor = Color(0xFFE0E7FF),
-                    iconTint = Color(0xFF4F46E5),
+                    iconBgColor = permissionsBg,
+                    iconTint = permissionsTint,
                     statusText = if (overlayGranted && notificationGranted) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
                     statusColor = if (overlayGranted && notificationGranted) Color(0xFF0F9F6E) else Color(0xFFE88C25),
                     onClick = {
@@ -308,8 +322,8 @@ fun SmartIslandHomeScreen() {
                     title = stringResource(R.string.sec_positions),
                     description = stringResource(R.string.sec_positions_desc),
                     icon = Icons.Rounded.Refresh,
-                    iconBgColor = Color(0xFFD1FAE5),
-                    iconTint = Color(0xFF059669),
+                    iconBgColor = positionsBg,
+                    iconTint = positionsTint,
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.Positions
@@ -320,8 +334,8 @@ fun SmartIslandHomeScreen() {
                     title = stringResource(R.string.sec_support),
                     description = stringResource(R.string.sec_support_desc),
                     icon = Icons.Rounded.Feedback,
-                    iconBgColor = Color(0xFFFEF3C7),
-                    iconTint = Color(0xFFD97706),
+                    iconBgColor = supportBg,
+                    iconTint = supportTint,
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.Support
@@ -332,8 +346,8 @@ fun SmartIslandHomeScreen() {
                     title = stringResource(R.string.sec_about),
                     description = stringResource(R.string.sec_about_desc),
                     icon = Icons.Rounded.Info,
-                    iconBgColor = Color(0xFFF3E8FF),
-                    iconTint = Color(0xFF7C3AED),
+                    iconBgColor = aboutBg,
+                    iconTint = aboutTint,
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.About
@@ -348,7 +362,7 @@ fun SmartIslandHomeScreen() {
                     Text(
                         text = stringResource(R.string.made_by),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF98A2B3)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
                 Spacer(Modifier.height(12.dp))
@@ -428,9 +442,11 @@ private fun SectionRow(
     iconBgColor: Color,
     iconTint: Color,
     statusText: String? = null,
-    statusColor: Color = Color(0xFF667085),
+    statusColor: Color? = null,
     onClick: () -> Unit
 ) {
+    val defaultStatusColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val resolvedStatusColor = statusColor ?: defaultStatusColor
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -469,18 +485,18 @@ private fun SectionRow(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF667085)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (statusText != null) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
-                            .background(statusColor.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp))
+                            .background(resolvedStatusColor.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = statusText,
-                            color = statusColor,
+                            color = resolvedStatusColor,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -491,7 +507,7 @@ private fun SectionRow(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color(0xFF98A2B3),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 modifier = Modifier.size(18.dp)
             )
         }

@@ -8,7 +8,7 @@
 package com.agupta07505.smartisland.model
 
 import android.app.Notification
-import com.agupta07505.smartisland.service.toIslandMode
+import com.agupta07505.smartisland.util.toIslandMode
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -77,7 +77,7 @@ fun PermissionsSection(
                 Icon(
                     imageVector = Icons.Rounded.VisibilityOff,
                     contentDescription = null,
-                    tint = Color(0xFF667085)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(

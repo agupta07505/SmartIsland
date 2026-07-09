@@ -33,6 +33,10 @@ internal class OverlayViewTreeOwners : LifecycleOwner, ViewModelStoreOwner, Save
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
     }
 
+    fun pause() {
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
+    }
+
     fun destroy() {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStore.clear()

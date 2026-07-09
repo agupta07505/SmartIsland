@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.service.notification.StatusBarNotification
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.util.NotificationFilter
+import com.agupta07505.smartisland.util.toIslandMode
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
@@ -84,6 +85,12 @@ class NotificationPriorityTest {
         val appInfo = mockk<ApplicationInfo>()
         
         notification.category = Notification.CATEGORY_MESSAGE
+        notification.flags = 0
+        val extras = mockk<android.os.Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Title"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Text"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        notification.extras = extras
         every { sbn.notification } returns notification
         every { sbn.packageName } returns "com.example.chat"
         
@@ -100,6 +107,12 @@ class NotificationPriorityTest {
         val pm = mockk<PackageManager>()
         
         notification.category = Notification.CATEGORY_MESSAGE
+        notification.flags = 0
+        val extras = mockk<android.os.Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Title"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Text"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        notification.extras = extras
         every { sbn.notification } returns notification
         every { sbn.packageName } returns "com.example.chat"
         

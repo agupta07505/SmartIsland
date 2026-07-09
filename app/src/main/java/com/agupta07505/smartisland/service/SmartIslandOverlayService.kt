@@ -55,6 +55,15 @@ class SmartIslandOverlayService : LifecycleService() {
     private lateinit var systemEventReceiver: SystemEventReceiver
     private lateinit var viewModel: IslandViewModel
 
+    private val screenStateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_ON -> overlayOwners.resume()
+                Intent.ACTION_SCREEN_OFF -> overlayOwners.pause()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         
@@ -109,6 +118,19 @@ class SmartIslandOverlayService : LifecycleService() {
             }
         }
 
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        }
+        runCatchingLogged(TAG, "registerReceiver screenStateReceiver failed") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenStateReceiver, screenFilter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(screenStateReceiver, screenFilter)
+            }
+        }
+
         lifecycleScope.launch {
             repository.settings.collect { settings ->
                 if (!settings.enabled) {
@@ -138,6 +160,9 @@ class SmartIslandOverlayService : LifecycleService() {
         // CRASH FIX: safe unregister
         runCatchingLogged(TAG, "unregisterReceiver failed") {
             unregisterReceiver(systemEventReceiver)
+        }
+        runCatchingLogged(TAG, "unregisterReceiver screenStateReceiver failed") {
+            unregisterReceiver(screenStateReceiver)
         }
         removeCollapsedWindow()
         overlayOwners.destroy()
@@ -244,7 +269,15 @@ class SmartIslandOverlayService : LifecycleService() {
         val view = islandView ?: return
         val displayMetrics = resources.displayMetrics
         val density = displayMetrics.density
-        val w = WindowManager.LayoutParams.MATCH_PARENT
+        val w = if (expanded) {
+            WindowManager.LayoutParams.MATCH_PARENT
+        } else {
+            if (Build.VERSION.SDK_INT >= 35) {
+                ((settings.width + 32f) * density).toInt()
+            } else {
+                WindowManager.LayoutParams.MATCH_PARENT
+            }
+        }
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
@@ -255,11 +288,12 @@ class SmartIslandOverlayService : LifecycleService() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
+            x = if (expanded) 0 else if (Build.VERSION.SDK_INT >= 35) (settings.xOffset * density).toInt() else 0
             y = settings.yOffset.dpToPx()
         }
         runCatchingLogged(TAG, "Failed to update view layout") { windowManager.updateViewLayout(view, params) }
@@ -274,17 +308,23 @@ class SmartIslandOverlayService : LifecycleService() {
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
+        val w = if (Build.VERSION.SDK_INT >= 35) {
+            ((settings.width + 32f) * density).toInt()
+        } else {
+            WindowManager.LayoutParams.MATCH_PARENT
+        }
         return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            w,
             ((settings.height + 16f) * density).toInt(),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
+            x = if (Build.VERSION.SDK_INT >= 35) (settings.xOffset * density).toInt() else 0
             y = settings.yOffset.dpToPx()
         }
     }

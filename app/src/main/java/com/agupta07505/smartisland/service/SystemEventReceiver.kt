@@ -23,6 +23,7 @@ class SystemEventReceiver(
 ) : BroadcastReceiver() {
 
     private var lastBatteryPct: Int = -1
+    private var lastBatteryTitle: String? = null
     private var isCurrentlyCharging: Boolean = false
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -30,17 +31,30 @@ class SystemEventReceiver(
             Intent.ACTION_POWER_CONNECTED -> {
                 isCurrentlyCharging = true
                 // Auto-expand ONCE when the charger is plugged in.
-                updateBatteryIsland(context, autoExpand = true)
+                updateBatteryIsland(context, intent, autoExpand = true)
             }
             Intent.ACTION_POWER_DISCONNECTED -> {
                 isCurrentlyCharging = false
                 lastBatteryPct = -1
+                lastBatteryTitle = null
                 notificationRepository.removeNotification("system_battery")
             }
             Intent.ACTION_BATTERY_CHANGED -> {
-                // Only refresh the % silently; never auto-expand on ticks.
-                if (isCharging(intent) && isCurrentlyCharging) {
-                    updateBatteryIsland(context, autoExpand = false)
+                val charging = isCharging(intent)
+                if (charging != isCurrentlyCharging) {
+                    isCurrentlyCharging = charging
+                    if (charging) {
+                        // charger was plugged in, or status changed.
+                        updateBatteryIsland(context, intent, autoExpand = true)
+                    } else {
+                        // unplugged
+                        lastBatteryPct = -1
+                        lastBatteryTitle = null
+                        notificationRepository.removeNotification("system_battery")
+                    }
+                } else if (charging) {
+                    // Only refresh the % silently; never auto-expand on ticks.
+                    updateBatteryIsland(context, intent, autoExpand = false)
                 }
             }
         }
@@ -52,8 +66,8 @@ class SystemEventReceiver(
                status == BatteryManager.BATTERY_STATUS_FULL
     }
 
-    private fun updateBatteryIsland(context: Context, autoExpand: Boolean) {
-        val batteryStatus: Intent? = runCatchingLogged("SystemEventReceiver", "registerReceiver BATTERY_CHANGED failed") {
+    private fun updateBatteryIsland(context: Context, batteryIntent: Intent?, autoExpand: Boolean) {
+        val intentToUse = batteryIntent ?: runCatchingLogged("SystemEventReceiver", "registerReceiver BATTERY_CHANGED failed") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)
             } else {
@@ -61,19 +75,20 @@ class SystemEventReceiver(
                 context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             }
         }
-        val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 0
-        val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+        val level = intentToUse?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 0
+        val scale = intentToUse?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
         val batteryPct = (level * 100 / scale.toFloat()).toInt()
-        val status = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-
-        // Skip redundant posts when the percentage hasn't changed.
-        if (!autoExpand && batteryPct == lastBatteryPct) return
-        lastBatteryPct = batteryPct
+        val status = intentToUse?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
 
         val title = when (status) {
             BatteryManager.BATTERY_STATUS_FULL -> "Fully Charged"
             else -> "Charging"
         }
+
+        // Skip redundant posts when both the percentage and title haven't changed.
+        if (!autoExpand && batteryPct == lastBatteryPct && title == lastBatteryTitle) return
+        lastBatteryPct = batteryPct
+        lastBatteryTitle = title
 
         notificationRepository.postNotification(
             IslandNotification(

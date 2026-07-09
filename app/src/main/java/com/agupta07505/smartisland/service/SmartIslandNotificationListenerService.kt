@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.service
 
 import com.agupta07505.smartisland.util.runCatchingLogged
+import com.agupta07505.smartisland.util.toIslandMode
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Intent
@@ -115,6 +116,13 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 this,
                 Intent(this, SmartIslandOverlayService::class.java)
             )
+        } ?: run {
+            serviceScope.launch {
+                runCatchingLogged(TAG, "Failed to disable settings after startForegroundService crash") {
+                    repository.setEnabled(false)
+                }
+            }
+            null
         } != null
 
     private fun handleNotificationPosted(sbn: StatusBarNotification, allowHeadsUpSuppression: Boolean) {
@@ -331,25 +339,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         private const val TAG = "SmartIslandNotificationListener"
         private const val ICON_BITMAP_SIZE = 96
         private const val LARGE_ICON_BITMAP_SIZE = 128
-    }
-}
-
-internal fun Notification.toIslandMode(): IslandMode {
-    return when (category) {
-        Notification.CATEGORY_CALL,
-        Notification.CATEGORY_MISSED_CALL -> IslandMode.IncomingCall
-        Notification.CATEGORY_TRANSPORT,
-        Notification.CATEGORY_PROGRESS -> IslandMode.Music
-        else -> {
-            val hasMediaAction = actions?.any { action ->
-                val label = action.title?.toString()?.lowercase().orEmpty()
-                label.contains("play") ||
-                    label.contains("pause") ||
-                    label.contains("next") ||
-                    label.contains("previous")
-            } == true
-            if (hasMediaAction) IslandMode.Music else IslandMode.Notification
-        }
     }
 }
 
