@@ -126,9 +126,26 @@ fun SmartIslandHomeScreen() {
 
     LaunchedEffect(settings.enabled, overlayGranted) {
         if (settings.enabled && overlayGranted) {
-            ContextCompat.startForegroundService(context, Intent(context, SmartIslandOverlayService::class.java))
+            // CRASH FIX: startForegroundService can throw
+            // ForegroundServiceStartNotAllowedException on Android 12+
+            try {
+                ContextCompat.startForegroundService(context, Intent(context, SmartIslandOverlayService::class.java))
+            } catch (e: Exception) {
+                android.util.Log.e("SmartIslandHome", "Failed to start overlay service", e)
+                // Disable setting to prevent crash loop
+                try {
+                    repository.setEnabled(false)
+                } catch (_: Exception) {}
+                android.widget.Toast.makeText(
+                    context,
+                    "Failed to start Smart Island: ${e.message}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         } else {
-            context.stopService(Intent(context, SmartIslandOverlayService::class.java))
+            try {
+                context.stopService(Intent(context, SmartIslandOverlayService::class.java))
+            } catch (_: Exception) {}
         }
     }
 

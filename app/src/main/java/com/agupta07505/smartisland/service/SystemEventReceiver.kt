@@ -15,6 +15,8 @@ import android.os.BatteryManager
 import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.runCatchingLogged
+import android.os.Build
 
 class SystemEventReceiver(
     private val notificationRepository: INotificationRepository
@@ -51,8 +53,14 @@ class SystemEventReceiver(
     }
 
     private fun updateBatteryIsland(context: Context, autoExpand: Boolean) {
-        val batteryStatus: Intent? =
-            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val batteryStatus: Intent? = runCatchingLogged("SystemEventReceiver", "registerReceiver BATTERY_CHANGED failed") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            }
+        }
         val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 0
         val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
         val batteryPct = (level * 100 / scale.toFloat()).toInt()

@@ -16,6 +16,7 @@ import com.agupta07505.smartisland.SmartIslandApp
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.SmartIslandCommand
+import com.agupta07505.smartisland.util.runCatchingLogged
 
 fun IslandNotification?.sendFirstAction(context: Context, vararg keywords: String) {
     if (this == null) return
@@ -62,12 +63,12 @@ fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
         val options = ActivityOptions.makeBasic()
             .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
             .toBundle()
-        try {
+        runCatchingLogged("ExpandedActions", "pendingIntent.send failed with options") {
             pendingIntent.send(context, 0, null, null, null, null, options)
-        } catch (_: Exception) {}
+        }
     } else {
-        try {
+        runCatchingLogged("ExpandedActions", "pendingIntent.send failed") {
             pendingIntent.send()
-        } catch (_: Exception) {}
+        }
     }
 }

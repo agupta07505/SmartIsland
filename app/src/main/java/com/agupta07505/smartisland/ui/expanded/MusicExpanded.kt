@@ -55,6 +55,7 @@ import com.agupta07505.smartisland.SmartIslandApp
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.WavyMusicSeekBar
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlin.math.sin
 import kotlin.math.cos
 
@@ -69,10 +70,8 @@ fun MusicExpanded(
     
     val controller = remember(notification?.mediaToken) {
         notification?.mediaToken?.let { token ->
-            try {
+            runCatchingLogged("MusicExpanded", "Failed to create MediaController") {
                 android.media.session.MediaController(context, token)
-            } catch (_: Exception) {
-                null
             }
         }
     }
@@ -123,12 +122,10 @@ fun MusicExpanded(
                 
                 // 2. Try standard framework repeat mode if extras not found or invalid
                 if (mode == -1) {
-                    mode = try {
+                    mode = runCatchingLogged("MusicExpanded", "Failed to getRepeatMode via reflection") {
                         val method = ctrl.javaClass.getMethod("getRepeatMode")
                         method.invoke(ctrl) as Int
-                    } catch (_: Exception) {
-                        -1
-                    }
+                    } ?: -1
                 }
                 
                 // 3. Try custom action states fallback
@@ -159,7 +156,7 @@ fun MusicExpanded(
     val getIsHeartedReflect = remember {
         { metadata: android.media.MediaMetadata? ->
             if (metadata != null) {
-                try {
+                runCatchingLogged("MusicExpanded", "Failed to get isHearted rating") {
                     val rating = metadata.getRating(android.media.MediaMetadata.METADATA_KEY_USER_RATING)
                     if (rating != null) {
                         val method = rating.javaClass.getMethod("isHearted")
@@ -167,9 +164,7 @@ fun MusicExpanded(
                     } else {
                         false
                     }
-                } catch (_: Exception) {
-                    false
-                }
+                } ?: false
             } else {
                 false
             }
@@ -234,7 +229,7 @@ fun MusicExpanded(
         val newLike = !isLiked
         isLiked = newLike
         if (controller != null) {
-            try {
+            runCatchingLogged("MusicExpanded", "Failed to toggleLike / setRating") {
                 controller.transportControls.setRating(
                     android.media.Rating.newHeartRating(newLike)
                 )
@@ -248,7 +243,7 @@ fun MusicExpanded(
                 if (likeAction != null) {
                     controller.transportControls.sendCustomAction(likeAction.action, null)
                 }
-            } catch (_: Exception) {}
+            }
         }
     }
 
@@ -262,16 +257,16 @@ fun MusicExpanded(
         repeatMode = nextMode
         if (controller != null) {
             var standardInvoked = false
-            try {
+            runCatchingLogged("MusicExpanded", "Failed to setRepeatMode standard") {
                 // 1. Try framework standard repeat mode setter via reflection
                 val transportControls = controller.transportControls
                 val method = transportControls.javaClass.getMethod("setRepeatMode", Int::class.javaPrimitiveType)
                 method.invoke(transportControls, nextMode)
                 standardInvoked = true
-            } catch (_: Exception) {}
+            }
             
             if (!standardInvoked) {
-                try {
+                runCatchingLogged("MusicExpanded", "Failed to setRepeatMode custom action fallback") {
                     // 2. Custom repeat toggle action fallback (only when standard method cannot be resolved)
                     val customActions = controller.playbackState?.customActions.orEmpty()
                     val repeatAction = customActions.firstOrNull { action ->
@@ -283,7 +278,7 @@ fun MusicExpanded(
                     if (repeatAction != null) {
                         controller.transportControls.sendCustomAction(repeatAction.action, null)
                     }
-                } catch (_: Exception) {}
+                }
             }
         }
     }
@@ -346,10 +341,10 @@ fun MusicExpanded(
                         livePositionMs = newPosition
                         val token = notification.mediaToken
                         if (token != null) {
-                            try {
+                            runCatchingLogged("MusicExpanded", "Failed to seekTo position") {
                                 val ctrl = android.media.session.MediaController(context, token)
                                 ctrl.transportControls.seekTo(newPosition)
-                            } catch (_: Exception) {}
+                            }
                         } else {
                             (context.applicationContext as SmartIslandApp).notificationRepository.sendCommand(
                                 com.agupta07505.smartisland.data.SmartIslandCommand.SeekTo(notification.packageName, newPosition)
