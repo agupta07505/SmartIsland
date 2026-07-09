@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.ui.expanded.IslandExpandedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDp
@@ -79,7 +80,7 @@ fun IslandOverlayView(
 
     val context = LocalContext.current
     val displayMetrics = context.resources.displayMetrics
-    val expandedWidth = ((displayMetrics.widthPixels / displayMetrics.density) * 0.95f).dp
+    val expandedWidth = ((displayMetrics.widthPixels / displayMetrics.density) * EXPANDED_WIDTH_RATIO).dp
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
     val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
@@ -235,8 +236,8 @@ fun IslandOverlayView(
                             }
                         },
                         onDragEnd = {
-                            val swipeUpThreshold = -35f * displayMetrics.density
-                            val swipeDownThreshold = 35f * displayMetrics.density
+                            val swipeUpThreshold = -SWIPE_THRESHOLD_DP * displayMetrics.density
+                            val swipeDownThreshold = SWIPE_THRESHOLD_DP * displayMetrics.density
                             if (currentExpanded) {
                                 if (dragOffset < swipeUpThreshold) {
                                     currentOnDismiss()
@@ -320,3 +321,7 @@ fun IslandOverlayView(
         }
     }
 }
+
+private const val EXPANDED_WIDTH_RATIO = 0.95f
+private const val SWIPE_THRESHOLD_DP = 35f
+

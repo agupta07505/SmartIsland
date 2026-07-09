@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
+import com.agupta07505.smartisland.util.runCatchingLogged
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -71,7 +73,9 @@ fun AboutSection() {
                     icon = Icons.Rounded.Lock,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/PRIVACY.md"))
-                        runCatching { context.startActivity(intent) }
+                        runCatchingLogged("AboutSection", "Failed to open Privacy Policy") {
+                            context.startActivity(intent)
+                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
                 )
                 ClickableRowItem(
@@ -79,7 +83,9 @@ fun AboutSection() {
                     icon = Icons.Rounded.Description,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/TERMS.md"))
-                        runCatching { context.startActivity(intent) }
+                        runCatchingLogged("AboutSection", "Failed to open Terms of Use") {
+                            context.startActivity(intent)
+                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
                 )
                 ClickableRowItem(
@@ -87,7 +93,9 @@ fun AboutSection() {
                     icon = Icons.Rounded.Code,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
-                        runCatching { context.startActivity(intent) }
+                        runCatchingLogged("AboutSection", "Failed to open Open Source link") {
+                            context.startActivity(intent)
+                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -112,7 +120,9 @@ fun AboutSection() {
                         label = "GitHub",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505"))
-                            runCatching { context.startActivity(intent) }
+                            runCatchingLogged("AboutSection", "Failed to open GitHub profile") {
+                                context.startActivity(intent)
+                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -121,7 +131,9 @@ fun AboutSection() {
                         label = "LinkedIn",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://linkedin.com/in/agupta07505"))
-                            runCatching { context.startActivity(intent) }
+                            runCatchingLogged("AboutSection", "Failed to open LinkedIn profile") {
+                                context.startActivity(intent)
+                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -136,7 +148,9 @@ fun AboutSection() {
                         label = "Instagram",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://instagram.com/agupta07505"))
-                            runCatching { context.startActivity(intent) }
+                            runCatchingLogged("AboutSection", "Failed to open Instagram profile") {
+                                context.startActivity(intent)
+                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -148,7 +162,9 @@ fun AboutSection() {
                                 data = Uri.parse("mailto:agupta07505@gmail.com")
                                 putExtra(Intent.EXTRA_SUBJECT, "Smart Island App Feedback")
                             }
-                            runCatching { context.startActivity(intent) }
+                            runCatchingLogged("AboutSection", "Failed to send email") {
+                                context.startActivity(intent)
+                            } ?: Toast.makeText(context, "Cannot open email app", Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -299,7 +315,7 @@ private fun EmailIcon(tint: Color = Color.Black) {
 }
 
 private fun getAppVersion(context: Context): String {
-    return runCatching {
+    return runCatchingLogged("AboutSection", "Failed to get app version") {
         val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
         } else {
@@ -307,5 +323,5 @@ private fun getAppVersion(context: Context): String {
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
         packageInfo.versionName ?: "1.0"
-    }.getOrDefault("1.0")
+    } ?: "1.0"
 }

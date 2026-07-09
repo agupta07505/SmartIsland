@@ -9,6 +9,8 @@ package com.agupta07505.smartisland.ui.sections
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import com.agupta07505.smartisland.util.runCatchingLogged
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -44,7 +46,9 @@ fun SupportSection() {
                 icon = Icons.Rounded.Star,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("SupportSection", "Failed to open Star on GitHub link") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                 }
             )
             ClickableRowItem(
@@ -52,7 +56,9 @@ fun SupportSection() {
                 icon = Icons.Rounded.Feedback,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?template=feature_request.md"))
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("SupportSection", "Failed to open Feature Request link") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                 }
             )
             ClickableRowItem(
@@ -60,7 +66,9 @@ fun SupportSection() {
                 icon = Icons.Rounded.BugReport,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?template=bug_report.md"))
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("SupportSection", "Failed to open Bug Report link") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                 }
             )
             ClickableRowItem(
@@ -71,7 +79,9 @@ fun SupportSection() {
                         Intent.ACTION_VIEW,
                         Uri.parse("https://github.com/agupta07505/SmartIsland/issues/new?template=app_review.md")
                     )
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("SupportSection", "Failed to open App Review link") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                 }
             )
             ClickableRowItem(
@@ -79,7 +89,9 @@ fun SupportSection() {
                 icon = Icons.Rounded.Gavel,
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/LICENSE"))
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("SupportSection", "Failed to open License link") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                 }
             )
         }

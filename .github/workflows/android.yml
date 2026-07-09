@@ -66,6 +66,13 @@ jobs:
       - name: Run Lint
         run: ./gradlew lintDebug
 
+      - name: Upload Lint Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: app/build/reports/lint-results-*.html
+
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest
 

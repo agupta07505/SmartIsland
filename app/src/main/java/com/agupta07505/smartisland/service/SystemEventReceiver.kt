@@ -12,12 +12,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import com.agupta07505.smartisland.data.SmartIslandNotificationRepository
+import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 
 class SystemEventReceiver(
-    private val notificationRepository: SmartIslandNotificationRepository
+    private val notificationRepository: INotificationRepository
 ) : BroadcastReceiver() {
 
     private var lastBatteryPct: Int = -1

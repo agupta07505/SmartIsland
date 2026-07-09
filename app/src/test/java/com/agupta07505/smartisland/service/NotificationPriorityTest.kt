@@ -22,6 +22,17 @@ import org.junit.Test
 
 class NotificationPriorityTest {
 
+    @org.junit.Before
+    fun setUp() {
+        io.mockk.mockkStatic(android.util.Log::class)
+        every { android.util.Log.e(any(), any(), any()) } returns 0
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        io.mockk.unmockkStatic(android.util.Log::class)
+    }
+
     @Test
     fun testShouldIgnoreForSmartIslandSystemCategory() {
         val sbn = mockk<StatusBarNotification>()

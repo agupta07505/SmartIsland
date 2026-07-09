@@ -130,7 +130,7 @@ fun WavyMusicSeekBar(
             
             // The wave should transition smoothly to flat at the left edge and near the thumb
             // transitionWidth: width over which the wave fades to flat (e.g. 24dp)
-            val transitionWidthPx = with(density) { 24.dp.toPx() }
+            val transitionWidthPx = with(density) { WAVE_FADE_WIDTH.toPx() }
             
             // Generate path points along the wavy top edge
             // We start from the end of the left arc (startX + baseThicknessPx / 2f)
@@ -146,7 +146,7 @@ fun WavyMusicSeekBar(
                     
                     // Premium-looking organic wave: combine two sine frequencies
                     // Using phase to shift the wave left/right
-                    val waveVal = sin(x * 0.04f - phase) * 0.6f + cos(x * 0.02f + phase * 1.3f) * 0.4f
+                    val waveVal = sin(x * WAVE_FREQ_1 - phase) * 0.6f + cos(x * WAVE_FREQ_2 + phase * 1.3f) * 0.4f
                     val normalizedWave = (waveVal + 1f) / 2f // 0f..1f
                     
                     val y = baselineY - (baseThicknessPx / 2f) - (maxWaveHeightPx * damp * normalizedWave)
@@ -177,3 +177,8 @@ fun WavyMusicSeekBar(
         )
     }
 }
+
+private val WAVE_FADE_WIDTH = 24.dp
+private const val WAVE_FREQ_1 = 0.04f
+private const val WAVE_FREQ_2 = 0.02f
+

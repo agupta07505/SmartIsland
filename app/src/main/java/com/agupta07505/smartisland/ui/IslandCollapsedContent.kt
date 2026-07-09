@@ -67,7 +67,7 @@ fun IslandCollapsedContent(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val maxTranslationPx = with(density) { 32.dp.toPx() }
+    val maxTranslationPx = with(density) { COLLAPSED_TRANSLATION_MAX_DP.toPx() }
     val translationProgress = 1f - collapsedAlpha
     val translationXLeft = translationProgress * maxTranslationPx
     val translationXRight = -translationProgress * maxTranslationPx
@@ -330,3 +330,6 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
         fontWeight = FontWeight.SemiBold
     )
 }
+
+private val COLLAPSED_TRANSLATION_MAX_DP = 32.dp
+

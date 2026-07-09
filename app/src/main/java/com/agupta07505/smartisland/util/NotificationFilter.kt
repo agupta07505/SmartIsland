@@ -42,9 +42,9 @@ object NotificationFilter {
 
     private fun isSystemLevelPackage(packageName: String, packageManager: PackageManager): Boolean {
         if (packageName in SYSTEM_LEVEL_PACKAGES) return true
-        val flags = runCatching {
+        val flags = runCatchingLogged("NotificationFilter", "Failed to get flags for package $packageName") {
             packageManager.getApplicationInfo(packageName, 0).flags
-        }.getOrDefault(0)
+        } ?: 0
         return (flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
             (packageName.startsWith("android") || packageName.startsWith("com.android."))
     }

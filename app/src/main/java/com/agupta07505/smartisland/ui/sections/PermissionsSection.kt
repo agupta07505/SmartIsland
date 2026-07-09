@@ -10,6 +10,8 @@ package com.agupta07505.smartisland.ui.sections
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
+import com.agupta07505.smartisland.util.runCatchingLogged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -93,7 +95,9 @@ fun PermissionsSection(
                     val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                         putExtra(Settings.EXTRA_APP_PACKAGE, "android")
                     }
-                    runCatching { context.startActivity(intent) }
+                    runCatchingLogged("PermissionsSection", "Failed to open notification settings") {
+                        context.startActivity(intent)
+                    } ?: Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
                 }) {
                     Text("Hide")
                 }

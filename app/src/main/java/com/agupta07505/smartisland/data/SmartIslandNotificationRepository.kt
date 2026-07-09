@@ -17,20 +17,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SmartIslandNotificationRepository {
+class SmartIslandNotificationRepository : INotificationRepository {
     private val _notifications = MutableStateFlow<List<IslandNotification>>(emptyList())
-    val notifications: StateFlow<List<IslandNotification>> = _notifications.asStateFlow()
+    override val notifications: StateFlow<List<IslandNotification>> = _notifications.asStateFlow()
 
     private val _autoExpandEvent = MutableSharedFlow<String>(extraBufferCapacity = 16)
-    val autoExpandEvent: SharedFlow<String> = _autoExpandEvent.asSharedFlow()
+    override val autoExpandEvent: SharedFlow<String> = _autoExpandEvent.asSharedFlow()
 
     private val _resetTimerEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
-    val resetTimerEvent: SharedFlow<Unit> = _resetTimerEvent.asSharedFlow()
+    override val resetTimerEvent: SharedFlow<Unit> = _resetTimerEvent.asSharedFlow()
 
     private val _commands = MutableSharedFlow<SmartIslandCommand>(extraBufferCapacity = 16)
-    val commands: SharedFlow<SmartIslandCommand> = _commands.asSharedFlow()
+    override val commands: SharedFlow<SmartIslandCommand> = _commands.asSharedFlow()
 
-    fun postNotification(notification: IslandNotification, autoExpand: Boolean = false) {
+    override fun postNotification(notification: IslandNotification, autoExpand: Boolean) {
         val current = _notifications.value.toMutableList()
         val index = current.indexOfFirst { it.key == notification.key }
         if (index >= 0) {
@@ -44,20 +44,20 @@ class SmartIslandNotificationRepository {
         }
     }
 
-    fun removeNotification(key: String) {
+    override fun removeNotification(key: String) {
         val current = _notifications.value.filter { it.key != key }
         _notifications.value = current
     }
 
-    fun resetTimer() {
+    override fun resetTimer() {
         _resetTimerEvent.tryEmit(Unit)
     }
 
-    fun sendCommand(command: SmartIslandCommand) {
+    override fun sendCommand(command: SmartIslandCommand) {
         _commands.tryEmit(command)
     }
 
-    fun showDemo(mode: IslandMode) {
+    override fun showDemo(mode: IslandMode) {
         val demoNotification = when (mode) {
             IslandMode.Notification -> IslandNotification(
                 key = "demo_notif",
