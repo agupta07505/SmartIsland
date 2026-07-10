@@ -135,6 +135,9 @@ class NotificationPriorityTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Downloading"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "42%"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        notification.actions = null
         every { sbn.notification } returns notification
         every { sbn.packageName } returns "com.example.downloader"
         appInfo.flags = 0
