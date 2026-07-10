@@ -52,6 +52,7 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.data.LaunchableApp
 
 @Composable
 fun IslandOverlayView(
@@ -59,6 +60,7 @@ fun IslandOverlayView(
     expanded: Boolean,
     notifications: List<IslandNotification>,
     selectedIndex: Int,
+    launcherApps: List<LaunchableApp>?,
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onLaunchApp: (String) -> Unit,
@@ -327,6 +329,7 @@ fun IslandOverlayView(
                 ) {
                     IslandExpandedContent(
                         notifications = notifications,
+                        launcherApps = launcherApps,
                         selectedIndex = selectedIndex,
                         onPageSelected = onPageSelected,
                         onOpenNotification = onOpenNotification,

@@ -44,16 +44,13 @@ import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.SmartIslandSettings
-import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
-import androidx.compose.runtime.produceState
 import androidx.core.graphics.drawable.toBitmap
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun IslandExpandedContent(
     notifications: List<IslandNotification>,
+    launcherApps: List<LaunchableApp>?,
     selectedIndex: Int,
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
@@ -77,7 +74,7 @@ fun IslandExpandedContent(
                     if (measuredHeight > 0.dp) onHeightMeasured(measuredHeight)
                 }
         ) {
-            EmptyExpanded(settings = settings, onLaunchApp = onLaunchApp)
+            EmptyExpanded(settings = settings, apps = launcherApps, onLaunchApp = onLaunchApp)
         }
         return
     }
@@ -179,7 +176,11 @@ fun IslandExpandedContent(
                                 bottomPadding = bottomPadding,
                                 settings = settings
                             )
-                            IslandMode.Empty -> EmptyExpanded(settings = settings, onLaunchApp = onLaunchApp)
+                            IslandMode.Empty -> EmptyExpanded(
+                                settings = settings,
+                                apps = launcherApps,
+                                onLaunchApp = onLaunchApp
+                            )
                         }
                     }
                 }
@@ -191,27 +192,10 @@ fun IslandExpandedContent(
 @Composable
 private fun EmptyExpanded(
     settings: SmartIslandSettings,
+    apps: List<LaunchableApp>?,
     onLaunchApp: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val selectedApps = remember(settings.shortcutPackages) {
-        AppShortcutProvider.selectedApps(context, settings.shortcutPackages)
-    }
-    val apps by produceState<List<LaunchableApp>?>(
-        // Pinned apps are resolved immediately, so they appear on the first frame.
-        // The background query can then append recent apps without a setup flash.
-        initialValue = selectedApps.takeIf { it.isNotEmpty() },
-        settings.shortcutPackages,
-        settings.showRecentApps
-    ) {
-        value = withContext(Dispatchers.IO) {
-            AppShortcutProvider.shortcuts(
-                context = context,
-                selectedPackages = settings.shortcutPackages,
-                includeRecent = settings.showRecentApps
-            )
-        }
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
