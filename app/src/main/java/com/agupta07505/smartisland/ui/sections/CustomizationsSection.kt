@@ -58,8 +58,7 @@ private val PRESET_COLORS = listOf(
     0xFFFF6B9AL to "Pink",
     0xFFEF4444L to "Red",
     0xFFF59E0BL to "Yellow",
-    0xFF8B5CF6L to "Purple",
-    0xFFF97316L to "Orange"
+    0xFF8B5CF6L to "Purple"
 )
 
 @Composable
@@ -224,9 +223,9 @@ private fun ColorSelectorCard(
                 }
 
                 val rainbowBrush = remember {
-                    Brush.sweepGradient(
+                    Brush.linearGradient(
                         colors = listOf(
-                            Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red
+                            Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta
                         )
                     )
                 }
