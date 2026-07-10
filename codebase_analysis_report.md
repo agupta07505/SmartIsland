@@ -99,9 +99,10 @@ The UI is built with custom-themed Jetpack Compose components. It implements hig
 The [IslandOverlayView](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandOverlayView.kt) implements custom touch interceptors:
 * **Tap Outside:** Triggers the collapse animation of the expanded island.
 * **Vertical Swiping:** Uses `detectVerticalDragGestures`:
-  * **Swipe Up (Drag $< -35\text{dp}$):** Dismisses and clears the active notification.
-  * **Swipe Down (Drag $> 35\text{dp}$):** Closes the island and launches the target application in freeform/floating window mode.
-  * **Release Bounce:** On release, any drag offset is animated back to `0f` using Compose's bouncy spring animation specs.
+    * **Swipe Up (Drag $< -35\text{dp}$):** Dismisses and clears the active notification.
+    * **Swipe Down (Drag $> 35\text{dp}$):** Closes the island and launches the target application in freeform/floating window mode.
+    * **Release Bounce:** On release, any drag offset is animated back to `0f` using Compose's bouncy spring animation specs.
+  * **Horizontal Swiping:** Uses `detectHorizontalDragGestures` to swipe between pages of active stacked notifications, updating the active index and interpolating heights.
 * **Stack Indicator:** When more than 1 notification is active, the collapsed island draws concentric black arcs (`drawArc`) behind the left and right sides of the pill, visually indicating a stack of items.
 
 ### 4.2. Collapsed Visual Indicators
@@ -130,6 +131,7 @@ The [SmartIslandHomeScreen](file:///a:/SmartIsland/app/src/main/java/com/agupta0
 * **[PositionsSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/PositionsSection.kt):** Contains sliders to live-update the pill's width, height, corner radius, X-offset, and Y-offset.
 * **[CustomizationsSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/CustomizationsSection.kt):** Houses preset color palettes and a custom RGB color picker dialog for battery, notification dot, and music visualizer elements.
 * **[AppShortcutsSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/AppShortcutsSection.kt):** Provides a quick-launch shortcut config card where users can select up to 8 apps to display inside the expanded island.
+* **[GesturesSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/GesturesSection.kt):** Implements an interactive tabbed guide with looping finger path animations and a try-it-yourself sandbox to preview swipes.
 * **[SupportSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/SupportSection.kt):** Deep links to GitHub for starring, bug reports, and enhancements.
 * **[AboutSection](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/sections/AboutSection.kt):** Displays developer social links, version details, and privacy links.
 
@@ -155,6 +157,6 @@ The repository maintains an extensive test suite verifying logic boundaries:
 * **Build tool:** Gradle Kotlin DSL (`build.gradle.kts` files).
 * **Dependencies:** Jetpack Compose, Material 3, AndroidX Lifecycle, Coroutines, DataStore, and Dagger Hilt (for dependency injection).
 * **SDK Levels:**
-  * Minimum SDK: 24 (Android 7.0)
-  * Target SDK: 34 (Android 14)
+  * Minimum SDK: 26 (Android 8.0)
+  * Target SDK: 36 (Android 16)
   * Max Compile SDK compatibility checks up to Android 15 (SDK 35) are implemented in overlay touch listeners.

@@ -37,15 +37,17 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 ## Screenshots
 
 <p align="center">
-  <img src="/assets/screenshots/Home.jpeg" width="30%" alt="Home Screen" />
-  <img src="/assets/screenshots/Permissions.jpeg" width="30%" alt="Permissions Screen" />
-  <img src="/assets/screenshots/Positions.jpeg" width="30%" alt="Positions Screen" />
+  <img src="/assets/screenshots/Home.jpeg" width="24%" alt="Home Screen" />
+  <img src="/assets/screenshots/Permissions.jpeg" width="24%" alt="Permissions Screen" />
+  <img src="/assets/screenshots/Positions.jpeg" width="24%" alt="Positions Screen" />
+  <img src="/assets/screenshots/Customizations.jpeg" width="24%" alt="Customizations Screen" />
 </p>
 
 <p align="center">
-  <img src="/assets/screenshots/SmartIsland.jpeg" width="30%" alt="Smart Island Overlay" />
-  <img src="/assets/screenshots/Support.jpeg" width="30%" alt="Support Screen" />
-  <img src="/assets/screenshots/About.jpeg" width="30%" alt="About Screen" />
+  <img src="/assets/screenshots/SmartIsland.jpeg" width="24%" alt="Smart Island Overlay" />
+  <img src="/assets/screenshots/AppShortcuts.jpeg" width="24%" alt="App Shortcuts Screen" />
+  <img src="/assets/screenshots/Gestures.jpeg" width="24%" alt="Gesture Guide Screen" />
+  <img src="/assets/screenshots/About.jpeg" width="24%" alt="About Screen" />
 </p>
 
 ## Features
@@ -62,6 +64,7 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 | Custom controls | Lets users adjust width, height, position, and corner radius. |
 | Local settings | Persists island preferences with AndroidX DataStore Preferences. |
 | Demo modes | Includes notification, call, music, and battery charging demo buttons for quick testing. |
+| Gesture Guide | Provides an interactive dashboard guide (`GesturesSection.kt`) with looping finger path animations and Try-It-Yourself gesture play sandboxes. |
 
 ## Architecture
 

@@ -92,6 +92,7 @@ graph TD
     3. **Hide Overlay System Warning** (`Settings.ACTION_APP_NOTIFICATION_SETTINGS`) - Shortcut to disable the persistent system overlay alert.
   * **Sliders:** Adjusts pill size, location (X/Y offsets), and corner radius.
   * **Demo Buttons:** Triggers simulated alerts (`Notify`, `Call`, `Music`) inside the overlay.
+  * **Gesture Guide:** Displays a dedicated tabbed tutorial screen (`GesturesSection.kt`) with looping finger path overlays and Try-It-Yourself gesture play sandboxes.
 
 ### 4.2. `IslandOverlayView`
 * **File:** [IslandOverlayView.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandOverlayView.kt)
@@ -103,6 +104,7 @@ graph TD
     * **Tap Outside:** Collapses the expanded island.
     * **Swipe Up (Vertical Drag < -35dp):** Dismisses and clears the active notification.
     * **Swipe Down (Vertical Drag > 35dp):** Dismisses the overlay and opens the notification app in Freeform/Floating window mode.
+    * **Swipe Left/Right (Horizontal Drag):** Swipes pages between multiple active notifications in the stack.
 
 ### 4.3. `IslandCollapsedContent`
 * **File:** [IslandCollapsedContent.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandCollapsedContent.kt)
@@ -121,7 +123,7 @@ graph TD
 * **Purpose:** Displays the full interactive dialog when expanded.
 * **Key Features:**
   * **HorizontalPager:** Allows user to swipe left/right to browse multiple incoming notifications.
-  * **Dynamic Height Measurement:** Measures each pager page using `onSizeChanged` and interpolates heights dynamically during scroll/swipe gestures to ensure smooth size transitions.
+  * **Dynamic Height Measurement:** Measures each pager page using `onSizeChanged` and interpolates heights dynamically during scroll/swipe gestures to ensure smooth size transitions. Height cache (`pageHeights`) is keyed on unique notification keys rather than page indices, preventing height-jumping bugs when notifications update or change categories.
   * **State Layouts:**
     1. **Notification:** Shows title, description, time, custom actions (e.g. Telegram "Reply" button which opens chat due to focus constraints), and a button to open the full app.
     2. **Incoming Call:** Large caller name and green/red answer/reject circular buttons.
@@ -140,6 +142,7 @@ graph TD
 | **New High-Priority Notification** | Intercepted &rarr; Cancelled in system tray &rarr; Displayed in overlay &rarr; Pill expands &rarr; 5s auto-collapse timer starts. |
 | **Swiping Down** | Triggered in `IslandOverlayView` &rarr; Service sets window bounds &rarr; Intent launched with freeform window bundle &rarr; App opens in floating window. |
 | **Swiping Up** | Triggered in `IslandOverlayView` &rarr; Notification removed from state &rarr; System notification dismissed via listener service. |
+| **Swiping Left/Right** | Triggered in `IslandOverlayView` &rarr; Pager page scrolls &rarr; Active page index updates &rarr; Height interpolates dynamically to match the next notification key. |
 | **Tap collapsed Pill** | Expanding transition starts &rarr; Height recalculates to fit expanded content &rarr; Full details/controls exposed. |
 
 ---
