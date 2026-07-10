@@ -87,15 +87,18 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import com.agupta07505.smartisland.ui.sections.AboutSection
+import com.agupta07505.smartisland.ui.sections.CustomizationsSection
 import com.agupta07505.smartisland.ui.sections.HeaderSection
 import com.agupta07505.smartisland.ui.sections.PermissionsSection
 import com.agupta07505.smartisland.ui.sections.PositionsSection
 import com.agupta07505.smartisland.ui.sections.SupportSection
+import androidx.compose.material.icons.rounded.Palette
 import kotlinx.coroutines.launch
 
 private enum class HomeSection {
     Permissions,
     Positions,
+    Customizations,
     Support,
     About
 }
@@ -136,6 +139,8 @@ fun SmartIslandHomeScreen(
     
     val aboutBg = if (isDark) Color(0xFF581C87) else Color(0xFFF3E8FF)
     val aboutTint = if (isDark) Color(0xFFC084FC) else Color(0xFF7C3AED)
+    val customizationsBg = if (isDark) Color(0xFF1E3A8A) else Color(0xFFDBEAFE)
+    val customizationsTint = if (isDark) Color(0xFF3B82F6) else Color(0xFF1D4ED8)
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var notificationGranted by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
 
@@ -343,6 +348,18 @@ fun SmartIslandHomeScreen(
                 )
 
                 SectionRow(
+                    title = "Customizations",
+                    description = "Personalize colors for battery, notifications, and music visualizer",
+                    icon = Icons.Rounded.Palette,
+                    iconBgColor = customizationsBg,
+                    iconTint = customizationsTint,
+                    onClick = {
+                        transitionDirection = 1
+                        activeSection = HomeSection.Customizations
+                    }
+                )
+
+                SectionRow(
                     title = stringResource(R.string.sec_support),
                     description = stringResource(R.string.sec_support_desc),
                     icon = Icons.Rounded.Feedback,
@@ -417,6 +434,17 @@ fun SmartIslandHomeScreen(
                         }
                     ) {
                         PositionsSection(settings = settings, repository = resolvedRepository)
+                    }
+                }
+                HomeSection.Customizations -> {
+                    SectionDetailScreen(
+                        title = "Customizations",
+                        onBack = {
+                            transitionDirection = -1
+                            activeSection = null
+                        }
+                    ) {
+                        CustomizationsSection(settings = settings, repository = resolvedRepository)
                     }
                 }
                 HomeSection.Support -> {

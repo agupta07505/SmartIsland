@@ -304,7 +304,8 @@ fun IslandOverlayView(
                     IslandCollapsedContent(
                         mode = activeMode,
                         notification = activeNotification,
-                        collapsedAlpha = collapsedAlpha
+                        collapsedAlpha = collapsedAlpha,
+                        settings = settings
                     )
                 }
             }
@@ -330,7 +331,8 @@ fun IslandOverlayView(
                         onOpenNotification = onOpenNotification,
                         onCollapse = onToggleExpanded,
                         statusBarHeight = statusBarHeight.dp,
-                        onHeightMeasured = { expandedHeight = it }
+                        onHeightMeasured = { expandedHeight = it },
+                        settings = settings
                     )
                 }
             }

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import java.text.SimpleDateFormat
@@ -64,6 +65,7 @@ fun IslandCollapsedContent(
     mode: IslandMode,
     notification: IslandNotification?,
     collapsedAlpha: Float,
+    settings: SmartIslandSettings,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -132,7 +134,7 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.Battery -> {
-                    BatteryCollapsedGlyph(notification = notification)
+                    BatteryCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -154,7 +156,7 @@ fun IslandCollapsedContent(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF2563EB))
+                            .background(Color(settings.notificationDotColor))
                     )
                 }
                 IslandMode.IncomingCall -> {
@@ -164,13 +166,13 @@ fun IslandCollapsedContent(
                 IslandMode.Music -> {
                     AudioVisualizer(
                         isPlaying = notification?.mediaIsPlaying == true,
-                        color = Color(0xFFFF6B9A)
+                        color = Color(settings.musicVisualizerColor)
                     )
                 }
                 IslandMode.Battery -> {
                     Text(
                         text = notification?.text ?: "49%",
-                        color = Color(0xFF10B981),
+                        color = Color(settings.batteryColor),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -190,10 +192,11 @@ fun IslandCollapsedContent(
 }
 
 @Composable
-private fun BatteryCollapsedGlyph(notification: IslandNotification?) {
+private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings) {
     val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
+    val batteryColor = Color(settings.batteryColor)
 
     val infiniteTransition = rememberInfiniteTransition(label = "batteryPulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -224,12 +227,12 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?) {
             progress = progress,
             rotationAngle = rotationAngle,
             modifier = Modifier.size(22.dp),
-            color = Color(0xFF10B981)
+            color = batteryColor
         )
         Icon(
             Icons.Rounded.Bolt,
             contentDescription = "Charging",
-            tint = Color(0xFF10B981),
+            tint = batteryColor,
             modifier = Modifier
                 .size(14.dp)
                 .graphicsLayer {

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.data.SmartIslandSettings
 
 @Composable
 fun IslandExpandedContent(
@@ -46,6 +47,7 @@ fun IslandExpandedContent(
     onCollapse: () -> Unit,
     statusBarHeight: Dp,
     onHeightMeasured: (Dp) -> Unit,
+    settings: SmartIslandSettings,
     modifier: Modifier = Modifier
 ) {
     if (notifications.isEmpty()) {
@@ -153,7 +155,8 @@ fun IslandExpandedContent(
                             )
                             IslandMode.Battery -> BatteryExpanded(
                                 notification = notification,
-                                bottomPadding = bottomPadding
+                                bottomPadding = bottomPadding,
+                                settings = settings
                             )
                             IslandMode.Empty -> EmptyExpanded()
                         }

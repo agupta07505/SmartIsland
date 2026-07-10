@@ -13,7 +13,10 @@ data class SmartIslandSettings(
     val height: Float = 34f,
     val xOffset: Float = 0f,
     val yOffset: Float = 12f,
-    val cornerRadius: Float = 22f
+    val cornerRadius: Float = 22f,
+    val batteryColor: Long = 0xFF10B981L,
+    val notificationDotColor: Long = 0xFF2563EBL,
+    val musicVisualizerColor: Long = 0xFFFF6B9AL
 ) {
     companion object {
         val Default = SmartIslandSettings()

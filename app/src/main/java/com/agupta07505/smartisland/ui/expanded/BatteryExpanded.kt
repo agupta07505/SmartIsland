@@ -47,6 +47,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.lerp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -58,9 +60,13 @@ import com.agupta07505.smartisland.util.runCatchingLogged
 @Composable
 fun BatteryExpanded(
     notification: IslandNotification,
-    bottomPadding: Dp
+    bottomPadding: Dp,
+    settings: SmartIslandSettings
 ) {
     val context = LocalContext.current
+    val batteryColor = Color(settings.batteryColor)
+    val midBatteryColor = lerp(batteryColor, Color.White, 0.35f)
+    val lightestBatteryColor = lerp(batteryColor, Color.White, 0.65f)
     val pctText = notification.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
@@ -151,20 +157,20 @@ fun BatteryExpanded(
                     progress = progress,
                     rotationAngle = rotationAngle,
                     modifier = Modifier.size(50.dp),
-                    color = Color(0xFF10B981)
+                    color = batteryColor
                 )
                 
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .background(Color(0x1F10B981), shape = CircleShape)
-                        .border(1.5.dp, Color(0xFF10B981).copy(alpha = 0.4f), CircleShape),
+                        .background(batteryColor.copy(alpha = 0.12f), shape = CircleShape)
+                        .border(1.5.dp, batteryColor.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Rounded.Bolt,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = batteryColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -179,7 +185,7 @@ fun BatteryExpanded(
                 )
                 Text(
                     text = "${pct.toInt()}%",
-                    color = Color(0xFF10B981),
+                    color = batteryColor,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 24.sp,
                     lineHeight = 28.sp
@@ -211,11 +217,11 @@ fun BatteryExpanded(
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0xFF10B981),
-                                    Color(0xFF34D399),
-                                    Color(0xFF6EE7B7),
-                                    Color(0xFF34D399),
-                                    Color(0xFF10B981)
+                                    batteryColor,
+                                    midBatteryColor,
+                                    lightestBatteryColor,
+                                    midBatteryColor,
+                                    batteryColor
                                 ),
                                 startX = flowOffset,
                                 endX = flowOffset + 300f,
