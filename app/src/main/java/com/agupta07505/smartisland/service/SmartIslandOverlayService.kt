@@ -381,7 +381,6 @@ class SmartIslandOverlayService : LifecycleService() {
         viewModel.collapse()
     }
 
-    @SuppressLint("PrivateApi")
     private fun openCurrentNotificationInFloatingWindow() {
         val list = viewModel.notifications.value
         val index = viewModel.selectedIndex.value
@@ -393,15 +392,6 @@ class SmartIslandOverlayService : LifecycleService() {
             }
             val notification = list[index]
             val options = ActivityOptions.makeBasic()
-            val setModeResult = runCatchingLogged(TAG, "Failed to invoke setLaunchWindowingMode") {
-                val method = options.javaClass.getMethod("setLaunchWindowingMode", Int::class.javaPrimitiveType)
-                method.invoke(options, WINDOWING_MODE_FREEFORM)
-            }
-            if (setModeResult == null) {
-                Toast.makeText(this, "Freeform windowing mode is not supported on this device.", Toast.LENGTH_SHORT).show()
-                viewModel.collapse()
-                return
-            }
             runCatchingLogged(TAG, "Failed to set launch bounds") {
                 val displayMetrics = resources.displayMetrics
                 val screenWidth = displayMetrics.widthPixels
@@ -417,16 +407,22 @@ class SmartIslandOverlayService : LifecycleService() {
                     options.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                 }
             }
-            val bundle = options.toBundle()
+            val bundle = options.toBundle() ?: android.os.Bundle()
+            bundle.putInt("android.activity.windowingMode", WINDOWING_MODE_FREEFORM)
+
+            val fillInIntent = Intent().apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            }
+
             if (notification.contentIntent != null) {
                 runCatchingLogged(TAG, "Failed to send content intent") {
-                    notification.contentIntent.send(this, 0, null, null, null, null, bundle)
+                    notification.contentIntent.send(this, 0, fillInIntent, null, null, null, bundle)
                 }
             } else {
                 runCatchingLogged(TAG, "Failed to launch package activity") {
                     val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
                     if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                         startActivity(launchIntent, bundle)
                     } else {
                         Toast.makeText(this, "Opening ${notification.appName} in floating window (Demo)", Toast.LENGTH_SHORT).show()
