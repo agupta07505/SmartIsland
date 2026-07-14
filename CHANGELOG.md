@@ -4,6 +4,25 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [3.1] - 2026-07-15
+
+### Added
+
+- **First-Run Welcome Experience**: Added a polished welcome dialog that introduces Smart Island's privacy-first approach and gives new users a clear starting point.
+- **Community Shortcuts**: Added direct actions in the welcome dialog for starring the project on GitHub and joining the Smart Island Telegram community.
+- **Persistent Welcome State**: Added a local DataStore preference so the welcome dialog is shown only once after installation.
+
+### Changed
+
+- **Support & Feedback**: Improved community links and support actions, including clearer access to the Telegram community.
+- **Release Tooling**: Updated GitHub Actions dependencies used by the Android build and release workflow.
+- **Release Version**: Updated the application version to `3.1`.
+
+### Planned next
+
+- Fix collapsed-pill touch reliability as the first v3.2 release blocker.
+- Add opt-in, privacy-safe Smart Island support on the lock screen after the touch fix is verified.
+
 ## [3.0.0] - 2026-07-10
 
 ### Added

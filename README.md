@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v3.0.0</strong>
+  <strong>Current release: v3.1</strong>
 </p>
 
 <p align="center">
@@ -22,6 +22,7 @@
   <a href="#features">Features</a> |
   <a href="#getting-started">Getting Started</a> |
   <a href="#privacy-and-permissions">Privacy</a> |
+  <a href="ROADMAP.md">Roadmap</a> |
   <a href="#contributing">Contributing</a> |
   <a href="https://telegram.me/SmartIslandApp">Telegram Community</a>
 </p>
