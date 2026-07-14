@@ -14,7 +14,9 @@
   <img src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white" alt="Jetpack Compose Material 3" />
   <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="GNU GPLv3" />
   <img src="https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github" alt="Total Downloads" />
-  <a href="https://telegram.me/SmartIslandApp"><img src="https://img.shields.io/badge/Telegram-Community-2CA5E0?style=flat&logo=telegram&logoColor=white" alt="Telegram Community" /></a>
+  <a href="https://www.virustotal.com/gui/file/c07da408e7fa3e3fdeb25ec6415af07f1d56eff099840221138e9364c6065102/details" target="_blank">
+    <img src="https://img.shields.io/badge/VirusTotal-Scan-007ACC" alt="VirusTotal Scan" />
+  </a>
 </p>
 
 <p align="center">
