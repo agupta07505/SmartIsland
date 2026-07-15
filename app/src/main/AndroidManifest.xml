@@ -44,13 +44,15 @@
 
         <service
             android:name=".service.SmartIslandOverlayService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse"
-            tools:targetApi="upsidedown_cake">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Floating Dynamic Island overlay"
-                tools:targetApi="upsidedown_cake" />
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
         </service>
 
         <service

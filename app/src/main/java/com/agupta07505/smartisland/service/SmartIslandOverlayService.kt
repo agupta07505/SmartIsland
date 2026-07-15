@@ -23,9 +23,9 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.lifecycle.LifecycleService
+import android.accessibilityservice.AccessibilityService
+import android.view.accessibility.AccessibilityEvent
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -40,12 +40,13 @@ import com.agupta07505.smartisland.ui.IslandViewModel
 import com.agupta07505.smartisland.ui.OverlayIsland
 import com.agupta07505.smartisland.util.runCatchingLogged
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class SmartIslandOverlayService : LifecycleService() {
+class SmartIslandOverlayService : AccessibilityService() {
     private lateinit var windowManager: WindowManager
     @Inject lateinit var repository: SmartIslandSettingsRepository
     @Inject lateinit var notificationRepository: INotificationRepository
@@ -53,6 +54,10 @@ class SmartIslandOverlayService : LifecycleService() {
     private val overlayOwners = OverlayViewTreeOwners()
     private lateinit var systemEventReceiver: SystemEventReceiver
     private lateinit var viewModel: IslandViewModel
+
+    private val serviceScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob()
+    )
 
     private val screenStateReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -63,29 +68,17 @@ class SmartIslandOverlayService : LifecycleService() {
         }
     }
 
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Required override, no-op
+    }
+
+    override fun onInterrupt() {
+        // Required override, no-op
+    }
+
     override fun onCreate() {
         super.onCreate()
         
-        runCatchingLogged(TAG, "startForeground failed") {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // Android 14+ – FGS type MUST match manifest
-                startForeground(
-                    NOTIFICATION_ID,
-                    buildServiceNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                )
-            } else {
-                // Android 8-13 – 2-arg version
-                // NEVER use FOREGROUND_SERVICE_TYPE_MANIFEST (-1) here –
-                // it throws IllegalArgumentException: foregroundServiceType 0xffffffff
-                startForeground(NOTIFICATION_ID, buildServiceNotification())
-            }
-        } ?: run {
-            android.util.Log.e(TAG, "startForeground failed – stopping to avoid crash loop")
-            stopSelf()
-            return
-        }
-
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // CRASH FIX: resume lifecycle BEFORE ViewModel
@@ -126,18 +119,18 @@ class SmartIslandOverlayService : LifecycleService() {
             }
         }
 
-        lifecycleScope.launch {
+        serviceScope.launch {
             repository.settings.collect { settings ->
                 if (!settings.enabled) {
-                    stopSelf()
-                } else if (Settings.canDrawOverlays(this@SmartIslandOverlayService)) {
+                    disableSelf()
+                } else {
                     ensureCollapsedWindow()
                     updateWindowLayoutParams(viewModel.expanded.value, settings)
                 }
             }
         }
 
-        lifecycleScope.launch {
+        serviceScope.launch {
             viewModel.expanded.collectLatest { expanded ->
                 if (expanded) {
                     updateWindowLayoutParams(true, viewModel.settings.value)
@@ -150,23 +143,19 @@ class SmartIslandOverlayService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        // CRASH FIX: safe unregister
+        serviceScope.cancel()
         runCatchingLogged(TAG, "unregisterReceiver failed") {
             unregisterReceiver(systemEventReceiver)
         }
         runCatchingLogged(TAG, "unregisterReceiver screenStateReceiver failed") {
             unregisterReceiver(screenStateReceiver)
         }
-        // Retry remove up to 3 times with 100ms delay
         repeat(3) {
             if (islandView != null) {
                 removeCollapsedWindow()
                 if (islandView == null) return@repeat
                 Thread.sleep(100)
             }
-        }
-        if (islandView != null) {
-            android.util.Log.e(TAG, "Failed to remove overlay window after 3 attempts")
         }
         overlayOwners.destroy()
         super.onDestroy()
@@ -180,15 +169,8 @@ class SmartIslandOverlayService : LifecycleService() {
             return if (heightDp > 0f) heightDp else 24f
         }
 
-    @SuppressLint("PrivateApi")
     private fun ensureCollapsedWindow() {
         if (islandView != null) return
-        if (!Settings.canDrawOverlays(this)) {
-            runCatchingLogged(TAG, "Overlay permission not granted, stopping service") {
-                stopSelf()
-            }
-            return
-        }
         try {
             islandView = ComposeView(this).apply {
                 installOverlayViewTreeOwners()
@@ -202,70 +184,15 @@ class SmartIslandOverlayService : LifecycleService() {
                         onOpenFloatingWindow = { openCurrentNotificationInFloatingWindow() }
                     )
                 }
-                runCatchingLogged(TAG, "OnComputeInternalInsetsListener setup failed") {
-                    if (Build.VERSION.SDK_INT >= 35) {
-                        // OnComputeInternalInsetsListener is restricted in V+
-                        // Fallback: FLAG_NOT_TOUCH_MODAL already set – full overlay touchable
-                        runCatchingLogged(TAG, "Skipping OnComputeInternalInsetsListener on API 35+") {}
-                    } else {
-                        val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
-                        val addListenerMethod = android.view.ViewTreeObserver::class.java.getMethod("addOnComputeInternalInsetsListener", listenerClass)
-                        val proxyListener = java.lang.reflect.Proxy.newProxyInstance(
-                            classLoader,
-                            arrayOf(listenerClass)
-                        ) { _, method, args ->
-                            runCatchingLogged(TAG, "OnComputeInternalInsetsListener proxy failed") {
-                                if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
-                                    val info = args[0] ?: return@runCatchingLogged null
-                                    val setTouchableInsetsMethod = info.javaClass.getMethod("setTouchableInsets", Int::class.javaPrimitiveType)
-                                    if (!viewModel.expanded.value) {
-                                        setTouchableInsetsMethod.invoke(info, 3) // TOUCHABLE_INSETS_REGION
-                                        val touchableRegionField = sequenceOf("touchableRegion", "mTouchableRegion")
-                                            .mapNotNull { name ->
-                                                runCatchingLogged(TAG, "Failed to get field $name") {
-                                                    info.javaClass.getDeclaredField(name).apply { isAccessible = true }
-                                                }
-                                            }
-                                            .firstOrNull()
-
-                                        if (touchableRegionField != null) {
-                                            val touchableRegion = touchableRegionField.get(info) as? android.graphics.Region
-                                            if (touchableRegion != null) {
-                                                val density = resources.displayMetrics.density
-                                                val w = ((viewModel.settings.value.width + 16f) * density).toInt()
-                                                val h = ((viewModel.settings.value.height + 16f) * density).toInt()
-                                                val xOffsetPx = (viewModel.settings.value.xOffset * density).toInt()
-
-                                                val screenWidth = resources.displayMetrics.widthPixels
-                                                val left = (screenWidth - w) / 2 + xOffsetPx
-                                                val right = left + w
-                                                val top = 0
-                                                val bottom = h
-
-                                                touchableRegion.set(left, top, right, bottom)
-                                            }
-                                        }
-                                    } else {
-                                        setTouchableInsetsMethod.invoke(info, 0) // TOUCHABLE_INSETS_FRAME
-                                    }
-                                }
-                            }
-                            null
-                        }
-                        addListenerMethod.invoke(viewTreeObserver, proxyListener)
-                    }
-                }
             }
-            runCatchingLogged(TAG, "windowManager.addView failed – stopping service") {
+            runCatchingLogged(TAG, "windowManager.addView failed") {
                 windowManager.addView(islandView, collapsedParams(viewModel.settings.value))
             } ?: run {
                 islandView = null
-                stopSelf()
             }
         } catch (e: Exception) {
             android.util.Log.e(TAG, "ensureCollapsedWindow fatal", e)
             islandView = null
-            stopSelf()
         }
     }
 
@@ -280,7 +207,7 @@ class SmartIslandOverlayService : LifecycleService() {
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             h,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -304,9 +231,7 @@ class SmartIslandOverlayService : LifecycleService() {
         if (removed) {
             islandView = null
         } else {
-            // If removeView fails, the view is still attached. Don't null the reference
-            // so we can retry or at least avoid leaking a dangling window.
-            android.util.Log.w(TAG, "removeCollapsedWindow: removeView failed, keeping reference for retry")
+            android.util.Log.w(TAG, "removeCollapsedWindow failed")
         }
     }
 
@@ -315,7 +240,7 @@ class SmartIslandOverlayService : LifecycleService() {
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             ((settings.height + 16f) * density).toInt(),
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -326,30 +251,6 @@ class SmartIslandOverlayService : LifecycleService() {
             x = 0
             y = settings.yOffset.dpToPx()
         }
-    }
-
-    private fun buildServiceNotification(): android.app.Notification {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                OVERLAY_CHANNEL_ID,
-                OVERLAY_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
-        val contentIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        return androidx.core.app.NotificationCompat.Builder(this, OVERLAY_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_smart_island)
-            .setContentTitle("Smart Island is running")
-            .setContentText("Floating island overlay is active.")
-            .setOngoing(true)
-            .setContentIntent(contentIntent)
-            .build()
     }
 
     private fun openNotification(notification: IslandNotification) {

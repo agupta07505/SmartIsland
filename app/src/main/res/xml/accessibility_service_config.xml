@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Smart Island (2026)
+  © Animesh Gupta — github.com/agupta07505
+  Licensed under the GNU GPL v3 License
+  Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_service_description"
+    android:settingsActivity="com.agupta07505.smartisland.MainActivity" />

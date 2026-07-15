@@ -46,10 +46,10 @@ fun PermissionsSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PermissionCard(
-            title = "Overlay permission",
-            description = "Required to draw the pill above other apps.",
+            title = "Accessibility service",
+            description = "Required to draw the pill over the status bar and receive touches without interference.",
             granted = overlayGranted,
-            buttonText = "Allow",
+            buttonText = "Enable",
             onClick = onOverlayClick
         )
 

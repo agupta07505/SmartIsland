@@ -194,13 +194,13 @@ fun SmartIslandHomeScreen(
     val shortcutsTint = if (isDark) Color(0xFF22D3EE) else Color(0xFF0891B2)
     val gesturesBg = if (isDark) Color(0xFF311B92) else Color(0xFFEDE7F6)
     val gesturesTint = if (isDark) Color(0xFFB39DDB) else Color(0xFF512DA8)
-    var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var overlayGranted by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
     var notificationGranted by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                overlayGranted = Settings.canDrawOverlays(context)
+                overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
             }
         }
@@ -209,28 +209,7 @@ fun SmartIslandHomeScreen(
     }
 
     LaunchedEffect(settings.enabled, overlayGranted) {
-        if (settings.enabled && overlayGranted) {
-            // CRASH FIX: startForegroundService can throw
-            // ForegroundServiceStartNotAllowedException on Android 12+
-            try {
-                ContextCompat.startForegroundService(context, Intent(context, SmartIslandOverlayService::class.java))
-            } catch (e: Exception) {
-                android.util.Log.e("SmartIslandHome", "Failed to start overlay service", e)
-                // Disable setting to prevent crash loop
-                try {
-                    resolvedRepository.setEnabled(false)
-                } catch (_: Exception) {}
-                android.widget.Toast.makeText(
-                    context,
-                    "Failed to start Smart Island: ${e.message}",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        } else {
-            try {
-                context.stopService(Intent(context, SmartIslandOverlayService::class.java))
-            } catch (_: Exception) {}
-        }
+        // AccessibilityService starts/stops automatically based on system settings toggle
     }
 
     var activeSection by remember { mutableStateOf<HomeSection?>(null) }
@@ -493,13 +472,8 @@ fun SmartIslandHomeScreen(
                             overlayGranted = overlayGranted,
                             notificationGranted = notificationGranted,
                             onOverlayClick = {
-                                context.startActivity(
-                                    Intent(
-                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:${context.packageName}")
-                                    )
-                                )
-                                overlayGranted = Settings.canDrawOverlays(context)
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                overlayGranted = isAccessibilityServiceEnabled(context)
                             },
                             onNotificationClick = {
                                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -858,6 +832,24 @@ private fun GithubIcon(tint: Color = Color.Black) {
         }
         drawPath(path, color = tint)
     }
+}
+
+private fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponentName = ComponentName(context, com.agupta07505.smartisland.service.SmartIslandOverlayService::class.java)
+    val enabledServicesSetting = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    val colonSplitter = android.text.TextUtils.SimpleStringSplitter(':')
+    colonSplitter.setString(enabledServicesSetting)
+    while (colonSplitter.hasNext()) {
+        val componentNameString = colonSplitter.next()
+        val enabledService = ComponentName.unflattenFromString(componentNameString)
+        if (enabledService != null && enabledService == expectedComponentName) {
+            return true
+        }
+    }
+    return false
 }
 
 @Preview(showBackground = true, name = "Light Mode")

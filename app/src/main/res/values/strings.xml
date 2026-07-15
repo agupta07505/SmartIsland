@@ -27,5 +27,8 @@
     <string name="sec_about_desc">App version, privacy policy, terms &amp; contact developer</string>
     <string name="status_active">Active</string>
     <string name="status_action_required">Action Required</string>
+    <string name="accessibility_service_description">Enables the Smart Island overlay to sit on top of the status bar so you can tap the pill around your camera cutout without touch interference.</string>
+    <string name="accessibility_service_label">Smart Island Service</string>
+    <string name="grant_accessibility">Grant Accessibility permission to start overlay over status bar</string>
     <string name="made_by">Made with ❤️ by Animesh Gupta</string>
 </resources>

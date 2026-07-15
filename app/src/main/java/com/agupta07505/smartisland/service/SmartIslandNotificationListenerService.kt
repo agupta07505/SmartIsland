@@ -114,20 +114,27 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         return settings.enabled && Settings.canDrawOverlays(this)
     }
 
-    private fun ensureOverlayServiceRunning(): Boolean =
-        runCatchingLogged(TAG, "ForegroundService start failed") {
-            ContextCompat.startForegroundService(
-                this,
-                Intent(this, SmartIslandOverlayService::class.java)
-            )
-        } ?: run {
-            serviceScope.launch {
-                runCatchingLogged(TAG, "Failed to disable settings after startForegroundService crash") {
-                    repository.setEnabled(false)
-                }
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponentName = android.content.ComponentName(this, SmartIslandOverlayService::class.java)
+        val enabledServicesSetting = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val colonSplitter = android.text.TextUtils.SimpleStringSplitter(':')
+        colonSplitter.setString(enabledServicesSetting)
+        while (colonSplitter.hasNext()) {
+            val componentNameString = colonSplitter.next()
+            val enabledService = android.content.ComponentName.unflattenFromString(componentNameString)
+            if (enabledService != null && enabledService == expectedComponentName) {
+                return true
             }
-            null
-        } != null
+        }
+        return false
+    }
+
+    private fun ensureOverlayServiceRunning(): Boolean {
+        return isAccessibilityServiceEnabled()
+    }
 
     private fun handleNotificationPosted(sbn: StatusBarNotification, allowHeadsUpSuppression: Boolean) {
         if (sbn.packageName == packageName) return
