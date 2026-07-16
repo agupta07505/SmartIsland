@@ -16,6 +16,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.animateContentSize
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -166,17 +169,62 @@ fun IslandOverlayView(
     val activeMode = activeNotification?.mode ?: IslandMode.Empty
 
     // Outer Box: Fills the entire WindowManager window bounds (which are padded for easy touch)
-    Box(
-        modifier = modifier
+    val outerModifier = if (currentExpanded) {
+        modifier
             .fillMaxSize()
-            // Make the entire window bounds touch-sensitive to expand/collapse easily!
             .pointerInput(Unit) {
                 detectTapGestures {
                     currentOnToggle()
                 }
-            },
+            }
+    } else {
+        modifier.fillMaxSize()
+    }
+
+    Box(
+        modifier = outerModifier,
         contentAlignment = Alignment.TopStart
     ) {
+        // Debug touch bounds visualization (only visible in debug builds)
+        if (com.agupta07505.smartisland.BuildConfig.DEBUG) {
+            if (currentExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(1.dp, Color.Red.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = "DEBUG: FRAME INTERCEPT ACTIVE",
+                        color = Color.Red.copy(alpha = 0.8f),
+                        fontSize = 8.sp,
+                        modifier = Modifier.padding(top = statusBarHeight.dp + 4.dp, start = 8.dp)
+                    )
+                }
+            } else {
+                val debugWidth = settings.width.dp + 12.dp
+                val debugHeight = settings.height.dp + 16.dp
+                
+                Box(
+                    modifier = Modifier
+                        .width(debugWidth)
+                        .height(debugHeight)
+                        .graphicsLayer {
+                            val currentWidth = size.width
+                            val desiredCenterX = screenCenterPx + animatedXOffset.toPx()
+                            translationX = desiredCenterX - (currentWidth / 2f)
+                            translationY = 0f
+                        }
+                        .border(1.dp, Color.Green.copy(alpha = 0.5f), RoundedCornerShape(radius + 6.dp))
+                ) {
+                    Text(
+                        text = "TOUCH BOUNDS",
+                        color = Color.Green.copy(alpha = 0.7f),
+                        fontSize = 6.sp,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp)
+                    )
+                }
+            }
+        }
         // Stack Indicator Brackets: concentric parentheses curves drawn behind the pill when notifications > 1
         if (notifications.size > 1 && collapsedAlpha > 0f) {
             Canvas(

@@ -11,4 +11,34 @@ import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class SmartIslandApp : Application()
+class SmartIslandApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        bypassHiddenApis()
+    }
+
+    private fun bypassHiddenApis() {
+        try {
+            val forName = Class::class.java.getDeclaredMethod("forName", String::class.java)
+            val getDeclaredMethod = Class::class.java.getDeclaredMethod(
+                "getDeclaredMethod",
+                String::class.java,
+                arrayOf<Class<*>>().javaClass
+            )
+            
+            val vmRuntimeClass = forName.invoke(null, "dalvik.system.VMRuntime") as Class<*>
+            val getRuntime = getDeclaredMethod.invoke(vmRuntimeClass, "getRuntime", null) as java.lang.reflect.Method
+            val setHiddenApiExemptions = getDeclaredMethod.invoke(
+                vmRuntimeClass,
+                "setHiddenApiExemptions",
+                arrayOf(arrayOf<String>().javaClass)
+            ) as java.lang.reflect.Method
+            
+            val vmRuntime = getRuntime.invoke(null)
+            setHiddenApiExemptions.invoke(vmRuntime, arrayOf("L") as Any)
+            android.util.Log.d("SmartIslandApp", "Successfully bypassed Hidden API restrictions (unsealed reflection)")
+        } catch (e: Exception) {
+            android.util.Log.e("SmartIslandApp", "Failed to bypass Hidden API restrictions", e)
+        }
+    }
+}

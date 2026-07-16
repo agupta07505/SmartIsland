@@ -71,37 +71,62 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         super.onDestroy()
     }
 
+    private val pendingRemovals = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
+        android.util.Log.d(TAG, "onNotificationPosted: package=${sbn.packageName}, id=${sbn.id}")
+        
+        // Cancel any pending removal for this key to prevent the notification from being deleted
+        pendingRemovals.remove(sbn.key)?.cancel()
+        
         serviceScope.launch {
             runCatchingLogged(TAG, "NotificationPosted handling failed") {
-                if (!canProcessNotifications()) return@runCatchingLogged
-                if (shouldSuppressFromIsland(sbn)) return@runCatchingLogged
+                val canProcess = canProcessNotifications()
+                val shouldSuppress = shouldSuppressFromIsland(sbn)
+                android.util.Log.d(TAG, "onNotificationPosted async: canProcess=$canProcess, shouldSuppress=$shouldSuppress")
+                if (!canProcess) return@runCatchingLogged
+                if (shouldSuppress) return@runCatchingLogged
                 val overlayStarted = ensureOverlayServiceRunning()
+                android.util.Log.d(TAG, "onNotificationPosted async: overlayStarted=$overlayStarted")
                 handleNotificationPosted(sbn, allowHeadsUpSuppression = overlayStarted)
             }
         }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        runCatchingLogged(TAG, "NotificationRemoved handling failed") {
-            if (sbn.packageName == packageName) return@runCatchingLogged
-            if (suppressedKeys.remove(sbn.key)) {
-                // Do not remove since we canceled it ourselves to suppress the system heads-up pop-up
-                return@runCatchingLogged
+        android.util.Log.d(TAG, "onNotificationRemoved: package=${sbn.packageName}, id=${sbn.id}")
+        
+        // Cancel any existing removal job for this key
+        pendingRemovals.remove(sbn.key)?.cancel()
+        
+        val job = serviceScope.launch {
+            kotlinx.coroutines.delay(350L) // 350ms debounce window
+            runCatchingLogged(TAG, "NotificationRemoved handling failed") {
+                if (sbn.packageName == packageName) return@runCatchingLogged
+                if (suppressedKeys.remove(sbn.key)) {
+                    // Do not remove since we canceled it ourselves to suppress the system heads-up pop-up
+                    return@runCatchingLogged
+                }
+                notificationRepository.removeNotification(sbn.key)
             }
-            notificationRepository.removeNotification(sbn.key)
+            pendingRemovals.remove(sbn.key)
         }
+        pendingRemovals[sbn.key] = job
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        android.util.Log.d(TAG, "onListenerConnected called")
         serviceScope.launch {
             runCatchingLogged(TAG, "ListenerConnected handling failed") {
-                if (!canProcessNotifications()) return@runCatchingLogged
+                val canProcess = canProcessNotifications()
+                android.util.Log.d(TAG, "onListenerConnected async: canProcess=$canProcess")
+                if (!canProcess) return@runCatchingLogged
                 val notifications = activeNotifications
                     .filter { it.packageName != packageName }
                     .filterNot { shouldSuppressFromIsland(it) }
+                android.util.Log.d(TAG, "onListenerConnected async: found ${notifications.size} active notifications")
                 if (notifications.isEmpty()) return@runCatchingLogged
                 notifications.forEach { handleNotificationPosted(it, allowHeadsUpSuppression = false) }
                 ensureOverlayServiceRunning()
@@ -111,23 +136,33 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     private suspend fun canProcessNotifications(): Boolean {
         val settings = repository.settings.first()
-        return settings.enabled && Settings.canDrawOverlays(this)
+        val canDraw = Settings.canDrawOverlays(this)
+        val a11yEnabled = isAccessibilityServiceEnabled()
+        android.util.Log.d(TAG, "canProcessNotifications: settings.enabled=${settings.enabled}, canDrawOverlays=$canDraw, accessibilityEnabled=$a11yEnabled")
+        return settings.enabled && (canDraw || a11yEnabled)
     }
 
-    private fun ensureOverlayServiceRunning(): Boolean =
-        runCatchingLogged(TAG, "ForegroundService start failed") {
-            ContextCompat.startForegroundService(
-                this,
-                Intent(this, SmartIslandOverlayService::class.java)
-            )
-        } ?: run {
-            serviceScope.launch {
-                runCatchingLogged(TAG, "Failed to disable settings after startForegroundService crash") {
-                    repository.setEnabled(false)
-                }
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponentName = android.content.ComponentName(this, SmartIslandOverlayService::class.java)
+        val enabledServicesSetting = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        val colonSplitter = android.text.TextUtils.SimpleStringSplitter(':')
+        colonSplitter.setString(enabledServicesSetting)
+        while (colonSplitter.hasNext()) {
+            val componentNameString = colonSplitter.next()
+            val enabledService = android.content.ComponentName.unflattenFromString(componentNameString)
+            if (enabledService != null && enabledService == expectedComponentName) {
+                return true
             }
-            null
-        } != null
+        }
+        return false
+    }
+
+    private fun ensureOverlayServiceRunning(): Boolean {
+        return isAccessibilityServiceEnabled()
+    }
 
     private fun handleNotificationPosted(sbn: StatusBarNotification, allowHeadsUpSuppression: Boolean) {
         if (sbn.packageName == packageName) return
@@ -137,6 +172,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
         val extras = notification.extras
         val mode = notification.toIslandMode()
+        android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode, title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
         val isHeadsUp = shouldSuppressSystemHeadsUp(sbn, notification, mode, allowHeadsUpSuppression)
         if (isHeadsUp) {
             suppressSystemNotification(sbn.key)
@@ -250,11 +286,44 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     private fun Notification.loadLargeIconBitmap(): Bitmap? {
-        extras.get(Notification.EXTRA_LARGE_ICON).toBitmapOrNull()?.let { return it }
-        extras.get(Notification.EXTRA_LARGE_ICON_BIG).toBitmapOrNull()?.let { return it }
-        return runCatchingLogged(TAG, "LoadLargeIconBitmap failed") {
-            getLargeIcon()?.loadDrawable(this@SmartIslandNotificationListenerService)
+        val extraLarge = extras.get(Notification.EXTRA_LARGE_ICON)
+        android.util.Log.d(TAG, "loadLargeIconBitmap: extraLargeIcon type=${extraLarge?.javaClass?.name}")
+        extraLarge.toBitmapOrNull()?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded from EXTRA_LARGE_ICON")
+            return it 
+        }
+        val extraLargeBig = extras.get(Notification.EXTRA_LARGE_ICON_BIG)
+        android.util.Log.d(TAG, "loadLargeIconBitmap: extraLargeIconBig type=${extraLargeBig?.javaClass?.name}")
+        extraLargeBig.toBitmapOrNull()?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded from EXTRA_LARGE_ICON_BIG")
+            return it 
+        }
+        val largeIconObj = getLargeIcon()
+        android.util.Log.d(TAG, "loadLargeIconBitmap: getLargeIcon() = $largeIconObj")
+        runCatchingLogged(TAG, "LoadLargeIconBitmap failed") {
+            largeIconObj?.loadDrawable(this@SmartIslandNotificationListenerService)
                 ?.toBitmap(width = LARGE_ICON_BITMAP_SIZE, height = LARGE_ICON_BITMAP_SIZE)
+        }?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded via getLargeIcon()")
+            return it 
+        }
+        return runCatchingLogged(TAG, "LoadMessagingStyleAvatar failed") {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+                android.util.Log.d(TAG, "loadLargeIconBitmap: EXTRA_MESSAGES size=${messages?.size}")
+                if (!messages.isNullOrEmpty()) {
+                    val lastMessageBundle = messages.lastOrNull() as? android.os.Bundle
+                    val senderPerson = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        lastMessageBundle?.getParcelable("sender_person", android.app.Person::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        lastMessageBundle?.getParcelable("sender_person") as? android.app.Person
+                    }
+                    android.util.Log.d(TAG, "loadLargeIconBitmap: senderPerson = $senderPerson, icon = ${senderPerson?.icon}")
+                    senderPerson?.icon?.loadDrawable(this@SmartIslandNotificationListenerService)
+                        ?.toBitmap(width = LARGE_ICON_BITMAP_SIZE, height = LARGE_ICON_BITMAP_SIZE)
+                } else null
+            } else null
         }
     }
 
