@@ -36,6 +36,10 @@ object NotificationFilter {
         if (isSystemLevelCategory(notification)) return true
         if (isSystemLevelPackage(packageName, packageManager)) return true
 
+        // Suppress group summary notifications
+        val isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
+        if (isGroupSummary) return true
+
         // Suppress if both title and text are null or blank
         val extras = notification.extras
         val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()

@@ -88,7 +88,7 @@ fun IslandCollapsedContent(
             when (mode) {
                 IslandMode.Notification -> NotificationGlyph(notification = notification)
                 IslandMode.IncomingCall -> {
-                    val icon = notification?.icon
+                    val icon = notification?.largeIcon ?: notification?.icon
                     if (icon != null) {
                         Image(
                             bitmap = icon.asImageBitmap(),
@@ -245,15 +245,36 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: S
 
 @Composable
 private fun NotificationGlyph(notification: IslandNotification?) {
+    val largeIcon = notification?.largeIcon
     val icon = notification?.icon
-    if (icon != null) {
-        Image(
-            bitmap = icon.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-        )
+    val mainIcon = largeIcon ?: icon
+    if (mainIcon != null) {
+        Box(modifier = Modifier.size(22.dp)) {
+            Image(
+                bitmap = mainIcon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+            )
+            if (largeIcon != null && icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .align(Alignment.BottomEnd)
+                        .background(Color.Black, CircleShape)
+                        .padding(1.dp)
+                ) {
+                    Image(
+                        bitmap = icon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                    )
+                }
+            }
+        }
     } else {
         Box(
             modifier = Modifier

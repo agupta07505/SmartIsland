@@ -286,11 +286,44 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     private fun Notification.loadLargeIconBitmap(): Bitmap? {
-        extras.get(Notification.EXTRA_LARGE_ICON).toBitmapOrNull()?.let { return it }
-        extras.get(Notification.EXTRA_LARGE_ICON_BIG).toBitmapOrNull()?.let { return it }
-        return runCatchingLogged(TAG, "LoadLargeIconBitmap failed") {
-            getLargeIcon()?.loadDrawable(this@SmartIslandNotificationListenerService)
+        val extraLarge = extras.get(Notification.EXTRA_LARGE_ICON)
+        android.util.Log.d(TAG, "loadLargeIconBitmap: extraLargeIcon type=${extraLarge?.javaClass?.name}")
+        extraLarge.toBitmapOrNull()?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded from EXTRA_LARGE_ICON")
+            return it 
+        }
+        val extraLargeBig = extras.get(Notification.EXTRA_LARGE_ICON_BIG)
+        android.util.Log.d(TAG, "loadLargeIconBitmap: extraLargeIconBig type=${extraLargeBig?.javaClass?.name}")
+        extraLargeBig.toBitmapOrNull()?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded from EXTRA_LARGE_ICON_BIG")
+            return it 
+        }
+        val largeIconObj = getLargeIcon()
+        android.util.Log.d(TAG, "loadLargeIconBitmap: getLargeIcon() = $largeIconObj")
+        runCatchingLogged(TAG, "LoadLargeIconBitmap failed") {
+            largeIconObj?.loadDrawable(this@SmartIslandNotificationListenerService)
                 ?.toBitmap(width = LARGE_ICON_BITMAP_SIZE, height = LARGE_ICON_BITMAP_SIZE)
+        }?.let { 
+            android.util.Log.d(TAG, "loadLargeIconBitmap: loaded via getLargeIcon()")
+            return it 
+        }
+        return runCatchingLogged(TAG, "LoadMessagingStyleAvatar failed") {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+                android.util.Log.d(TAG, "loadLargeIconBitmap: EXTRA_MESSAGES size=${messages?.size}")
+                if (!messages.isNullOrEmpty()) {
+                    val lastMessageBundle = messages.lastOrNull() as? android.os.Bundle
+                    val senderPerson = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        lastMessageBundle?.getParcelable("sender_person", android.app.Person::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        lastMessageBundle?.getParcelable("sender_person") as? android.app.Person
+                    }
+                    android.util.Log.d(TAG, "loadLargeIconBitmap: senderPerson = $senderPerson, icon = ${senderPerson?.icon}")
+                    senderPerson?.icon?.loadDrawable(this@SmartIslandNotificationListenerService)
+                        ?.toBitmap(width = LARGE_ICON_BITMAP_SIZE, height = LARGE_ICON_BITMAP_SIZE)
+                } else null
+            } else null
         }
     }
 

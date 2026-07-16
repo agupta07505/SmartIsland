@@ -34,7 +34,11 @@ class SmartIslandNotificationRepository : INotificationRepository {
         val current = _notifications.value.toMutableList()
         val index = current.indexOfFirst { it.key == notification.key }
         if (index >= 0) {
-            current[index] = notification
+            val existing = current[index]
+            current[index] = notification.copy(
+                icon = notification.icon ?: existing.icon,
+                largeIcon = notification.largeIcon ?: existing.largeIcon
+            )
         } else {
             current.add(notification)
         }
