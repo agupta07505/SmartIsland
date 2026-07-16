@@ -42,6 +42,7 @@ class IslandViewModel(
 
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
+    val isLocked = MutableStateFlow(false)
 
     val mode: StateFlow<IslandMode> = combine(notifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty

@@ -46,18 +46,22 @@ fun formatDuration(valueMs: Long?): String {
 }
 
 fun triggerAction(context: Context, packageName: String, actionIntent: PendingIntent?, actionTitle: String, contentIntent: PendingIntent?) {
+    android.util.Log.d("ExpandedActions", "triggerAction: actionTitle=$actionTitle, hasActionIntent=${actionIntent != null}, hasContentIntent=${contentIntent != null}")
     if (actionIntent == null) return
 
     // If it is a Reply action, since typing inside the overlay window is blocked by focus rules,
     // trigger the main notification's content intent to open the target chat directly!
     if (actionTitle.contains("reply", ignoreCase = true) && contentIntent != null) {
+        android.util.Log.d("ExpandedActions", "triggerAction: Firing contentIntent (reply fallback)")
         sendIntentWithOptions(context, contentIntent)
     } else {
+        android.util.Log.d("ExpandedActions", "triggerAction: Firing actionIntent")
         sendIntentWithOptions(context, actionIntent)
     }
 }
 
 fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
+    android.util.Log.d("ExpandedActions", "sendIntentWithOptions: sending pendingIntent=$pendingIntent")
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         val options = ActivityOptions.makeBasic()
             .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)

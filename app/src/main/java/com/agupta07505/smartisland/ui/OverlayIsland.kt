@@ -33,7 +33,28 @@ fun OverlayIsland(
     val expanded by viewModel.expanded.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val selectedIndex by viewModel.selectedIndex.collectAsState()
+    val isLocked by viewModel.isLocked.collectAsState()
     val context = LocalContext.current
+
+    val isContentRedacted = isLocked && settings.lockScreenPrivacy == "AppIconOnly"
+    val processedNotifications = remember(notifications, isContentRedacted) {
+        if (isContentRedacted) {
+            notifications.map { notif ->
+                if (notif.mode == com.agupta07505.smartisland.model.IslandMode.Notification) {
+                    notif.copy(
+                        title = notif.appName,
+                        text = "Contents hidden",
+                        actionIntents = emptyList()
+                    )
+                } else {
+                    notif
+                }
+            }
+        } else {
+            notifications
+        }
+    }
+
     val selectedApps = remember(settings.shortcutPackages) {
         AppShortcutProvider.selectedApps(context, settings.shortcutPackages)
     }
@@ -59,7 +80,7 @@ fun OverlayIsland(
     IslandOverlayView(
         settings = settings,
         expanded = expanded,
-        notifications = notifications,
+        notifications = processedNotifications,
         selectedIndex = selectedIndex,
         launcherApps = launcherApps,
         onPageSelected = { index -> viewModel.setSelectedNotificationIndex(index) },
