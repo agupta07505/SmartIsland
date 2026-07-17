@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -117,6 +118,7 @@ private enum class HomeSection {
     About
 }
 
+@SuppressLint("BatteryLife")
 @Composable
 fun SmartIslandHomeScreen(
     repository: SmartIslandSettingsRepository? = null,
