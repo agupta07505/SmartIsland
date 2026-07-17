@@ -254,6 +254,11 @@ fun SmartIslandHomeScreen(
                 Spacer(Modifier.height(12.dp))
                 HeaderSection()
 
+                // Smart Island can ONLY run once EVERY required permission is granted.
+                // This makes Accessibility + Notification access + Battery optimization
+                // (No restrictions) mandatory before the toggle is usable.
+                val canEnable = overlayGranted && notificationGranted && batteryIgnored
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -275,26 +280,41 @@ fun SmartIslandHomeScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = if (overlayGranted) stringResource(R.string.overlay_ready) else stringResource(R.string.grant_overlay),
+                                text = if (canEnable)
+                                    stringResource(R.string.overlay_ready)
+                                else
+                                    "Required: grant Accessibility, Notification access, and Battery optimization (No restrictions) to enable Smart Island.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
-                            // Reflect the REAL capability: the service only runs when the
-                            // accessibility service is actually enabled in system settings.
-                            checked = settings.enabled && overlayGranted,
-                            enabled = true,
+                            // The toggle is only interactive once all three permissions
+                            // are granted. Turning it on simply persists the flag; the
+                            // AccessibilityService then runs because the grant already exists.
+                            checked = settings.enabled && canEnable,
+                            enabled = canEnable,
                             onCheckedChange = { turnOn ->
-                                if (turnOn) {
-                                    // Accessibility can ONLY be enabled from system Settings;
-                                    // we cannot grant it programmatically. Send the user there.
-                                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                                } else {
-                                    scope.launch { resolvedRepository.setEnabled(false) }
-                                }
+                                scope.launch { resolvedRepository.setEnabled(turnOn) }
                             }
                         )
+                    }
+                    if (!canEnable) {
+                        // One tap jumps straight into the permission setup screen.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { transitionDirection = 1; activeSection = HomeSection.Permissions }
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Set up required permissions →",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
 
@@ -477,8 +497,8 @@ fun SmartIslandHomeScreen(
                     icon = Icons.Rounded.Lock,
                     iconBgColor = permissionsBg,
                     iconTint = permissionsTint,
-                    statusText = if (overlayGranted && notificationGranted) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
-                    statusColor = if (overlayGranted && notificationGranted) Color(0xFF0F9F6E) else Color(0xFFE88C25),
+                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
+                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.Permissions
