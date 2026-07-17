@@ -24,6 +24,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Ask the system not to kill us for battery. This reduces (does not
+        // eliminate) OEM background/Recents cleanup that would otherwise disable
+        // the AccessibilityService. Shown once; skipped if already granted.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val pm = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                try {
+                    startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                            .setData(android.net.Uri.parse("package:$packageName"))
+                    )
+                } catch (_: Exception) { /* no handler on some OEMs */ }
+            }
+        }
+
         setContent {
             SmartIslandTheme {
                 SmartIslandHomeScreen(

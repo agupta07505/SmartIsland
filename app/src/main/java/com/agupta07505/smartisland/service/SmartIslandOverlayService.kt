@@ -10,9 +10,12 @@ package com.agupta07505.smartisland.service
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.KeyguardManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -84,13 +87,17 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
     }
 
-    // Fallback sync: check if keyguard locked state changed on window changes
+    // Fallback sync: check if keyguard locked state changed on window changes.
+    // Wrapped: an uncaught throw here makes Android auto-disable the
+    // AccessibilityService, which is exactly the "turns off by itself" symptom.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        val locked = keyguardManager.isKeyguardLocked
-        if (isLockScreenActive != locked) {
-            isLockScreenActive = locked
-            updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+        runCatchingLogged(TAG, "onAccessibilityEvent failed") {
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val locked = keyguardManager.isKeyguardLocked
+            if (isLockScreenActive != locked) {
+                isLockScreenActive = locked
+                updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+            }
         }
     }
 
@@ -100,12 +107,28 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+        // Wrapped: a throw here would make Android disable the service automatically.
+        runCatchingLogged(TAG, "onConfigurationChanged failed") {
+            updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
-        
+
+        // Promote this AccessibilityService to a foreground service with a persistent
+        // notification. An enabled AccessibilityService is auto-restarted by the system
+        // on plain process death anyway, but the foreground promotion is what stops
+        // the "swipe from Recents = kill" path on stock Android and makes OEM
+        // background-cleanup far less likely to take it down. This is the main
+        // lever for "don't let it turn off automatically".
+        // Wrapped so a failure here degrades gracefully (service still runs as a
+        // normal accessibility service) instead of crashing.
+        createNotificationChannel()
+        runCatchingLogged(TAG, "startForeground failed") {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // CRASH FIX: resume lifecycle BEFORE ViewModel
@@ -152,11 +175,13 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         serviceScope.launch {
             repository.settings.collect { settings ->
-                if (!settings.enabled) {
-                    disableSelf()
-                } else {
-                    ensureCollapsedWindow()
-                    updateWindowLayoutParams(viewModel.expanded.value, settings)
+                runCatchingLogged(TAG, "settings collect handler failed") {
+                    if (!settings.enabled) {
+                        disableSelf()
+                    } else {
+                        ensureCollapsedWindow()
+                        updateWindowLayoutParams(viewModel.expanded.value, settings)
+                    }
                 }
             }
         }
@@ -174,6 +199,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         serviceScope.cancel()
         runCatchingLogged(TAG, "unregisterReceiver failed") {
             unregisterReceiver(systemEventReceiver)
@@ -499,6 +525,43 @@ class SmartIslandOverlayService : AccessibilityService() {
         setViewTreeLifecycleOwner(overlayOwners)
         setViewTreeViewModelStoreOwner(overlayOwners)
         setViewTreeSavedStateRegistryOwner(overlayOwners)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                OVERLAY_CHANNEL_ID,
+                OVERLAY_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps the Smart Island overlay running"
+                setShowBadge(false)
+            }
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildNotification(): Notification {
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, com.agupta07505.smartisland.MainActivity::class.java),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            else
+                PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        return NotificationCompat.Builder(this, OVERLAY_CHANNEL_ID)
+            .setContentTitle("Smart Island is active")
+            .setContentText("Tap to open Smart Island")
+            .setSmallIcon(R.drawable.ic_stat_smart_island)
+            .setContentIntent(contentIntent)
+            .setOngoing(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setShowWhen(false)
+            .build()
     }
 
     companion object {
