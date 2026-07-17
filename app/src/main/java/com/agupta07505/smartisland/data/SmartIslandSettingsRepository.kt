@@ -16,6 +16,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.smartIslandDataStore by preferencesDataStore(name = "smart_island_settings")
@@ -75,6 +76,14 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setWelcomeDialogShown(value: Boolean) = context.smartIslandDataStore.edit {
         it[Keys.WelcomeDialogShown] = value
     }
+
+    /**
+     * Reads the REAL persisted value (awaits the first on-disk emission) instead of
+     * relying on the SmartIslandSettings.Default placeholder that State flows emit on the
+     * first frame. Used to decide whether the welcome dialog should show.
+     */
+    suspend fun isWelcomeDialogShown(): Boolean =
+        context.smartIslandDataStore.data.first()[Keys.WelcomeDialogShown] ?: false
     suspend fun setShowOnLockScreen(value: Boolean) = context.smartIslandDataStore.edit {
         it[Keys.ShowOnLockScreen] = value
     }

@@ -143,8 +143,13 @@ fun SmartIslandHomeScreen(
 
     var showWelcomeDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(settings.welcomeDialogShown) {
-        if (!settings.welcomeDialogShown) {
+    // BUG FIX: the previous LaunchedEffect fired on every launch because
+    // collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default) emits the
+    // Default (welcomeDialogShown = false) on the first frame, force-showing the dialog
+    // even after the user already dismissed it. Here we wait for the REAL persisted value
+    // before deciding, so the dialog appears exactly once (until uninstall/reinstall).
+    LaunchedEffect(Unit) {
+        if (!resolvedRepository.isWelcomeDialogShown()) {
             showWelcomeDialog = true
         }
     }
@@ -202,14 +207,16 @@ fun SmartIslandHomeScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
+                // Keep the persisted "enabled" flag in sync with the REAL system state.
+                // Swiping the app from recents (or a force-stop) revokes the accessibility
+                // service; the DataStore flag would otherwise stay true while the service is
+                // actually dead, making the toggle look ON while nothing works. This runs on
+                // every resume and is idempotent, so it self-heals after re-granting.
+                scope.launch { resolvedRepository.setEnabled(overlayGranted) }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(settings.enabled, overlayGranted) {
-        // AccessibilityService starts/stops automatically based on system settings toggle
     }
 
     var activeSection by remember { mutableStateOf<HomeSection?>(null) }
@@ -272,10 +279,18 @@ fun SmartIslandHomeScreen(
                             )
                         }
                         Switch(
-                            checked = settings.enabled,
-                            enabled = overlayGranted,
-                            onCheckedChange = { enabled ->
-                                scope.launch { resolvedRepository.setEnabled(enabled) }
+                            // Reflect the REAL capability: the service only runs when the
+                            // accessibility service is actually enabled in system settings.
+                            checked = settings.enabled && overlayGranted,
+                            enabled = true,
+                            onCheckedChange = { turnOn ->
+                                if (turnOn) {
+                                    // Accessibility can ONLY be enabled from system Settings;
+                                    // we cannot grant it programmatically. Send the user there.
+                                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                } else {
+                                    scope.launch { resolvedRepository.setEnabled(false) }
+                                }
                             }
                         )
                     }
