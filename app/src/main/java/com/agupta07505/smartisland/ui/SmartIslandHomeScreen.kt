@@ -201,12 +201,14 @@ fun SmartIslandHomeScreen(
     val gesturesTint = if (isDark) Color(0xFFB39DDB) else Color(0xFF512DA8)
     var overlayGranted by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
     var notificationGranted by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
+    var batteryIgnored by remember { mutableStateOf(isBatteryOptimizationIgnored(context)) }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
+                batteryIgnored = isBatteryOptimizationIgnored(context)
                 // Keep the persisted "enabled" flag in sync with the REAL system state.
                 // Swiping the app from recents (or a force-stop) revokes the accessibility
                 // service; the DataStore flag would otherwise stay true while the service is
@@ -587,6 +589,7 @@ fun SmartIslandHomeScreen(
                         PermissionsSection(
                             overlayGranted = overlayGranted,
                             notificationGranted = notificationGranted,
+                            batteryIgnored = batteryIgnored,
                             onOverlayClick = {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                                 overlayGranted = isAccessibilityServiceEnabled(context)
@@ -594,6 +597,13 @@ fun SmartIslandHomeScreen(
                             onNotificationClick = {
                                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                                 notificationGranted = isNotificationListenerEnabled(context)
+                            },
+                            onBatteryClick = {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                        .setData(Uri.parse("package:${context.packageName}"))
+                                )
+                                batteryIgnored = isBatteryOptimizationIgnored(context)
                             }
                         )
                     }
@@ -966,6 +976,12 @@ private fun isAccessibilityServiceEnabled(context: Context): Boolean {
         }
     }
     return false
+}
+
+private fun isBatteryOptimizationIgnored(context: Context): Boolean {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) return true
+    val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
 @Preview(showBackground = true, name = "Light Mode")
