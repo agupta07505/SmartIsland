@@ -98,6 +98,11 @@ class SmartIslandOverlayService : AccessibilityService() {
         // Required override, no-op
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+    }
+
     override fun onCreate() {
         super.onCreate()
         
@@ -202,7 +207,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 val isLocked = keyguardManager.isKeyguardLocked
                 isLockScreenActive = isLocked
-                val isHidden = !viewModel.settings.value.showOnLockScreen && isLocked
+                val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                val isHidden = (!viewModel.settings.value.showOnLockScreen && isLocked) || isLandscape
                 visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
                 installOverlayViewTreeOwners()
@@ -331,7 +337,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         isLockScreenActive = isLocked
         viewModel.isLocked.value = isLocked
         
-        val isHidden = !settings.showOnLockScreen && isLocked
+        val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val isHidden = (!settings.showOnLockScreen && isLocked) || isLandscape
 
         view.visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
