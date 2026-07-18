@@ -110,10 +110,24 @@ fun IslandExpandedContent(
     Column(modifier = modifier.fillMaxWidth().wrapContentHeight()) {
 
         // Interpolate height between pages based on swipe progress
+        // FIX: Clamp battery/call heights to match music/notification style to avoid
+        // glitch where battery/call expand more (taller) than other modes.
         val currentPage = pagerState.currentPage
         val offsetFraction = pagerState.currentPageOffsetFraction
         val currentNotification = notifications.getOrNull(currentPage)
-        val currentPageHeight = currentNotification?.let { pageHeights[it.key] }
+
+        fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
+            return when (notif?.mode) {
+                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 120.dp)
+                IslandMode.Notification -> height.coerceIn(90.dp, 135.dp)
+                IslandMode.Music -> height.coerceIn(110.dp, 170.dp)
+                else -> height.coerceIn(80.dp, 150.dp)
+            }
+        }
+
+        val currentPageHeightRaw = currentNotification?.let { pageHeights[it.key] }
+        val currentPageHeight = currentPageHeightRaw?.let { clampHeightForMode(currentNotification, it) }
+
         val targetHeight = if (currentPageHeight != null) {
             val nextPage = if (offsetFraction > 0f) {
                 (currentPage + 1).coerceAtMost(notifications.lastIndex)
@@ -123,9 +137,10 @@ fun IslandExpandedContent(
                 currentPage
             }
             val nextNotification = notifications.getOrNull(nextPage)
-            val nextHeight = nextNotification?.let { pageHeights[it.key] } ?: currentPageHeight
+            val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
+            val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) } ?: currentPageHeight)
             val fraction = kotlin.math.abs(offsetFraction)
-            currentPageHeight + (nextHeight - currentPageHeight) * fraction
+            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 170.dp)
         } else {
             null
         }

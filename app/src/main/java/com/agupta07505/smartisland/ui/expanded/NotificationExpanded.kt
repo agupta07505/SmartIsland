@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -63,15 +64,37 @@ fun NotificationExpanded(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val largeIcon = notification?.largeIcon
             val icon = notification?.icon
-            if (icon != null) {
-                Image(
-                    bitmap = icon.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                )
+            val mainIcon = largeIcon ?: icon
+            if (mainIcon != null) {
+                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
+                Box(modifier = Modifier.size(42.dp)) {
+                    Image(
+                        bitmap = mainIcon.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(clipShape)
+                    )
+                    if (largeIcon != null && icon != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(Color.Black, CircleShape)
+                                .padding(1.5.dp)
+                        ) {
+                            Image(
+                                bitmap = icon.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                    }
+                }
             } else {
                 Box(
                     modifier = Modifier

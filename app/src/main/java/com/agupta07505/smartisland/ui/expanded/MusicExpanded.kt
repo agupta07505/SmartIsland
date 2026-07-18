@@ -88,15 +88,23 @@ fun MusicExpanded(
         }
     }
 
+    var lastSeekTimeMs by remember { mutableStateOf(0L) }
+
+    var localIsPlaying by remember(notification?.key, notification?.mediaIsPlaying) {
+        mutableStateOf(notification?.mediaIsPlaying == true)
+    }
+
     var livePositionMs by remember(positionMs, controller) {
         mutableStateOf(getEstimatedPosition(controller, positionMs))
     }
 
-    if (notification?.mediaIsPlaying == true) {
+    if (localIsPlaying) {
         LaunchedEffect(controller, positionMs) {
             while (true) {
-                livePositionMs = getEstimatedPosition(controller, positionMs)
-                kotlinx.coroutines.delay(500)
+                if (System.currentTimeMillis() - lastSeekTimeMs > 1500L) {
+                    livePositionMs = getEstimatedPosition(controller, positionMs)
+                }
+                kotlinx.coroutines.delay(30) // 30ms for 33fps smooth progress sliding
             }
         }
     }
@@ -193,6 +201,9 @@ fun MusicExpanded(
     }
 
     var isLiked by remember(notification?.key) { mutableStateOf(false) }
+    var localIsLiked by remember(notification?.key, isLiked) {
+        mutableStateOf(isLiked)
+    }
     var repeatMode by remember(notification?.key) { mutableStateOf(0) }
 
     DisposableEffect(controller) {
@@ -226,8 +237,8 @@ fun MusicExpanded(
     }
 
     val toggleLike = {
-        val newLike = !isLiked
-        isLiked = newLike
+        val newLike = !localIsLiked
+        localIsLiked = newLike
         if (controller != null) {
             runCatchingLogged("MusicExpanded", "Failed to toggleLike / setRating") {
                 controller.transportControls.setRating(
@@ -334,11 +345,13 @@ fun MusicExpanded(
             Text(formatDuration(livePositionMs), color = Color.White, fontSize = 10.sp)
             WavyMusicSeekBar(
                 progress = progress,
-                isPlaying = notification?.mediaIsPlaying == true,
+                isPlaying = localIsPlaying,
                 onSeek = { newProgress ->
                     if (durationMs != null && durationMs > 0) {
                         val newPosition = (newProgress * durationMs).toLong()
                         livePositionMs = newPosition
+                        lastSeekTimeMs = System.currentTimeMillis()
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
                         val token = notification.mediaToken
                         if (token != null) {
                             runCatchingLogged("MusicExpanded", "Failed to seekTo position") {
@@ -366,13 +379,16 @@ fun MusicExpanded(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .bounceClick { toggleLike() },
+                    .bounceClick {
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                        toggleLike()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    imageVector = if (localIsLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = "Like",
-                    tint = if (isLiked) Color(0xFFFF4B72) else Color.White,
+                    tint = if (localIsLiked) Color(0xFFFF4B72) else Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -382,7 +398,16 @@ fun MusicExpanded(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .bounceClick { notification.sendFirstAction(context, "previous", "prev", "rewind") },
+                    .bounceClick {
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                        if (controller != null) {
+                            runCatchingLogged("MusicExpanded", "Failed to skipToPrevious") {
+                                controller.transportControls.skipToPrevious()
+                            }
+                        } else {
+                            notification.sendFirstAction(context, "previous", "prev", "rewind")
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.SkipPrevious, contentDescription = null, tint = Color.White)
@@ -393,11 +418,26 @@ fun MusicExpanded(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .bounceClick { notification.sendFirstAction(context, "play", "pause", "resume") },
+                    .bounceClick {
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                        val targetState = !localIsPlaying
+                        localIsPlaying = targetState
+                        if (controller != null) {
+                            runCatchingLogged("MusicExpanded", "Failed to play/pause") {
+                                if (targetState) {
+                                    controller.transportControls.play()
+                                } else {
+                                    controller.transportControls.pause()
+                                }
+                            }
+                        } else {
+                            notification.sendFirstAction(context, "play", "pause", "resume")
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (notification?.mediaIsPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    imageVector = if (localIsPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(38.dp)
@@ -409,7 +449,16 @@ fun MusicExpanded(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .bounceClick { notification.sendFirstAction(context, "next", "skip", "forward") },
+                    .bounceClick {
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                        if (controller != null) {
+                            runCatchingLogged("MusicExpanded", "Failed to skipToNext") {
+                                controller.transportControls.skipToNext()
+                            }
+                        } else {
+                            notification.sendFirstAction(context, "next", "skip", "forward")
+                        }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.SkipNext, contentDescription = null, tint = Color.White)
@@ -420,7 +469,10 @@ fun MusicExpanded(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .bounceClick { toggleLoop() },
+                    .bounceClick {
+                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                        toggleLoop()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 val tintColor = when (repeatMode) {

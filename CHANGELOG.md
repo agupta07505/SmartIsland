@@ -4,6 +4,57 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [3.2] - 2026-07-18
+
+### Added
+
+- **System Notification Suppression & Listener Service (`SmartIslandNotificationListenerService`)**: Implemented system notification filtering (`NotificationFilter`) and notification listener integration to present notifications in the island while suppressing duplicate heads-up alerts and system shade entries when active.
+- **Landscape Orientation Listener (`IslandOrientationListener`)**: Added automatic orientation change detection to dynamically remove and hide the Smart Island overlay in landscape mode, ensuring uninterrupted full-screen gaming and video playback.
+- **Battery Optimization Setup Section**: Expanded the Permissions configuration screen with a dedicated guidance card for setting Battery Optimization to 'No restrictions' to ensure OS background execution protection.
+- **Lock Screen Privacy & Controls**: Introduced lock screen visibility settings (`showOnLockScreen`, `hideSensitiveOnLockScreen`) to allow opt-in island display while respecting user privacy.
+- **Strict Permission Guard**: Enforced runtime permission validation before enabling the main Smart Island service toggle switch.
+- **Overlay System Warning Toggle**: Added a direct settings action to guide users on hiding the persistent "displaying over other apps" system notification.
+- **Community Contributions & PR Merges**: Integrated Pull Request [#11](https://github.com/agupta07505/SmartIsland/pull/11) contributed by [@likhithkrishna1103-tech](https://github.com/likhithkrishna1103-tech) (Likhith Krishna) bringing foundational improvements to lock screen privacy settings, hidden API restriction bypass for touchable regions, notification icon handling, and music player responsiveness.
+
+### Changed
+
+- **Pass-Through Touch Region Registration**: Bypassed hidden API restrictions (`WindowTouchBounds`) to refine non-touchable window inset boundaries, restoring reliable tap and gesture pass-through to underlying applications.
+- **App Shortcuts & Visual Spacing**: Updated expanded island app shortcut grid rendering and improved overall dashboard card padding and layout spacing.
+- **Documentation & UI Assets**: Refreshed high-resolution application screenshots showcasing updated permissions, positions, customizations, app shortcuts grid, and wavy music player.
+- **Release Version**: Updated application target version to `3.2` (versionCode `3`).
+
+### Fixed
+
+- **Collapsed Pill Touch Reliability**: Resolved non-responsive tap and gesture detection on the collapsed island pill.
+- **Large Window Expansion Shifting**: Fixed content jump and height layout shifting when expanding notifications or switching pages.
+- **App Clear Crash**: Fixed background service crash when clearing the application from the recent apps launcher.
+- **Overlay Memory & Lifecycle**: Resolved service lifecycle leakage and improved state persistence across theme changes and service restarts.
+
+### Planned next
+
+- Onboarding wizard & setup checklist enhancements for first-time users.
+- Custom notification filtering rules by package and priority level.
+- Dynamic island shape templates and expansion animation presets.
+
+## [3.1] - 2026-07-15
+
+### Added
+
+- **First-Run Welcome Experience**: Added a polished welcome dialog that introduces Smart Island's privacy-first approach and gives new users a clear starting point.
+- **Community Shortcuts**: Added direct actions in the welcome dialog for starring the project on GitHub and joining the Smart Island Telegram community.
+- **Persistent Welcome State**: Added a local DataStore preference so the welcome dialog is shown only once after installation.
+
+### Changed
+
+- **Support & Feedback**: Improved community links and support actions, including clearer access to the Telegram community.
+- **Release Tooling**: Updated GitHub Actions dependencies used by the Android build and release workflow.
+- **Release Version**: Updated the application version to `3.1`.
+
+### Planned next
+
+- Fix collapsed-pill touch reliability as the first v3.2 release blocker.
+- Add opt-in, privacy-safe Smart Island support on the lock screen after the touch fix is verified.
+
 ## [3.0.0] - 2026-07-10
 
 ### Added

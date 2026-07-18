@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -117,6 +118,7 @@ private enum class HomeSection {
     About
 }
 
+@SuppressLint("BatteryLife")
 @Composable
 fun SmartIslandHomeScreen(
     repository: SmartIslandSettingsRepository? = null,
@@ -143,8 +145,13 @@ fun SmartIslandHomeScreen(
 
     var showWelcomeDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(settings.welcomeDialogShown) {
-        if (!settings.welcomeDialogShown) {
+    // BUG FIX: the previous LaunchedEffect fired on every launch because
+    // collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default) emits the
+    // Default (welcomeDialogShown = false) on the first frame, force-showing the dialog
+    // even after the user already dismissed it. Here we wait for the REAL persisted value
+    // before deciding, so the dialog appears exactly once (until uninstall/reinstall).
+    LaunchedEffect(Unit) {
+        if (!resolvedRepository.isWelcomeDialogShown()) {
             showWelcomeDialog = true
         }
     }
@@ -194,43 +201,26 @@ fun SmartIslandHomeScreen(
     val shortcutsTint = if (isDark) Color(0xFF22D3EE) else Color(0xFF0891B2)
     val gesturesBg = if (isDark) Color(0xFF311B92) else Color(0xFFEDE7F6)
     val gesturesTint = if (isDark) Color(0xFFB39DDB) else Color(0xFF512DA8)
-    var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var overlayGranted by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
     var notificationGranted by remember { mutableStateOf(isNotificationListenerEnabled(context)) }
+    var batteryIgnored by remember { mutableStateOf(isBatteryOptimizationIgnored(context)) }
 
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                overlayGranted = Settings.canDrawOverlays(context)
+                overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
+                batteryIgnored = isBatteryOptimizationIgnored(context)
+                // Keep the persisted "enabled" flag in sync with the REAL system state.
+                // Swiping the app from recents (or a force-stop) revokes the accessibility
+                // service; the DataStore flag would otherwise stay true while the service is
+                // actually dead, making the toggle look ON while nothing works. This runs on
+                // every resume and is idempotent, so it self-heals after re-granting.
+                scope.launch { resolvedRepository.setEnabled(overlayGranted) }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    LaunchedEffect(settings.enabled, overlayGranted) {
-        if (settings.enabled && overlayGranted) {
-            // CRASH FIX: startForegroundService can throw
-            // ForegroundServiceStartNotAllowedException on Android 12+
-            try {
-                ContextCompat.startForegroundService(context, Intent(context, SmartIslandOverlayService::class.java))
-            } catch (e: Exception) {
-                android.util.Log.e("SmartIslandHome", "Failed to start overlay service", e)
-                // Disable setting to prevent crash loop
-                try {
-                    resolvedRepository.setEnabled(false)
-                } catch (_: Exception) {}
-                android.widget.Toast.makeText(
-                    context,
-                    "Failed to start Smart Island: ${e.message}",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        } else {
-            try {
-                context.stopService(Intent(context, SmartIslandOverlayService::class.java))
-            } catch (_: Exception) {}
-        }
     }
 
     var activeSection by remember { mutableStateOf<HomeSection?>(null) }
@@ -266,6 +256,11 @@ fun SmartIslandHomeScreen(
                 Spacer(Modifier.height(12.dp))
                 HeaderSection()
 
+                // Smart Island can ONLY run once EVERY required permission is granted.
+                // This makes Accessibility + Notification access + Battery optimization
+                // (No restrictions) mandatory before the toggle is usable.
+                val canEnable = overlayGranted && notificationGranted && batteryIgnored
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -287,18 +282,41 @@ fun SmartIslandHomeScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = if (overlayGranted) stringResource(R.string.overlay_ready) else stringResource(R.string.grant_overlay),
+                                text = if (canEnable)
+                                    stringResource(R.string.overlay_ready)
+                                else
+                                    "Required: grant Accessibility, Notification access, and Battery optimization (No restrictions) to enable Smart Island.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
-                            checked = settings.enabled,
-                            enabled = overlayGranted,
-                            onCheckedChange = { enabled ->
-                                scope.launch { resolvedRepository.setEnabled(enabled) }
+                            // The toggle is only interactive once all three permissions
+                            // are granted. Turning it on simply persists the flag; the
+                            // AccessibilityService then runs because the grant already exists.
+                            checked = settings.enabled && canEnable,
+                            enabled = canEnable,
+                            onCheckedChange = { turnOn ->
+                                scope.launch { resolvedRepository.setEnabled(turnOn) }
                             }
                         )
+                    }
+                    if (!canEnable) {
+                        // One tap jumps straight into the permission setup screen.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { transitionDirection = 1; activeSection = HomeSection.Permissions }
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Set up required permissions →",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
 
@@ -374,14 +392,115 @@ fun SmartIslandHomeScreen(
                     modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
                 )
 
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Show on lock screen",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Keep the Smart Island visible when the device is locked.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = settings.showOnLockScreen,
+                                onCheckedChange = { checked ->
+                                    scope.launch { resolvedRepository.setShowOnLockScreen(checked) }
+                                }
+                            )
+                        }
+
+                        if (settings.showOnLockScreen) {
+                            androidx.compose.material3.HorizontalDivider(
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(horizontal = 18.dp)
+                            )
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Lock screen privacy",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val isIconOnly = settings.lockScreenPrivacy == "AppIconOnly"
+                                    androidx.compose.material3.OutlinedButton(
+                                        onClick = {
+                                            scope.launch { resolvedRepository.setLockScreenPrivacy("AppIconOnly") }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = if (isIconOnly) {
+                                            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                        } else {
+                                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                                        },
+                                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isIconOnly) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
+                                        )
+                                    ) {
+                                        Text("App/Icon only", fontSize = 12.sp, color = if (isIconOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    }
+
+                                    val isFull = settings.lockScreenPrivacy == "FullContent"
+                                    androidx.compose.material3.OutlinedButton(
+                                        onClick = {
+                                            scope.launch { resolvedRepository.setLockScreenPrivacy("FullContent") }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = if (isFull) {
+                                            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                        } else {
+                                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                                        },
+                                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isFull) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
+                                        )
+                                    ) {
+                                        Text("Full content", fontSize = 12.sp, color = if (isFull) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 SectionRow(
                     title = stringResource(R.string.sec_permissions),
                     description = stringResource(R.string.sec_permissions_desc),
                     icon = Icons.Rounded.Lock,
                     iconBgColor = permissionsBg,
                     iconTint = permissionsTint,
-                    statusText = if (overlayGranted && notificationGranted) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
-                    statusColor = if (overlayGranted && notificationGranted) Color(0xFF0F9F6E) else Color(0xFFE88C25),
+                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
+                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.Permissions
@@ -492,18 +611,21 @@ fun SmartIslandHomeScreen(
                         PermissionsSection(
                             overlayGranted = overlayGranted,
                             notificationGranted = notificationGranted,
+                            batteryIgnored = batteryIgnored,
                             onOverlayClick = {
-                                context.startActivity(
-                                    Intent(
-                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:${context.packageName}")
-                                    )
-                                )
-                                overlayGranted = Settings.canDrawOverlays(context)
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                overlayGranted = isAccessibilityServiceEnabled(context)
                             },
                             onNotificationClick = {
                                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                                 notificationGranted = isNotificationListenerEnabled(context)
+                            },
+                            onBatteryClick = {
+                                context.startActivity(
+                                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                        .setData(Uri.parse("package:${context.packageName}"))
+                                )
+                                batteryIgnored = isBatteryOptimizationIgnored(context)
                             }
                         )
                     }
@@ -858,6 +980,30 @@ private fun GithubIcon(tint: Color = Color.Black) {
         }
         drawPath(path, color = tint)
     }
+}
+
+private fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val expectedComponentName = ComponentName(context, com.agupta07505.smartisland.service.SmartIslandOverlayService::class.java)
+    val enabledServicesSetting = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    val colonSplitter = android.text.TextUtils.SimpleStringSplitter(':')
+    colonSplitter.setString(enabledServicesSetting)
+    while (colonSplitter.hasNext()) {
+        val componentNameString = colonSplitter.next()
+        val enabledService = ComponentName.unflattenFromString(componentNameString)
+        if (enabledService != null && enabledService == expectedComponentName) {
+            return true
+        }
+    }
+    return false
+}
+
+private fun isBatteryOptimizationIgnored(context: Context): Boolean {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) return true
+    val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
 @Preview(showBackground = true, name = "Light Mode")

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v3.0.0</strong>
+  <strong>Current release: v3.2</strong>
 </p>
 
 <p align="center">
@@ -24,6 +24,7 @@
   <a href="#features">Features</a> |
   <a href="#getting-started">Getting Started</a> |
   <a href="#privacy-and-permissions">Privacy</a> |
+  <a href="ROADMAP.md">Roadmap</a> |
   <a href="#contributing">Contributing</a> |
   <a href="https://telegram.me/SmartIslandApp">Telegram Community</a>
 </p>
@@ -46,17 +47,17 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 ## Screenshots
 
 <p align="center">
-  <img src="/assets/screenshots/Home.jpeg" width="24%" alt="Home Screen" />
-  <img src="/assets/screenshots/Permissions.jpeg" width="24%" alt="Permissions Screen" />
-  <img src="/assets/screenshots/Positions.jpeg" width="24%" alt="Positions Screen" />
-  <img src="/assets/screenshots/Customizations.jpeg" width="24%" alt="Customizations Screen" />
+  <img src="/assets/screenshots/Home.jpg" width="24%" alt="Home Dashboard" />
+  <img src="/assets/screenshots/Permissions.jpg" width="24%" alt="Permissions & Battery Setup" />
+  <img src="/assets/screenshots/Positions.jpg" width="24%" alt="Positions Controls" />
+  <img src="/assets/screenshots/Customizations.jpg" width="24%" alt="Color Customizations" />
 </p>
 
 <p align="center">
-  <img src="/assets/screenshots/SmartIsland.jpeg" width="24%" alt="Smart Island Overlay" />
-  <img src="/assets/screenshots/AppShortcuts.jpeg" width="24%" alt="App Shortcuts Screen" />
-  <img src="/assets/screenshots/Gestures.jpeg" width="24%" alt="Gesture Guide Screen" />
-  <img src="/assets/screenshots/About.jpeg" width="24%" alt="About Screen" />
+  <img src="/assets/screenshots/SmartIslandPill.jpg" width="24%" alt="Smart Island Collapsed Pill" />
+  <img src="/assets/screenshots/SmartIslandMusic.jpg" width="24%" alt="Expanded Wavy Music Player" />
+  <img src="/assets/screenshots/SmartIslandClear.jpg" width="24%" alt="Drag to Clear Notification" />
+  <img src="/assets/screenshots/AppShortcuts.jpg" width="24%" alt="App Shortcuts Picker & Grid" />
 </p>
 
 ## Features
@@ -64,27 +65,33 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 | Area | What Smart Island does |
 | --- | --- |
 | Floating overlay | Draws a compact island above other apps using Android's overlay window APIs. |
-| Notification listener | Converts active notifications into glanceable island cards. |
-| Smooth animation | Morphs between collapsed and expanded states with Compose animations. |
-| Multiple notifications | Keeps a stack of active notifications and lets users move between them. |
-| Calls and media | Detects incoming calls, music/media sessions, artwork, playback state, and progress. |
-| Battery charging | Displays charging percentage, pulsing charging icon, and remaining charge time estimates. |
-| Quick actions | Opens, dismisses, or launches supported notification content from the expanded island. |
-| App shortcuts | Lets users select up to eight apps for quick access from the expanded island. |
-| Custom controls | Lets users adjust width, height, position, corner radius, and indicator colors. |
-| Theme support | Adapts the settings experience and overlay styling for light and dark themes. |
-| Local settings | Persists island preferences with AndroidX DataStore Preferences. |
-| Demo modes | Includes notification, call, music, and battery charging demo buttons for quick testing. |
-| Gesture guide | Demonstrates swipe actions with looping animations and an interactive practice area. |
+| Notification listener & suppression | Intercepts notifications locally, presenting them in the island while suppressing system shade duplicates. |
+| Landscape auto-hide | Automatically detects landscape orientation and temporarily hides the overlay during gaming and media. |
+| Battery optimization guide | Includes dedicated setup cards to guide users in setting background battery optimization to 'No restrictions'. |
+| Lock screen privacy | Opt-in support for displaying island status on the lock screen with optional sensitive content hiding. |
+| Wavy music player | Renders an animated organic wavy seek bar with heart/repeat actions, active track metadata, and dynamic color pickers. |
+| Smooth animations | Morphs seamlessly between collapsed and expanded states with Compose animations. |
+| Multiple notifications | Maintains an active notification stack allowing users to page horizontally between active items. |
+| Calls and media | Detects incoming calls, music/media sessions, album artwork, playback state, and seek progress. |
+| Battery charging | Displays charging percentage, pulsing indicator icon, and dynamic remaining time-until-full estimates. |
+| Quick actions | Opens, dismisses, or launches supported notification content into floating windows. |
+| App shortcuts | Lets users configure up to eight apps for instant launch from the empty expanded island. |
+| Custom controls | Provides sliders for width, height, X/Y offsets, corner radius, and preset/custom RGB color themes. |
+| Theme support | Native light and dark theme styling for the settings interface and floating overlay UI. |
+| Local settings | Persists all preferences locally using AndroidX DataStore Preferences. |
+| Demo modes | Includes quick-test preview triggers for notifications, call alerts, music player, and battery charging. |
+| Gesture guide | Interactive playground and animated tutorials demonstrating swipe up, swipe down, and horizontal paging. |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     A[Android notifications] --> B[SmartIslandNotificationListenerService]
-    B --> Repo[SmartIslandNotificationRepository]
+    B -->|Filter & Suppress| C[NotificationFilter]
+    C --> Repo[SmartIslandNotificationRepository]
     E[DataStore settings] --> Repo
     Repo --> D[SmartIslandOverlayService]
+    Sensor[IslandOrientationListener] -->|Hide in Landscape| D
     D --> F[WindowManager overlay]
     F --> G[Jetpack Compose island UI]
     G --> H[Open, dismiss, expand, or launch floating window]

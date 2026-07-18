@@ -39,17 +39,19 @@ import com.agupta07505.smartisland.ui.PermissionCard
 fun PermissionsSection(
     overlayGranted: Boolean,
     notificationGranted: Boolean,
+    batteryIgnored: Boolean = false,
     onOverlayClick: () -> Unit,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    onBatteryClick: () -> Unit
 ) {
     val context = LocalContext.current
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         PermissionCard(
-            title = "Overlay permission",
-            description = "Required to draw the pill above other apps.",
+            title = "Accessibility service",
+            description = "Required to draw the pill over the status bar and receive touches without interference.",
             granted = overlayGranted,
-            buttonText = "Allow",
+            buttonText = "Enable",
             onClick = onOverlayClick
         )
 
@@ -59,6 +61,14 @@ fun PermissionsSection(
             granted = notificationGranted,
             buttonText = "Enable",
             onClick = onNotificationClick
+        )
+
+        PermissionCard(
+            title = "Battery optimization",
+            description = "Recommended: set to 'No restrictions' / ignore battery optimizations so the system does not stop Smart Island in the background.",
+            granted = batteryIgnored,
+            buttonText = "Enable",
+            onClick = onBatteryClick
         )
 
         Card(

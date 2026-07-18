@@ -65,8 +65,8 @@ Manual release build:
 Tag release:
 
 ```bash
-git tag v3.0.0
-git push origin v3.0.0
+git tag v3.2
+git push origin v3.2
 ```
 
 When a tag starting with `v` is pushed, the workflow builds signed artifacts and publishes them to a GitHub release. Pushes to `main` also publish/update a release using the app `versionName`; pushes to `dev` build a debug APK artifact only.

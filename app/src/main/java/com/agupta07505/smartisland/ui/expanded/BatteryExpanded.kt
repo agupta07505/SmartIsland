@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -136,42 +137,46 @@ fun BatteryExpanded(
         }
     }
 
+    // FIX: Standardized to match Notification/Music expanded height to avoid glitch where
+    // Battery island expanded more (taller) than other modes. Now uses same padding (18,20,18,bottom)
+    // and constrained height similar to NotificationExpanded (90-120dp range).
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = bottomPadding),
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding)
+            .heightIn(min = 72.dp, max = 110.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
             Box(
-                modifier = Modifier.size(54.dp),
+                modifier = Modifier.size(46.dp),
                 contentAlignment = Alignment.Center
             ) {
                 DottedRing(
                     progress = progress,
                     rotationAngle = rotationAngle,
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(44.dp),
                     color = batteryColor
                 )
                 
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(32.dp)
                         .background(batteryColor.copy(alpha = 0.12f), shape = CircleShape)
-                        .border(1.5.dp, batteryColor.copy(alpha = 0.4f), CircleShape),
+                        .border(1.2.dp, batteryColor.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Rounded.Bolt,
                         contentDescription = null,
                         tint = batteryColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -180,20 +185,22 @@ fun BatteryExpanded(
                 Text(
                     text = notification.title.takeIf { it.isNotBlank() } ?: "Charging",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    maxLines = 1
                 )
                 Text(
                     text = "${pct.toInt()}%",
                     color = batteryColor,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 24.sp,
-                    lineHeight = 28.sp
+                    fontSize = 20.sp,
+                    lineHeight = 22.sp
                 )
                 Text(
                     text = timeText,
                     color = Color(0xFF98A2B3),
-                    fontSize = 11.sp
+                    fontSize = 11.sp,
+                    maxLines = 1
                 )
             }
         }
@@ -204,11 +211,11 @@ fun BatteryExpanded(
         ) {
             Box(
                 modifier = Modifier
-                    .width(84.dp)
-                    .height(38.dp)
-                    .border(2.dp, Color(0x33FFFFFF), RoundedCornerShape(10.dp))
-                    .background(Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
-                    .padding(3.dp)
+                    .width(72.dp)
+                    .height(32.dp)
+                    .border(1.5.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
+                    .background(Color(0x1AFFFFFF), RoundedCornerShape(8.dp))
+                    .padding(2.5.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -227,7 +234,7 @@ fun BatteryExpanded(
                                 endX = flowOffset + 300f,
                                 tileMode = TileMode.Repeated
                             ),
-                            shape = RoundedCornerShape(7.dp)
+                            shape = RoundedCornerShape(6.dp)
                         )
                 )
 
@@ -240,15 +247,15 @@ fun BatteryExpanded(
                                 startY = 0f,
                                 endY = 40f
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(6.dp)
                         )
                 )
             }
             Spacer(modifier = Modifier.width(3.dp))
             Box(
                 modifier = Modifier
-                    .width(5.dp)
-                    .height(14.dp)
+                    .width(4.dp)
+                    .height(12.dp)
                     .background(Color(0x66FFFFFF), shape = RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
             )
         }

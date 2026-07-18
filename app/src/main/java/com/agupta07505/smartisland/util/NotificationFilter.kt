@@ -36,6 +36,11 @@ object NotificationFilter {
         if (isSystemLevelCategory(notification)) return true
         if (isSystemLevelPackage(packageName, packageManager)) return true
 
+        // Suppress group summary notifications (they are handled separately in the service:
+        // cancelled from the system shade but never shown in the island)
+        val isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
+        if (isGroupSummary) return true
+
         // Suppress if both title and text are null or blank
         val extras = notification.extras
         val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
@@ -54,6 +59,15 @@ object NotificationFilter {
         }
 
         return false
+    }
+
+    /**
+     * Returns true if the package belongs to a third-party (user-installed) app, meaning it is
+     * not a system-level package. Used to decide whether a group summary should be cancelled
+     * from the system shade.
+     */
+    fun isThirdPartyApp(packageName: String, packageManager: PackageManager): Boolean {
+        return !isSystemLevelPackage(packageName, packageManager)
     }
 
     private fun isSystemLevelCategory(notification: Notification): Boolean {
@@ -100,7 +114,7 @@ fun Notification.toIslandMode(): IslandMode {
         // CATEGORY_PROGRESS is used by downloads, uploads, and other progress work.
         // Only classify action-based media notifications when a media session exists.
         category == Notification.CATEGORY_TRANSPORT ||
-            (hasMediaSession && hasMediaAction) -> IslandMode.Music
+            hasMediaSession -> IslandMode.Music
 
         else -> IslandMode.Notification
     }
