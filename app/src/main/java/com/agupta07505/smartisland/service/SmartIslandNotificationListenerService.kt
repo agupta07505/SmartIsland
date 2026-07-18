@@ -18,7 +18,7 @@ import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
-import android.service.notification.RankingMap
+import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import androidx.core.graphics.drawable.toBitmap
 import com.agupta07505.smartisland.data.SmartIslandCommand
