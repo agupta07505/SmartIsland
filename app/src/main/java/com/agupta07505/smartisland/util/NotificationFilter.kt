@@ -36,7 +36,8 @@ object NotificationFilter {
         if (isSystemLevelCategory(notification)) return true
         if (isSystemLevelPackage(packageName, packageManager)) return true
 
-        // Suppress group summary notifications
+        // Suppress group summary notifications (they are handled separately in the service:
+        // cancelled from the system shade but never shown in the island)
         val isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
         if (isGroupSummary) return true
 
@@ -58,6 +59,15 @@ object NotificationFilter {
         }
 
         return false
+    }
+
+    /**
+     * Returns true if the package belongs to a third-party (user-installed) app, meaning it is
+     * not a system-level package. Used to decide whether a group summary should be cancelled
+     * from the system shade.
+     */
+    fun isThirdPartyApp(packageName: String, packageManager: PackageManager): Boolean {
+        return !isSystemLevelPackage(packageName, packageManager)
     }
 
     private fun isSystemLevelCategory(notification: Notification): Boolean {

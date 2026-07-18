@@ -81,17 +81,40 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
 
-        // Immediately suppress from system shade for any notification that will be shown in the
-        // island. We do this synchronously here — before any coroutine scheduling — so the
-        // notification never appears in the system shade.
+        val notification = sbn.notification
+
+        // ── Group summary handling ────────────────────────────────────────────────────────────
+        // Apps like WhatsApp post two kinds of notifications per conversation:
+        //   1. Child notifications  (individual messages) — these are cancelled via the block below
+        //   2. A group SUMMARY notification (FLAG_GROUP_SUMMARY) — this is what causes WhatsApp to
+        //      still appear in the system shade even after all children have been cancelled.
         //
-        // shouldBeIslandOnly covers all modes except ongoing (non-incoming) calls.
-        // cancelNotification is used exclusively; snoozeNotification is never called because
-        // it moves the notification to a "snoozed" section in the shade rather than removing it.
+        // `shouldSuppressFromIsland` correctly returns true for group summaries (so they're never
+        // added to the island), but that also prevents the cancellation block below from running,
+        // leaving the summary untouched in the system shade.
+        //
+        // Fix: intercept group summaries for third-party apps and cancel them from the system shade
+        // immediately, BEFORE falling through to the normal island-or-ignore logic.
+        val isGroupSummary = (notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY) != 0
+        if (isGroupSummary) {
+            if (com.agupta07505.smartisland.util.NotificationFilter.isThirdPartyApp(sbn.packageName, packageManager)) {
+                android.util.Log.d(TAG, "Cancelling group summary from system shade: ${sbn.key} pkg=${sbn.packageName}")
+                suppressSystemNotification(sbn.key) // adds to suppressedKeys + cancels with retry
+            }
+            // Group summaries are never added to the island — stop processing here.
+            pendingRemovals.remove(sbn.key)?.cancel()
+            return
+        }
+
+        // ── Regular notification: suppress from system shade if it belongs in the island ──────
+        // We do this synchronously — before the coroutine is even scheduled — so the notification
+        // never appears in the system shade. cancelNotification() is used exclusively;
+        // snoozeNotification() is deliberately avoided because it moves to a "snoozed" shade
+        // section instead of removing the notification entirely.
         try {
             if (!com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)) {
-                val modeQuick = sbn.notification.toIslandMode()
-                if (shouldBeIslandOnly(sbn.notification, modeQuick)) {
+                val modeQuick = notification.toIslandMode()
+                if (shouldBeIslandOnly(notification, modeQuick)) {
                     suppressedKeys.add(sbn.key)
                     runCatchingLogged(TAG, "Immediate cancel failed") { cancelNotification(sbn.key) }
                     android.util.Log.d(TAG, "Immediate island-only suppress: ${sbn.key}")
