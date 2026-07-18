@@ -81,17 +81,17 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
 
-        // Quick check: if this notification should be shown in the island,
-        // suppress it from the system shade immediately.
+        // Immediately suppress from system shade for any notification that will be shown in the
+        // island. We do this synchronously here — before any coroutine scheduling — so the
+        // notification never appears in the system shade.
+        //
+        // shouldBeIslandOnly covers all modes except ongoing (non-incoming) calls.
+        // cancelNotification is used exclusively; snoozeNotification is never called because
+        // it moves the notification to a "snoozed" section in the shade rather than removing it.
         try {
             if (!com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)) {
                 val modeQuick = sbn.notification.toIslandMode()
-                val isOngoingCall = modeQuick == IslandMode.IncomingCall && !isIncomingCall(sbn.notification)
-                if (!isOngoingCall) {
-                    // Mark as suppressed and cancel from system shade immediately.
-                    // ONLY use cancelNotification — do NOT use snoozeNotification,
-                    // which moves the notification to a "snoozed" section in the
-                    // system shade instead of removing it entirely.
+                if (shouldBeIslandOnly(sbn.notification, modeQuick)) {
                     suppressedKeys.add(sbn.key)
                     runCatchingLogged(TAG, "Immediate cancel failed") { cancelNotification(sbn.key) }
                     android.util.Log.d(TAG, "Immediate island-only suppress: ${sbn.key}")
@@ -111,8 +111,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 val settings = repository.settings.first()
                 if (!settings.enabled) return@runCatchingLogged
 
-                val overlayReady = ensureOverlayServiceRunning()
-                android.util.Log.d(TAG, "Processing island-only async: key=${sbn.key} overlayReady=$overlayReady")
+                android.util.Log.d(TAG, "Processing island-only async: key=${sbn.key}")
                 handleNotificationPosted(sbn)
             }
         }
@@ -238,7 +237,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val shouldIslandOnly = shouldBeIslandOnly(notification, mode)
 
         if (shouldIslandOnly) {
-            // Suppress from system shade — cancel only, no snooze
+            // Ensure the notification is removed from the system shade.
+            // - If posted via onNotificationPosted, the synchronous cancel already ran; this
+            //   triggers the async retry loop inside suppressSystemNotification for reliability.
+            // - If arriving via onListenerConnected, this is the first (and only) suppress call.
             suppressSystemNotification(sbn.key)
         }
 
