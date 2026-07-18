@@ -1,6 +1,6 @@
 # Smart Island Product Roadmap
 
-Last updated: July 2026
+Last updated: July 18, 2026
 
 ## Product direction
 
@@ -17,10 +17,13 @@ The roadmap follows three principles:
 Smart Island currently provides:
 
 - A Compose-based floating overlay on Android 8+
-- Notification grouping, paging, opening, and dismissal
-- Incoming-call, media playback, and battery-charging modes
+- Notification interception, filtering (`NotificationFilter`), system shade duplicate suppression, grouping, paging, opening, and dismissal
+- Landscape orientation detection (`IslandOrientationListener`) for automatic overlay hiding during gaming and media
+- Battery optimization setup guide card in permissions settings
+- Lock screen opt-in display with sensitive notification content protection
+- Incoming-call, media playback (with animated wavy seek bar), and battery-charging modes
 - App shortcuts and best-effort floating-window launching
-- Size, position, corner-radius, color, and theme customization
+- Size, position, corner-radius, preset/custom RGB color, and theme customization
 - Local DataStore settings with no Internet permission or analytics
 - Unit tests, an overlay smoke test, strict lint, and automated APK releases
 
@@ -31,7 +34,7 @@ This is a strong feature-complete baseline. The immediate constraint is platform
 | Phase | Target window | Theme | Exit outcome |
 | --- | --- | --- | --- |
 | 3.1 | Jul 2026 | Welcome and community release | New users receive a clear introduction and direct access to project support channels |
-| 3.2 | Jul-Sep 2026 | Fix pill touch and add safe lock-screen support | A dependable pill on unlocked and locked devices, followed by documented compatibility and diagnostics |
+| 3.2 | Jul 2026 | Pill touch, lock-screen & notification suppression | Reliable pill interactivity, safe lock screen support, system shade notification suppression, and landscape auto-hide |
 | 3.3 | Oct-Nov 2026 | Onboarding and control | Users can set up, filter, pause, and recover the island without confusion |
 | 3.4 | Dec 2026-Jan 2027 | Richer live activities | Timer, navigation, and progress experiences work through a common mode architecture |
 | 4.0 | Jan-Mar 2027 | Adaptability and polish | Per-app behavior, profiles, accessibility, and responsive layouts are production-ready |
@@ -50,7 +53,19 @@ Released July 15, 2026.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
-## Phase 1 — v3.2: Fix pill touch, support the lock screen, and stabilize
+## Released — v3.2: Pill touch, lock screen & notification suppression
+
+Released July 18, 2026.
+
+- **Collapsed Pill Touch & Pass-Through Insets**: Bypassed hidden API restrictions to compute window touch bounds (`WindowTouchBounds`) cleanly, resolving pill touch non-responsiveness and touch dead zones.
+- **System Notification Suppression**: Implemented `SmartIslandNotificationListenerService` and `NotificationFilter` to hide system tray notification duplicates when active in Smart Island.
+- **Landscape Auto-Hide**: Integrated `IslandOrientationListener` to detect device orientation changes and temporarily hide the floating island overlay during full-screen landscape apps.
+- **Battery Optimization Setup**: Added guidance and direct settings launcher in Permissions screen to help users grant background execution exceptions.
+- **Lock Screen Support & Privacy**: Integrated `showOnLockScreen` and `hideSensitiveOnLockScreen` toggles with keyguard detection.
+- **UI & Lifecycle Fixes**: Eliminated height jumping on large window expansion, fixed crash on app clear, and resolved service lifecycle retention.
+- **Community Merges**: Merged Pull Request [#11](https://github.com/agupta07505/SmartIsland/pull/11) from [@likhithkrishna1103-tech](https://github.com/likhithkrishna1103-tech) (Likhith Krishna) for touchable region optimization, lock screen privacy, and notification icon handling.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
 **Goal:** Make the pill reliably interactive everywhere it is shown, then make it safely available on the lock screen.
 
