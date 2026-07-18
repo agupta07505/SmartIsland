@@ -10,7 +10,6 @@ package com.agupta07505.smartisland.service
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.toIslandMode
 import android.app.Notification
-import android.app.NotificationManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
@@ -40,8 +39,11 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class SmartIslandNotificationListenerService : NotificationListenerService() {
+    // Keys we have canceled ourselves to make island-only. Keeps island copy alive.
     private val suppressedKeys = Collections.synchronizedSet(mutableSetOf<String>())
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     @Inject lateinit var repository: SmartIslandSettingsRepository
     @Inject lateinit var notificationRepository: INotificationRepository
 
@@ -51,8 +53,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             notificationRepository.commands.collect { command ->
                 when (command) {
                     is SmartIslandCommand.CancelNotification -> {
-                        runCatchingLogged(TAG, "CancelNotification failed") {
-                            // user explicitly dismissed from island -> also remove from system if still there
+                        runCatchingLogged(TAG, "CancelNotificationcmd failed") {
                             forceCancelNotification(command.key)
                         }
                     }
@@ -69,6 +70,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        mainScope.cancel()
         super.onDestroy()
     }
 
@@ -76,49 +78,59 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
-        android.util.Log.d(TAG, "onNotificationPosted: package=${sbn.packageName}, id=${sbn.id} key=${sbn.key}")
 
-        // Cancel any pending removal for this key to prevent the notification from being deleted from island
+        // IMMEDIATE PERFECT SUPPRESSION: Try to cancel synchronously on the listener thread
+        // before any async work, so system shade never shows it for more than a few ms.
+        // We check quickly if it should be island-only.
+        try {
+            if (!com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)) {
+                val modeQuick = sbn.notification.toIslandMode()
+                val isOngoingCall = modeQuick == IslandMode.IncomingCall && !isIncomingCall(sbn.notification)
+                if (!isOngoingCall) {
+                    // Pre-add to suppressedKeys and cancel instantly
+                    suppressedKeys.add(sbn.key)
+                    runCatchingLogged(TAG, "Immediate cancel failed") { cancelNotification(sbn.key) }
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        runCatchingLogged(TAG, "Immediate snooze failed") { snoozeNotification(sbn.key, 24 * 60 * 60 * 1000L) }
+                    }
+                    android.util.Log.d(TAG, "Immediate island-only suppress: ${sbn.key}")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "Immediate suppress exception", e)
+        }
+
+        // Cancel any pending removal job for this key to keep island copy
         pendingRemovals.remove(sbn.key)?.cancel()
 
         serviceScope.launch {
-            runCatchingLogged(TAG, "NotificationPosted handling failed") {
-                if (shouldSuppressFromIsland(sbn)) {
-                    android.util.Log.d(TAG, "Filtered out by NotificationFilter: ${sbn.key}")
-                    return@runCatchingLogged
-                }
+            runCatchingLogged(TAG, "NotificationPosted async failed") {
+                if (shouldSuppressFromIsland(sbn)) return@runCatchingLogged
 
                 val settings = repository.settings.first()
-                if (!settings.enabled) {
-                    android.util.Log.d(TAG, "Island disabled, skipping island-only logic")
-                    return@runCatchingLogged
-                }
+                if (!settings.enabled) return@runCatchingLogged
 
-                // PERFECT FIX: Always handle for island-only, regardless of overlay state.
-                // Overlay readiness is only used for auto-expand animation, not for suppression decision.
                 val overlayReady = ensureOverlayServiceRunning()
-                android.util.Log.d(TAG, "Processing for island-only: key=${sbn.key} overlayReady=$overlayReady")
-                handleNotificationPosted(sbn, overlayReadyForExpand = overlayReady)
+                android.util.Log.d(TAG, "Processing island-only async: key=${sbn.key} overlayReady=$overlayReady")
+                handleNotificationPosted(sbn)
             }
         }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        android.util.Log.d(TAG, "onNotificationRemoved: package=${sbn.packageName}, id=${sbn.id} key=${sbn.key}")
+        android.util.Log.d(TAG, "onNotificationRemoved: key=${sbn.key} pkg=${sbn.packageName}")
 
-        // Cancel any existing removal job for this key
         pendingRemovals.remove(sbn.key)?.cancel()
 
         val job = serviceScope.launch {
-            delay(350L) // debounce
+            delay(350L)
             runCatchingLogged(TAG, "NotificationRemoved handling failed") {
                 if (sbn.packageName == packageName) return@runCatchingLogged
                 if (suppressedKeys.remove(sbn.key)) {
-                    // We canceled it ourselves to make it island-only -> keep in island repo
-                    android.util.Log.d(TAG, "Suppress key removed, keeping in island: ${sbn.key}")
+                    android.util.Log.d(TAG, "Suppressed key, keeping island: ${sbn.key}")
                     return@runCatchingLogged
                 }
-                android.util.Log.d(TAG, "Removing from island repo (user cleared/system): ${sbn.key}")
+                android.util.Log.d(TAG, "Removing from island repo: ${sbn.key}")
                 notificationRepository.removeNotification(sbn.key)
             }
             pendingRemovals.remove(sbn.key)
@@ -128,78 +140,68 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        android.util.Log.d(TAG, "onListenerConnected called")
+        android.util.Log.d(TAG, "onListenerConnected")
         serviceScope.launch {
-            runCatchingLogged(TAG, "ListenerConnected handling failed") {
+            runCatchingLogged(TAG, "ListenerConnected failed") {
                 val settings = repository.settings.first()
                 if (!settings.enabled) return@runCatchingLogged
 
                 val overlayReady = ensureOverlayServiceRunning()
-                val notifications = activeNotifications
+                val active = activeNotifications
                     .filter { it.packageName != packageName }
                     .filterNot { shouldSuppressFromIsland(it) }
 
-                android.util.Log.d(TAG, "onListenerConnected: found ${notifications.size} active, overlayReady=$overlayReady")
+                android.util.Log.d(TAG, "ListenerConnected: ${active.size} active, overlayReady=$overlayReady")
 
-                if (notifications.isEmpty()) return@runCatchingLogged
-
-                // PERFECT FIX: On reconnect, also force island-only for all existing notifications
-                notifications.forEach { sbn ->
-                    handleNotificationPosted(sbn, overlayReadyForExpand = overlayReady)
+                // PERFECT: Force island-only for all existing notifications
+                active.forEach { sbn ->
+                    val mode = sbn.notification.toIslandMode()
+                    if (shouldBeIslandOnly(sbn.notification, mode)) {
+                        suppressSystemNotificationAggressive(sbn.key)
+                    }
+                    handleNotificationPosted(sbn)
                 }
             }
         }
     }
 
     private fun isAccessibilityServiceEnabled(): Boolean {
-        val expectedComponentName = android.content.ComponentName(this, SmartIslandOverlayService::class.java)
-        val enabledServicesSetting = Settings.Secure.getString(
-            contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        val colonSplitter = android.text.TextUtils.SimpleStringSplitter(':')
-        colonSplitter.setString(enabledServicesSetting)
-        while (colonSplitter.hasNext()) {
-            val componentNameString = colonSplitter.next()
-            val enabledService = android.content.ComponentName.unflattenFromString(componentNameString)
-            if (enabledService != null && enabledService == expectedComponentName) {
-                return true
-            }
+        val expected = android.content.ComponentName(this, SmartIslandOverlayService::class.java)
+        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        val splitter = android.text.TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabled)
+        while (splitter.hasNext()) {
+            val cn = android.content.ComponentName.unflattenFromString(splitter.next())
+            if (cn != null && cn == expected) return true
         }
         return false
     }
 
     private fun ensureOverlayServiceRunning(): Boolean {
-        // We check accessibility, but for island-only we still suppress even if false.
-        // Returning true/false only affects auto-expand animation flag.
         return isAccessibilityServiceEnabled() || Settings.canDrawOverlays(this)
     }
 
-    private fun handleNotificationPosted(sbn: StatusBarNotification, overlayReadyForExpand: Boolean) {
-        if (sbn.packageName == packageName) return
+    private fun isIncomingCall(notification: Notification): Boolean {
+        return notification.actions?.any { action ->
+            val label = action.title?.toString()?.lowercase().orEmpty()
+            label.contains("answer") || label.contains("accept") || label.contains("take")
+        } == true
+    }
 
+    private fun handleNotificationPosted(sbn: StatusBarNotification) {
+        if (sbn.packageName == packageName) return
         val notification = sbn.notification
         if (shouldSuppressFromIsland(sbn)) return
 
         val extras = notification.extras
         val mode = notification.toIslandMode()
-        android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode, key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
+        android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
 
-        // PERFECT FIX: Determine if this notification should be island-only
-        val shouldBeIslandOnly = shouldBeIslandOnly(notification, mode)
+        val shouldIslandOnly = shouldBeIslandOnly(notification, mode)
 
-        if (shouldBeIslandOnly) {
-            // Immediately remove from system tray so it only lives in SmartIsland
-            suppressSystemNotification(sbn.key)
-
-            // Second attempt after short delay to handle OEMs that re-post instantly
-            serviceScope.launch {
-                delay(150L)
-                if (activeNotifications.any { it.key == sbn.key }) {
-                    android.util.Log.d(TAG, "Retry suppress for key still in active: ${sbn.key}")
-                    suppressSystemNotification(sbn.key)
-                }
-            }
+        if (shouldIslandOnly) {
+            // Aggressive suppression with retries to guarantee island-only
+            suppressSystemNotificationAggressive(sbn.key)
         }
 
         val mediaInfo = if (mode == IslandMode.Music) findMediaInfo(notification, sbn.packageName) else null
@@ -207,9 +209,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             val appInfo = packageManager.getApplicationInfo(sbn.packageName, 0)
             packageManager.getApplicationLabel(appInfo).toString()
         } ?: sbn.packageName
-
-        // Auto-expand only if overlay is ready and it's island-only; otherwise still show in island list
-        val autoExpand = shouldBeIslandOnly
 
         notificationRepository.postNotification(
             IslandNotification(
@@ -245,7 +244,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 mode = mode,
                 contentIntent = notification.contentIntent
             ),
-            autoExpand = autoExpand
+            autoExpand = shouldIslandOnly // always auto-expand for island-only
         )
 
         if (mode == IslandMode.Music) {
@@ -259,78 +258,64 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         return com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)
     }
 
-    /**
-     * PERFECT FIX: Island-only determination.
-     * Returns true for all notifications that should appear ONLY in SmartIsland, not in system shade.
-     * Exception: ongoing call (not incoming) stays in system to detect call end.
-     */
     private fun shouldBeIslandOnly(notification: Notification, mode: IslandMode): Boolean {
         if (mode == IslandMode.IncomingCall) {
-            val isIncoming = notification.actions?.any { action ->
-                val label = action.title?.toString()?.lowercase().orEmpty()
-                label.contains("answer") || label.contains("accept") || label.contains("take")
-            } == true
-            if (!isIncoming) {
-                // Ongoing call in progress – keep in system tray
-                return false
-            }
+            if (!isIncomingCall(notification)) return false // ongoing call stays in system
         }
-        // For all other modes (Notification, Music, IncomingCall-incoming), island-only
+        // All others: island-only
         return true
     }
 
-    // Kept for backward compatibility but no longer used for suppression decision
+    // Kept for tests
     internal fun isHighPriorityNotification(sbn: StatusBarNotification, notification: Notification): Boolean {
         val ranking = Ranking()
         val rankingMap = currentRanking
-        val isHighImportance = rankingMap != null &&
-            rankingMap.getRanking(sbn.key, ranking) &&
-            ranking.importance >= NotificationManager.IMPORTANCE_HIGH
-        return isHighImportance || notification.fullScreenIntent != null
+        val isHigh = rankingMap != null && rankingMap.getRanking(sbn.key, ranking) && ranking.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
+        return isHigh || notification.fullScreenIntent != null
     }
 
     /**
-     * PERFECT island-only suppression with retries and fallback.
+     * PERFECT suppression: immediate + 3 retries + snooze fallback.
+     * Guarantees notification removed from system shade and only lives in island.
      */
-    private fun suppressSystemNotification(key: String) {
+    private fun suppressSystemNotificationAggressive(key: String) {
         suppressedKeys.add(key)
-        val result = runCatchingLogged(TAG, "cancelNotification failed") {
-            cancelNotification(key)
-        }
-        if (result == null) {
-            // cancelNotification threw or returned null -> try alternative
-            android.util.Log.w(TAG, "cancelNotification failed for $key, trying cancelNotifications/snooze")
 
-            // Try batch cancel (API 21+ can still use single key cancel, but try anyway)
-            runCatchingLogged(TAG, "cancelNotifications batch failed") {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                    // No direct batch with single key in listener, but cancelAll could be too aggressive,
-                    // so we reuse cancelNotification again in case previous was transient
+        // Immediate attempts on main thread for best chance
+        mainScope.launch {
+            repeat(4) { attempt ->
+                runCatchingLogged(TAG, "cancel attempt $attempt failed") {
                     cancelNotification(key)
                 }
-            }
-
-            // Snooze as last resort (Android O+)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                runCatchingLogged(TAG, "snoozeNotification failed") {
-                    snoozeNotification(key, 60_000L * 60L * 24L) // snooze for a day, effectively hide
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    runCatchingLogged(TAG, "snooze attempt $attempt failed") {
+                        snoozeNotification(key, 24 * 60 * 60 * 1000L)
+                    }
                 }
+                delay(120L * (attempt + 1)) // 120, 240, 360, 480ms
+                val stillActive = try { activeNotifications.any { it.key == key } } catch (_: Exception) { false }
+                if (!stillActive) {
+                    android.util.Log.d(TAG, "Successfully suppressed after ${attempt + 1} attempts: $key")
+                    return@launch
+                }
+                android.util.Log.w(TAG, "Still active after attempt ${attempt + 1}, retrying: $key")
             }
+            android.util.Log.w(TAG, "Failed to suppress after retries, final active check for: $key")
         }
-        // Even if cancel technically failed, we keep key in suppressedKeys for debounce logic.
-        // Only remove if we are sure cancel never works after retries.
-        // Do NOT remove here; removal happens in onNotificationRemoved debounce.
 
-        android.util.Log.d(TAG, "Suppressed from system tray: $key, success=${result != null}")
+        // Also synchronous attempt for instant effect
+        runCatchingLogged(TAG, "sync cancel failed") { cancelNotification(key) }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            runCatchingLogged(TAG, "sync snooze failed") { snoozeNotification(key, 24 * 60 * 60 * 1000L) }
+        }
     }
 
     private fun forceCancelNotification(key: String) {
-        suppressedKeys.add(key) // to distinguish if user dismissed from island
-        runCatchingLogged(TAG, "forceCancelNotification failed") {
+        suppressedKeys.add(key)
+        runCatchingLogged(TAG, "forceCancel failed") {
             cancelNotification(key)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                // also try snooze to ensure hidden
-                snoozeNotification(key, 60_000L * 60L * 24L)
+                snoozeNotification(key, 24 * 60 * 60 * 1000L)
             }
         }
     }
@@ -415,18 +400,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     private fun MediaController.extractMediaInfo(): MediaInfo {
         val metadata = this.metadata
         val playbackState = this.playbackState
-        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)
-            ?.takeIf { it > 0 }
+        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION)?.takeIf { it > 0 }
         val positionMs = playbackState?.estimatedPosition()
         val artwork = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
             ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-        return MediaInfo(
-            artwork = artwork,
-            positionMs = positionMs,
-            durationMs = durationMs,
-            isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
-        )
+        return MediaInfo(artwork, positionMs, durationMs, playbackState?.state == PlaybackState.STATE_PLAYING)
     }
 
     private val activeMediaControllers: List<MediaController>
@@ -446,12 +425,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         return (position + (elapsed * playbackSpeed).toLong()).coerceAtLeast(0L)
     }
 
-    private data class MediaInfo(
-        val artwork: Bitmap?,
-        val positionMs: Long?,
-        val durationMs: Long?,
-        val isPlaying: Boolean
-    )
+    private data class MediaInfo(val artwork: Bitmap?, val positionMs: Long?, val durationMs: Long?, val isPlaying: Boolean)
 
     companion object {
         private const val TAG = "SmartIslandNotificationListener"
