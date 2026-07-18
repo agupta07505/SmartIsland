@@ -123,13 +123,16 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 val canProcess = canProcessNotifications()
                 android.util.Log.d(TAG, "onListenerConnected async: canProcess=$canProcess")
                 if (!canProcess) return@runCatchingLogged
+                val overlayStarted = ensureOverlayServiceRunning()
                 val notifications = activeNotifications
                     .filter { it.packageName != packageName }
                     .filterNot { shouldSuppressFromIsland(it) }
-                android.util.Log.d(TAG, "onListenerConnected async: found ${notifications.size} active notifications")
+                android.util.Log.d(TAG, "onListenerConnected async: found ${notifications.size} active notifications, overlayStarted=$overlayStarted")
                 if (notifications.isEmpty()) return@runCatchingLogged
-                notifications.forEach { handleNotificationPosted(it, allowHeadsUpSuppression = false) }
-                ensureOverlayServiceRunning()
+                // FIX: Previously allowHeadsUpSuppression was hardcoded false, causing duplicates
+                // on reconnect (notifications stayed in system shade + island).
+                // Now we respect overlay state and suppress system copy for all island notifications.
+                notifications.forEach { handleNotificationPosted(it, allowHeadsUpSuppression = overlayStarted) }
             }
         }
     }
@@ -240,9 +243,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     ): Boolean {
         if (!allowHeadsUpSuppression) return false
 
-        var shouldSuppress = isHighPriorityNotification(sbn, notification)
+        // FIX: Previously only high-priority (IMPORTANCE_HIGH / fullScreenIntent) notifications
+        // were suppressed from system shade, causing normal notifications to appear in
+        // BOTH system shade AND Smart Island. Requirement is island-only display.
+        // Now suppress ALL notifications that are shown in island.
 
-        // If it is an ongoing call, do not cancel it (do not treat as heads-up)
+        // Exception: If it is an ongoing call (not incoming), do not cancel it
         // so that it stays in the system tray and we receive the removal event when it ends.
         if (mode == IslandMode.IncomingCall) {
             val isIncoming = notification.actions?.any { action ->
@@ -250,10 +256,14 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 label.contains("answer") || label.contains("accept") || label.contains("take")
             } == true
             if (!isIncoming) {
-                shouldSuppress = false
+                // Ongoing call in progress – keep in system tray
+                return false
             }
         }
-        return shouldSuppress
+
+        // For all other modes (Notification, Music, IncomingCall-incoming), suppress system copy
+        // so notification only shows in Smart Island.
+        return true
     }
 
     internal fun isHighPriorityNotification(sbn: StatusBarNotification, notification: Notification): Boolean {
