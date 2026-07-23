@@ -160,4 +160,11 @@ class NotificationPriorityTest {
             assertEquals(IslandMode.Notification, mode)
         }
     }
+
+    @Test
+    fun testMusicNotificationIsNotIslandOnlyToPreventPausing() {
+        val service = SmartIslandNotificationListenerService()
+        val notification = mockk<Notification>()
+        assertFalse(service.shouldBeIslandOnly(notification, IslandMode.Music))
+    }
 }

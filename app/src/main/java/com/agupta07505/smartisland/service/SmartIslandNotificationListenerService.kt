@@ -321,9 +321,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         return com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)
     }
 
-    private fun shouldBeIslandOnly(notification: Notification, mode: IslandMode): Boolean {
+    internal fun shouldBeIslandOnly(notification: Notification, mode: IslandMode): Boolean {
         if (mode == IslandMode.IncomingCall) {
             if (!isIncomingCall(notification)) return false // ongoing call stays in system
+        }
+        if (mode == IslandMode.Music) {
+            return false // Media/Music notifications must NOT be cancelled from system shade because cancelling a media notification triggers PAUSE in media players (Spotify, YouTube, etc.)
         }
         // All others: island-only
         return true
