@@ -21,8 +21,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import com.agupta07505.smartisland.util.runCatchingLogged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -923,6 +927,20 @@ private fun WelcomeDialog(
     onStarClick: () -> Unit,
     onJoinCommunityClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val appIcon = remember(context) {
+        runCatchingLogged("WelcomeDialog", "Failed to get app icon") {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 144
+            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 144
+            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, width, height)
+            drawable.draw(canvas)
+            bitmap.asImageBitmap()
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -942,16 +960,26 @@ private fun WelcomeDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🏝️", fontSize = 32.sp)
+                if (appIcon != null) {
+                    Image(
+                        bitmap = appIcon,
+                        contentDescription = "Smart Island Logo",
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(16.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("SI", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
 
                 Text(
