@@ -37,6 +37,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -250,134 +253,147 @@ fun SmartIslandHomeScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 20.dp),
+                    .padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
+                        bottom = 24.dp
+                    ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Spacer(Modifier.height(12.dp))
                 HeaderSection()
 
                 // Smart Island can ONLY run once EVERY required permission is granted.
-                // This makes Accessibility + Notification access + Battery optimization
-                // (No restrictions) mandatory before the toggle is usable.
                 val canEnable = overlayGranted && notificationGranted && batteryIgnored
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.enable_smart_island),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = if (canEnable)
-                                    stringResource(R.string.overlay_ready)
-                                else
-                                    "Required: grant Accessibility, Notification access, and Battery optimization (No restrictions) to enable Smart Island.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(
-                            // The toggle is only interactive once all three permissions
-                            // are granted. Turning it on simply persists the flag; the
-                            // AccessibilityService then runs because the grant already exists.
-                            checked = settings.enabled && canEnable,
-                            enabled = canEnable,
-                            onCheckedChange = { turnOn ->
-                                scope.launch { resolvedRepository.setEnabled(turnOn) }
-                            }
-                        )
-                    }
-                    if (!canEnable) {
-                        // One tap jumps straight into the permission setup screen.
-                        Box(
+                    Column {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { transitionDirection = 1; activeSection = HomeSection.Permissions }
-                                .padding(horizontal = 18.dp, vertical = 10.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Set up required permissions →",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.enable_smart_island),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = if (canEnable)
+                                        stringResource(R.string.overlay_ready)
+                                    else
+                                        "Required: grant Accessibility, Notification access, and Battery optimization (No restrictions) to enable Smart Island.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Switch(
+                                checked = settings.enabled && canEnable,
+                                enabled = canEnable,
+                                onCheckedChange = { turnOn ->
+                                    scope.launch { resolvedRepository.setEnabled(turnOn) }
+                                }
                             )
+                        }
+                        if (!canEnable) {
+                            androidx.compose.material3.HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                thickness = 1.dp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { transitionDirection = 1; activeSection = HomeSection.Permissions }
+                                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Set up required permissions →",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             text = stringResource(R.string.quick_test_controls),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 10.dp)
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         )
                         Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 ElevatedButton(
                                     onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Notification) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(stringResource(R.string.btn_notify), fontSize = 11.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_notify), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                                 ElevatedButton(
                                     onClick = { resolvedNotificationRepository?.showDemo(IslandMode.IncomingCall) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(Icons.Rounded.Call, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(stringResource(R.string.btn_call), fontSize = 11.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_call), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 ElevatedButton(
                                     onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Music) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(Icons.Rounded.MusicNote, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(stringResource(R.string.btn_music), fontSize = 11.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_music), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                                 ElevatedButton(
                                     onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Battery) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(Icons.Rounded.BatteryChargingFull, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(stringResource(R.string.btn_battery), fontSize = 11.sp)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_battery), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -386,23 +402,24 @@ fun SmartIslandHomeScreen(
 
                 Text(
                     text = stringResource(R.string.configure_features),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
                 )
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(18.dp),
+                                .padding(20.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -411,14 +428,16 @@ fun SmartIslandHomeScreen(
                                     text = "Show on lock screen",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
+                                Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = "Keep the Smart Island visible when the device is locked.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            Spacer(Modifier.width(12.dp))
                             Switch(
                                 checked = settings.showOnLockScreen,
                                 onCheckedChange = { checked ->
@@ -429,26 +448,27 @@ fun SmartIslandHomeScreen(
 
                         if (settings.showOnLockScreen) {
                             androidx.compose.material3.HorizontalDivider(
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                                 thickness = 1.dp,
-                                modifier = Modifier.padding(horizontal = 18.dp)
+                                modifier = Modifier.padding(horizontal = 20.dp)
                             )
 
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(18.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    .padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text(
                                     text = "Lock screen privacy",
                                     style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     val isIconOnly = settings.lockScreenPrivacy == "AppIconOnly"
                                     androidx.compose.material3.OutlinedButton(
@@ -456,7 +476,7 @@ fun SmartIslandHomeScreen(
                                             scope.launch { resolvedRepository.setLockScreenPrivacy("AppIconOnly") }
                                         },
                                         modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(10.dp),
                                         border = if (isIconOnly) {
                                             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                         } else {
@@ -466,7 +486,7 @@ fun SmartIslandHomeScreen(
                                             containerColor = if (isIconOnly) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
                                         )
                                     ) {
-                                        Text("App/Icon only", fontSize = 12.sp, color = if (isIconOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                        Text("App/Icon only", fontSize = 12.sp, color = if (isIconOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                                     }
 
                                     val isFull = settings.lockScreenPrivacy == "FullContent"
@@ -475,7 +495,7 @@ fun SmartIslandHomeScreen(
                                             scope.launch { resolvedRepository.setLockScreenPrivacy("FullContent") }
                                         },
                                         modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = RoundedCornerShape(10.dp),
                                         border = if (isFull) {
                                             androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
                                         } else {
@@ -485,7 +505,7 @@ fun SmartIslandHomeScreen(
                                             containerColor = if (isFull) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
                                         )
                                     ) {
-                                        Text("Full content", fontSize = 12.sp, color = if (isFull) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                        Text("Full content", fontSize = 12.sp, color = if (isFull) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
@@ -718,27 +738,28 @@ private fun SectionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .background(iconBgColor, shape = CircleShape),
+                    .size(44.dp)
+                    .background(iconBgColor, shape = RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
             Spacer(modifier = Modifier.width(14.dp))
@@ -746,36 +767,38 @@ private fun SectionRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
                 )
                 if (statusText != null) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Box(
                         modifier = Modifier
-                            .background(resolvedStatusColor.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .background(resolvedStatusColor.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
                             text = statusText,
                             color = resolvedStatusColor,
-                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                modifier = Modifier.size(18.dp)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -792,30 +815,35 @@ private fun SectionDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 16.dp)
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
+                bottom = 24.dp
+            )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         content()
     }
 }

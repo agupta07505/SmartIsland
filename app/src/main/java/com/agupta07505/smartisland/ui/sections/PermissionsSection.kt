@@ -73,14 +73,15 @@ fun PermissionsSection(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(18.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -93,7 +94,8 @@ fun PermissionsSection(
                     Text(
                         text = "Overlay system warning",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Redirect to notification settings to hide the \"displaying over other apps\" alert.",
@@ -101,15 +103,18 @@ fun PermissionsSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Button(onClick = {
-                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                        putExtra(Settings.EXTRA_APP_PACKAGE, "android")
-                    }
-                    runCatchingLogged("PermissionsSection", "Failed to open notification settings") {
-                        context.startActivity(intent)
-                    } ?: Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
-                }) {
-                    Text("Hide")
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, "android")
+                        }
+                        runCatchingLogged("PermissionsSection", "Failed to open notification settings") {
+                            context.startActivity(intent)
+                        } ?: Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Hide", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

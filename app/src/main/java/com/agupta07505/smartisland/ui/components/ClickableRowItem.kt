@@ -35,12 +35,12 @@ fun ClickableRowItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = value == null, onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 14.dp, horizontal = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -51,7 +51,8 @@ fun ClickableRowItem(
             )
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
