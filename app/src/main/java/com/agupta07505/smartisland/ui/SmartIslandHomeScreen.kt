@@ -331,6 +331,8 @@ fun SmartIslandHomeScreen(
                     }
                 }
 
+                // Category 1: Quick Testing
+                CategoryHeader("QUICK TESTING")
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -400,12 +402,21 @@ fun SmartIslandHomeScreen(
                     }
                 }
 
-                Text(
-                    text = stringResource(R.string.configure_features),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+                // Category 2: System & Setup
+                CategoryHeader("SYSTEM & SETUP")
+
+                SectionRow(
+                    title = stringResource(R.string.sec_permissions),
+                    description = stringResource(R.string.sec_permissions_desc),
+                    icon = Icons.Rounded.Lock,
+                    iconBgColor = permissionsBg,
+                    iconTint = permissionsTint,
+                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
+                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
+                    onClick = {
+                        transitionDirection = 1
+                        activeSection = HomeSection.Permissions
+                    }
                 )
 
                 Card(
@@ -513,37 +524,8 @@ fun SmartIslandHomeScreen(
                     }
                 }
 
-                SectionRow(
-                    title = stringResource(R.string.sec_permissions),
-                    description = stringResource(R.string.sec_permissions_desc),
-                    icon = Icons.Rounded.Lock,
-                    iconBgColor = permissionsBg,
-                    iconTint = permissionsTint,
-                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
-                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Permissions
-                    }
-                )
-
-                SectionRow(
-                    title = "App shortcuts",
-                    description = "Choose apps available whenever the expanded island is empty",
-                    icon = Icons.Rounded.Apps,
-                    iconBgColor = shortcutsBg,
-                    iconTint = shortcutsTint,
-                    statusText = when {
-                        settings.shortcutPackages.isNotEmpty() -> "${settings.shortcutPackages.size} selected"
-                        settings.showRecentApps -> "Recent apps enabled"
-                        else -> "Set up"
-                    },
-                    statusColor = shortcutsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.AppShortcuts
-                    }
-                )
+                // Category 3: Appearance & Controls
+                CategoryHeader("APPEARANCE & CONTROLS")
 
                 SectionRow(
                     title = stringResource(R.string.sec_positions),
@@ -570,6 +552,24 @@ fun SmartIslandHomeScreen(
                 )
 
                 SectionRow(
+                    title = "App shortcuts",
+                    description = "Choose apps available whenever the expanded island is empty",
+                    icon = Icons.Rounded.Apps,
+                    iconBgColor = shortcutsBg,
+                    iconTint = shortcutsTint,
+                    statusText = when {
+                        settings.shortcutPackages.isNotEmpty() -> "${settings.shortcutPackages.size} selected"
+                        settings.showRecentApps -> "Recent apps enabled"
+                        else -> "Set up"
+                    },
+                    statusColor = shortcutsTint,
+                    onClick = {
+                        transitionDirection = 1
+                        activeSection = HomeSection.AppShortcuts
+                    }
+                )
+
+                SectionRow(
                     title = "Gesture guide",
                     description = "Learn how to interact with the Smart Island",
                     icon = Icons.Rounded.Gesture,
@@ -580,6 +580,9 @@ fun SmartIslandHomeScreen(
                         activeSection = HomeSection.Gestures
                     }
                 )
+
+                // Category 4: Help & About
+                CategoryHeader("HELP & ABOUT")
 
                 SectionRow(
                     title = stringResource(R.string.sec_support),
@@ -719,6 +722,18 @@ fun SmartIslandHomeScreen(
             }
         }
     }
+}
+
+@Composable
+private fun CategoryHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp, start = 4.dp)
+    )
 }
 
 @Composable
