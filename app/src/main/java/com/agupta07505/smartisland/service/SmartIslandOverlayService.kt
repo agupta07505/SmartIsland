@@ -290,8 +290,13 @@ class SmartIslandOverlayService : AccessibilityService() {
                 if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
                     val insets = args[0]
                     val isExpanded = viewModel.expanded.value
-                    android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded")
-                    if (isExpanded) {
+                    val isGone = view.visibility == android.view.View.GONE
+                    android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded isGone=$isGone")
+                    if (isGone) {
+                        setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
+                        val region = touchableRegionField.get(insets) as android.graphics.Region
+                        region.setEmpty()
+                    } else if (isExpanded) {
                         // When expanded, let the entire frame intercept touches so clicking outside collapses it
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_FRAME)
                     } else {
