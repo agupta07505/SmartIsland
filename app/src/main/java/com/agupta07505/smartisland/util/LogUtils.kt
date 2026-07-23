@@ -14,9 +14,11 @@ inline fun <T> runCatchingLogged(tag: String, message: String = "Operation faile
     return try {
         block()
     } catch (e: Exception) {
-        if (BuildConfig.DEBUG) {
-            Log.e(tag, message, e)
-        }
+        try {
+            if (BuildConfig.DEBUG) {
+                Log.e(tag, message, e)
+            }
+        } catch (_: Throwable) { /* Unit test JVM stub */ }
         null
     }
 }

@@ -198,6 +198,18 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
     }
 
+    override fun onUnbind(intent: Intent?): Boolean {
+        // Return true so Android system knows to re-bind the accessibility service automatically
+        return true
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        runCatchingLogged(TAG, "onTaskRemoved startForeground failed") {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
+    }
+
     override fun onDestroy() {
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         serviceScope.cancel()
