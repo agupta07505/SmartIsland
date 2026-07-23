@@ -49,7 +49,8 @@ fun NotificationExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
     onOpenNotification: () -> Unit,
-    onCollapse: () -> Unit
+    onCollapse: () -> Unit,
+    showActions: Boolean = true
 ) {
     val context = LocalContext.current
     Column(
@@ -143,7 +144,7 @@ fun NotificationExpanded(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Left part of Bottom Section: Action Buttons Row
-            if (notification != null && notification.actionIntents.isNotEmpty()) {
+            if (showActions && notification != null && notification.actionIntents.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,

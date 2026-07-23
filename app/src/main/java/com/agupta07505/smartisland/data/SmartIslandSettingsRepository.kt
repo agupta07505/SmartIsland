@@ -37,6 +37,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
         val ShowOnLockScreen = booleanPreferencesKey("show_on_lock_screen")
         val LockScreenPrivacy = stringPreferencesKey("lock_screen_privacy")
+        val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data.map { prefs ->
@@ -54,7 +55,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
             showRecentApps = prefs[Keys.ShowRecentApps] ?: SmartIslandSettings.Default.showRecentApps,
             welcomeDialogShown = prefs[Keys.WelcomeDialogShown] ?: SmartIslandSettings.Default.welcomeDialogShown,
             showOnLockScreen = prefs[Keys.ShowOnLockScreen] ?: SmartIslandSettings.Default.showOnLockScreen,
-            lockScreenPrivacy = prefs[Keys.LockScreenPrivacy] ?: SmartIslandSettings.Default.lockScreenPrivacy
+            lockScreenPrivacy = prefs[Keys.LockScreenPrivacy] ?: SmartIslandSettings.Default.lockScreenPrivacy,
+            showNotificationActions = prefs[Keys.ShowNotificationActions] ?: SmartIslandSettings.Default.showNotificationActions
         )
     }
 
@@ -89,6 +91,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setLockScreenPrivacy(value: String) = context.smartIslandDataStore.edit {
         it[Keys.LockScreenPrivacy] = value
+    }
+    suspend fun setShowNotificationActions(value: Boolean) = context.smartIslandDataStore.edit {
+        it[Keys.ShowNotificationActions] = value
     }
 
     suspend fun resetPosition() = context.smartIslandDataStore.edit {

@@ -21,7 +21,8 @@ data class SmartIslandSettings(
     val showRecentApps: Boolean = false,
     val welcomeDialogShown: Boolean = false,
     val showOnLockScreen: Boolean = false,
-    val lockScreenPrivacy: String = "AppIconOnly"
+    val lockScreenPrivacy: String = "AppIconOnly",
+    val showNotificationActions: Boolean = true
 ) {
     companion object {
         val Default = SmartIslandSettings()
