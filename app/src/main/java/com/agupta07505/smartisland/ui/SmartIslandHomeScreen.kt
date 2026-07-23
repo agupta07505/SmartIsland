@@ -688,6 +688,11 @@ fun SmartIslandHomeScreen(
                                         .setData(Uri.parse("package:${context.packageName}"))
                                 )
                                 batteryIgnored = isBatteryOptimizationIgnored(context)
+                            },
+                            onRefreshPermissions = {
+                                overlayGranted = isAccessibilityServiceEnabled(context)
+                                notificationGranted = isNotificationListenerEnabled(context)
+                                batteryIgnored = isBatteryOptimizationIgnored(context)
                             }
                         )
                     }

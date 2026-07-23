@@ -45,6 +45,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.ui.PermissionCard
 
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.util.ShizukuManager
+import kotlinx.coroutines.launch
+
 @Composable
 fun PermissionsSection(
     overlayGranted: Boolean,
@@ -52,11 +61,120 @@ fun PermissionsSection(
     batteryIgnored: Boolean = false,
     onOverlayClick: () -> Unit,
     onNotificationClick: () -> Unit,
-    onBatteryClick: () -> Unit
+    onBatteryClick: () -> Unit,
+    onRefreshPermissions: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isExecutingShizuku by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // Shizuku 1-Tap Auto Grant Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FlashOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Shizuku 1-Tap Setup",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            val shizukuStateText = when {
+                                !ShizukuManager.isInstalled(context) -> "Not Installed"
+                                !ShizukuManager.isBinderAvailable() -> "Shizuku Not Running"
+                                !ShizukuManager.hasPermission() -> "Permission Required"
+                                else -> "Ready to Auto-Grant"
+                            }
+                            Text(
+                                text = shizukuStateText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (ShizukuManager.hasPermission()) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Button(
+                        enabled = !isExecutingShizuku,
+                        onClick = {
+                            when {
+                                !ShizukuManager.isInstalled(context) -> {
+                                    Toast.makeText(context, "Shizuku app is not installed on your device", Toast.LENGTH_LONG).show()
+                                }
+                                !ShizukuManager.isBinderAvailable() -> {
+                                    Toast.makeText(context, "Shizuku service is not running. Please start Shizuku first.", Toast.LENGTH_LONG).show()
+                                }
+                                !ShizukuManager.hasPermission() -> {
+                                    ShizukuManager.requestPermission()
+                                    Toast.makeText(context, "Requesting Shizuku permission...", Toast.LENGTH_SHORT).show()
+                                }
+                                else -> {
+                                    isExecutingShizuku = true
+                                    scope.launch {
+                                        val result = ShizukuManager.autoGrantAllPermissions(context)
+                                        isExecutingShizuku = false
+                                        result.onSuccess { msg ->
+                                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                            onRefreshPermissions()
+                                        }.onFailure { err ->
+                                            Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = if (isExecutingShizuku) "Granting..." else if (ShizukuManager.hasPermission()) "1-Tap Grant" else "Grant Access",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "Automatically grant Accessibility, Notification Access, and Battery Optimization in 1 tap using Shizuku.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+            }
+        }
         PermissionCard(
             title = "Accessibility service",
             description = "Required to draw the pill over the status bar and receive touches without interference.",
