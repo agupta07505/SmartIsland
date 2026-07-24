@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v3.2</strong>
+  <strong>Current release: v3.2.1</strong>
 </p>
 
 <p align="center">

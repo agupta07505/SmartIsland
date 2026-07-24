@@ -34,7 +34,7 @@ This is a strong feature-complete baseline. The immediate constraint is platform
 | Phase | Target window | Theme | Exit outcome |
 | --- | --- | --- | --- |
 | 3.1 | Jul 2026 | Welcome and community release | New users receive a clear introduction and direct access to project support channels |
-| 3.2 | Jul 2026 | Pill touch, lock-screen & notification suppression | Reliable pill interactivity, safe lock screen support, system shade notification suppression, and landscape auto-hide |
+| 3.2 / 3.2.1 | Jul 2026 | Pill touch, service stability & notification control | Reliable pill interactivity, safe lock screen support, system service recovery, and vendor ROM stability |
 | 3.3 | Oct-Nov 2026 | Onboarding and control | Users can set up, filter, pause, and recover the island without confusion |
 | 3.4 | Dec 2026-Jan 2027 | Richer live activities | Timer, navigation, and progress experiences work through a common mode architecture |
 | 4.0 | Jan-Mar 2027 | Adaptability and polish | Per-app behavior, profiles, accessibility, and responsive layouts are production-ready |
@@ -64,6 +64,20 @@ Released July 18, 2026.
 - **Lock Screen Support & Privacy**: Integrated `showOnLockScreen` and `hideSensitiveOnLockScreen` toggles with keyguard detection.
 - **UI & Lifecycle Fixes**: Eliminated height jumping on large window expansion, fixed crash on app clear, and resolved service lifecycle retention.
 - **Community Merges**: Merged Pull Request [#11](https://github.com/agupta07505/SmartIsland/pull/11) from [@likhithkrishna1103-tech](https://github.com/likhithkrishna1103-tech) (Likhith Krishna) for touchable region optimization, lock screen privacy, and notification icon handling.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
+
+## Released — v3.2.1: System service recovery & ROM stability
+
+Released July 24, 2026.
+
+- **System Service Recovery**: Added `SystemServiceRecovery` utility to automatically reconnect `AccessibilityService` and `NotificationListenerService` on service interruptions or app restarts.
+- **Accessibility Service Lifecycle Protection**: Refactored `SmartIslandOverlayService` toggle handling to keep system accessibility permissions intact when turned off, eliminating the need to re-grant permissions.
+- **OEM Vendor ROM Autostart & Keep-Alive**: Added background autostart guards to prevent aggressive service kills on OEM skins (MIUI/HyperOS, ColorOS/RealmeUI, FuntouchOS, OneUI).
+- **Notification Shade Suppression Setting**: Introduced a toggle under Notifications & Privacy ("Hide from notification shade") to optionally suppress third-party notifications from Android's system shade.
+- **Shizuku Integration & Crash Prevention**: Integrated optional Shizuku permission support for system service management and crash resilience.
+- **New Application Icon & Visual Branding**: Refreshed the application launcher icon and modernized overall visual branding.
+- **Settings UI & Navigation Bar Redesign**: Redesigned settings layout, added navigation bar, and optimized DataStore and Notification repository atomic handling.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 

@@ -4,6 +4,30 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [3.2.1] - 2026-07-24
+
+### Added
+
+- **System Service Recovery (`SystemServiceRecovery`)**: Implemented system service recovery utility for reconnecting system-managed services (`AccessibilityService` and `NotificationListenerService`) to improve service stability and state restoration.
+- **Notification Shade Suppression Controls**: Added a dedicated "Hide from notification shade" setting under Notifications & Privacy (defaulting to off) allowing optional suppression of third-party notifications from Android's system shade.
+- **OEM Vendor ROM Stability Fixes**: Added background autostart and keep-alive guards to prevent aggressive OEM Accessibility Service kills on heavy vendor ROMs (MIUI/HyperOS, ColorOS/RealmeUI, FuntouchOS, OneUI).
+- **Shizuku Integration & Crash Prevention**: Integrated optional Shizuku permission support for enhanced system service management and crash resilience.
+- **Customizable Island Action Buttons**: Added toggle settings allowing users to customize and remove action buttons from the Smart Island overlay.
+- **New Application Icon**: Introduced a refreshed, modern application launcher icon and updated visual app assets.
+
+### Changed
+
+- **Accessibility Service Lifecycle**: Refactored service toggle logic so disabling Smart Island removes the pill overlay without calling `disableSelf()`, preventing permission revocation and eliminating the need for users to re-grant permissions.
+- **Settings UI & Navigation Redesign**: Redesigned the settings screen layout, introduced a dedicated bottom navigation bar, and restructured settings DataStore management.
+- **DataStore & IO Exception Recovery**: Implemented atomic DataStore update operations and automatic IOException recovery in `SmartIslandSettingsRepository`.
+- **Notification Repository Bounding**: Enforced atomic `MutableStateFlow` updates, a 50-notification queue limit, and automatic stale key cleanup in `SmartIslandNotificationRepository`.
+- **Release Version**: Updated application version to `3.2.1` (versionCode `3`).
+
+### Fixed
+
+- **Permission State Decoupling**: Decoupled runtime permission validation state from the main Smart Island service toggle in `SmartIslandHomeScreen`.
+- **Main Thread Execution**: Removed main-thread `Thread.sleep()` calls during overlay removal for smooth asynchronous cleanup.
+
 ## [3.2] - 2026-07-18
 
 ### Added
