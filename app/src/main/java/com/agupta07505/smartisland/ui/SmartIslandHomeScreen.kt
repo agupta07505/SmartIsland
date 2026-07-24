@@ -52,17 +52,22 @@ import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Feedback
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -99,6 +104,7 @@ import com.agupta07505.smartisland.ui.sections.AboutSection
 import com.agupta07505.smartisland.ui.sections.AppShortcutsSection
 import com.agupta07505.smartisland.ui.sections.CustomizationsSection
 import com.agupta07505.smartisland.ui.sections.HeaderSection
+import com.agupta07505.smartisland.ui.sections.NotificationsAndPrivacySection
 import com.agupta07505.smartisland.ui.sections.PermissionsSection
 import com.agupta07505.smartisland.ui.sections.PositionsSection
 import com.agupta07505.smartisland.ui.sections.SupportSection
@@ -120,9 +126,15 @@ private enum class HomeSection {
     AppShortcuts,
     Positions,
     Customizations,
+    NotificationsPrivacy,
     Gestures,
     Support,
     About
+}
+
+private enum class MainDestination {
+    Home,
+    Settings
 }
 
 @SuppressLint("BatteryLife")
@@ -206,6 +218,8 @@ fun SmartIslandHomeScreen(
     val customizationsTint = if (isDark) Color(0xFF3B82F6) else Color(0xFF1D4ED8)
     val shortcutsBg = if (isDark) Color(0xFF164E63) else Color(0xFFCFFAFE)
     val shortcutsTint = if (isDark) Color(0xFF22D3EE) else Color(0xFF0891B2)
+    val privacyBg = if (isDark) Color(0xFF7F1D1D) else Color(0xFFFFE4E6)
+    val privacyTint = if (isDark) Color(0xFFFB7185) else Color(0xFFE11D48)
     val gesturesBg = if (isDark) Color(0xFF311B92) else Color(0xFFEDE7F6)
     val gesturesTint = if (isDark) Color(0xFFB39DDB) else Color(0xFF512DA8)
     var overlayGranted by remember { mutableStateOf(isAccessibilityServiceEnabled(context)) }
@@ -230,47 +244,76 @@ fun SmartIslandHomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    var selectedDestination by remember { mutableStateOf(MainDestination.Home) }
     var activeSection by remember { mutableStateOf<HomeSection?>(null) }
     var transitionDirection by remember { mutableStateOf(1) } // 1 = forward, -1 = backward
+    val homeScrollState = rememberScrollState()
+    val settingsScrollState = rememberScrollState()
 
-    BackHandler(enabled = activeSection != null) {
-        transitionDirection = -1
-        activeSection = null
+    BackHandler(
+        enabled = activeSection != null || selectedDestination == MainDestination.Settings
+    ) {
+        if (activeSection != null) {
+            transitionDirection = -1
+            activeSection = null
+        } else {
+            selectedDestination = MainDestination.Home
+        }
     }
 
-    AnimatedContent(
-        targetState = activeSection,
-        transitionSpec = {
-            if (transitionDirection == 1) {
-                (slideInHorizontally(initialOffsetX = { it }) + fadeIn())
-                    .togetherWith(slideOutHorizontally(targetOffsetX = { -it }) + fadeOut())
-            } else {
-                (slideInHorizontally(initialOffsetX = { -it }) + fadeIn())
-                    .togetherWith(slideOutHorizontally(targetOffsetX = { it }) + fadeOut())
-            }
-        },
-        label = "SectionTransition"
-    ) { targetSection ->
-        if (targetSection == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .verticalScroll(rememberScrollState())
-                    .padding(
-                        start = 20.dp,
-                        end = 20.dp,
-                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
-                        bottom = 24.dp
-                    ),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                HeaderSection()
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            SmartIslandBottomBar(
+                selectedDestination = selectedDestination,
+                onDestinationSelected = { destination ->
+                    selectedDestination = destination
+                    activeSection = null
+                    transitionDirection = if (destination == MainDestination.Settings) 1 else -1
+                }
+            )
+        }
+    ) { scaffoldPadding ->
+        AnimatedContent(
+            targetState = activeSection,
+            modifier = Modifier.padding(scaffoldPadding),
+            transitionSpec = {
+                if (transitionDirection == 1) {
+                    (slideInHorizontally(initialOffsetX = { it }) + fadeIn())
+                        .togetherWith(slideOutHorizontally(targetOffsetX = { -it }) + fadeOut())
+                } else {
+                    (slideInHorizontally(initialOffsetX = { -it }) + fadeIn())
+                        .togetherWith(slideOutHorizontally(targetOffsetX = { it }) + fadeOut())
+                }
+            },
+            label = "SectionTransition"
+        ) { targetSection ->
+            if (targetSection == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .verticalScroll(
+                            if (selectedDestination == MainDestination.Home) {
+                                homeScrollState
+                            } else {
+                                settingsScrollState
+                            }
+                        )
+                        .padding(
+                            start = 20.dp,
+                            end = 20.dp,
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 16.dp,
+                            bottom = 24.dp
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val canEnable = overlayGranted && notificationGranted && batteryIgnored
 
-                // Smart Island can ONLY run once EVERY required permission is granted.
-                val canEnable = overlayGranted && notificationGranted && batteryIgnored
+                    if (selectedDestination == MainDestination.Home) {
+                        HeaderSection()
 
-                Card(
+                        Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -406,12 +449,14 @@ fun SmartIslandHomeScreen(
                     }
                 }
 
-                // Category 2: System & Setup
-                CategoryHeader("SYSTEM & SETUP")
+                    } else {
+                        SettingsHeader()
+
+                CategoryHeader("SETUP")
 
                 SectionRow(
-                    title = stringResource(R.string.sec_permissions),
-                    description = stringResource(R.string.sec_permissions_desc),
+                    title = "Permissions & setup",
+                    description = "Manage the system access Smart Island needs",
                     icon = Icons.Rounded.Lock,
                     iconBgColor = permissionsBg,
                     iconTint = permissionsTint,
@@ -423,156 +468,11 @@ fun SmartIslandHomeScreen(
                     }
                 )
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Show on lock screen",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "Keep the Smart Island visible when the device is locked.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Switch(
-                                checked = settings.showOnLockScreen,
-                                onCheckedChange = { checked ->
-                                    scope.launch { resolvedRepository.setShowOnLockScreen(checked) }
-                                }
-                            )
-                        }
-
-                        if (settings.showOnLockScreen) {
-                            androidx.compose.material3.HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                thickness = 1.dp,
-                                modifier = Modifier.padding(horizontal = 20.dp)
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    text = "Lock screen privacy",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    val isIconOnly = settings.lockScreenPrivacy == "AppIconOnly"
-                                    androidx.compose.material3.OutlinedButton(
-                                        onClick = {
-                                            scope.launch { resolvedRepository.setLockScreenPrivacy("AppIconOnly") }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(10.dp),
-                                        border = if (isIconOnly) {
-                                            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                        } else {
-                                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                                        },
-                                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                            containerColor = if (isIconOnly) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
-                                        )
-                                    ) {
-                                        Text("App/Icon only", fontSize = 12.sp, color = if (isIconOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                                    }
-
-                                    val isFull = settings.lockScreenPrivacy == "FullContent"
-                                    androidx.compose.material3.OutlinedButton(
-                                        onClick = {
-                                            scope.launch { resolvedRepository.setLockScreenPrivacy("FullContent") }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(10.dp),
-                                        border = if (isFull) {
-                                            androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                        } else {
-                                            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                                        },
-                                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                            containerColor = if (isFull) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
-                                        )
-                                    ) {
-                                        Text("Full content", fontSize = 12.sp, color = if (isFull) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Category 3: Appearance & Controls
-                CategoryHeader("APPEARANCE & CONTROLS")
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Notification action buttons",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "Show quick buttons (Reply, Mark as read, etc.) inside expanded notifications.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 16.sp
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Switch(
-                            checked = settings.showNotificationActions,
-                            onCheckedChange = { checked ->
-                                scope.launch { resolvedRepository.setShowNotificationActions(checked) }
-                            }
-                        )
-                    }
-                }
+                CategoryHeader("PERSONALIZATION")
 
                 SectionRow(
-                    title = stringResource(R.string.sec_positions),
-                    description = stringResource(R.string.sec_positions_desc),
+                    title = "Island layout",
+                    description = "Adjust the size, position, and corner radius",
                     icon = Icons.Rounded.Refresh,
                     iconBgColor = positionsBg,
                     iconTint = positionsTint,
@@ -583,14 +483,30 @@ fun SmartIslandHomeScreen(
                 )
 
                 SectionRow(
-                    title = "Customizations",
-                    description = "Personalize colors for battery, notifications, and music visualizer",
+                    title = "Colors & appearance",
+                    description = "Personalize battery, notification, and visualizer colors",
                     icon = Icons.Rounded.Palette,
                     iconBgColor = customizationsBg,
                     iconTint = customizationsTint,
                     onClick = {
                         transitionDirection = 1
                         activeSection = HomeSection.Customizations
+                    }
+                )
+
+                CategoryHeader("CONTENT & INTERACTIONS")
+
+                SectionRow(
+                    title = "Notifications & privacy",
+                    description = "Control lock screen visibility, privacy, and quick actions",
+                    icon = Icons.Rounded.Notifications,
+                    iconBgColor = privacyBg,
+                    iconTint = privacyTint,
+                    statusText = if (settings.showOnLockScreen) "Lock screen on" else "Lock screen off",
+                    statusColor = privacyTint,
+                    onClick = {
+                        transitionDirection = 1
+                        activeSection = HomeSection.NotificationsPrivacy
                     }
                 )
 
@@ -624,12 +540,11 @@ fun SmartIslandHomeScreen(
                     }
                 )
 
-                // Category 4: Help & About
                 CategoryHeader("HELP & ABOUT")
 
                 SectionRow(
-                    title = stringResource(R.string.sec_support),
-                    description = stringResource(R.string.sec_support_desc),
+                    title = "Help & feedback",
+                    description = "Get support, report an issue, or suggest an improvement",
                     icon = Icons.Rounded.Feedback,
                     iconBgColor = supportBg,
                     iconTint = supportTint,
@@ -640,8 +555,8 @@ fun SmartIslandHomeScreen(
                 )
 
                 SectionRow(
-                    title = stringResource(R.string.sec_about),
-                    description = stringResource(R.string.sec_about_desc),
+                    title = "About Smart Island",
+                    description = "Version, contributors, community, and project links",
                     icon = Icons.Rounded.Info,
                     iconBgColor = aboutBg,
                     iconTint = aboutTint,
@@ -663,12 +578,13 @@ fun SmartIslandHomeScreen(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
+                    }
             }
         } else {
             when (targetSection) {
                 HomeSection.Permissions -> {
                     SectionDetailScreen(
-                        title = stringResource(R.string.sec_permissions),
+                        title = "Permissions & setup",
                         onBack = {
                             transitionDirection = -1
                             activeSection = null
@@ -725,13 +641,27 @@ fun SmartIslandHomeScreen(
                 }
                 HomeSection.Customizations -> {
                     SectionDetailScreen(
-                        title = "Customizations",
+                        title = "Colors & appearance",
                         onBack = {
                             transitionDirection = -1
                             activeSection = null
                         }
                     ) {
                         CustomizationsSection(settings = settings, repository = resolvedRepository)
+                    }
+                }
+                HomeSection.NotificationsPrivacy -> {
+                    SectionDetailScreen(
+                        title = "Notifications & privacy",
+                        onBack = {
+                            transitionDirection = -1
+                            activeSection = null
+                        }
+                    ) {
+                        NotificationsAndPrivacySection(
+                            settings = settings,
+                            repository = resolvedRepository
+                        )
                     }
                 }
                 HomeSection.Gestures -> {
@@ -747,7 +677,7 @@ fun SmartIslandHomeScreen(
                 }
                 HomeSection.Support -> {
                     SectionDetailScreen(
-                        title = stringResource(R.string.sec_support),
+                        title = "Help & feedback",
                         onBack = {
                             transitionDirection = -1
                             activeSection = null
@@ -758,7 +688,7 @@ fun SmartIslandHomeScreen(
                 }
                 HomeSection.About -> {
                     SectionDetailScreen(
-                        title = stringResource(R.string.sec_about),
+                        title = "About Smart Island",
                         onBack = {
                             transitionDirection = -1
                             activeSection = null
@@ -769,6 +699,58 @@ fun SmartIslandHomeScreen(
                 }
             }
         }
+    }
+}
+}
+
+@Composable
+private fun SmartIslandBottomBar(
+    selectedDestination: MainDestination,
+    onDestinationSelected: (MainDestination) -> Unit
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp
+    ) {
+        NavigationBarItem(
+            selected = selectedDestination == MainDestination.Home,
+            onClick = { onDestinationSelected(MainDestination.Home) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.Home,
+                    contentDescription = "Home"
+                )
+            },
+            label = { Text("Home") }
+        )
+        NavigationBarItem(
+            selected = selectedDestination == MainDestination.Settings,
+            onClick = { onDestinationSelected(MainDestination.Settings) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = "Settings"
+                )
+            },
+            label = { Text("Settings") }
+        )
+    }
+}
+
+@Composable
+private fun SettingsHeader() {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = "Customize Smart Island and choose how it works for you.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
