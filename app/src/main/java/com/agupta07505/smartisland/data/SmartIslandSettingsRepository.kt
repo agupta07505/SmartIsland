@@ -227,66 +227,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
         it[Keys.CornerRadius] = SmartIslandSettings.Default.cornerRadius
     }
 
-    suspend fun exportSettingsJson(): String {
-        val current = settings.first()
-        val json = org.json.JSONObject().apply {
-            put("enabled", current.enabled)
-            put("width", current.width)
-            put("height", current.height)
-            put("xOffset", current.xOffset)
-            put("yOffset", current.yOffset)
-            put("cornerRadius", current.cornerRadius)
-            put("batteryColor", current.batteryColor)
-            put("notificationDotColor", current.notificationDotColor)
-            put("musicVisualizerColor", current.musicVisualizerColor)
-            put("shortcutPackages", org.json.JSONArray(current.shortcutPackages))
-            put("showRecentApps", current.showRecentApps)
-            put("showOnLockScreen", current.showOnLockScreen)
-            put("lockScreenPrivacy", current.lockScreenPrivacy)
-            put("showNotificationActions", current.showNotificationActions)
-            put("hideFromNotificationShade", current.hideFromNotificationShade)
-        }
-        return json.toString(2)
-    }
-
-    suspend fun importSettingsJson(jsonString: String): Boolean {
-        return try {
-            val json = org.json.JSONObject(jsonString)
-            editSafely { prefs ->
-                if (json.has("enabled")) prefs[Keys.Enabled] = json.getBoolean("enabled")
-                if (json.has("width")) prefs[Keys.Width] = json.getDouble("width").toFloat()
-                if (json.has("height")) prefs[Keys.Height] = json.getDouble("height").toFloat()
-                if (json.has("xOffset")) prefs[Keys.XOffset] = json.getDouble("xOffset").toFloat()
-                if (json.has("yOffset")) prefs[Keys.YOffset] = json.getDouble("yOffset").toFloat()
-                if (json.has("cornerRadius")) prefs[Keys.CornerRadius] = json.getDouble("cornerRadius").toFloat()
-                if (json.has("batteryColor")) prefs[Keys.BatteryColor] = json.getLong("batteryColor")
-                if (json.has("notificationDotColor")) prefs[Keys.NotificationDotColor] = json.getLong("notificationDotColor")
-                if (json.has("musicVisualizerColor")) prefs[Keys.MusicVisualizerColor] = json.getLong("musicVisualizerColor")
-                if (json.has("shortcutPackages")) {
-                    val array = json.getJSONArray("shortcutPackages")
-                    val set = mutableSetOf<String>()
-                    for (i in 0 until array.length()) {
-                        set.add(array.getString(i))
-                    }
-                    prefs[Keys.ShortcutPackages] = set
-                }
-                if (json.has("showRecentApps")) prefs[Keys.ShowRecentApps] = json.getBoolean("showRecentApps")
-                if (json.has("showOnLockScreen")) prefs[Keys.ShowOnLockScreen] = json.getBoolean("showOnLockScreen")
-                if (json.has("lockScreenPrivacy")) prefs[Keys.LockScreenPrivacy] = json.getString("lockScreenPrivacy")
-                if (json.has("showNotificationActions")) prefs[Keys.ShowNotificationActions] = json.getBoolean("showNotificationActions")
-                if (json.has("hideFromNotificationShade")) prefs[Keys.HideFromNotificationShade] = json.getBoolean("hideFromNotificationShade")
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to import settings JSON", e)
-            false
-        }
-    }
-
-    suspend fun resetAllSettings() = editSafely { prefs ->
-        prefs.clear()
-    }
-
     private suspend fun editSafely(transform: suspend (MutablePreferences) -> Unit) {
         try {
             context.smartIslandDataStore.edit(transform)
