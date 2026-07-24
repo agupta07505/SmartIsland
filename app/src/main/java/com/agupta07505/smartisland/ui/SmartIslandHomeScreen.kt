@@ -58,6 +58,14 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.School
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -165,6 +173,8 @@ fun SmartIslandHomeScreen(
     val scope = rememberCoroutineScope()
 
     var showWelcomeDialog by remember { mutableStateOf(false) }
+    var showBackupDialog by remember { mutableStateOf(false) }
+    var showFeaturesDialog by remember { mutableStateOf(false) }
 
     // BUG FIX: the previous LaunchedEffect fired on every launch because
     // collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default) emits the
@@ -249,6 +259,213 @@ fun SmartIslandHomeScreen(
     var transitionDirection by remember { mutableStateOf(1) } // 1 = forward, -1 = backward
     val homeScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
+
+    if (showBackupDialog) {
+        val clipboardManager = LocalClipboardManager.current
+        var importJsonText by remember { mutableStateOf("") }
+        var isImporting by remember { mutableStateOf(false) }
+
+        Dialog(onDismissRequest = { showBackupDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.History,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "Backup & Restore",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Text(
+                        text = "Export your Smart Island configuration to JSON or restore from a previous backup.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (isImporting) {
+                        OutlinedTextField(
+                            value = importJsonText,
+                            onValueChange = { importJsonText = it },
+                            label = { Text("Paste JSON Settings") },
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            maxLines = 5
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (!isImporting) {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val json = resolvedRepository.exportSettingsJson()
+                                        clipboardManager.setText(AnnotatedString(json))
+                                        android.widget.Toast.makeText(context, "Settings JSON copied to clipboard!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Export", fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = { isImporting = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                            ) {
+                                Text("Import", fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val success = resolvedRepository.importSettingsJson(importJsonText)
+                                        if (success) {
+                                            android.widget.Toast.makeText(context, "Settings restored successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                                            showBackupDialog = false
+                                        } else {
+                                            android.widget.Toast.makeText(context, "Invalid settings JSON format", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Apply", fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = { isImporting = false },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                            ) {
+                                Text("Cancel", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    if (!isImporting) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                scope.launch {
+                                    resolvedRepository.resetAllSettings()
+                                    android.widget.Toast.makeText(context, "Settings reset to defaults!", android.widget.Toast.LENGTH_SHORT).show()
+                                    showBackupDialog = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reset All Settings to Default", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showFeaturesDialog) {
+        Dialog(onDismissRequest = { showFeaturesDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Text(
+                            text = "App Features",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    SectionRow(
+                        title = "Permissions & System Setup",
+                        description = "Manage system access and accessibility permissions",
+                        icon = Icons.Rounded.Lock,
+                        iconBgColor = permissionsBg,
+                        iconTint = permissionsTint,
+                        onClick = {
+                            showFeaturesDialog = false
+                            transitionDirection = 1
+                            activeSection = HomeSection.Permissions
+                        }
+                    )
+
+                    SectionRow(
+                        title = "App Shortcuts",
+                        description = "Customise apps displayed on empty island",
+                        icon = Icons.Rounded.Apps,
+                        iconBgColor = shortcutsBg,
+                        iconTint = shortcutsTint,
+                        onClick = {
+                            showFeaturesDialog = false
+                            transitionDirection = 1
+                            activeSection = HomeSection.AppShortcuts
+                        }
+                    )
+
+                    SectionRow(
+                        title = "Gesture Interactions",
+                        description = "Learn tap, swipe, and long press gestures",
+                        icon = Icons.Rounded.Gesture,
+                        iconBgColor = gesturesBg,
+                        iconTint = gesturesTint,
+                        onClick = {
+                            showFeaturesDialog = false
+                            transitionDirection = 1
+                            activeSection = HomeSection.Gestures
+                        }
+                    )
+
+                    Button(
+                        onClick = { showFeaturesDialog = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Close", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 
     BackHandler(
         enabled = activeSection != null || selectedDestination == MainDestination.Settings
@@ -453,134 +670,194 @@ fun SmartIslandHomeScreen(
                 }
 
                     } else {
-                        SettingsHeader()
+                        // MD3 Minimal Top Navigation Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        transitionDirection = -1
+                                        selectedDestination = MainDestination.Home
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
 
-                CategoryHeader("SETUP")
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.size(44.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        transitionDirection = 1
+                                        activeSection = HomeSection.Gestures
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.School,
+                                        contentDescription = "Gesture Guide",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
 
-                SectionRow(
-                    title = "Permissions & setup",
-                    description = "Manage the system access Smart Island needs",
-                    icon = Icons.Rounded.Lock,
-                    iconBgColor = permissionsBg,
-                    iconTint = permissionsTint,
-                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
-                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Permissions
-                    }
-                )
+                        // Hero Central Cog Graphic & Header Titles
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier.size(100.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Settings,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .offset(x = 34.dp, y = (-24).dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.Settings,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .offset(x = (-32).dp, y = (-12).dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.Settings,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(68.dp)
+                                )
+                            }
 
-                CategoryHeader("PERSONALIZATION")
+                            Spacer(Modifier.height(8.dp))
 
-                SectionRow(
-                    title = "Island layout",
-                    description = "Adjust the size, position, and corner radius",
-                    icon = Icons.Rounded.Refresh,
-                    iconBgColor = positionsBg,
-                    iconTint = positionsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Positions
-                    }
-                )
+                            Text(
+                                text = "Settings",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = TextAlign.Center
+                            )
 
-                SectionRow(
-                    title = "Colors & appearance",
-                    description = "Personalize battery, notification, and visualizer colors",
-                    icon = Icons.Rounded.Palette,
-                    iconBgColor = customizationsBg,
-                    iconTint = customizationsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Customizations
-                    }
-                )
+                            Spacer(Modifier.height(4.dp))
 
-                CategoryHeader("CONTENT & INTERACTIONS")
+                            Text(
+                                text = "Tweak your experience",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.secondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
 
-                SectionRow(
-                    title = "Notifications & privacy",
-                    description = "Control lock screen visibility, privacy, and quick actions",
-                    icon = Icons.Rounded.Notifications,
-                    iconBgColor = privacyBg,
-                    iconTint = privacyTint,
-                    statusText = if (settings.showOnLockScreen) "Lock screen on" else "Lock screen off",
-                    statusColor = privacyTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.NotificationsPrivacy
-                    }
-                )
+                        Spacer(Modifier.height(16.dp))
 
-                SectionRow(
-                    title = "App shortcuts",
-                    description = "Choose apps available whenever the expanded island is empty",
-                    icon = Icons.Rounded.Apps,
-                    iconBgColor = shortcutsBg,
-                    iconTint = shortcutsTint,
-                    statusText = when {
-                        settings.shortcutPackages.isNotEmpty() -> "${settings.shortcutPackages.size} selected"
-                        settings.showRecentApps -> "Recent apps enabled"
-                        else -> "Set up"
-                    },
-                    statusColor = shortcutsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.AppShortcuts
-                    }
-                )
+                        // MD3 Minimal Category Cards
+                        Md3CategoryCard(
+                            title = "Look & Feel",
+                            subtitle = "Dynamic color, Dark theme, Language",
+                            icon = Icons.Rounded.Palette,
+                            iconBgColor = customizationsBg,
+                            iconTint = customizationsTint,
+                            onClick = {
+                                transitionDirection = 1
+                                activeSection = HomeSection.Customizations
+                            }
+                        )
 
-                SectionRow(
-                    title = "Gesture guide",
-                    description = "Learn how to interact with the Smart Island",
-                    icon = Icons.Rounded.Gesture,
-                    iconBgColor = gesturesBg,
-                    iconTint = gesturesTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Gestures
-                    }
-                )
+                        Md3CategoryCard(
+                            title = "Customisation",
+                            subtitle = "Customise certain UI elements to your liking",
+                            icon = Icons.Rounded.Tune,
+                            iconBgColor = positionsBg,
+                            iconTint = positionsTint,
+                            onClick = {
+                                transitionDirection = 1
+                                activeSection = HomeSection.Positions
+                            }
+                        )
 
-                CategoryHeader("HELP & ABOUT")
+                        Md3CategoryCard(
+                            title = "Features",
+                            subtitle = "All the major features of the app",
+                            icon = Icons.Rounded.Settings,
+                            iconBgColor = permissionsBg,
+                            iconTint = permissionsTint,
+                            onClick = {
+                                showFeaturesDialog = true
+                            }
+                        )
 
-                SectionRow(
-                    title = "Help & feedback",
-                    description = "Get support, report an issue, or suggest an improvement",
-                    icon = Icons.Rounded.Feedback,
-                    iconBgColor = supportBg,
-                    iconTint = supportTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Support
-                    }
-                )
+                        Md3CategoryCard(
+                            title = "Notifications",
+                            subtitle = "Customise notification settings of the app",
+                            icon = Icons.Rounded.Notifications,
+                            iconBgColor = privacyBg,
+                            iconTint = privacyTint,
+                            onClick = {
+                                transitionDirection = 1
+                                activeSection = HomeSection.NotificationsPrivacy
+                            }
+                        )
 
-                SectionRow(
-                    title = "About Smart Island",
-                    description = "Version, contributors, community, and project links",
-                    icon = Icons.Rounded.Info,
-                    iconBgColor = aboutBg,
-                    iconTint = aboutTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.About
-                    }
-                )
+                        Md3CategoryCard(
+                            title = "Backup & restore",
+                            subtitle = "Backup and restore app settings and other data",
+                            icon = Icons.Rounded.History,
+                            iconBgColor = supportBg,
+                            iconTint = supportTint,
+                            onClick = {
+                                showBackupDialog = true
+                            }
+                        )
 
-                Spacer(Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.made_by),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-                Spacer(Modifier.height(12.dp))
+                        Md3CategoryCard(
+                            title = "About",
+                            subtitle = "Contributors and support",
+                            icon = Icons.Rounded.Info,
+                            iconBgColor = aboutBg,
+                            iconTint = aboutTint,
+                            onClick = {
+                                transitionDirection = 1
+                                activeSection = HomeSection.About
+                            }
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.made_by),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                        Spacer(Modifier.height(12.dp))
                     }
             }
         } else {
@@ -1111,6 +1388,71 @@ private fun isBatteryOptimizationIgnored(context: Context): Boolean {
     if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) return true
     val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
     return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+@Composable
+private fun Md3CategoryCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconBgColor: Color,
+    iconTint: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconBgColor,
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true, name = "Light Mode")
