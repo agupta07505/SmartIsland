@@ -15,6 +15,7 @@ import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SmartIslandHomeScreen
 import com.agupta07505.smartisland.ui.SmartIslandTheme
+import com.agupta07505.smartisland.util.SystemServiceRecovery
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SystemServiceRecovery.requestRecovery(this)
 
         setContent {
             SmartIslandTheme {
@@ -34,5 +36,10 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        SystemServiceRecovery.requestRecovery(this)
     }
 }

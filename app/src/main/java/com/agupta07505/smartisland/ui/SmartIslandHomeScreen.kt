@@ -77,7 +77,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,6 +101,7 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import com.agupta07505.smartisland.util.safeStartActivity
+import com.agupta07505.smartisland.util.SystemServiceRecovery
 import com.agupta07505.smartisland.ui.sections.AboutSection
 import com.agupta07505.smartisland.ui.sections.AppShortcutsSection
 import com.agupta07505.smartisland.ui.sections.CustomizationsSection
@@ -162,7 +162,6 @@ fun SmartIslandHomeScreen(
     }
     
     val settings by resolvedRepository.settings.collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default)
-    val featureEnabled by rememberUpdatedState(settings.enabled)
     val scope = rememberCoroutineScope()
 
     var showWelcomeDialog by remember { mutableStateOf(false) }
@@ -235,12 +234,10 @@ fun SmartIslandHomeScreen(
                 overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
                 batteryIgnored = isBatteryOptimizationIgnored(context)
-                // Permission state and the user's feature preference are separate.
-                // Never auto-enable the feature merely because Accessibility is granted.
-                // If the permission was actually revoked, turn the feature off safely.
-                if (!overlayGranted && featureEnabled) {
-                    scope.launch { resolvedRepository.setEnabled(false) }
-                }
+                // A force-stop can leave a system-managed service temporarily disconnected.
+                // Preserve the user's preference and ask Android to reconnect instead of
+                // persisting a false value that would keep the island off after rebinding.
+                SystemServiceRecovery.requestRecovery(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -351,9 +348,12 @@ fun SmartIslandHomeScreen(
                             }
                             Spacer(Modifier.width(12.dp))
                             Switch(
-                                checked = settings.enabled && canEnable,
-                                enabled = canEnable,
+                                checked = settings.enabled,
+                                enabled = canEnable || settings.enabled,
                                 onCheckedChange = { turnOn ->
+                                    if (turnOn) {
+                                        SystemServiceRecovery.requestRecovery(context)
+                                    }
                                     scope.launch { resolvedRepository.setEnabled(turnOn) }
                                 }
                             )

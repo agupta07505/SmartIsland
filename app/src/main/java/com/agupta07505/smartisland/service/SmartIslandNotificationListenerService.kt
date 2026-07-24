@@ -93,6 +93,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        isSystemConnected = false
         pendingRemovals.values.forEach { it.cancel() }
         pendingRemovals.clear()
         suppressedKeys.clear()
@@ -246,6 +247,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        isSystemConnected = true
         runCatchingLogged(TAG, "onListenerConnected callback failed") {
             android.util.Log.d(TAG, "onListenerConnected")
             serviceScope.launch {
@@ -272,6 +274,19 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onListenerDisconnected() {
+        isSystemConnected = false
+        super.onListenerDisconnected()
+        runCatchingLogged(TAG, "Notification-listener self-rebind failed") {
+            requestRebind(
+                android.content.ComponentName(
+                    this,
+                    SmartIslandNotificationListenerService::class.java
+                )
+            )
         }
     }
 
@@ -583,6 +598,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     private data class MediaInfo(val artwork: Bitmap?, val positionMs: Long?, val durationMs: Long?, val isPlaying: Boolean)
 
     companion object {
+        @Volatile
+        var isSystemConnected: Boolean = false
+            private set
+
         private const val TAG = "SmartIslandNotificationListener"
         private const val ICON_BITMAP_SIZE = 96
         private const val LARGE_ICON_BITMAP_SIZE = 128

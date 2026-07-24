@@ -239,6 +239,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        isSystemConnected = true
         if (destroyed || !::viewModel.isInitialized) return
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Service reconnect failed") {
@@ -253,6 +254,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        isSystemConnected = false
         // Return true so Android system knows to re-bind the accessibility service automatically
         return true
     }
@@ -273,6 +275,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     override fun onDestroy() {
         if (destroyed) return
         destroyed = true
+        isSystemConnected = false
         serviceScope.cancel()
 
         if (::systemEventReceiver.isInitialized && systemEventReceiverRegistered) {
@@ -685,6 +688,10 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     companion object {
+        @Volatile
+        var isSystemConnected: Boolean = false
+            private set
+
         private const val TAG = "SmartIslandOverlayService"
         private const val NOTIFICATION_ID = 8105
         private const val WINDOWING_MODE_FREEFORM = 5
