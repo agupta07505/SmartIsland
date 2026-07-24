@@ -101,7 +101,10 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
+import android.widget.Toast
+import com.agupta07505.smartisland.service.SmartIslandNotificationListenerService
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
+import com.agupta07505.smartisland.util.ShizukuManager
 import com.agupta07505.smartisland.util.safeStartActivity
 import com.agupta07505.smartisland.util.SystemServiceRecovery
 import com.agupta07505.smartisland.ui.sections.AboutSection
@@ -616,16 +619,51 @@ fun SmartIslandHomeScreen(
                             notificationGranted = notificationGranted,
                             batteryIgnored = batteryIgnored,
                             onOverlayClick = {
-                                context.safeStartActivity(
-                                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
-                                    "Cannot open Accessibility settings on this device."
-                                )
+                                if (ShizukuManager.hasPermission()) {
+                                    scope.launch {
+                                        val result = ShizukuManager.grantAccessibility(context)
+                                        result.onSuccess {
+                                            Toast.makeText(context, "Accessibility permission granted via Shizuku!", Toast.LENGTH_SHORT).show()
+                                        }.onFailure { err ->
+                                            Toast.makeText(context, "Shizuku error: ${err.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        overlayGranted = isAccessibilityServiceEnabled(context)
+                                        notificationGranted = isNotificationListenerEnabled(context)
+                                        batteryIgnored = isBatteryOptimizationIgnored(context)
+                                        SystemServiceRecovery.requestRecovery(context)
+                                    }
+                                } else {
+                                    context.safeStartActivity(
+                                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                                        "Cannot open Accessibility settings on this device."
+                                    )
+                                }
                             },
                             onNotificationClick = {
-                                context.safeStartActivity(
-                                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
-                                    "Cannot open Notification access settings on this device."
-                                )
+                                if (ShizukuManager.hasPermission()) {
+                                    scope.launch {
+                                        val result = ShizukuManager.grantNotificationListener(context)
+                                        result.onSuccess {
+                                            Toast.makeText(context, "Notification access granted via Shizuku!", Toast.LENGTH_SHORT).show()
+                                        }.onFailure { err ->
+                                            Toast.makeText(context, "Shizuku error: ${err.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                        overlayGranted = isAccessibilityServiceEnabled(context)
+                                        notificationGranted = isNotificationListenerEnabled(context)
+                                        batteryIgnored = isBatteryOptimizationIgnored(context)
+                                        SystemServiceRecovery.requestRecovery(context)
+                                    }
+                                } else {
+                                    val detailIntent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS").apply {
+                                        val component = ComponentName(context, SmartIslandNotificationListenerService::class.java)
+                                        putExtra("android.provider.extra.NOTIFICATION_LISTENER_COMPONENT_NAME", component.flattenToString())
+                                    }
+                                    context.safeStartActivity(
+                                        detailIntent,
+                                        errorMessage = "Cannot open Notification access settings on this device.",
+                                        fallbackIntent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                                    )
+                                }
                             },
                             onBatteryClick = {
                                 context.safeStartActivity(

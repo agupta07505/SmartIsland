@@ -11,7 +11,8 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 - **System Service Recovery (`SystemServiceRecovery`)**: Implemented system service recovery utility for reconnecting system-managed services (`AccessibilityService` and `NotificationListenerService`) to improve service stability and state restoration.
 - **Notification Shade Suppression Controls**: Added a dedicated "Hide from notification shade" setting under Notifications & Privacy (defaulting to off) allowing optional suppression of third-party notifications from Android's system shade.
 - **OEM Vendor ROM Stability Fixes**: Added background autostart and keep-alive guards to prevent aggressive OEM Accessibility Service kills on heavy vendor ROMs (MIUI/HyperOS, ColorOS/RealmeUI, FuntouchOS, OneUI).
-- **Shizuku Integration & Crash Prevention**: Integrated optional Shizuku permission support for enhanced system service management and crash resilience.
+- **Shizuku 1-Tap Restricted Settings & Permission Grant**: Added 1-tap Shizuku execution to auto-grant Restricted Settings (`ACCESS_RESTRICTED_SETTINGS`), Usage Access (`GET_USAGE_STATS`), System Overlay, Accessibility, Notification Access, and Battery Whitelist without manual setup.
+- **Direct Notification Listener Detail Intent**: Enhanced the Notification Listener permission launcher to open directly to Smart Island's toggle page via `ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS`.
 - **Customizable Island Action Buttons**: Added toggle settings allowing users to customize and remove action buttons from the Smart Island overlay.
 - **New Application Icon**: Introduced a refreshed, modern application launcher icon and updated visual app assets.
 - **Clear Test Notifications Option**: Added a dedicated "Clear Test Notifications" action in the Quick Testing dashboard section to immediately remove test and active island overlays.

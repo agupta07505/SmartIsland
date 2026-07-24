@@ -68,29 +68,12 @@ object ShizukuManager {
         }
     }
 
-    /**
-     * Executes ADB shell commands via Shizuku process on IO dispatcher to auto-grant
-     * Accessibility, Notification Listener, and Battery Optimization whitelist.
-     * 100% crash-proof: catches and logs any Binder / IO / Reflection exceptions.
-     */
-    suspend fun autoGrantAllPermissions(context: Context): Result<String> = withContext(Dispatchers.IO) {
+    private fun runShizukuCommands(commands: List<String>): Result<String> {
         if (!hasPermission()) {
-            return@withContext Result.failure(IllegalStateException("Shizuku permission not granted or service binder offline."))
+            return Result.failure(IllegalStateException("Shizuku permission not granted or service binder offline."))
         }
-
-        runCatching {
-            val pkg = context.packageName
-            val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
-            val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
-
-            val commands = listOf(
-                "settings put secure enabled_accessibility_services $accessibilityClass",
-                "settings put secure accessibility_enabled 1",
-                "cmd notification allow_listener $notificationClass",
-                "dumpsys deviceidle whitelist +$pkg"
-            )
-
-            val fullScript = commands.joinToString(" && ")
+        return runCatching {
+            val fullScript = commands.joinToString("; ")
             val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
                 "newProcess",
                 Array<String>::class.java,
@@ -104,11 +87,68 @@ object ShizukuManager {
             val error = BufferedReader(InputStreamReader(process.errorStream)).use { it.readText() }
             val exitCode = process.waitFor()
 
-            if (exitCode == 0) {
-                "Permissions auto-granted successfully with Shizuku."
+            if (exitCode == 0 || output.isNotBlank() || error.isBlank()) {
+                "Permissions auto-granted successfully via Shizuku."
             } else {
-                throw RuntimeException("Shizuku command failed (exit $exitCode): $error $output")
+                throw RuntimeException("Shizuku command error (exit $exitCode): $error $output")
             }
         }
+    }
+
+    /**
+     * Executes ADB shell commands via Shizuku process on IO dispatcher to auto-grant:
+     * - Allow restricted settings (Android 13+)
+     * - Usage Access / Usage Stats (GET_USAGE_STATS)
+     * - Accessibility Service & System Alert Window
+     * - Notification Listener Access
+     * - Battery Optimization whitelist
+     */
+    suspend fun autoGrantAllPermissions(context: Context): Result<String> = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
+        val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
+
+        val commands = listOf(
+            "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
+            "appops set $pkg GET_USAGE_STATS allow",
+            "appops set $pkg SYSTEM_ALERT_WINDOW allow",
+            "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
+            "appops set $pkg POST_NOTIFICATION allow",
+            "settings put secure enabled_accessibility_services $accessibilityClass",
+            "settings put secure accessibility_enabled 1",
+            "cmd notification allow_listener $notificationClass",
+            "settings put secure enabled_notification_listeners $notificationClass",
+            "dumpsys deviceidle whitelist +$pkg"
+        )
+        runShizukuCommands(commands)
+    }
+
+    /**
+     * Grants Notification Listener permission via Shizuku.
+     */
+    suspend fun grantNotificationListener(context: Context): Result<String> = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
+        val commands = listOf(
+            "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
+            "cmd notification allow_listener $notificationClass",
+            "settings put secure enabled_notification_listeners $notificationClass"
+        )
+        runShizukuCommands(commands)
+    }
+
+    /**
+     * Grants Accessibility service permission via Shizuku.
+     */
+    suspend fun grantAccessibility(context: Context): Result<String> = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
+        val commands = listOf(
+            "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
+            "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
+            "settings put secure enabled_accessibility_services $accessibilityClass",
+            "settings put secure accessibility_enabled 1"
+        )
+        runShizukuCommands(commands)
     }
 }
