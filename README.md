@@ -48,16 +48,23 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 
 <p align="center">
   <img src="/assets/screenshots/Home.jpg" width="24%" alt="Home Dashboard" />
-  <img src="/assets/screenshots/Permissions.jpg" width="24%" alt="Permissions & Battery Setup" />
-  <img src="/assets/screenshots/Positions.jpg" width="24%" alt="Positions Controls" />
-  <img src="/assets/screenshots/Customizations.jpg" width="24%" alt="Color Customizations" />
+  <img src="/assets/screenshots/Settings.jpg" width="24%" alt="Redesigned Settings Hub" />
+  <img src="/assets/screenshots/Permissions.jpg" width="24%" alt="Permissions & Shizuku Setup" />
+  <img src="/assets/screenshots/NotificationsPrivacy.jpg" width="24%" alt="Notifications & Privacy" />
 </p>
 
 <p align="center">
-  <img src="/assets/screenshots/SmartIslandPill.jpg" width="24%" alt="Smart Island Collapsed Pill" />
-  <img src="/assets/screenshots/SmartIslandMusic.jpg" width="24%" alt="Expanded Wavy Music Player" />
-  <img src="/assets/screenshots/SmartIslandClear.jpg" width="24%" alt="Drag to Clear Notification" />
+  <img src="/assets/screenshots/Positions.jpg" width="24%" alt="Positions Controls" />
+  <img src="/assets/screenshots/Customizations.jpg" width="24%" alt="Color Customizations" />
   <img src="/assets/screenshots/AppShortcuts.jpg" width="24%" alt="App Shortcuts Picker & Grid" />
+  <img src="/assets/screenshots/Gestures.jpg" width="24%" alt="Interactive Gesture Guide" />
+</p>
+
+<p align="center">
+  <img src="/assets/screenshots/SmartIslandMusic.jpg" width="24%" alt="Expanded Wavy Music Player" />
+  <img src="/assets/screenshots/SmartIslandBattery.jpg" width="24%" alt="Battery Charging & Color Picker" />
+  <img src="/assets/screenshots/Welcome.jpg" width="24%" alt="First-Run Welcome Experience" />
+  <img src="/assets/screenshots/SettingsMore.jpg" width="24%" alt="Settings Options & Credits" />
 </p>
 
 ## Features

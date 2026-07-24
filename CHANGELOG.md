@@ -23,6 +23,7 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 - **Settings UI & Navigation Redesign**: Redesigned the settings screen layout, introduced a dedicated bottom navigation bar, and restructured settings DataStore management.
 - **DataStore & IO Exception Recovery**: Implemented atomic DataStore update operations and automatic IOException recovery in `SmartIslandSettingsRepository`.
 - **Notification Repository Bounding**: Enforced atomic `MutableStateFlow` updates, a 50-notification queue limit, and automatic stale key cleanup in `SmartIslandNotificationRepository`.
+- **Updated Application Screenshots**: Refreshed all 12 high-resolution application screenshots in repository documentation showcasing the v3.2.1 dashboard, Shizuku setup, Notifications & Privacy, color picker, positions, app launcher, gesture guide, music player, and battery charging overlays.
 - **Release Version**: Updated application version to `3.2.1` (versionCode `3`).
 
 ### Fixed
