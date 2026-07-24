@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class SmartIslandNotificationRepository : INotificationRepository {
     private val _notifications = MutableStateFlow<List<IslandNotification>>(emptyList())
@@ -31,26 +32,29 @@ class SmartIslandNotificationRepository : INotificationRepository {
     override val commands: SharedFlow<SmartIslandCommand> = _commands.asSharedFlow()
 
     override fun postNotification(notification: IslandNotification, autoExpand: Boolean) {
-        val current = _notifications.value.toMutableList()
-        val index = current.indexOfFirst { it.key == notification.key }
-        if (index >= 0) {
-            val existing = current[index]
-            current[index] = notification.copy(
-                icon = notification.icon ?: existing.icon,
-                largeIcon = notification.largeIcon ?: existing.largeIcon
-            )
-        } else {
-            current.add(notification)
+        _notifications.update { existingNotifications ->
+            val updated = existingNotifications.toMutableList()
+            val index = updated.indexOfFirst { it.key == notification.key }
+            if (index >= 0) {
+                val existing = updated[index]
+                updated[index] = notification.copy(
+                    icon = notification.icon ?: existing.icon,
+                    largeIcon = notification.largeIcon ?: existing.largeIcon
+                )
+            } else {
+                updated.add(notification)
+            }
+            updated.takeLast(MAX_STORED_NOTIFICATIONS)
         }
-        _notifications.value = current
         if (autoExpand) {
             _autoExpandEvent.tryEmit(notification.key)
         }
     }
 
     override fun removeNotification(key: String) {
-        val current = _notifications.value.filter { it.key != key }
-        _notifications.value = current
+        _notifications.update { notifications ->
+            notifications.filterNot { it.key == key }
+        }
     }
 
     override fun resetTimer() {
@@ -120,6 +124,21 @@ class SmartIslandNotificationRepository : INotificationRepository {
         if (demoNotification != null) {
             postNotification(demoNotification, autoExpand = true)
         }
+    }
+
+    override fun clearTestNotifications() {
+        _notifications.update { list ->
+            val demoFiltered = list.filterNot { it.key.startsWith("demo_") }
+            if (demoFiltered.size == list.size) {
+                emptyList()
+            } else {
+                demoFiltered
+            }
+        }
+    }
+
+    private companion object {
+        const val MAX_STORED_NOTIFICATIONS = 50
     }
 }
 

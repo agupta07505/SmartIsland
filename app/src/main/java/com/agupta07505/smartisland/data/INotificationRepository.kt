@@ -23,4 +23,5 @@ interface INotificationRepository {
     fun resetTimer()
     fun sendCommand(command: SmartIslandCommand)
     fun showDemo(mode: IslandMode)
+    fun clearTestNotifications()
 }

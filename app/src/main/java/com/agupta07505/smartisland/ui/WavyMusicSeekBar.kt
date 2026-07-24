@@ -65,6 +65,11 @@ fun WavyMusicSeekBar(
         }
     }
 
+    var isDragging by remember { mutableStateOf(false) }
+    var dragProgress by remember { mutableStateOf(0f) }
+
+    val activeProgress = if (isDragging) dragProgress else progress
+
     val density = LocalDensity.current
     Canvas(
         modifier = modifier
@@ -73,25 +78,33 @@ fun WavyMusicSeekBar(
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     val newProgress = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    dragProgress = newProgress
                     onSeek(newProgress)
                 }
             }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
-                        val newProgress = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
-                        onSeek(newProgress)
+                        isDragging = true
+                        dragProgress = (offset.x / size.width.toFloat()).coerceIn(0f, 1f)
                     },
                     onDrag = { change, _ ->
-                        val newProgress = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
-                        onSeek(newProgress)
+                        change.consume()
+                        dragProgress = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        onSeek(dragProgress)
+                    },
+                    onDragCancel = {
+                        isDragging = false
                     }
                 )
             }
     ) {
         val width = size.width
         val height = size.height
-        val progressX = progress * width
+        val progressX = activeProgress * width
         
         val baselineY = height / 2f
         val baseThicknessPx = trackThickness.toPx()

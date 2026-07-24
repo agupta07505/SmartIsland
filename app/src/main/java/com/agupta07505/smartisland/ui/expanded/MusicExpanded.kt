@@ -352,16 +352,16 @@ fun MusicExpanded(
                         livePositionMs = newPosition
                         lastSeekTimeMs = System.currentTimeMillis()
                         SmartIslandRepositories.notificationRepository(context).resetTimer()
-                        val token = notification.mediaToken
-                        if (token != null) {
+                        if (controller != null) {
                             runCatchingLogged("MusicExpanded", "Failed to seekTo position") {
-                                val ctrl = android.media.session.MediaController(context, token)
-                                ctrl.transportControls.seekTo(newPosition)
+                                controller.transportControls.seekTo(newPosition)
                             }
                         } else {
-                            SmartIslandRepositories.notificationRepository(context).sendCommand(
-                                com.agupta07505.smartisland.data.SmartIslandCommand.SeekTo(notification.packageName, newPosition)
-                            )
+                            notification?.packageName?.let { pkg ->
+                                SmartIslandRepositories.notificationRepository(context).sendCommand(
+                                    com.agupta07505.smartisland.data.SmartIslandCommand.SeekTo(pkg, newPosition)
+                                )
+                            }
                         }
                     }
                 },

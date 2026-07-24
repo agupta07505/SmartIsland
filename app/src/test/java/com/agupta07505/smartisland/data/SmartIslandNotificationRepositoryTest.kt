@@ -129,4 +129,28 @@ class SmartIslandNotificationRepositoryTest {
         assertEquals(IslandMode.Battery, demo.mode)
         assertEquals("85%", demo.text)
     }
+
+    @Test
+    fun keepsOnlyTheMostRecentFiftyNotifications() {
+        val repository = SmartIslandNotificationRepository()
+
+        repeat(60) { index ->
+            repository.postNotification(
+                IslandNotification(
+                    key = "key_$index",
+                    packageName = "com.test",
+                    appName = "TestApp",
+                    title = "Title $index",
+                    text = "Text $index",
+                    mode = IslandMode.Notification,
+                    timeMillis = index.toLong()
+                )
+            )
+        }
+
+        val notifications = repository.notifications.value
+        assertEquals(50, notifications.size)
+        assertEquals("key_10", notifications.first().key)
+        assertEquals("key_59", notifications.last().key)
+    }
 }

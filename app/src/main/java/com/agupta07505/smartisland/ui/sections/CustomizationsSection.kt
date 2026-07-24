@@ -142,11 +142,12 @@ fun CustomizationsSection(
                     repository.setMusicVisualizerColor(0xFFFF6B9AL)
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
         ) {
             Icon(Icons.Rounded.Refresh, contentDescription = null)
-            Spacer(Modifier.width(6.dp))
-            Text("Reset customizations")
+            Spacer(Modifier.width(8.dp))
+            Text("Reset customizations", fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -161,22 +162,23 @@ private fun ColorSelectorCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(Modifier.padding(18.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+                modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
             )
 
             Row(

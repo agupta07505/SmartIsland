@@ -22,6 +22,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,18 +68,31 @@ fun AppShortcutsSection(
 
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Expanded island launcher", fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Expanded island launcher",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 "When there is no notification, opening the pill shows your shortcuts. Select up to 8 apps.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            androidx.compose.material3.HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                thickness = 1.dp,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Recently used apps", fontWeight = FontWeight.SemiBold)
+                    Text("Recently used apps", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     Text(
                         if (usageAccess) "Fill free slots with apps you used recently"
                         else "Usage access is required for recent apps",
@@ -89,33 +104,57 @@ fun AppShortcutsSection(
                     checked = settings.showRecentApps,
                     onCheckedChange = { enabled ->
                         if (enabled && !usageAccess) {
-                            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            context.safeStartActivity(
+                                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                                "Cannot open Usage access settings on this device."
+                            )
                         }
                         scope.launch { repository.setShowRecentApps(enabled) }
                     }
                 )
             }
             if (!usageAccess) {
-                OutlinedButton(onClick = {
-                    context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                }) {
-                    Text("Grant usage access")
+                OutlinedButton(
+                    onClick = {
+                        context.safeStartActivity(
+                            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                            "Cannot open Usage access settings on this device."
+                        )
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Grant usage access", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 
     Spacer(Modifier.height(16.dp))
-    Text(
-        "Selected ${settings.shortcutPackages.size}/8",
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "App Selection",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            "${settings.shortcutPackages.size}/8 selected",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+    Spacer(Modifier.height(6.dp))
     OutlinedTextField(
         value = query,
         onValueChange = { query = it },
-        label = { Text("Search apps") },
+        label = { Text("Search installed apps") },
         singleLine = true,
+        shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     )
     Spacer(Modifier.height(8.dp))

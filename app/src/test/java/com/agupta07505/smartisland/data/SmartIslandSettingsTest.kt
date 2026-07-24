@@ -21,6 +21,8 @@ class SmartIslandSettingsTest {
         assertEquals(0f, settings.xOffset)
         assertEquals(12f, settings.yOffset)
         assertEquals(22f, settings.cornerRadius)
+        assertEquals(true, settings.showNotificationActions)
+        assertEquals(false, settings.hideFromNotificationShade)
     }
 
     @Test

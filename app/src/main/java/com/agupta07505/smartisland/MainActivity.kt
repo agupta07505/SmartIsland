@@ -15,6 +15,7 @@ import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SmartIslandHomeScreen
 import com.agupta07505.smartisland.ui.SmartIslandTheme
+import com.agupta07505.smartisland.util.SystemServiceRecovery
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -23,27 +24,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SmartIslandSettingsRepository
     @Inject lateinit var notificationRepository: INotificationRepository
 
-    @SuppressLint("BatteryLife")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Ask the system not to kill us for battery. This reduces (does not
-        // eliminate) OEM background/Recents cleanup that would otherwise disable
-        // the AccessibilityService. Shown once; skipped if already granted.
-        // Note: this API is a Play-Store policy gray-area; it is legitimate for an
-        // always-on accessibility overlay (sideload/Telegram distribution), but if you
-        // ever publish to Play, confirm it meets an allowed use case.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            val pm = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
-            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                try {
-                    startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                            .setData(android.net.Uri.parse("package:$packageName"))
-                    )
-                } catch (_: Exception) { /* no handler on some OEMs */ }
-            }
-        }
+        SystemServiceRecovery.requestRecovery(this)
 
         setContent {
             SmartIslandTheme {
@@ -53,5 +36,10 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        SystemServiceRecovery.requestRecovery(this)
     }
 }

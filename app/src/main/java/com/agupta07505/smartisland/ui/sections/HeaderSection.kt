@@ -53,14 +53,18 @@ fun HeaderSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(top = 12.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
-                .padding(bottom = 12.dp)
-                .size(72.dp)
-                .background(Color.Black, shape = RoundedCornerShape(16.dp)),
+                .padding(bottom = 14.dp)
+                .size(76.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .padding(4.dp),
             contentAlignment = Alignment.Center
         ) {
             if (appIcon != null) {
@@ -68,29 +72,30 @@ fun HeaderSection() {
                     bitmap = appIcon,
                     contentDescription = "App Logo",
                     modifier = Modifier
-                        .size(60.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(16.dp))
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
-                        .background(Color(0xFF2563EB), shape = RoundedCornerShape(12.dp))
+                        .size(64.dp)
+                        .background(Color(0xFF2563EB), shape = RoundedCornerShape(16.dp))
                 )
             }
         }
         Text(
             text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.app_description),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
     }
 }

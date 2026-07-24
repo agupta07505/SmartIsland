@@ -183,7 +183,8 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                showActions = settings.showNotificationActions
                             )
                             IslandMode.IncomingCall -> IncomingCallExpanded(
                                 notification = notification,

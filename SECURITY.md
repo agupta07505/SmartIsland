@@ -6,7 +6,7 @@ Security fixes are handled for the current v3 release and the `main` branch unle
 
 | Version | Supported |
 | --- | --- |
-| `3.0.x` | Yes |
+| `3.x` | Yes |
 | `main` | Yes |
 | `< 3.0` | No |
 

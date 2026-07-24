@@ -43,9 +43,14 @@ import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandViewModel
 import com.agupta07505.smartisland.ui.OverlayIsland
 import com.agupta07505.smartisland.util.runCatchingLogged
+import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -59,29 +64,49 @@ class SmartIslandOverlayService : AccessibilityService() {
     private lateinit var systemEventReceiver: SystemEventReceiver
     private lateinit var viewModel: IslandViewModel
     private var isLockScreenActive: Boolean = false
+    private var systemEventReceiverRegistered = false
+    private var screenStateReceiverRegistered = false
+    private var foregroundStarted = false
+    @Volatile private var destroyed = false
 
     private val serviceScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob()
+        SupervisorJob() +
+            Dispatchers.Main.immediate +
+            CoroutineExceptionHandler { _, error ->
+                android.util.Log.e(TAG, "Unhandled overlay coroutine failure", error)
+            }
     )
 
     // Monitor screen state and unlock events to show/hide the island accordingly
     private val screenStateReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            when (intent.action) {
-                Intent.ACTION_SCREEN_ON -> {
-                    overlayOwners.resume()
-                    isLockScreenActive = keyguardManager.isKeyguardLocked
-                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
-                }
-                Intent.ACTION_SCREEN_OFF -> {
-                    overlayOwners.pause()
-                    isLockScreenActive = true
-                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
-                }
-                Intent.ACTION_USER_PRESENT -> {
-                    isLockScreenActive = false
-                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+            runCatchingLogged(TAG, "Screen-state callback failed") {
+                if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
+                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                when (intent.action) {
+                    Intent.ACTION_SCREEN_ON -> {
+                        overlayOwners.resume()
+                        isLockScreenActive = keyguardManager.isKeyguardLocked
+                        updateWindowLayoutParams(
+                            viewModel.expanded.value,
+                            viewModel.settings.value
+                        )
+                    }
+                    Intent.ACTION_SCREEN_OFF -> {
+                        overlayOwners.pause()
+                        isLockScreenActive = true
+                        updateWindowLayoutParams(
+                            viewModel.expanded.value,
+                            viewModel.settings.value
+                        )
+                    }
+                    Intent.ACTION_USER_PRESENT -> {
+                        isLockScreenActive = false
+                        updateWindowLayoutParams(
+                            viewModel.expanded.value,
+                            viewModel.settings.value
+                        )
+                    }
                 }
             }
         }
@@ -92,6 +117,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     // AccessibilityService, which is exactly the "turns off by itself" symptom.
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         runCatchingLogged(TAG, "onAccessibilityEvent failed") {
+            if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
             val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             val locked = keyguardManager.isKeyguardLocked
             if (isLockScreenActive != locked) {
@@ -109,35 +135,41 @@ class SmartIslandOverlayService : AccessibilityService() {
         super.onConfigurationChanged(newConfig)
         // Wrapped: a throw here would make Android disable the service automatically.
         runCatchingLogged(TAG, "onConfigurationChanged failed") {
+            if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
             updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        destroyed = false
 
-        // Promote this AccessibilityService to a foreground service with a persistent
-        // notification. An enabled AccessibilityService is auto-restarted by the system
-        // on plain process death anyway, but the foreground promotion is what stops
-        // the "swipe from Recents = kill" path on stock Android and makes OEM
-        // background-cleanup far less likely to take it down. This is the main
-        // lever for "don't let it turn off automatically".
-        // Wrapped so a failure here degrades gracefully (service still runs as a
-        // normal accessibility service) instead of crashing.
-        createNotificationChannel()
-        runCatchingLogged(TAG, "startForeground failed") {
-            startForeground(NOTIFICATION_ID, buildNotification())
+        runCatchingLogged(TAG, "createNotificationChannel failed") {
+            createNotificationChannel()
         }
 
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val resolvedWindowManager = runCatchingLogged(TAG, "WindowManager initialization failed") {
+            getSystemService(WindowManager::class.java)
+        }
+        if (resolvedWindowManager == null) {
+            android.util.Log.e(TAG, "WindowManager is unavailable; overlay cannot start")
+            return
+        }
+        windowManager = resolvedWindowManager
 
-        // CRASH FIX: resume lifecycle BEFORE ViewModel
-        overlayOwners.resume()
-
-        viewModel = ViewModelProvider(
-            overlayOwners,
-            IslandViewModel.provideFactory(repository, notificationRepository)
-        )[IslandViewModel::class.java]
+        val initializedViewModel = runCatchingLogged(TAG, "Overlay ViewModel initialization failed") {
+            // Lifecycle must be restored before the service-owned ViewModel is created.
+            overlayOwners.resume()
+            ViewModelProvider(
+                overlayOwners,
+                IslandViewModel.provideFactory(repository, notificationRepository)
+            )[IslandViewModel::class.java]
+        }
+        if (initializedViewModel == null) {
+            android.util.Log.e(TAG, "Overlay ViewModel is unavailable; overlay cannot start")
+            return
+        }
+        viewModel = initializedViewModel
         
         systemEventReceiver = SystemEventReceiver(notificationRepository)
         val filter = IntentFilter().apply {
@@ -154,6 +186,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(systemEventReceiver, filter)
             }
+            systemEventReceiverRegistered = true
         }
 
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
@@ -171,51 +204,130 @@ class SmartIslandOverlayService : AccessibilityService() {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(screenStateReceiver, screenFilter)
             }
+            screenStateReceiverRegistered = true
         }
 
         serviceScope.launch {
-            repository.settings.collect { settings ->
-                runCatchingLogged(TAG, "settings collect handler failed") {
+            runSuspendCatchingLogged(TAG, "Settings collector failed") {
+                repository.settings.collect { settings ->
+                    if (destroyed) return@collect
                     if (!settings.enabled) {
-                        disableSelf()
+                        stopOverlaySession()
                     } else {
-                        ensureCollapsedWindow()
-                        updateWindowLayoutParams(viewModel.expanded.value, settings)
+                        startOverlaySession(settings)
                     }
                 }
             }
         }
 
         serviceScope.launch {
-            viewModel.expanded.collectLatest { expanded ->
-                if (expanded) {
-                    updateWindowLayoutParams(true, viewModel.settings.value)
-                } else {
-                    kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
-                    updateWindowLayoutParams(false, viewModel.settings.value)
+            runSuspendCatchingLogged(TAG, "Expanded-state collector failed") {
+                viewModel.expanded.collectLatest { expanded ->
+                    if (destroyed || !viewModel.settings.value.enabled) {
+                        return@collectLatest
+                    }
+                    if (expanded) {
+                        updateWindowLayoutParams(true, viewModel.settings.value)
+                    } else {
+                        kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
+                        updateWindowLayoutParams(false, viewModel.settings.value)
+                    }
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        serviceScope.cancel()
-        runCatchingLogged(TAG, "unregisterReceiver failed") {
-            unregisterReceiver(systemEventReceiver)
-        }
-        runCatchingLogged(TAG, "unregisterReceiver screenStateReceiver failed") {
-            unregisterReceiver(screenStateReceiver)
-        }
-        repeat(3) {
-            if (islandView != null) {
-                removeCollapsedWindow()
-                if (islandView == null) return@repeat
-                Thread.sleep(100)
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        isSystemConnected = true
+        if (destroyed || !::viewModel.isInitialized) return
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Service reconnect failed") {
+                val settings = repository.settings.first()
+                if (settings.enabled) {
+                    startOverlaySession(settings)
+                } else {
+                    stopOverlaySession()
+                }
             }
         }
-        overlayOwners.destroy()
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        isSystemConnected = false
+        // Return true so Android system knows to re-bind the accessibility service automatically
+        return true
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        runCatchingLogged(TAG, "onTaskRemoved recovery failed") {
+            if (!destroyed &&
+                ::viewModel.isInitialized &&
+                viewModel.settings.value.enabled
+            ) {
+                ensureForegroundStarted()
+                ensureCollapsedWindow()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        if (destroyed) return
+        destroyed = true
+        isSystemConnected = false
+        serviceScope.cancel()
+
+        if (::systemEventReceiver.isInitialized && systemEventReceiverRegistered) {
+            runCatchingLogged(TAG, "unregisterReceiver failed") {
+                unregisterReceiver(systemEventReceiver)
+            }
+            systemEventReceiverRegistered = false
+        }
+        if (screenStateReceiverRegistered) {
+            runCatchingLogged(TAG, "unregisterReceiver screenStateReceiver failed") {
+                unregisterReceiver(screenStateReceiver)
+            }
+            screenStateReceiverRegistered = false
+        }
+
+        removeCollapsedWindow()
+        stopForegroundSafely()
+        runCatchingLogged(TAG, "Overlay owners destroy failed") {
+            overlayOwners.destroy()
+        }
         super.onDestroy()
+    }
+
+    private fun startOverlaySession(settings: SmartIslandSettings) {
+        if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
+        ensureForegroundStarted()
+        ensureCollapsedWindow()
+        updateWindowLayoutParams(viewModel.expanded.value, settings)
+    }
+
+    private fun stopOverlaySession() {
+        removeCollapsedWindow()
+        stopForegroundSafely()
+        if (::viewModel.isInitialized) {
+            viewModel.collapse()
+        }
+    }
+
+    private fun ensureForegroundStarted() {
+        if (foregroundStarted || destroyed) return
+        runCatchingLogged(TAG, "startForeground failed") {
+            startForeground(NOTIFICATION_ID, buildNotification())
+            foregroundStarted = true
+        }
+    }
+
+    private fun stopForegroundSafely() {
+        if (!foregroundStarted) return
+        runCatchingLogged(TAG, "stopForeground failed") {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        }
+        foregroundStarted = false
     }
 
     private val statusBarHeight: Float
@@ -227,7 +339,11 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
 
     private fun ensureCollapsedWindow() {
-        if (islandView != null) return
+        if (destroyed ||
+            islandView != null ||
+            !::windowManager.isInitialized ||
+            !::viewModel.isInitialized
+        ) return
         try {
             islandView = ComposeView(this).apply {
                 val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
@@ -290,8 +406,13 @@ class SmartIslandOverlayService : AccessibilityService() {
                 if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
                     val insets = args[0]
                     val isExpanded = viewModel.expanded.value
-                    android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded")
-                    if (isExpanded) {
+                    val isGone = view.visibility == android.view.View.GONE
+                    android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded isGone=$isGone")
+                    if (isGone) {
+                        setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
+                        val region = touchableRegionField.get(insets) as android.graphics.Region
+                        region.setEmpty()
+                    } else if (isExpanded) {
                         // When expanded, let the entire frame intercept touches so clicking outside collapses it
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_FRAME)
                     } else {
@@ -355,6 +476,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     private fun updateWindowLayoutParams(expanded: Boolean, settings: SmartIslandSettings) {
+        if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         val view = islandView ?: return
         val density = resources.displayMetrics.density
         
@@ -394,13 +516,14 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     private fun removeCollapsedWindow() {
         val view = islandView ?: return
-        val removed = runCatchingLogged(TAG, "Failed to remove view") {
-            windowManager.removeView(view)
-        } != null
-        if (removed) {
-            islandView = null
-        } else {
-            android.util.Log.w(TAG, "removeCollapsedWindow failed")
+        // Clear the reference before removal so repeated teardown calls are harmless,
+        // even when an OEM WindowManager throws while detaching an already-removed view.
+        islandView = null
+        if (!::windowManager.isInitialized) return
+        runCatchingLogged(TAG, "Failed to remove view") {
+            if (view.isAttachedToWindow) {
+                windowManager.removeViewImmediate(view)
+            }
         }
     }
 
@@ -565,6 +688,10 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     companion object {
+        @Volatile
+        var isSystemConnected: Boolean = false
+            private set
+
         private const val TAG = "SmartIslandOverlayService"
         private const val NOTIFICATION_ID = 8105
         private const val WINDOWING_MODE_FREEFORM = 5
