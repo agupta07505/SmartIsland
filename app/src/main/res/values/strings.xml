@@ -16,6 +16,7 @@
     <string name="btn_call">Call</string>
     <string name="btn_music">Music</string>
     <string name="btn_battery">Battery</string>
+    <string name="btn_clear_test">Clear Test Notifications</string>
     <string name="configure_features">Configure Features</string>
     <string name="sec_permissions">Permissions</string>
     <string name="sec_permissions_desc">Overlay, notification access, system warnings status</string>

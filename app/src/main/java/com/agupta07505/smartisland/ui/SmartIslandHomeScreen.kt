@@ -55,6 +55,7 @@ import androidx.compose.material.icons.rounded.Feedback
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
@@ -66,6 +67,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -447,6 +449,22 @@ fun SmartIslandHomeScreen(
                                     Spacer(Modifier.width(6.dp))
                                     Text(stringResource(R.string.btn_battery), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
+                            }
+                            OutlinedButton(
+                                onClick = { resolvedNotificationRepository?.clearTestNotifications() },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.btn_clear_test), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

@@ -126,6 +126,17 @@ class SmartIslandNotificationRepository : INotificationRepository {
         }
     }
 
+    override fun clearTestNotifications() {
+        _notifications.update { list ->
+            val demoFiltered = list.filterNot { it.key.startsWith("demo_") }
+            if (demoFiltered.size == list.size) {
+                emptyList()
+            } else {
+                demoFiltered
+            }
+        }
+    }
+
     private companion object {
         const val MAX_STORED_NOTIFICATIONS = 50
     }

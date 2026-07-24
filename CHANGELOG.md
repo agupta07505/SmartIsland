@@ -14,6 +14,7 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 - **Shizuku Integration & Crash Prevention**: Integrated optional Shizuku permission support for enhanced system service management and crash resilience.
 - **Customizable Island Action Buttons**: Added toggle settings allowing users to customize and remove action buttons from the Smart Island overlay.
 - **New Application Icon**: Introduced a refreshed, modern application launcher icon and updated visual app assets.
+- **Clear Test Notifications Option**: Added a dedicated "Clear Test Notifications" action in the Quick Testing dashboard section to immediately remove test and active island overlays.
 
 ### Changed
 
