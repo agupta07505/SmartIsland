@@ -13,6 +13,7 @@ import android.content.Intent
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.util.ShizukuManager
 import com.agupta07505.smartisland.util.runCatchingLogged
+import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,21 +27,31 @@ class AutostartReceiver : BroadcastReceiver() {
     @Inject lateinit var settingsRepository: SmartIslandSettingsRepository
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
-        if (action == Intent.ACTION_BOOT_COMPLETED ||
-            action == Intent.ACTION_MY_PACKAGE_REPLACED ||
-            action == Intent.ACTION_LOCKED_BOOT_COMPLETED ||
-            action == Intent.ACTION_USER_PRESENT) {
+        runCatchingLogged("AutostartReceiver", "Autostart broadcast callback failed") {
+            val action = intent.action ?: return@runCatchingLogged
+            if (action != Intent.ACTION_BOOT_COMPLETED &&
+                action != Intent.ACTION_MY_PACKAGE_REPLACED &&
+                action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
+                action != Intent.ACTION_USER_PRESENT
+            ) return@runCatchingLogged
 
             val pendingResult = goAsync()
             CoroutineScope(Dispatchers.IO).launch {
-                runCatchingLogged("AutostartReceiver", "Failed handling autostart broadcast") {
-                    val settings = settingsRepository.settings.first()
-                    if (settings.enabled && ShizukuManager.hasPermission()) {
-                        ShizukuManager.autoGrantAllPermissions(context)
+                try {
+                    runSuspendCatchingLogged(
+                        "AutostartReceiver",
+                        "Failed handling autostart broadcast"
+                    ) {
+                        val settings = settingsRepository.settings.first()
+                        if (settings.enabled && ShizukuManager.hasPermission()) {
+                            ShizukuManager.autoGrantAllPermissions(context)
+                        }
+                    }
+                } finally {
+                    runCatchingLogged("AutostartReceiver", "goAsync finish failed") {
+                        pendingResult.finish()
                     }
                 }
-                pendingResult.finish()
             }
         }
     }

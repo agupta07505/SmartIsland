@@ -41,6 +41,7 @@ import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -103,7 +104,10 @@ fun AppShortcutsSection(
                     checked = settings.showRecentApps,
                     onCheckedChange = { enabled ->
                         if (enabled && !usageAccess) {
-                            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            context.safeStartActivity(
+                                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                                "Cannot open Usage access settings on this device."
+                            )
                         }
                         scope.launch { repository.setShowRecentApps(enabled) }
                     }
@@ -112,7 +116,10 @@ fun AppShortcutsSection(
             if (!usageAccess) {
                 OutlinedButton(
                     onClick = {
-                        context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                        context.safeStartActivity(
+                            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                            "Cannot open Usage access settings on this device."
+                        )
                     },
                     shape = RoundedCornerShape(10.dp)
                 ) {

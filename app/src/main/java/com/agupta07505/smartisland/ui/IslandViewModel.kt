@@ -15,7 +15,7 @@ import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
-import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -56,34 +57,41 @@ class IslandViewModel(
 
     init {
         viewModelScope.launch {
-            notifications.collect { list ->
-                val currentSelected = selectedIndex.value
-                if (currentSelected >= list.size) {
-                    selectedIndex.value = (list.size - 1).coerceAtLeast(0)
+            runSuspendCatchingLogged(TAG, "Notifications collector failed") {
+                notifications.collect { list ->
+                    selectedIndex.update { currentSelected ->
+                        currentSelected.coerceIn(0, (list.size - 1).coerceAtLeast(0))
+                    }
                 }
             }
         }
         viewModelScope.launch {
-            notificationRepo.autoExpandEvent.collect { key ->
-                val list = notifications.value
-                val index = list.indexOfFirst { it.key == key }
-                if (index >= 0) {
-                    selectedIndex.value = index
-                    expand()
+            runSuspendCatchingLogged(TAG, "Auto-expand collector failed") {
+                notificationRepo.autoExpandEvent.collect { key ->
+                    val list = notifications.value
+                    val index = list.indexOfFirst { it.key == key }
+                    if (index >= 0) {
+                        selectedIndex.value = index
+                        expand()
+                    }
                 }
             }
         }
         viewModelScope.launch {
-            notificationRepo.resetTimerEvent.collect {
-                resetAutoCollapseTimer()
+            runSuspendCatchingLogged(TAG, "Timer-reset collector failed") {
+                notificationRepo.resetTimerEvent.collect {
+                    resetAutoCollapseTimer()
+                }
             }
         }
         viewModelScope.launch {
-            expanded.collect { isExpanded ->
-                if (isExpanded) {
-                    startAutoCollapseTimer()
-                } else {
-                    stopAutoCollapseTimer()
+            runSuspendCatchingLogged(TAG, "Expanded-state collector failed") {
+                expanded.collect { isExpanded ->
+                    if (isExpanded) {
+                        startAutoCollapseTimer()
+                    } else {
+                        stopAutoCollapseTimer()
+                    }
                 }
             }
         }
@@ -103,7 +111,7 @@ class IslandViewModel(
         val now = System.currentTimeMillis()
         if (now - lastToggleTimeMs < 350L) return
         lastToggleTimeMs = now
-        expanded.value = !expanded.value
+        expanded.update { !it }
     }
 
     private fun startAutoCollapseTimer() {
@@ -145,6 +153,7 @@ class IslandViewModel(
     }
 
     companion object {
+        private const val TAG = "IslandViewModel"
         private const val AUTO_COLLAPSE_DELAY_MS = 5000L
 
         fun provideFactory(

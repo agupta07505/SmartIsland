@@ -72,15 +72,7 @@ object OemAutostartUtil {
             } catch (_: Throwable) { }
 
             for (intent in intents) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                val success = try {
-                    context.startActivity(intent)
-                    true
-                } catch (_: Throwable) {
-                    false
-                }
-
-                if (success) {
+                if (context.safeStartActivity(intent, errorMessage = null)) {
                     return true
                 }
             }

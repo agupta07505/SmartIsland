@@ -11,7 +11,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
-import com.agupta07505.smartisland.util.runCatchingLogged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.agupta07505.smartisland.util.OemAutostartUtil
 import com.agupta07505.smartisland.util.ShizukuManager
+import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.launch
 
 @Composable
@@ -249,9 +249,10 @@ fun PermissionsSection(
                             val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                                 putExtra(Settings.EXTRA_APP_PACKAGE, "android")
                             }
-                            runCatchingLogged("PermissionsSection", "Failed to open notification settings") {
-                                context.startActivity(intent)
-                            } ?: Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
+                            context.safeStartActivity(
+                                intent,
+                                "Cannot open app notification settings on this device."
+                            )
                         },
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)

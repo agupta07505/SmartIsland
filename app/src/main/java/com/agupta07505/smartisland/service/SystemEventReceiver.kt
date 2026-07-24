@@ -27,6 +27,7 @@ class SystemEventReceiver(
     private var isCurrentlyCharging: Boolean = false
 
     override fun onReceive(context: Context, intent: Intent) {
+        runCatchingLogged("SystemEventReceiver", "Battery broadcast callback failed") {
         when (intent.action) {
             Intent.ACTION_POWER_CONNECTED -> {
                 isCurrentlyCharging = true
@@ -58,6 +59,7 @@ class SystemEventReceiver(
                 }
             }
         }
+        }
     }
 
     private fun isCharging(intent: Intent): Boolean {
@@ -77,7 +79,8 @@ class SystemEventReceiver(
         }
         val level = intentToUse?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 0
         val scale = intentToUse?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
-        val batteryPct = (level * 100 / scale.toFloat()).toInt()
+        if (level < 0 || scale <= 0) return
+        val batteryPct = (level * 100 / scale.toFloat()).toInt().coerceIn(0, 100)
         val status = intentToUse?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
 
         val title = when (status) {

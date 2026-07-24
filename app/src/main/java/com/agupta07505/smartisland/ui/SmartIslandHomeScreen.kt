@@ -77,6 +77,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,6 +101,7 @@ import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
+import com.agupta07505.smartisland.util.safeStartActivity
 import com.agupta07505.smartisland.ui.sections.AboutSection
 import com.agupta07505.smartisland.ui.sections.AppShortcutsSection
 import com.agupta07505.smartisland.ui.sections.CustomizationsSection
@@ -160,6 +162,7 @@ fun SmartIslandHomeScreen(
     }
     
     val settings by resolvedRepository.settings.collectAsStateWithLifecycle(initialValue = SmartIslandSettings.Default)
+    val featureEnabled by rememberUpdatedState(settings.enabled)
     val scope = rememberCoroutineScope()
 
     var showWelcomeDialog by remember { mutableStateOf(false) }
@@ -232,12 +235,12 @@ fun SmartIslandHomeScreen(
                 overlayGranted = isAccessibilityServiceEnabled(context)
                 notificationGranted = isNotificationListenerEnabled(context)
                 batteryIgnored = isBatteryOptimizationIgnored(context)
-                // Keep the persisted "enabled" flag in sync with the REAL system state.
-                // Swiping the app from recents (or a force-stop) revokes the accessibility
-                // service; the DataStore flag would otherwise stay true while the service is
-                // actually dead, making the toggle look ON while nothing works. This runs on
-                // every resume and is idempotent, so it self-heals after re-granting.
-                scope.launch { resolvedRepository.setEnabled(overlayGranted) }
+                // Permission state and the user's feature preference are separate.
+                // Never auto-enable the feature merely because Accessibility is granted.
+                // If the permission was actually revoked, turn the feature off safely.
+                if (!overlayGranted && featureEnabled) {
+                    scope.launch { resolvedRepository.setEnabled(false) }
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -595,19 +598,26 @@ fun SmartIslandHomeScreen(
                             notificationGranted = notificationGranted,
                             batteryIgnored = batteryIgnored,
                             onOverlayClick = {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                                overlayGranted = isAccessibilityServiceEnabled(context)
+                                context.safeStartActivity(
+                                    Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                                    "Cannot open Accessibility settings on this device."
+                                )
                             },
                             onNotificationClick = {
-                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                notificationGranted = isNotificationListenerEnabled(context)
+                                context.safeStartActivity(
+                                    Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+                                    "Cannot open Notification access settings on this device."
+                                )
                             },
                             onBatteryClick = {
-                                context.startActivity(
+                                context.safeStartActivity(
                                     Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                                        .setData(Uri.parse("package:${context.packageName}"))
+                                        .setData(Uri.parse("package:${context.packageName}")),
+                                    errorMessage = "Cannot open Battery optimization settings on this device.",
+                                    fallbackIntent = Intent(
+                                        Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+                                    )
                                 )
-                                batteryIgnored = isBatteryOptimizationIgnored(context)
                             },
                             onRefreshPermissions = {
                                 overlayGranted = isAccessibilityServiceEnabled(context)

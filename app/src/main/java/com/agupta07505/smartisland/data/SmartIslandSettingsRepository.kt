@@ -8,18 +8,31 @@
 package com.agupta07505.smartisland.data
 
 import android.content.Context
+import android.util.Log
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-private val Context.smartIslandDataStore by preferencesDataStore(name = "smart_island_settings")
+private val Context.smartIslandDataStore by preferencesDataStore(
+    name = "smart_island_settings",
+    corruptionHandler = ReplaceFileCorruptionHandler {
+        Log.e("SmartIslandSettings", "Settings were corrupted; restoring safe defaults")
+        emptyPreferences()
+    }
+)
 
 class SmartIslandSettingsRepository(private val context: Context) {
     private object Keys {
@@ -38,44 +51,149 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val ShowOnLockScreen = booleanPreferencesKey("show_on_lock_screen")
         val LockScreenPrivacy = stringPreferencesKey("lock_screen_privacy")
         val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
+        val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
     }
 
-    val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data.map { prefs ->
-        SmartIslandSettings(
-            enabled = prefs[Keys.Enabled] ?: SmartIslandSettings.Default.enabled,
-            width = prefs[Keys.Width] ?: SmartIslandSettings.Default.width,
-            height = prefs[Keys.Height] ?: SmartIslandSettings.Default.height,
-            xOffset = prefs[Keys.XOffset] ?: SmartIslandSettings.Default.xOffset,
-            yOffset = prefs[Keys.YOffset] ?: SmartIslandSettings.Default.yOffset,
-            cornerRadius = prefs[Keys.CornerRadius] ?: SmartIslandSettings.Default.cornerRadius,
-            batteryColor = prefs[Keys.BatteryColor] ?: SmartIslandSettings.Default.batteryColor,
-            notificationDotColor = prefs[Keys.NotificationDotColor] ?: SmartIslandSettings.Default.notificationDotColor,
-            musicVisualizerColor = prefs[Keys.MusicVisualizerColor] ?: SmartIslandSettings.Default.musicVisualizerColor,
-            shortcutPackages = prefs[Keys.ShortcutPackages] ?: SmartIslandSettings.Default.shortcutPackages,
-            showRecentApps = prefs[Keys.ShowRecentApps] ?: SmartIslandSettings.Default.showRecentApps,
-            welcomeDialogShown = prefs[Keys.WelcomeDialogShown] ?: SmartIslandSettings.Default.welcomeDialogShown,
-            showOnLockScreen = prefs[Keys.ShowOnLockScreen] ?: SmartIslandSettings.Default.showOnLockScreen,
-            lockScreenPrivacy = prefs[Keys.LockScreenPrivacy] ?: SmartIslandSettings.Default.lockScreenPrivacy,
-            showNotificationActions = prefs[Keys.ShowNotificationActions] ?: SmartIslandSettings.Default.showNotificationActions
+    val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
+        .catch { error ->
+            if (error is IOException) {
+                Log.e(TAG, "Unable to read settings; using safe defaults", error)
+                emit(emptyPreferences())
+            } else {
+                throw error
+            }
+        }
+        .map { prefs ->
+            val defaults = SmartIslandSettings.Default
+            SmartIslandSettings(
+                enabled = prefs[Keys.Enabled] ?: defaults.enabled,
+                width = validDimension(
+                    prefs[Keys.Width],
+                    defaults.width,
+                    SmartIslandSettings.MIN_WIDTH,
+                    SmartIslandSettings.MAX_WIDTH
+                ),
+                height = validDimension(
+                    prefs[Keys.Height],
+                    defaults.height,
+                    SmartIslandSettings.MIN_HEIGHT,
+                    SmartIslandSettings.MAX_HEIGHT
+                ),
+                xOffset = validDimension(
+                    prefs[Keys.XOffset],
+                    defaults.xOffset,
+                    SmartIslandSettings.MIN_X_OFFSET,
+                    SmartIslandSettings.MAX_X_OFFSET
+                ),
+                yOffset = validDimension(
+                    prefs[Keys.YOffset],
+                    defaults.yOffset,
+                    SmartIslandSettings.MIN_Y_OFFSET,
+                    SmartIslandSettings.MAX_Y_OFFSET
+                ),
+                cornerRadius = validDimension(
+                    prefs[Keys.CornerRadius],
+                    defaults.cornerRadius,
+                    SmartIslandSettings.MIN_CORNER_RADIUS,
+                    SmartIslandSettings.MAX_CORNER_RADIUS
+                ),
+                batteryColor = validColor(prefs[Keys.BatteryColor], defaults.batteryColor),
+                notificationDotColor = validColor(
+                    prefs[Keys.NotificationDotColor],
+                    defaults.notificationDotColor
+                ),
+                musicVisualizerColor = validColor(
+                    prefs[Keys.MusicVisualizerColor],
+                    defaults.musicVisualizerColor
+                ),
+                shortcutPackages = prefs[Keys.ShortcutPackages]
+                    ?.asSequence()
+                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.take(MAX_SHORTCUTS)
+                    ?.toSet()
+                    ?: defaults.shortcutPackages,
+                showRecentApps = prefs[Keys.ShowRecentApps] ?: defaults.showRecentApps,
+                welcomeDialogShown = prefs[Keys.WelcomeDialogShown] ?: defaults.welcomeDialogShown,
+                showOnLockScreen = prefs[Keys.ShowOnLockScreen] ?: defaults.showOnLockScreen,
+                lockScreenPrivacy = prefs[Keys.LockScreenPrivacy]
+                    ?.takeIf { it in VALID_LOCK_SCREEN_PRIVACY_VALUES }
+                    ?: defaults.lockScreenPrivacy,
+                showNotificationActions = prefs[Keys.ShowNotificationActions]
+                    ?: defaults.showNotificationActions,
+                hideFromNotificationShade = prefs[Keys.HideFromNotificationShade]
+                    ?: defaults.hideFromNotificationShade
+            )
+        }
+
+    suspend fun setEnabled(value: Boolean) = editSafely { it[Keys.Enabled] = value }
+    suspend fun setWidth(value: Float) = editSafely {
+        it[Keys.Width] = validDimension(
+            value,
+            SmartIslandSettings.Default.width,
+            SmartIslandSettings.MIN_WIDTH,
+            SmartIslandSettings.MAX_WIDTH
         )
     }
-
-    suspend fun setEnabled(value: Boolean) = context.smartIslandDataStore.edit { it[Keys.Enabled] = value }
-    suspend fun setWidth(value: Float) = context.smartIslandDataStore.edit { it[Keys.Width] = value }
-    suspend fun setHeight(value: Float) = context.smartIslandDataStore.edit { it[Keys.Height] = value }
-    suspend fun setXOffset(value: Float) = context.smartIslandDataStore.edit { it[Keys.XOffset] = value }
-    suspend fun setYOffset(value: Float) = context.smartIslandDataStore.edit { it[Keys.YOffset] = value }
-    suspend fun setCornerRadius(value: Float) = context.smartIslandDataStore.edit { it[Keys.CornerRadius] = value }
-    suspend fun setBatteryColor(value: Long) = context.smartIslandDataStore.edit { it[Keys.BatteryColor] = value }
-    suspend fun setNotificationDotColor(value: Long) = context.smartIslandDataStore.edit { it[Keys.NotificationDotColor] = value }
-    suspend fun setMusicVisualizerColor(value: Long) = context.smartIslandDataStore.edit { it[Keys.MusicVisualizerColor] = value }
-    suspend fun setShortcutPackages(value: Set<String>) = context.smartIslandDataStore.edit {
-        it[Keys.ShortcutPackages] = value
+    suspend fun setHeight(value: Float) = editSafely {
+        it[Keys.Height] = validDimension(
+            value,
+            SmartIslandSettings.Default.height,
+            SmartIslandSettings.MIN_HEIGHT,
+            SmartIslandSettings.MAX_HEIGHT
+        )
     }
-    suspend fun setShowRecentApps(value: Boolean) = context.smartIslandDataStore.edit {
+    suspend fun setXOffset(value: Float) = editSafely {
+        it[Keys.XOffset] = validDimension(
+            value,
+            SmartIslandSettings.Default.xOffset,
+            SmartIslandSettings.MIN_X_OFFSET,
+            SmartIslandSettings.MAX_X_OFFSET
+        )
+    }
+    suspend fun setYOffset(value: Float) = editSafely {
+        it[Keys.YOffset] = validDimension(
+            value,
+            SmartIslandSettings.Default.yOffset,
+            SmartIslandSettings.MIN_Y_OFFSET,
+            SmartIslandSettings.MAX_Y_OFFSET
+        )
+    }
+    suspend fun setCornerRadius(value: Float) = editSafely {
+        it[Keys.CornerRadius] = validDimension(
+            value,
+            SmartIslandSettings.Default.cornerRadius,
+            SmartIslandSettings.MIN_CORNER_RADIUS,
+            SmartIslandSettings.MAX_CORNER_RADIUS
+        )
+    }
+    suspend fun setBatteryColor(value: Long) = editSafely {
+        it[Keys.BatteryColor] = validColor(value, SmartIslandSettings.Default.batteryColor)
+    }
+    suspend fun setNotificationDotColor(value: Long) = editSafely {
+        it[Keys.NotificationDotColor] = validColor(
+            value,
+            SmartIslandSettings.Default.notificationDotColor
+        )
+    }
+    suspend fun setMusicVisualizerColor(value: Long) = editSafely {
+        it[Keys.MusicVisualizerColor] = validColor(
+            value,
+            SmartIslandSettings.Default.musicVisualizerColor
+        )
+    }
+    suspend fun setShortcutPackages(value: Set<String>) = editSafely {
+        it[Keys.ShortcutPackages] = value
+            .asSequence()
+            .filter { packageName ->
+                packageName.isNotBlank() && packageName.length <= MAX_PACKAGE_NAME_LENGTH
+            }
+            .take(MAX_SHORTCUTS)
+            .toSet()
+    }
+    suspend fun setShowRecentApps(value: Boolean) = editSafely {
         it[Keys.ShowRecentApps] = value
     }
-    suspend fun setWelcomeDialogShown(value: Boolean) = context.smartIslandDataStore.edit {
+    suspend fun setWelcomeDialogShown(value: Boolean) = editSafely {
         it[Keys.WelcomeDialogShown] = value
     }
 
@@ -84,23 +202,62 @@ class SmartIslandSettingsRepository(private val context: Context) {
      * relying on the SmartIslandSettings.Default placeholder that State flows emit on the
      * first frame. Used to decide whether the welcome dialog should show.
      */
-    suspend fun isWelcomeDialogShown(): Boolean =
-        context.smartIslandDataStore.data.first()[Keys.WelcomeDialogShown] ?: false
-    suspend fun setShowOnLockScreen(value: Boolean) = context.smartIslandDataStore.edit {
+    suspend fun isWelcomeDialogShown(): Boolean = settings.first().welcomeDialogShown
+
+    suspend fun setShowOnLockScreen(value: Boolean) = editSafely {
         it[Keys.ShowOnLockScreen] = value
     }
-    suspend fun setLockScreenPrivacy(value: String) = context.smartIslandDataStore.edit {
-        it[Keys.LockScreenPrivacy] = value
+    suspend fun setLockScreenPrivacy(value: String) = editSafely {
+        it[Keys.LockScreenPrivacy] = value.takeIf { privacy ->
+            privacy in VALID_LOCK_SCREEN_PRIVACY_VALUES
+        } ?: SmartIslandSettings.Default.lockScreenPrivacy
     }
-    suspend fun setShowNotificationActions(value: Boolean) = context.smartIslandDataStore.edit {
+    suspend fun setShowNotificationActions(value: Boolean) = editSafely {
         it[Keys.ShowNotificationActions] = value
     }
+    suspend fun setHideFromNotificationShade(value: Boolean) = editSafely {
+        it[Keys.HideFromNotificationShade] = value
+    }
 
-    suspend fun resetPosition() = context.smartIslandDataStore.edit {
+    suspend fun resetPosition() = editSafely {
         it[Keys.Width] = SmartIslandSettings.Default.width
         it[Keys.Height] = SmartIslandSettings.Default.height
         it[Keys.XOffset] = SmartIslandSettings.Default.xOffset
         it[Keys.YOffset] = SmartIslandSettings.Default.yOffset
         it[Keys.CornerRadius] = SmartIslandSettings.Default.cornerRadius
+    }
+
+    private suspend fun editSafely(transform: suspend (MutablePreferences) -> Unit) {
+        try {
+            context.smartIslandDataStore.edit(transform)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Log.e(TAG, "Unable to persist settings", error)
+        }
+    }
+
+    private fun validDimension(
+        value: Float?,
+        fallback: Float,
+        min: Float,
+        max: Float
+    ): Float = value?.takeIf { it.isFinite() }?.coerceIn(min, max) ?: fallback
+
+    private fun validColor(value: Long?, fallback: Long): Long {
+        val color = value ?: return fallback
+        val hasValidArgbBits = color in MIN_ARGB_COLOR..MAX_ARGB_COLOR
+        val hasVisibleAlpha = (color ushr ALPHA_SHIFT) != 0L
+        return if (hasValidArgbBits && hasVisibleAlpha) color else fallback
+    }
+
+    private companion object {
+        const val TAG = "SmartIslandSettings"
+        const val MAX_SHORTCUTS = 8
+        const val MAX_PACKAGE_NAME_LENGTH = 255
+        const val MIN_ARGB_COLOR = 0x01000000L
+        const val MAX_ARGB_COLOR = 0xFFFFFFFFL
+        const val ALPHA_SHIFT = 24
+        val VALID_LOCK_SCREEN_PRIVACY_VALUES = setOf("AppIconOnly", "FullContent")
     }
 }
