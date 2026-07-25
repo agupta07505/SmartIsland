@@ -42,6 +42,21 @@ object LiveActivityParser {
     private val STATUS_STAGE_2 = listOf("preparing", "on the way", "heading", "en route", "picked up", "out for delivery", "driving", "dispatched")
     private val STATUS_STAGE_3 = listOf("arriving", "arrived", "reaching", "at location", "nearby", "delivered", "completed")
 
+    fun getBrandColor(packageName: String?): Long {
+        return when (packageName) {
+            "com.application.zomato" -> 0xFFE23744L
+            "in.swiggy.android" -> 0xFFFC8019L
+            "com.grofers.customerapp" -> 0xFFF7C325L
+            "com.zepto.consumer" -> 0xFF7D2EC0L
+            "com.ubercab" -> 0xFF38BDF8L
+            "com.rapido.passenger" -> 0xFFFACC15L
+            "com.olacabs.customer" -> 0xFF84CC16L
+            "com.dunzo.user" -> 0xFF00B259L
+            "com.Dominos" -> 0xFF006491L
+            else -> 0xFF38BDF8L
+        }
+    }
+
     fun isSupportedApp(packageName: String): Boolean {
         return packageName in SUPPORTED_PACKAGES
     }

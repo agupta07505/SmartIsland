@@ -363,6 +363,9 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
 
 @Composable
 private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
+    val brandColor = remember(notification?.packageName) {
+        Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification?.packageName))
+    }
     val progress = remember(notification) {
         if (notification != null && notification.progressMax > 0) {
             (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.15f, 1f)
@@ -375,11 +378,10 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
         modifier = Modifier.size(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        DottedRing(
+        SmoothCircularRingProgress(
             progress = progress,
-            rotationAngle = 0f,
-            modifier = Modifier.size(24.dp),
-            color = Color(0xFF38BDF8)
+            color = brandColor,
+            modifier = Modifier.size(24.dp)
         )
         val mainIcon = notification?.largeIcon ?: notification?.icon
         if (mainIcon != null) {
@@ -397,7 +399,49 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
 }
 
 @Composable
+private fun SmoothCircularRingProgress(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val strokeWidth = 2.2.dp.toPx()
+        val diameter = size.minDimension - strokeWidth
+        val topLeftOffset = androidx.compose.ui.geometry.Offset(strokeWidth / 2f, strokeWidth / 2f)
+        val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
+
+        // Track background ring
+        drawArc(
+            color = Color(0x33FFFFFF),
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeftOffset,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
+
+        // Filled progress arc (360 degrees for completed 1.0f)
+        val sweepAngle = (360f * progress.coerceIn(0f, 1f))
+        if (sweepAngle > 0f) {
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = topLeftOffset,
+                size = arcSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+    }
+}
+
+@Composable
 private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
+    val brandColor = remember(notification?.packageName) {
+        Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification?.packageName))
+    }
     val etaText = remember(notification) {
         if (notification == null) return@remember "Active"
         val text = "${notification.title} ${notification.text}"
@@ -413,7 +457,7 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
 
     Text(
         text = etaText,
-        color = Color(0xFF38BDF8),
+        color = brandColor,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
     )

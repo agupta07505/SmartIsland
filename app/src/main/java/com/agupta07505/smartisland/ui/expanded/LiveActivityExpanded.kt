@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.util.LiveActivityParser
 
 @Composable
 fun LiveActivityExpanded(
@@ -56,6 +56,10 @@ fun LiveActivityExpanded(
     onCollapse: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    val brandColor = remember(notification?.packageName) {
+        Color(LiveActivityParser.getBrandColor(notification?.packageName))
+    }
 
     val (etaText, progressRatio, statusTitle, subStatusText) = remember(notification) {
         if (notification == null) {
@@ -75,92 +79,105 @@ fun LiveActivityExpanded(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = bottomPadding),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(start = 18.dp, top = 18.dp, end = 18.dp, bottom = bottomPadding),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Header: App icon + App name + ETA Pill
+        // Top Section: Icon on Left (42.dp like NotificationExpanded) + Title/Text in Middle + ETA Badge on Right
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val icon = notification?.largeIcon ?: notification?.icon
-                if (icon != null) {
+            val largeIcon = notification?.largeIcon
+            val icon = notification?.icon
+            val mainIcon = largeIcon ?: icon
+
+            if (mainIcon != null) {
+                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
+                Box(modifier = Modifier.size(42.dp)) {
                     Image(
-                        bitmap = icon.asImageBitmap(),
+                        bitmap = mainIcon.asImageBitmap(),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
+                            .fillMaxSize()
+                            .clip(clipShape)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF38BDF8)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = notification?.appName?.firstOrNull()?.uppercase() ?: "L",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                    if (largeIcon != null && icon != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(Color.Black, CircleShape)
+                                .padding(1.5.dp)
+                        ) {
+                            Image(
+                                bitmap = icon.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
                     }
                 }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(brandColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = notification?.appName?.firstOrNull()?.uppercase() ?: "L",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
+            }
 
+            // Middle Column: Title & Text (Matching NotificationExpanded layout)
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = notification?.appName ?: "Live Activity",
+                    text = statusTitle,
                     color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 17.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = subStatusText,
+                    color = Color(0xFFD5DAE0),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp
                 )
             }
 
-            // ETA Status Badge
+            // Right: ETA Status Badge
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF38BDF8).copy(alpha = 0.2f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(brandColor.copy(alpha = 0.18f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = etaText,
-                    color = Color(0xFF38BDF8),
+                    color = brandColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        // Title and SubStatus
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = statusTitle,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = subStatusText,
-                color = Color(0xFFB7C0CA),
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // Route & Distance Progress Visualizer (Origin -> Current position -> Destination)
+        // Route & Distance Progress Visualizer
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box(
@@ -186,7 +203,7 @@ fun LiveActivityExpanded(
                     // Traveled progress fill line
                     val currentX = (12.dp.toPx() + (width - 24.dp.toPx()) * progressRatio).coerceIn(12.dp.toPx(), width - 12.dp.toPx())
                     drawLine(
-                        color = Color(0xFF38BDF8),
+                        color = brandColor,
                         start = Offset(12.dp.toPx(), cy),
                         end = Offset(currentX, cy),
                         strokeWidth = strokeWidth,
@@ -194,11 +211,11 @@ fun LiveActivityExpanded(
                     )
 
                     // Start node dot (Origin)
-                    drawCircle(color = Color(0xFF38BDF8), radius = 4.dp.toPx(), center = Offset(12.dp.toPx(), cy))
+                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(12.dp.toPx(), cy))
 
                     // Current position dot (Traveled position)
                     drawCircle(color = Color.White, radius = 6.dp.toPx(), center = Offset(currentX, cy))
-                    drawCircle(color = Color(0xFF0EA5E9), radius = 4.dp.toPx(), center = Offset(currentX, cy))
+                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(currentX, cy))
 
                     // Destination node dot
                     drawCircle(color = Color(0xFF64748B), radius = 4.dp.toPx(), center = Offset(width - 12.dp.toPx(), cy))
@@ -210,12 +227,12 @@ fun LiveActivityExpanded(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Initial", color = Color(0xFF94A3B8), fontSize = 10.sp)
-                Text("Traveled ${(progressRatio * 100).toInt()}%", color = Color(0xFF38BDF8), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Text("Destination", color = Color(0xFF94A3B8), fontSize = 10.sp)
             }
         }
 
-        // Action Buttons Row & Collapse Arrow
+        // Action Buttons Row & Collapse Arrow (Matching NotificationExpanded)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
