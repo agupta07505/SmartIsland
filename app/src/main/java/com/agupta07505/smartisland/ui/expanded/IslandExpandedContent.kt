@@ -118,11 +118,12 @@ fun IslandExpandedContent(
 
         fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
             return when (notif?.mode) {
-                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 120.dp)
-                IslandMode.Notification -> height.coerceIn(90.dp, 135.dp)
-                IslandMode.Music, IslandMode.LiveActivity -> height.coerceIn(110.dp, 170.dp)
-                IslandMode.Navigation -> height.coerceIn(120.dp, 185.dp)
-                else -> height.coerceIn(80.dp, 150.dp)
+                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
+                IslandMode.Notification -> height.coerceIn(95.dp, 145.dp)
+                IslandMode.Music -> height.coerceIn(115.dp, 180.dp)
+                IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
+                IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
+                else -> height.coerceIn(80.dp, 160.dp)
             }
         }
 
@@ -141,7 +142,7 @@ fun IslandExpandedContent(
             val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
             val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) } ?: currentPageHeight)
             val fraction = kotlin.math.abs(offsetFraction)
-            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 185.dp)
+            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 205.dp)
         } else {
             null
         }

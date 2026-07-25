@@ -93,7 +93,7 @@ fun NavigationExpanded(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 18.dp, top = 18.dp, end = 18.dp, bottom = bottomPadding),
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Top Section: App Icon + App Name & ETA Subtitle + Navigation Badge
