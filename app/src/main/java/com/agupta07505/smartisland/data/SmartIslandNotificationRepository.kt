@@ -131,7 +131,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 progressMax = 100,
                 actionIntents = listOf(
                     IslandNotificationAction("Call Driver", null),
-                    IslandNotificationAction("Track Order", null)
+                    IslandNotificationAction("Share Trip", null)
                 )
             )
             IslandMode.Empty -> null

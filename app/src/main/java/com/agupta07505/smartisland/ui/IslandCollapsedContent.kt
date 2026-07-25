@@ -405,7 +405,7 @@ private fun SmoothCircularRingProgress(
     modifier: Modifier = Modifier
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val strokeWidth = 2.2.dp.toPx()
+        val strokeWidth = 3.2.dp.toPx()
         val diameter = size.minDimension - strokeWidth
         val topLeftOffset = androidx.compose.ui.geometry.Offset(strokeWidth / 2f, strokeWidth / 2f)
         val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
