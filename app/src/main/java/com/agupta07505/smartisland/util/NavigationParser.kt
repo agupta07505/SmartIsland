@@ -50,7 +50,11 @@ object NavigationParser {
     fun parse(sbn: StatusBarNotification): NavigationInfo? {
         val packageName = sbn.packageName
         val notification = sbn.notification ?: return null
-        val isCategoryNav = notification.category == Notification.CATEGORY_NAVIGATION
+        val isCategoryNav = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            notification.category == Notification.CATEGORY_NAVIGATION
+        } else {
+            notification.category == "navigation"
+        }
         
         if (!isCategoryNav && !isNavigationApp(packageName)) {
             return null
