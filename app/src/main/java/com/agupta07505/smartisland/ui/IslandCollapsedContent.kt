@@ -136,6 +136,9 @@ fun IslandCollapsedContent(
                 IslandMode.Battery -> {
                     BatteryCollapsedGlyph(notification = notification, settings = settings)
                 }
+                IslandMode.LiveActivity -> {
+                    LiveActivityCollapsedGlyph(notification = notification)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -176,6 +179,9 @@ fun IslandCollapsedContent(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+                IslandMode.LiveActivity -> {
+                    LiveActivityCollapsedRight(notification = notification)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -352,6 +358,64 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
         color = color,
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold
+    )
+}
+
+@Composable
+private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
+    val progress = remember(notification) {
+        if (notification != null && notification.progressMax > 0) {
+            (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.15f, 1f)
+        } else {
+            0.65f
+        }
+    }
+
+    Box(
+        modifier = Modifier.size(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        DottedRing(
+            progress = progress,
+            rotationAngle = 0f,
+            modifier = Modifier.size(24.dp),
+            color = Color(0xFF38BDF8)
+        )
+        val mainIcon = notification?.largeIcon ?: notification?.icon
+        if (mainIcon != null) {
+            Image(
+                bitmap = mainIcon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            NotificationGlyph(notification = notification)
+        }
+    }
+}
+
+@Composable
+private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
+    val etaText = remember(notification) {
+        if (notification == null) return@remember "Active"
+        val text = "${notification.title} ${notification.text}"
+        val matcher = java.util.regex.Pattern.compile("(\\d+)\\s*(?:mins?|minutes?|min|m)\\b", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text)
+        if (matcher.find()) {
+            "${matcher.group(1)} min"
+        } else if (text.lowercase().contains("arrived")) {
+            "Arrived"
+        } else {
+            "Active"
+        }
+    }
+
+    Text(
+        text = etaText,
+        color = Color(0xFF38BDF8),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
     )
 }
 

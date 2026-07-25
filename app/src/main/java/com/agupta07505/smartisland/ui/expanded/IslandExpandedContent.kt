@@ -120,7 +120,7 @@ fun IslandExpandedContent(
             return when (notif?.mode) {
                 IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 120.dp)
                 IslandMode.Notification -> height.coerceIn(90.dp, 135.dp)
-                IslandMode.Music -> height.coerceIn(110.dp, 170.dp)
+                IslandMode.Music, IslandMode.LiveActivity -> height.coerceIn(110.dp, 170.dp)
                 else -> height.coerceIn(80.dp, 150.dp)
             }
         }
@@ -199,6 +199,12 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 settings = settings
+                            )
+                            IslandMode.LiveActivity -> LiveActivityExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse
                             )
                             IslandMode.Empty -> EmptyExpanded(
                                 settings = settings,

@@ -13,6 +13,7 @@ local.properties
 .vscode
 debug-helper/
 .kotlin/
+.agents
 
 # Android build outputs
 *.apk

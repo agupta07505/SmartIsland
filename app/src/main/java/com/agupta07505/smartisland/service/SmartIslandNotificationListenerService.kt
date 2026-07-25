@@ -150,10 +150,11 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 currentSettings.hideFromNotificationShade &&
                 !com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(
                     sbn,
-                    packageManager
+                    packageManager,
+                    currentSettings.liveActivitiesEnabled
                 )
             ) {
-                val modeQuick = notification.toIslandMode()
+                val modeQuick = notification.toIslandMode(sbn, currentSettings.liveActivitiesEnabled)
                 if (shouldBeIslandOnly(notification, modeQuick)) {
                     markSuppressed(sbn.key)
                     runCatchingLogged(TAG, "Immediate cancel failed") { cancelNotification(sbn.key) }
@@ -322,7 +323,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (shouldSuppressFromIsland(sbn)) return
 
         val extras = notification.extras
-        val mode = notification.toIslandMode()
+        val mode = notification.toIslandMode(sbn, settings.liveActivitiesEnabled)
         android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
 
         val shouldIslandOnly = shouldBeIslandOnly(notification, mode)
@@ -386,7 +387,11 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     internal fun shouldSuppressFromIsland(sbn: StatusBarNotification): Boolean {
-        return com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(sbn, packageManager)
+        return com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(
+            sbn,
+            packageManager,
+            currentSettings.liveActivitiesEnabled
+        )
     }
 
     internal fun shouldBeIslandOnly(notification: Notification, mode: IslandMode): Boolean {

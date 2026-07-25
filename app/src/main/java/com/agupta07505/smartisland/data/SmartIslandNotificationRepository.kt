@@ -119,6 +119,21 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 timeMillis = System.currentTimeMillis(),
                 mode = IslandMode.Battery
             )
+            IslandMode.LiveActivity -> IslandNotification(
+                key = "demo_live_activity",
+                packageName = "com.ubercab",
+                appName = "Uber",
+                title = "Driver is on the way",
+                text = "Arriving in 8 mins • 2.5 km away",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.LiveActivity,
+                progress = 40,
+                progressMax = 100,
+                actionIntents = listOf(
+                    IslandNotificationAction("Call Driver", null),
+                    IslandNotificationAction("Track Order", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {
