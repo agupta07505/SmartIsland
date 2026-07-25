@@ -29,7 +29,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Navigation
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
@@ -139,6 +143,9 @@ fun IslandCollapsedContent(
                 IslandMode.LiveActivity -> {
                     LiveActivityCollapsedGlyph(notification = notification)
                 }
+                IslandMode.Navigation -> {
+                    NavigationCollapsedGlyph(notification = notification)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -182,6 +189,9 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.LiveActivity -> {
                     LiveActivityCollapsedRight(notification = notification)
+                }
+                IslandMode.Navigation -> {
+                    NavigationCollapsedRight(notification = notification)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -458,6 +468,61 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
     Text(
         text = etaText,
         color = brandColor,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+private fun NavigationCollapsedGlyph(notification: IslandNotification?) {
+    val turnDirection = remember(notification) {
+        val title = notification?.title.orEmpty()
+        val text = notification?.text.orEmpty()
+        com.agupta07505.smartisland.util.NavigationParser.parseTurnDirection("$title $text".lowercase())
+    }
+
+    val angle = when (turnDirection) {
+        com.agupta07505.smartisland.util.TurnDirection.LEFT -> -90f
+        com.agupta07505.smartisland.util.TurnDirection.RIGHT -> 90f
+        com.agupta07505.smartisland.util.TurnDirection.SLIGHT_LEFT -> -45f
+        com.agupta07505.smartisland.util.TurnDirection.SLIGHT_RIGHT -> 45f
+        com.agupta07505.smartisland.util.TurnDirection.U_TURN -> 180f
+        else -> 0f
+    }
+
+    if (turnDirection == com.agupta07505.smartisland.util.TurnDirection.DESTINATION) {
+        Icon(
+            imageVector = Icons.Rounded.LocationOn,
+            contentDescription = "Destination",
+            tint = Color(0xFF10B981),
+            modifier = Modifier.size(18.dp)
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Rounded.Navigation,
+            contentDescription = "Turn direction",
+            tint = Color(0xFF10B981),
+            modifier = Modifier
+                .size(18.dp)
+                .rotate(angle)
+        )
+    }
+}
+
+@Composable
+private fun NavigationCollapsedRight(notification: IslandNotification?) {
+    val distanceText = remember(notification) {
+        if (notification == null) return@remember "200 m"
+        val title = notification.title
+        val text = notification.text
+        val pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
+        val matcher = pattern.matcher("$title $text")
+        if (matcher.find()) matcher.group(0) else "In 200 m"
+    }
+
+    Text(
+        text = distanceText,
+        color = Color(0xFF10B981),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
     )

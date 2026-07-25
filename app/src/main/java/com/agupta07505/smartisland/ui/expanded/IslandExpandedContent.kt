@@ -121,6 +121,7 @@ fun IslandExpandedContent(
                 IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 120.dp)
                 IslandMode.Notification -> height.coerceIn(90.dp, 135.dp)
                 IslandMode.Music, IslandMode.LiveActivity -> height.coerceIn(110.dp, 170.dp)
+                IslandMode.Navigation -> height.coerceIn(120.dp, 185.dp)
                 else -> height.coerceIn(80.dp, 150.dp)
             }
         }
@@ -140,7 +141,7 @@ fun IslandExpandedContent(
             val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
             val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) } ?: currentPageHeight)
             val fraction = kotlin.math.abs(offsetFraction)
-            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 170.dp)
+            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 185.dp)
         } else {
             null
         }
@@ -201,6 +202,12 @@ fun IslandExpandedContent(
                                 settings = settings
                             )
                             IslandMode.LiveActivity -> LiveActivityExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse
+                            )
+                            IslandMode.Navigation -> NavigationExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },

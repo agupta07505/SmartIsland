@@ -151,10 +151,15 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 !com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(
                     sbn,
                     packageManager,
-                    currentSettings.liveActivitiesEnabled
+                    currentSettings.liveActivitiesEnabled,
+                    currentSettings.navigationEnabled
                 )
             ) {
-                val modeQuick = notification.toIslandMode(sbn, currentSettings.liveActivitiesEnabled)
+                val modeQuick = notification.toIslandMode(
+                    sbn,
+                    currentSettings.liveActivitiesEnabled,
+                    currentSettings.navigationEnabled
+                )
                 if (shouldBeIslandOnly(notification, modeQuick)) {
                     markSuppressed(sbn.key)
                     runCatchingLogged(TAG, "Immediate cancel failed") { cancelNotification(sbn.key) }
@@ -323,7 +328,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (shouldSuppressFromIsland(sbn)) return
 
         val extras = notification.extras
-        val mode = notification.toIslandMode(sbn, settings.liveActivitiesEnabled)
+        val mode = notification.toIslandMode(sbn, settings.liveActivitiesEnabled, settings.navigationEnabled)
         android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
 
         val shouldIslandOnly = shouldBeIslandOnly(notification, mode)
@@ -390,7 +395,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         return com.agupta07505.smartisland.util.NotificationFilter.shouldSuppressFromIsland(
             sbn,
             packageManager,
-            currentSettings.liveActivitiesEnabled
+            currentSettings.liveActivitiesEnabled,
+            currentSettings.navigationEnabled
         )
     }
 
@@ -398,8 +404,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (mode == IslandMode.IncomingCall) {
             if (!isIncomingCall(notification)) return false // ongoing call stays in system
         }
-        if (mode == IslandMode.Music) {
-            return false // Media/Music notifications must NOT be cancelled from system shade because cancelling a media notification triggers PAUSE in media players (Spotify, YouTube, etc.)
+        if (mode == IslandMode.Music || mode == IslandMode.Navigation) {
+            return false // Media/Music & Navigation notifications must NOT be cancelled from system shade by default
         }
         // All others: island-only
         return true

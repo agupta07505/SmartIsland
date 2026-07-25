@@ -53,6 +53,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
         val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
         val LiveActivitiesEnabled = booleanPreferencesKey("live_activities_enabled")
+        val NavigationEnabled = booleanPreferencesKey("navigation_enabled")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -124,7 +125,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 hideFromNotificationShade = prefs[Keys.HideFromNotificationShade]
                     ?: defaults.hideFromNotificationShade,
                 liveActivitiesEnabled = prefs[Keys.LiveActivitiesEnabled]
-                    ?: defaults.liveActivitiesEnabled
+                    ?: defaults.liveActivitiesEnabled,
+                navigationEnabled = prefs[Keys.NavigationEnabled]
+                    ?: defaults.navigationEnabled
             )
         }
 
@@ -223,6 +226,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setLiveActivitiesEnabled(value: Boolean) = editSafely {
         it[Keys.LiveActivitiesEnabled] = value
+    }
+    suspend fun setNavigationEnabled(value: Boolean) = editSafely {
+        it[Keys.NavigationEnabled] = value
     }
 
     suspend fun resetPosition() = editSafely {

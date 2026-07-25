@@ -134,6 +134,19 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Share Trip", null)
                 )
             )
+            IslandMode.Navigation -> IslandNotification(
+                key = "demo_navigation",
+                packageName = "com.google.android.apps.maps",
+                appName = "Google Maps",
+                title = "Turn left onto MG Road",
+                text = "In 300 m • 24 min remaining (8.5 km)",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Navigation,
+                actionIntents = listOf(
+                    IslandNotificationAction("Mute Voice", null),
+                    IslandNotificationAction("Exit", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

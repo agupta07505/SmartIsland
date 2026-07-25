@@ -179,4 +179,26 @@ class IslandModeMappingTest {
 
         assertEquals(IslandMode.Notification, notification.toIslandMode(sbn, liveActivitiesEnabled = false))
     }
+
+    @Test
+    fun testNavigationNotificationMapsToNavigationMode() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_NAVIGATION
+        notification.actions = null
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = mockk<Bundle>()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.google.android.apps.maps"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "In 300 m - Turn left"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "onto MG Road"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns "24 min • 8.5 km"
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+
+        assertEquals(IslandMode.Navigation, notification.toIslandMode(sbn, liveActivitiesEnabled = true, navigationEnabled = true))
+    }
 }

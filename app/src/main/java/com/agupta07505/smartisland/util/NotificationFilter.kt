@@ -28,7 +28,8 @@ object NotificationFilter {
     fun shouldSuppressFromIsland(
         sbn: StatusBarNotification,
         packageManager: PackageManager,
-        liveActivitiesEnabled: Boolean = true
+        liveActivitiesEnabled: Boolean = true,
+        navigationEnabled: Boolean = true
     ): Boolean {
         val packageName = sbn.packageName
         if (packageName in SYSTEM_LEVEL_PACKAGES) return true
@@ -49,12 +50,12 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
         if (title.isNullOrBlank() && text.isNullOrBlank()) return true
 
-        // Suppress ongoing notifications that are not calls, media/music playback, or live activities
+        // Suppress ongoing notifications that are not calls, media/music playback, live activities, or navigation
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
         if (isOngoing) {
-            val mode = notification.toIslandMode(sbn, liveActivitiesEnabled)
+            val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
             val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS
-            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity) {
+            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation) {
                 return true
             }
         }
@@ -90,8 +91,15 @@ object NotificationFilter {
 
 fun Notification.toIslandMode(
     sbn: StatusBarNotification? = null,
-    liveActivitiesEnabled: Boolean = true
+    liveActivitiesEnabled: Boolean = true,
+    navigationEnabled: Boolean = true
 ): IslandMode {
+    if (navigationEnabled && sbn != null) {
+        if (NavigationParser.parse(sbn) != null) {
+            return IslandMode.Navigation
+        }
+    }
+
     if (liveActivitiesEnabled && sbn != null) {
         if (LiveActivityParser.parse(sbn) != null) {
             return IslandMode.LiveActivity
