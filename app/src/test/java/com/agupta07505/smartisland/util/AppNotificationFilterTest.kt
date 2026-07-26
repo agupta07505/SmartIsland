@@ -44,7 +44,22 @@ class AppNotificationFilterTest {
     fun testSuppressedWhenPackageInDisabledSet() {
         val mockPm = mockk<PackageManager>()
         val mockSbn = mockk<StatusBarNotification>()
+        val mockNotif = mockk<Notification>()
+        mockNotif.flags = 0
+        mockNotif.category = Notification.CATEGORY_MESSAGE
+        val extras = mockk<Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Alice"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Hello"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
+        mockNotif.extras = extras
+
         every { mockSbn.packageName } returns "com.whatsapp"
+        every { mockSbn.notification } returns mockNotif
 
         val disabledPackages = setOf("com.whatsapp")
         val isSuppressed = NotificationFilter.shouldSuppressFromIsland(

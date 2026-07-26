@@ -71,6 +71,22 @@ fun HotspotExpanded(
         }
     }
 
+    // Strip "Active . 2 device" string from subtitle so it displays clean description
+    val cleanSubtitle = remember(notification.text) {
+        notification.text
+            .replace(Regex("""(?i)active\s*[•·.-]?\s*\d+\s*device.*"""), "")
+            .replace(Regex("""(?i)\d+\s*device\s*connected"""), "")
+            .trim()
+            .ifBlank { "Sharing mobile data" }
+    }
+
+    val extraActionIntents = remember(notification.actionIntents) {
+        notification.actionIntents.filterNot { action ->
+            val titleLower = action.title.lowercase()
+            titleLower.contains("hotspot") || titleLower.contains("setting")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +168,7 @@ fun HotspotExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = notification.text.ifBlank { "Sharing mobile data" },
+                    text = cleanSubtitle,
                     color = Color(0xFFD5DAE0),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -161,7 +177,7 @@ fun HotspotExpanded(
                 )
             }
 
-            // Right side: Badge Tag & Timestamp
+            // Right side: Badge Tag ("Active") & Timestamp
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -183,7 +199,7 @@ fun HotspotExpanded(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = "Hotspot",
+                            text = "Active",
                             color = accentColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -239,7 +255,7 @@ fun HotspotExpanded(
             }
         }
 
-        // Action Buttons Row
+        // Action Buttons Row (Single Hotspot Settings + unique extra system actions)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -272,34 +288,32 @@ fun HotspotExpanded(
                 )
             }
 
-            if (notification.actionIntents.isNotEmpty()) {
-                notification.actionIntents.forEach { action ->
-                    Box(
-                        modifier = Modifier
-                            .height(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0x33FFFFFF))
-                            .bounceClick {
-                                if (action.pendingIntent != null) {
-                                    triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
-                                } else {
-                                    Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
-                                }
-                                val repo = SmartIslandRepositories.notificationRepository(context)
-                                repo.removeNotification(notification.key)
-                                repo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
-                                onCollapse()
+            extraActionIntents.forEach { action ->
+                Box(
+                    modifier = Modifier
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0x33FFFFFF))
+                        .bounceClick {
+                            if (action.pendingIntent != null) {
+                                triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
+                            } else {
+                                Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                             }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = action.title,
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                            val repo = SmartIslandRepositories.notificationRepository(context)
+                            repo.removeNotification(notification.key)
+                            repo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+                            onCollapse()
+                        }
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = action.title,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

@@ -33,14 +33,16 @@ object NotificationFilter {
         disabledNotificationPackages: Set<String> = emptySet()
     ): Boolean {
         val packageName = sbn.packageName
-        if (packageName in SYSTEM_LEVEL_PACKAGES) return true
-        if (packageName in disabledNotificationPackages) return true
-
         val notification = sbn.notification
         val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
 
-        // Hotspot notifications are allowed even if posted by system tethering
-        if (mode != IslandMode.Hotspot) {
+        // Hotspot notifications are allowed even if posted by system tethering (android, systemui, settings)
+        if (mode == IslandMode.Hotspot) {
+            if (packageName == "com.agupta07505.smartisland") return true
+            if (packageName in disabledNotificationPackages) return true
+        } else {
+            if (packageName in SYSTEM_LEVEL_PACKAGES) return true
+            if (packageName in disabledNotificationPackages) return true
             if (isSystemLevelCategory(notification)) return true
             if (isSystemLevelPackage(packageName, packageManager)) return true
         }

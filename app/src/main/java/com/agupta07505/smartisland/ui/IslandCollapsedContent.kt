@@ -247,9 +247,9 @@ private fun HotspotCollapsedRight(notification: IslandNotification?) {
         val digits = Regex("""\b(\d+)\s*(device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
             .find(fullText)?.groupValues?.get(1)
         when {
-            digits != null -> "$digits dev"
-            fullText.lowercase().contains("no device") || fullText.lowercase().contains("0 device") -> "0 dev"
-            else -> "Active"
+            digits != null -> digits
+            fullText.lowercase().contains("no device") || fullText.lowercase().contains("0 device") -> "0"
+            else -> "1"
         }
     }
 
