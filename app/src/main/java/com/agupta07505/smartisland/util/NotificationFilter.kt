@@ -56,7 +56,8 @@ object NotificationFilter {
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
         if (isOngoing) {
             val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
-            val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS
+            val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS ||
+                (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
             if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload) {
                 return true
             }
@@ -92,11 +93,28 @@ object NotificationFilter {
 
     private fun isSystemLevelPackage(packageName: String, packageManager: PackageManager): Boolean {
         if (packageName in SYSTEM_LEVEL_PACKAGES) return true
+
+        // User-facing apps (Chrome, DownloadManager, Play Store) are not internal OS components
+        if (packageName == "com.android.chrome" ||
+            packageName == "com.android.providers.downloads" ||
+            packageName == "com.android.vending"
+        ) {
+            return false
+        }
+
         val flags = runCatchingLogged("NotificationFilter", "Failed to get flags for package $packageName") {
             packageManager.getApplicationInfo(packageName, 0).flags
         } ?: 0
-        return (flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
-            (packageName.startsWith("android") || packageName.startsWith("com.android."))
+        val isSystemFlag = (flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        if (!isSystemFlag) return false
+
+        // System-level packages are internal OS frameworks & UI, not browser or user apps
+        return packageName == "android" ||
+            packageName.startsWith("com.android.systemui") ||
+            packageName.startsWith("com.android.settings") ||
+            packageName.startsWith("com.android.keyguard") ||
+            packageName.startsWith("com.android.permissioncontroller") ||
+            packageName.startsWith("com.android.shell")
     }
 }
 
@@ -131,9 +149,10 @@ fun Notification.toIslandMode(
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
     val progressCurrent = extras?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0
+    val isIndeterminate = extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true
     val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
-    val isTransferKeyword = listOf("download", "upload", "downloading", "uploading", "exporting", "saving", "transferring", "fetching").any { titleText.contains(it) }
-    val isDownloadOrUpload = isProgressCategory || ((progressMax > 0 || progressCurrent > 0) && isTransferKeyword)
+    val isTransferKeyword = listOf("download", "upload", "downloading", "uploading", "exporting", "saving", "transferring", "fetching", "file", "apk", "pdf", "mp4", "zip").any { titleText.contains(it) }
+    val isDownloadOrUpload = isProgressCategory || progressMax > 0 || isIndeterminate || isTransferKeyword
 
     return when {
         // Missed calls are historical notifications, not active incoming calls.
@@ -141,7 +160,7 @@ fun Notification.toIslandMode(
             IslandMode.IncomingCall
         }
 
-        // CATEGORY_PROGRESS is used by downloads, uploads, and other progress work.
+        // Progress notifications (downloads, uploads, background transfers)
         isDownloadOrUpload -> IslandMode.DownloadUpload
 
         // Only classify action-based media notifications when a media session exists.

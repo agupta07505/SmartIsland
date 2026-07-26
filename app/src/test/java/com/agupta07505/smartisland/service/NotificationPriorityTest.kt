@@ -139,6 +139,7 @@ class NotificationPriorityTest {
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 42
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         notification.actions = null
         every { sbn.notification } returns notification
         every { sbn.packageName } returns "com.example.downloader"
@@ -163,6 +164,7 @@ class NotificationPriorityTest {
             every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
             every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
             every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+            every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
             every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
             every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
             every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null

@@ -40,6 +40,7 @@ class IslandModeMappingTest {
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -159,8 +160,8 @@ class IslandModeMappingTest {
 
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Swiggy Food Delivery"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Arriving in 12 mins"
-        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 50
-        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
 
         assertEquals(IslandMode.Notification, notification.toIslandMode(sbn, liveActivitiesEnabled = false))
     }

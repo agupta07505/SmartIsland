@@ -25,10 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -36,7 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -193,10 +191,9 @@ fun DownloadExpanded(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isUpload) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                            contentDescription = null,
-                            tint = accentColor,
+                        CustomBadgeTransferIcon(
+                            isUpload = isUpload,
+                            color = accentColor,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
@@ -285,5 +282,47 @@ fun DownloadExpanded(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CustomBadgeTransferIcon(
+    isUpload: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        val cy = h / 2f
+
+        val strokeWidth = 1.6.dp.toPx()
+        val arrowHeadWidth = 3f.dp.toPx()
+        val arrowHeadHeight = 3f.dp.toPx()
+        val shaftLength = 5.dp.toPx()
+
+        val tipY = if (isUpload) cy - shaftLength / 2f else cy + shaftLength / 2f
+        val tailY = if (isUpload) cy + shaftLength / 2f else cy - shaftLength / 2f
+
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(cx, tailY),
+            end = androidx.compose.ui.geometry.Offset(cx, tipY),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+
+        val wingY = if (isUpload) tipY + arrowHeadHeight else tipY - arrowHeadHeight
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(cx - arrowHeadWidth, wingY)
+            lineTo(cx, tipY)
+            lineTo(cx + arrowHeadWidth, wingY)
+        }
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        )
     }
 }

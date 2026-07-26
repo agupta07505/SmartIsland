@@ -538,6 +538,68 @@ private fun NavigationCollapsedRight(notification: IslandNotification?) {
 }
 
 @Composable
+private fun CustomPremiumTransferIcon(
+    isUpload: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier,
+    motionProgress: Float = 0.5f,
+    alphaFraction: Float = 1f
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+
+        val strokeWidth = 1.8.dp.toPx()
+        val arrowHeadWidth = 3.5.dp.toPx()
+        val arrowHeadHeight = 3.5.dp.toPx()
+        val shaftLength = 6.dp.toPx()
+
+        val startY = if (isUpload) h * 0.95f else -h * 0.15f
+        val endY = if (isUpload) -h * 0.15f else h * 0.95f
+        val currentCenterY = startY + (endY - startY) * motionProgress
+
+        val tipY = if (isUpload) currentCenterY - shaftLength / 2f else currentCenterY + shaftLength / 2f
+        val tailY = if (isUpload) currentCenterY + shaftLength / 2f else currentCenterY - shaftLength / 2f
+
+        val drawAlpha = alphaFraction.coerceIn(0f, 1f)
+        val drawColor = color.copy(alpha = drawAlpha)
+
+        // 1. Main Arrow Shaft
+        drawLine(
+            color = drawColor,
+            start = androidx.compose.ui.geometry.Offset(cx, tailY),
+            end = androidx.compose.ui.geometry.Offset(cx, tipY),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+
+        // 2. Main Arrow Head Wings
+        val wingY = if (isUpload) tipY + arrowHeadHeight else tipY - arrowHeadHeight
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(cx - arrowHeadWidth, wingY)
+            lineTo(cx, tipY)
+            lineTo(cx + arrowHeadWidth, wingY)
+        }
+        drawPath(
+            path = path,
+            color = drawColor,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        )
+
+        // 3. Subtle Trailing Particle Dot
+        val particleOffsetY = if (isUpload) 4.5.dp.toPx() else -4.5.dp.toPx()
+        val particleY = tailY + particleOffsetY
+        val particleAlpha = (drawAlpha * 0.5f).coerceIn(0f, 1f)
+        drawCircle(
+            color = color.copy(alpha = particleAlpha),
+            radius = strokeWidth * 0.6f,
+            center = androidx.compose.ui.geometry.Offset(cx, particleY)
+        )
+    }
+}
+
+@Composable
 private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
     val textCombined = remember(notification) {
         "${notification?.title} ${notification?.text}".lowercase()
@@ -566,16 +628,9 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
         label = "arrowFlow"
     )
 
-    // Download: top boundary (-10dp) to bottom boundary (+10dp)
-    // Upload: bottom boundary (+10dp) to top boundary (-10dp)
-    val startY = if (isUpload) 10f else -10f
-    val endY = if (isUpload) -10f else 10f
-    val animOffsetY = startY + (endY - startY) * motionFraction
-
-    // Fade in from top/bottom ring border, remain solid in center, fade out into opposite ring border
     val arrowAlpha = when {
-        motionFraction < 0.25f -> motionFraction / 0.25f
-        motionFraction > 0.75f -> (1f - motionFraction) / 0.25f
+        motionFraction < 0.2f -> motionFraction / 0.2f
+        motionFraction > 0.8f -> (1f - motionFraction) / 0.2f
         else -> 1f
     }.coerceIn(0f, 1f)
 
@@ -596,16 +651,12 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
                 .clip(CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = if (isUpload) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
-                contentDescription = if (isUpload) "Uploading" else "Downloading",
-                tint = accentColor,
-                modifier = Modifier
-                    .size(12.dp)
-                    .graphicsLayer {
-                        translationY = animOffsetY
-                        alpha = arrowAlpha
-                    }
+            CustomPremiumTransferIcon(
+                isUpload = isUpload,
+                color = accentColor,
+                motionProgress = motionFraction,
+                alphaFraction = arrowAlpha,
+                modifier = Modifier.size(14.dp)
             )
         }
     }

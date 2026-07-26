@@ -37,6 +37,7 @@ class AppNotificationFilterTest {
         assertTrue(NotificationFilter.isAppEligibleForIsland("org.telegram.messenger", mockPm))
         assertTrue(NotificationFilter.isAppEligibleForIsland("com.whatsapp", mockPm))
         assertTrue(NotificationFilter.isAppEligibleForIsland("com.spotify.music", mockPm))
+        assertTrue(NotificationFilter.isAppEligibleForIsland("com.android.chrome", mockPm))
     }
 
     @Test
@@ -73,6 +74,7 @@ class AppNotificationFilterTest {
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         mockNotif.extras = extras
 
         every { mockSbn.packageName } returns "com.whatsapp"
@@ -97,11 +99,40 @@ class AppNotificationFilterTest {
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 45
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "video_2026.mp4"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Downloading..."
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         mockNotif.extras = extras
 
         assertEquals(IslandMode.DownloadUpload, mockNotif.toIslandMode())
+    }
+
+    @Test
+    fun testChromeDownloadNotSuppressed() {
+        val mockPm = mockk<PackageManager>()
+        val appInfo = ApplicationInfo().apply { flags = ApplicationInfo.FLAG_SYSTEM }
+        every { mockPm.getApplicationInfo("com.android.chrome", 0) } returns appInfo
+
+        val mockSbn = mockk<StatusBarNotification>()
+        val mockNotif = mockk<Notification>()
+        mockNotif.flags = Notification.FLAG_ONGOING_EVENT
+        mockNotif.category = Notification.CATEGORY_PROGRESS
+        val extras = mockk<Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "app-release.apk"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Downloading..."
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 45
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
+        mockNotif.extras = extras
+
+        every { mockSbn.packageName } returns "com.android.chrome"
+        every { mockSbn.notification } returns mockNotif
+
+        assertTrue(NotificationFilter.isAppEligibleForIsland("com.android.chrome", mockPm))
+        assertFalse(NotificationFilter.shouldSuppressFromIsland(mockSbn, mockPm))
     }
 }
