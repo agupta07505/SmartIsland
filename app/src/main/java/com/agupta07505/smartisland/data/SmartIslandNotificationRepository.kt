@@ -32,6 +32,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
     override val commands: SharedFlow<SmartIslandCommand> = _commands.asSharedFlow()
 
     override fun postNotification(notification: IslandNotification, autoExpand: Boolean) {
+        var isNewNotification = false
         _notifications.update { existingNotifications ->
             val updated = existingNotifications.toMutableList()
             val index = updated.indexOfFirst { it.key == notification.key }
@@ -42,11 +43,12 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     largeIcon = notification.largeIcon ?: existing.largeIcon
                 )
             } else {
+                isNewNotification = true
                 updated.add(notification)
             }
             updated.takeLast(MAX_STORED_NOTIFICATIONS)
         }
-        if (autoExpand) {
+        if (autoExpand && isNewNotification) {
             _autoExpandEvent.tryEmit(notification.key)
         }
     }
@@ -147,6 +149,41 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Exit", null)
                 )
             )
+            IslandMode.DownloadUpload -> {
+                val hasDownload = _notifications.value.any { it.key == "demo_download" }
+                if (!hasDownload) {
+                    IslandNotification(
+                        key = "demo_download",
+                        packageName = "com.android.chrome",
+                        appName = "Chrome",
+                        title = "video_2026_download.mp4",
+                        text = "Downloading... 145 MB of 280 MB • 52%",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.DownloadUpload,
+                        progress = 52,
+                        progressMax = 100,
+                        actionIntents = listOf(
+                            IslandNotificationAction("Pause", null),
+                            IslandNotificationAction("Cancel", null)
+                        )
+                    )
+                } else {
+                    IslandNotification(
+                        key = "demo_upload",
+                        packageName = "com.google.android.apps.docs",
+                        appName = "Google Drive",
+                        title = "presentation_2026.pdf",
+                        text = "Uploading... 85 MB of 120 MB • 70%",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.DownloadUpload,
+                        progress = 70,
+                        progressMax = 100,
+                        actionIntents = listOf(
+                            IslandNotificationAction("Cancel", null)
+                        )
+                    )
+                }
+            }
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

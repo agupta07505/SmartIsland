@@ -69,6 +69,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     } else {
                         cleanupSuppressedKeys()
                     }
+                    if (settings.disabledNotificationPackages.isNotEmpty()) {
+                        val currentIslandNotifications = notificationRepository.notifications.value
+                        currentIslandNotifications
+                            .filter { it.packageName in settings.disabledNotificationPackages }
+                            .forEach { notificationRepository.removeNotification(it.key) }
+                    }
                 }
             }
         }
@@ -127,6 +133,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (isGroupSummary) {
             if (currentSettings.enabled &&
                 currentSettings.hideFromNotificationShade &&
+                sbn.packageName !in currentSettings.disabledNotificationPackages &&
                 com.agupta07505.smartisland.util.NotificationFilter.isThirdPartyApp(
                     sbn.packageName,
                     packageManager
@@ -348,6 +355,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             packageManager.getApplicationLabel(appInfo).toString()
         } ?: sbn.packageName
 
+        val isNewNotif = notificationRepository.notifications.value.none { it.key == sbn.key }
+
         notificationRepository.postNotification(
             IslandNotification(
                 key = sbn.key,
@@ -385,7 +394,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             autoExpand = shouldIslandOnly
         )
 
-        if (mode == IslandMode.Notification || shouldIslandOnly) {
+        if (isNewNotif && (mode == IslandMode.Notification || shouldIslandOnly) && mode != IslandMode.DownloadUpload) {
             playNotificationSound(sbn.packageName)
         }
 
@@ -438,6 +447,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
      */
     private fun suppressSystemNotification(key: String) {
         if (!currentSettings.enabled || !currentSettings.hideFromNotificationShade) return
+        val activeSbn = runCatchingLogged(TAG, "Failed to get active notifications for key lookup") {
+            activeNotifications.find { it.key == key }
+        }
+        if (activeSbn != null && activeSbn.packageName in currentSettings.disabledNotificationPackages) return
         markSuppressed(key)
 
         // Synchronous attempt for fastest possible suppression

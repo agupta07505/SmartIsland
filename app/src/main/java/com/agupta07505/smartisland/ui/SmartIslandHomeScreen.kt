@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Tune
@@ -476,6 +477,20 @@ fun SmartIslandHomeScreen(
                                     Icon(Icons.Rounded.Explore, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text("Navigation", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.DownloadUpload) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Download / Upload Progress", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                             OutlinedButton(

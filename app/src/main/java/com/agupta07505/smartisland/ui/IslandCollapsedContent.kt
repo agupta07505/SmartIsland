@@ -37,6 +37,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -146,6 +148,9 @@ fun IslandCollapsedContent(
                 IslandMode.Navigation -> {
                     NavigationCollapsedGlyph(notification = notification)
                 }
+                IslandMode.DownloadUpload -> {
+                    NotificationGlyph(notification = notification)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -192,6 +197,9 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.Navigation -> {
                     NavigationCollapsedRight(notification = notification)
+                }
+                IslandMode.DownloadUpload -> {
+                    DownloadUploadCollapsedRight(notification = notification)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -526,6 +534,67 @@ private fun NavigationCollapsedRight(notification: IslandNotification?) {
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
     )
+}
+
+@Composable
+private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
+    val textCombined = remember(notification) {
+        "${notification?.title} ${notification?.text}".lowercase()
+    }
+    val uploadKeywords = listOf("upload", "uploading", "sending", "posting", "exporting", "backing up", "backup")
+    val isUpload = remember(textCombined) { uploadKeywords.any { textCombined.contains(it) } }
+    val accentColor = if (isUpload) Color(0xFFAB47BC) else Color(0xFF26C6DA)
+
+    val progress = remember(notification) {
+        if (notification != null && notification.progressMax > 0) {
+            (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.1f, 1f)
+        } else {
+            0.55f
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "downloadUploadAnim")
+    val animOffsetY by infiniteTransition.animateFloat(
+        initialValue = if (isUpload) 2.5f else -2.5f,
+        targetValue = if (isUpload) -2.5f else 2.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "arrowTranslate"
+    )
+    val alphaPulse by infiniteTransition.animateFloat(
+        initialValue = 0.65f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "arrowAlpha"
+    )
+
+    Box(
+        modifier = Modifier.size(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        SmoothCircularRingProgress(
+            progress = progress,
+            color = accentColor,
+            modifier = Modifier.size(22.dp)
+        )
+
+        Icon(
+            imageVector = if (isUpload) Icons.Rounded.FileUpload else Icons.Rounded.FileDownload,
+            contentDescription = if (isUpload) "Uploading" else "Downloading",
+            tint = accentColor,
+            modifier = Modifier
+                .size(13.dp)
+                .graphicsLayer {
+                    translationY = animOffsetY
+                    alpha = alphaPulse
+                }
+        )
+    }
 }
 
 // Collapsed content animation

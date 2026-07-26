@@ -14,5 +14,6 @@ enum class IslandMode {
     Music,
     Battery,
     LiveActivity,
-    Navigation
+    Navigation,
+    DownloadUpload
 }

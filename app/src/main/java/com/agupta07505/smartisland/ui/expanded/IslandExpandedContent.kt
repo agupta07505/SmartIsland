@@ -123,6 +123,7 @@ fun IslandExpandedContent(
                 IslandMode.Music -> height.coerceIn(115.dp, 180.dp)
                 IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
                 IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
+                IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -209,6 +210,12 @@ fun IslandExpandedContent(
                                 onCollapse = onCollapse
                             )
                             IslandMode.Navigation -> NavigationExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse
+                            )
+                            IslandMode.DownloadUpload -> DownloadExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },

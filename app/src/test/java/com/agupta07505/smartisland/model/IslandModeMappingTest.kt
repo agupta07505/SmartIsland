@@ -34,15 +34,24 @@ class IslandModeMappingTest {
         unmockkStatic(android.util.Log::class)
     }
 
+    private fun createBaseExtras(): Bundle {
+        val extras = mockk<Bundle>()
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        return extras
+    }
+
     @Test
     fun testCategoryCallMapsToIncomingCall() {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_CALL
         notification.actions = null
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.IncomingCall, notification.toIslandMode())
     }
@@ -52,10 +61,7 @@ class IslandModeMappingTest {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_MISSED_CALL
         notification.actions = null
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.Notification, notification.toIslandMode())
     }
@@ -70,10 +76,7 @@ class IslandModeMappingTest {
         val declineAction = mockk<Notification.Action>()
         declineAction.title = "Decline"
         notification.actions = arrayOf(answerAction, declineAction)
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.IncomingCall, notification.toIslandMode())
     }
@@ -83,25 +86,19 @@ class IslandModeMappingTest {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_TRANSPORT
         notification.actions = null
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.Music, notification.toIslandMode())
     }
 
     @Test
-    fun testCategoryProgressMapsToRegularNotification() {
+    fun testCategoryProgressMapsToDownloadUpload() {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_PROGRESS
         notification.actions = null
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
-        assertEquals(IslandMode.Notification, notification.toIslandMode())
+        assertEquals(IslandMode.DownloadUpload, notification.toIslandMode())
     }
 
     @Test
@@ -113,10 +110,7 @@ class IslandModeMappingTest {
         playAction.title = "Play track"
 
         notification.actions = arrayOf(playAction)
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.Notification, notification.toIslandMode())
     }
@@ -126,10 +120,7 @@ class IslandModeMappingTest {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_MESSAGE
         notification.actions = null
-        val extras = mockk<Bundle>()
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
-        notification.extras = extras
+        notification.extras = createBaseExtras()
 
         assertEquals(IslandMode.Notification, notification.toIslandMode())
     }
@@ -141,18 +132,15 @@ class IslandModeMappingTest {
         notification.actions = null
 
         val sbn = mockk<StatusBarNotification>()
-        val extras = mockk<Bundle>()
+        val extras = createBaseExtras()
         notification.extras = extras
         every { sbn.packageName } returns "in.swiggy.android"
         every { sbn.notification } returns notification
 
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Swiggy Food Delivery"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Arriving in 12 mins"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 50
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
 
         assertEquals(IslandMode.LiveActivity, notification.toIslandMode(sbn, true))
     }
@@ -164,18 +152,15 @@ class IslandModeMappingTest {
         notification.actions = null
 
         val sbn = mockk<StatusBarNotification>()
-        val extras = mockk<Bundle>()
+        val extras = createBaseExtras()
         notification.extras = extras
         every { sbn.packageName } returns "in.swiggy.android"
         every { sbn.notification } returns notification
 
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Swiggy Food Delivery"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Arriving in 12 mins"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 50
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
 
         assertEquals(IslandMode.Notification, notification.toIslandMode(sbn, liveActivitiesEnabled = false))
     }
@@ -187,17 +172,14 @@ class IslandModeMappingTest {
         notification.actions = null
 
         val sbn = mockk<StatusBarNotification>()
-        val extras = mockk<Bundle>()
+        val extras = createBaseExtras()
         notification.extras = extras
         every { sbn.packageName } returns "com.google.android.apps.maps"
         every { sbn.notification } returns notification
 
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "In 300 m - Turn left"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "onto MG Road"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns "24 min • 8.5 km"
-        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
-        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
 
         assertEquals(IslandMode.Navigation, notification.toIslandMode(sbn, liveActivitiesEnabled = true, navigationEnabled = true))
     }

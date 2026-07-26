@@ -52,12 +52,12 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
         if (title.isNullOrBlank() && text.isNullOrBlank()) return true
 
-        // Suppress ongoing notifications that are not calls, media/music playback, live activities, or navigation
+        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, or downloads/uploads
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
         if (isOngoing) {
             val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
             val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS
-            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation) {
+            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload) {
                 return true
             }
         }
@@ -128,6 +128,13 @@ fun Notification.toIslandMode(
             }
     val hasMediaSession = extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
 
+    val isProgressCategory = category == Notification.CATEGORY_PROGRESS
+    val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
+    val progressCurrent = extras?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0
+    val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+    val isTransferKeyword = listOf("download", "upload", "downloading", "uploading", "exporting", "saving", "transferring", "fetching").any { titleText.contains(it) }
+    val isDownloadOrUpload = isProgressCategory || ((progressMax > 0 || progressCurrent > 0) && isTransferKeyword)
+
     return when {
         // Missed calls are historical notifications, not active incoming calls.
         category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair -> {
@@ -135,6 +142,8 @@ fun Notification.toIslandMode(
         }
 
         // CATEGORY_PROGRESS is used by downloads, uploads, and other progress work.
+        isDownloadOrUpload -> IslandMode.DownloadUpload
+
         // Only classify action-based media notifications when a media session exists.
         category == Notification.CATEGORY_TRANSPORT ||
             hasMediaSession -> IslandMode.Music
