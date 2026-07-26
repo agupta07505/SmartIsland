@@ -184,4 +184,18 @@ class IslandModeMappingTest {
 
         assertEquals(IslandMode.Navigation, notification.toIslandMode(sbn, liveActivitiesEnabled = true, navigationEnabled = true))
     }
+
+    @Test
+    fun testHotspotNotificationMapsToHotspotMode() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_STATUS
+        notification.actions = null
+
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Mobile Hotspot"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Active • 2 devices connected"
+
+        assertEquals(IslandMode.Hotspot, notification.toIslandMode())
+    }
 }

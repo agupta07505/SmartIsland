@@ -184,6 +184,18 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     )
                 }
             }
+            IslandMode.Hotspot -> IslandNotification(
+                key = "demo_hotspot",
+                packageName = "com.android.settings",
+                appName = "Mobile Hotspot",
+                title = "Mobile Hotspot",
+                text = "Active • 2 devices connected",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Hotspot,
+                actionIntents = listOf(
+                    IslandNotificationAction("Hotspot Settings", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

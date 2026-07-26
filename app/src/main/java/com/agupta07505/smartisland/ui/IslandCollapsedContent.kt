@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -151,6 +152,9 @@ fun IslandCollapsedContent(
                 IslandMode.DownloadUpload -> {
                     NotificationGlyph(notification = notification)
                 }
+                IslandMode.Hotspot -> {
+                    HotspotCollapsedGlyph(notification = notification)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -201,6 +205,9 @@ fun IslandCollapsedContent(
                 IslandMode.DownloadUpload -> {
                     DownloadUploadCollapsedRight(notification = notification)
                 }
+                IslandMode.Hotspot -> {
+                    HotspotCollapsedRight(notification = notification)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -213,6 +220,45 @@ fun IslandCollapsedContent(
                 .background(Color.Black)
         )
     }
+}
+
+@Composable
+private fun HotspotCollapsedGlyph(notification: IslandNotification?) {
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(Color(0x33FF9800)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.WifiTethering,
+            contentDescription = "Hotspot",
+            tint = Color(0xFFFF9800),
+            modifier = Modifier.size(15.dp)
+        )
+    }
+}
+
+@Composable
+private fun HotspotCollapsedRight(notification: IslandNotification?) {
+    val countText = remember(notification?.text, notification?.title) {
+        val fullText = "${notification?.title} ${notification?.text}"
+        val digits = Regex("""\b(\d+)\s*(device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
+            .find(fullText)?.groupValues?.get(1)
+        when {
+            digits != null -> "$digits dev"
+            fullText.lowercase().contains("no device") || fullText.lowercase().contains("0 device") -> "0 dev"
+            else -> "Active"
+        }
+    }
+
+    Text(
+        text = countText,
+        color = Color(0xFFFF9800),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 @Composable

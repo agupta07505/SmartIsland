@@ -58,6 +58,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
+import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Notifications
@@ -485,12 +486,21 @@ fun SmartIslandHomeScreen(
                             ) {
                                 ElevatedButton(
                                     onClick = { resolvedNotificationRepository?.showDemo(IslandMode.DownloadUpload) },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Download / Upload Progress", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("Transfer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Hotspot) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.WifiTethering, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Hotspot", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                             OutlinedButton(

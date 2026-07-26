@@ -37,8 +37,13 @@ object NotificationFilter {
         if (packageName in disabledNotificationPackages) return true
 
         val notification = sbn.notification
-        if (isSystemLevelCategory(notification)) return true
-        if (isSystemLevelPackage(packageName, packageManager)) return true
+        val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
+
+        // Hotspot notifications are allowed even if posted by system tethering
+        if (mode != IslandMode.Hotspot) {
+            if (isSystemLevelCategory(notification)) return true
+            if (isSystemLevelPackage(packageName, packageManager)) return true
+        }
 
         // Suppress group summary notifications (they are handled separately in the service:
         // cancelled from the system shade but never shown in the island)
@@ -52,13 +57,12 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
         if (title.isNullOrBlank() && text.isNullOrBlank()) return true
 
-        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, or downloads/uploads
+        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, or hotspot
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
         if (isOngoing) {
-            val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
             val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS ||
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
-            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload) {
+            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot) {
                 return true
             }
         }
@@ -146,15 +150,20 @@ fun Notification.toIslandMode(
             }
     val hasMediaSession = extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
 
+    val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+    val isHotspotKeyword = listOf("hotspot", "tethering", "portable hotspot", "mobile hotspot", "wifi hotspot").any { titleText.contains(it) }
+
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
     val progressCurrent = extras?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0
     val isIndeterminate = extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true
-    val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
     val isTransferKeyword = listOf("download", "upload", "downloading", "uploading", "exporting", "saving", "transferring", "fetching", "file", "apk", "pdf", "mp4", "zip").any { titleText.contains(it) }
     val isDownloadOrUpload = isProgressCategory || progressMax > 0 || isIndeterminate || isTransferKeyword
 
     return when {
+        // Hotspot & Tethering status
+        isHotspotKeyword -> IslandMode.Hotspot
+
         // Missed calls are historical notifications, not active incoming calls.
         category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair -> {
             IslandMode.IncomingCall
