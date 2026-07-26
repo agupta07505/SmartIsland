@@ -26,8 +26,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -194,7 +194,7 @@ fun DownloadExpanded(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = if (isUpload) Icons.Rounded.FileUpload else Icons.Rounded.FileDownload,
+                            imageVector = if (isUpload) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
                             contentDescription = null,
                             tint = accentColor,
                             modifier = Modifier.size(12.dp)

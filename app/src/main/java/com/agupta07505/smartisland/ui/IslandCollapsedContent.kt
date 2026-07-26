@@ -37,8 +37,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.FileDownload
-import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -560,16 +560,24 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 750, easing = LinearEasing),
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "arrowFlow"
     )
 
-    val startY = if (isUpload) 6.5f else -6.5f
-    val endY = if (isUpload) -6.5f else 6.5f
+    // Download: top boundary (-10dp) to bottom boundary (+10dp)
+    // Upload: bottom boundary (+10dp) to top boundary (-10dp)
+    val startY = if (isUpload) 10f else -10f
+    val endY = if (isUpload) -10f else 10f
     val animOffsetY = startY + (endY - startY) * motionFraction
-    val arrowAlpha = (1f - kotlin.math.abs(motionFraction - 0.5f) * 2f).coerceIn(0.15f, 1f)
+
+    // Fade in from top/bottom ring border, remain solid in center, fade out into opposite ring border
+    val arrowAlpha = when {
+        motionFraction < 0.25f -> motionFraction / 0.25f
+        motionFraction > 0.75f -> (1f - motionFraction) / 0.25f
+        else -> 1f
+    }.coerceIn(0f, 1f)
 
     Box(
         modifier = Modifier.size(22.dp),
@@ -582,17 +590,24 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
             modifier = Modifier.size(19.dp)
         )
 
-        Icon(
-            imageVector = if (isUpload) Icons.Rounded.FileUpload else Icons.Rounded.FileDownload,
-            contentDescription = if (isUpload) "Uploading" else "Downloading",
-            tint = accentColor,
+        Box(
             modifier = Modifier
-                .size(11.dp)
-                .graphicsLayer {
-                    translationY = animOffsetY
-                    alpha = arrowAlpha
-                }
-        )
+                .size(19.dp)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isUpload) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward,
+                contentDescription = if (isUpload) "Uploading" else "Downloading",
+                tint = accentColor,
+                modifier = Modifier
+                    .size(12.dp)
+                    .graphicsLayer {
+                        translationY = animOffsetY
+                        alpha = arrowAlpha
+                    }
+            )
+        }
     }
 }
 

@@ -23,7 +23,7 @@ data class SmartIslandSettings(
     val showOnLockScreen: Boolean = false,
     val lockScreenPrivacy: String = "AppIconOnly",
     val showNotificationActions: Boolean = true,
-    val hideFromNotificationShade: Boolean = false,
+    val hideFromNotificationShade: Boolean = true,
     val liveActivitiesEnabled: Boolean = true,
     val navigationEnabled: Boolean = true,
     val disabledNotificationPackages: Set<String> = emptySet(),
