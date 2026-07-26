@@ -107,59 +107,26 @@ fun HotspotExpanded(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // App / Hotspot Icon (42.dp matching NotificationExpanded)
-            val largeIcon = notification.largeIcon
-            val icon = notification.icon
-            val mainIcon = largeIcon ?: icon
-            if (mainIcon != null) {
-                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
-                Box(modifier = Modifier.size(42.dp)) {
-                    Image(
-                        bitmap = mainIcon.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(clipShape)
-                    )
-                    if (largeIcon != null && icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(Color.Black, CircleShape)
-                                .padding(1.5.dp)
-                        ) {
-                            Image(
-                                bitmap = icon.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.WifiTethering,
-                        contentDescription = "Hotspot",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+            // Default Hotspot Icon (42.dp matching NotificationExpanded)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.WifiTethering,
+                    contentDescription = "Hotspot",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
             // Title & Subtitle Column matching NotificationExpanded font sizes
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = notification.title.ifBlank { "Mobile Hotspot" },
+                    text = "Mobile Hotspot",
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -168,7 +135,7 @@ fun HotspotExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = cleanSubtitle,
+                    text = "Mobile Hotspot",
                     color = Color(0xFFD5DAE0),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
