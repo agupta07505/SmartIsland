@@ -152,7 +152,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     sbn,
                     packageManager,
                     currentSettings.liveActivitiesEnabled,
-                    currentSettings.navigationEnabled
+                    currentSettings.navigationEnabled,
+                    currentSettings.disabledNotificationPackages
                 )
             ) {
                 val modeQuick = notification.toIslandMode(
@@ -384,6 +385,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             autoExpand = shouldIslandOnly
         )
 
+        if (mode == IslandMode.Notification || shouldIslandOnly) {
+            playNotificationSound(sbn.packageName)
+        }
+
         if (mode == IslandMode.Music) {
             val existing = notificationRepository.notifications.value
             existing.filter { it.packageName == sbn.packageName && it.key != sbn.key }
@@ -396,7 +401,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             sbn,
             packageManager,
             currentSettings.liveActivitiesEnabled,
-            currentSettings.navigationEnabled
+            currentSettings.navigationEnabled,
+            currentSettings.disabledNotificationPackages
         )
     }
 
@@ -468,6 +474,18 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         clearSuppressed(key)
         runCatchingLogged(TAG, "forceCancel failed") { cancelNotification(key) }
         notificationRepository.removeNotification(key)
+    }
+
+    private fun playNotificationSound(packageName: String) {
+        if (currentSettings.disabledSoundPackages.contains(packageName)) return
+        runCatchingLogged(TAG, "Failed to play notification sound") {
+            val audioManager = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+            if (audioManager?.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL) {
+                val soundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+                val ringtone = android.media.RingtoneManager.getRingtone(applicationContext, soundUri)
+                ringtone?.play()
+            }
+        }
     }
 
     private fun markSuppressed(key: String) {

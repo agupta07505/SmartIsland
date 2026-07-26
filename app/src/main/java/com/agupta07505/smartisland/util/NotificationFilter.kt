@@ -29,10 +29,12 @@ object NotificationFilter {
         sbn: StatusBarNotification,
         packageManager: PackageManager,
         liveActivitiesEnabled: Boolean = true,
-        navigationEnabled: Boolean = true
+        navigationEnabled: Boolean = true,
+        disabledNotificationPackages: Set<String> = emptySet()
     ): Boolean {
         val packageName = sbn.packageName
         if (packageName in SYSTEM_LEVEL_PACKAGES) return true
+        if (packageName in disabledNotificationPackages) return true
 
         val notification = sbn.notification
         if (isSystemLevelCategory(notification)) return true
@@ -69,6 +71,15 @@ object NotificationFilter {
      * from the system shade.
      */
     fun isThirdPartyApp(packageName: String, packageManager: PackageManager): Boolean {
+        return !isSystemLevelPackage(packageName, packageManager)
+    }
+
+    /**
+     * Returns true if the app package is eligible to be configured and shown in Smart Island.
+     * System-level packages and sensitive system settings (like com.android.settings) return false.
+     */
+    fun isAppEligibleForIsland(packageName: String, packageManager: PackageManager): Boolean {
+        if (packageName in SYSTEM_LEVEL_PACKAGES) return false
         return !isSystemLevelPackage(packageName, packageManager)
     }
 

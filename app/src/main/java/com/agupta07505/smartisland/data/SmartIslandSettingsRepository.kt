@@ -54,6 +54,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
         val LiveActivitiesEnabled = booleanPreferencesKey("live_activities_enabled")
         val NavigationEnabled = booleanPreferencesKey("navigation_enabled")
+        val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
+        val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -127,7 +129,17 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 liveActivitiesEnabled = prefs[Keys.LiveActivitiesEnabled]
                     ?: defaults.liveActivitiesEnabled,
                 navigationEnabled = prefs[Keys.NavigationEnabled]
-                    ?: defaults.navigationEnabled
+                    ?: defaults.navigationEnabled,
+                disabledNotificationPackages = prefs[Keys.DisabledNotificationPackages]
+                    ?.asSequence()
+                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.toSet()
+                    ?: defaults.disabledNotificationPackages,
+                disabledSoundPackages = prefs[Keys.DisabledSoundPackages]
+                    ?.asSequence()
+                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.toSet()
+                    ?: defaults.disabledSoundPackages
             )
         }
 
@@ -229,6 +241,18 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setNavigationEnabled(value: Boolean) = editSafely {
         it[Keys.NavigationEnabled] = value
+    }
+    suspend fun setDisabledNotificationPackages(value: Set<String>) = editSafely {
+        it[Keys.DisabledNotificationPackages] = value
+            .asSequence()
+            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
+            .toSet()
+    }
+    suspend fun setDisabledSoundPackages(value: Set<String>) = editSafely {
+        it[Keys.DisabledSoundPackages] = value
+            .asSequence()
+            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
+            .toSet()
     }
 
     suspend fun resetPosition() = editSafely {
