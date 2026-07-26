@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +47,7 @@ import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.util.formatNotificationTime
 
 @Composable
 fun DownloadExpanded(
@@ -77,9 +80,19 @@ fun DownloadExpanded(
         }
     }
 
+    // Strip out duplicate percentage text from subtitle so percentage is displayed ONCE on the right side
+    val cleanSubtitle = remember(notification.text) {
+        notification.text
+            .replace(Regex("""\s*[•·-]?\s*\d+%\s*"""), "")
+            .replace(Regex("""\s*\d+%\s*[•·-]?\s*"""), "")
+            .trim()
+            .ifBlank { if (isUpload) "Uploading..." else "Downloading..." }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .wrapContentHeight()
             .clickable {
                 if (notification.contentIntent != null) {
                     onOpenNotification()
@@ -87,39 +100,108 @@ fun DownloadExpanded(
                     onCollapse()
                 }
             }
-            .padding(start = 18.dp, top = 14.dp, end = 18.dp, bottom = bottomPadding),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Top Header Row
+        // Top Header Row matching NotificationExpanded alignment
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val icon = notification.largeIcon ?: notification.icon
-                if (icon != null) {
+            // App Icon (42.dp matching NotificationExpanded)
+            val largeIcon = notification.largeIcon
+            val icon = notification.icon
+            val mainIcon = largeIcon ?: icon
+            if (mainIcon != null) {
+                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
+                Box(modifier = Modifier.size(42.dp)) {
                     Image(
-                        bitmap = icon.asImageBitmap(),
+                        bitmap = mainIcon.asImageBitmap(),
                         contentDescription = null,
                         modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape)
+                            .fillMaxSize()
+                            .clip(clipShape)
                     )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape)
-                            .background(accentColor),
-                        contentAlignment = Alignment.Center
+                    if (largeIcon != null && icon != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(Color.Black, CircleShape)
+                                .padding(1.5.dp)
+                        ) {
+                            Image(
+                                bitmap = icon.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(accentColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = notification.appName.firstOrNull()?.uppercase() ?: "D",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Title & Subtitle Column matching NotificationExpanded font sizes
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = notification.title.ifBlank { if (isUpload) "Uploading file" else "Downloading file" },
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 17.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = cleanSubtitle,
+                    color = Color(0xFFD5DAE0),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp
+                )
+            }
+
+            // Right side: Badge Tag & Timestamp
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerBadgeBg)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        Icon(
+                            imageVector = if (isUpload) Icons.Rounded.FileUpload else Icons.Rounded.FileDownload,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(12.dp)
+                        )
                         Text(
-                            text = notification.appName.firstOrNull()?.uppercase() ?: "D",
-                            color = Color.White,
+                            text = if (isUpload) "Uploading" else "Downloading",
+                            color = accentColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -127,95 +209,46 @@ fun DownloadExpanded(
                 }
 
                 Text(
-                    text = notification.appName,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    text = formatNotificationTime(notification.timeMillis),
+                    color = Color(0xFFB7C0CA),
+                    fontSize = 11.sp
                 )
-            }
-
-            // Transfer Mode Badge
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(containerBadgeBg)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isUpload) Icons.Rounded.FileUpload else Icons.Rounded.FileDownload,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = if (isUpload) "Uploading" else "Downloading",
-                        color = accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
 
-        // Title & Description
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = notification.title.ifBlank { if (isUpload) "Uploading file" else "Downloading file" },
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = notification.text.ifBlank { if (isUpload) "Uploading..." else "Downloading..." },
-                    color = Color(0xFFB0BEC5),
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-
-                if (pctText.isNotEmpty()) {
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = pctText,
-                        color = accentColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        // Animated Smooth Progress Bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(Color(0x33FFFFFF))
+        // Progress Bar & Percentage Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progressFraction)
+                    .weight(1f)
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(accentColor)
-            )
+                    .background(Color(0x33FFFFFF))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progressFraction)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(accentColor)
+                )
+            }
+
+            if (pctText.isNotEmpty()) {
+                Text(
+                    text = pctText,
+                    color = accentColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
-        // Action Intents (if any, e.g. Pause / Cancel)
+        // Action Intents (if present)
         if (notification.actionIntents.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

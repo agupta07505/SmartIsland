@@ -420,10 +420,11 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
 private fun SmoothCircularRingProgress(
     progress: Float,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    strokeWidthDp: Float = 3.5f
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val strokeWidth = 4.5.dp.toPx()
+        val strokeWidth = strokeWidthDp.dp.toPx()
         val diameter = size.minDimension - strokeWidth
         val topLeftOffset = androidx.compose.ui.geometry.Offset(strokeWidth / 2f, strokeWidth / 2f)
         val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
@@ -554,33 +555,31 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "downloadUploadAnim")
-    val animOffsetY by infiniteTransition.animateFloat(
-        initialValue = if (isUpload) 2.5f else -2.5f,
-        targetValue = if (isUpload) -2.5f else 2.5f,
+
+    val motionFraction by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(durationMillis = 750, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
         ),
-        label = "arrowTranslate"
-    )
-    val alphaPulse by infiniteTransition.animateFloat(
-        initialValue = 0.65f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "arrowAlpha"
+        label = "arrowFlow"
     )
 
+    val startY = if (isUpload) 6.5f else -6.5f
+    val endY = if (isUpload) -6.5f else 6.5f
+    val animOffsetY = startY + (endY - startY) * motionFraction
+    val arrowAlpha = (1f - kotlin.math.abs(motionFraction - 0.5f) * 2f).coerceIn(0.15f, 1f)
+
     Box(
-        modifier = Modifier.size(24.dp),
+        modifier = Modifier.size(22.dp),
         contentAlignment = Alignment.Center
     ) {
         SmoothCircularRingProgress(
             progress = progress,
             color = accentColor,
-            modifier = Modifier.size(22.dp)
+            strokeWidthDp = 2.5f,
+            modifier = Modifier.size(19.dp)
         )
 
         Icon(
@@ -588,10 +587,10 @@ private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
             contentDescription = if (isUpload) "Uploading" else "Downloading",
             tint = accentColor,
             modifier = Modifier
-                .size(13.dp)
+                .size(11.dp)
                 .graphicsLayer {
                     translationY = animOffsetY
-                    alpha = alphaPulse
+                    alpha = arrowAlpha
                 }
         )
     }
