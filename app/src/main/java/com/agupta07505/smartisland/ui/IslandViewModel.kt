@@ -10,7 +10,9 @@ package com.agupta07505.smartisland.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.agupta07505.smartisland.data.AutoHideDuration
 import com.agupta07505.smartisland.data.INotificationRepository
+import com.agupta07505.smartisland.data.IslandVisibilityMode
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
@@ -44,6 +46,18 @@ class IslandViewModel(
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
     val isLocked = MutableStateFlow(false)
+
+    val shouldShowOverlay: StateFlow<Boolean> = combine(settings, notifications, expanded) { currentSettings, list, isExpanded ->
+        if (!currentSettings.enabled) return@combine false
+        when (currentSettings.visibilityMode) {
+            IslandVisibilityMode.AlwaysVisible -> true
+            IslandVisibilityMode.ShowOnlyWhenActive -> list.isNotEmpty() || isExpanded
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false
+    )
 
     val mode: StateFlow<IslandMode> = combine(notifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty
@@ -116,8 +130,13 @@ class IslandViewModel(
 
     private fun startAutoCollapseTimer() {
         autoCollapseJob?.cancel()
+        val duration = settings.value.autoHideDuration.takeIf { it != AutoHideDuration.Never }?.millis
+        if (duration == null || duration < 0L) {
+            autoCollapseJob = null
+            return
+        }
         autoCollapseJob = viewModelScope.launch {
-            delay(AUTO_COLLAPSE_DELAY_MS)
+            delay(duration)
             collapse()
         }
     }
@@ -154,7 +173,6 @@ class IslandViewModel(
 
     companion object {
         private const val TAG = "IslandViewModel"
-        private const val AUTO_COLLAPSE_DELAY_MS = 5000L
 
         fun provideFactory(
             settingsRepo: SmartIslandSettingsRepository,

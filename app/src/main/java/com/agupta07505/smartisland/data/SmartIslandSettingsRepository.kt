@@ -52,6 +52,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val LockScreenPrivacy = stringPreferencesKey("lock_screen_privacy")
         val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
         val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
+        val VisibilityMode = stringPreferencesKey("visibility_mode")
+        val AutoHideDuration = stringPreferencesKey("auto_hide_duration")
+        val HideWhenForegroundAppMatches = booleanPreferencesKey("hide_when_foreground_app_matches")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -121,7 +124,11 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 showNotificationActions = prefs[Keys.ShowNotificationActions]
                     ?: defaults.showNotificationActions,
                 hideFromNotificationShade = prefs[Keys.HideFromNotificationShade]
-                    ?: defaults.hideFromNotificationShade
+                    ?: defaults.hideFromNotificationShade,
+                visibilityMode = IslandVisibilityMode.fromStorageValue(prefs[Keys.VisibilityMode]),
+                autoHideDuration = AutoHideDuration.fromStorageValue(prefs[Keys.AutoHideDuration]),
+                hideWhenForegroundAppMatches = prefs[Keys.HideWhenForegroundAppMatches]
+                    ?: defaults.hideWhenForegroundAppMatches
             )
         }
 
@@ -217,6 +224,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setHideFromNotificationShade(value: Boolean) = editSafely {
         it[Keys.HideFromNotificationShade] = value
+    }
+    suspend fun setVisibilityMode(value: IslandVisibilityMode) = editSafely {
+        it[Keys.VisibilityMode] = value.storageValue()
+    }
+    suspend fun setAutoHideDuration(value: AutoHideDuration) = editSafely {
+        it[Keys.AutoHideDuration] = value.storageValue()
+    }
+    suspend fun setHideWhenForegroundAppMatches(value: Boolean) = editSafely {
+        it[Keys.HideWhenForegroundAppMatches] = value
     }
 
     suspend fun resetPosition() = editSafely {

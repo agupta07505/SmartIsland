@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -36,6 +37,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.agupta07505.smartisland.MainActivity
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.INotificationRepository
+import com.agupta07505.smartisland.data.IslandVisibilityMode
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
@@ -67,6 +69,8 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var systemEventReceiverRegistered = false
     private var screenStateReceiverRegistered = false
     private var foregroundStarted = false
+    private var currentForegroundPackage: String? = null
+    private var isSystemUiPanelExpanded = false
     @Volatile private var destroyed = false
 
     private val serviceScope = kotlinx.coroutines.CoroutineScope(
@@ -124,6 +128,16 @@ class SmartIslandOverlayService : AccessibilityService() {
                 isLockScreenActive = locked
                 updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
             }
+
+            event?.packageName?.let { packageName ->
+                currentForegroundPackage = packageName.toString()
+            }
+
+            if (event?.eventType == TYPE_WINDOW_STATE_CHANGED) {
+                isSystemUiPanelExpanded = isSystemUiPanelEvent(event)
+            }
+
+            updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
         }
     }
 
@@ -229,8 +243,26 @@ class SmartIslandOverlayService : AccessibilityService() {
                     if (expanded) {
                         updateWindowLayoutParams(true, viewModel.settings.value)
                     } else {
-                        kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
                         updateWindowLayoutParams(false, viewModel.settings.value)
+                    }
+                }
+            }
+        }
+
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Visibility-state collector failed") {
+                viewModel.shouldShowOverlay.collectLatest { shouldShow ->
+                    if (destroyed || !::viewModel.isInitialized) return@collectLatest
+                    val settings = viewModel.settings.value
+                    if (!settings.enabled) {
+                        removeCollapsedWindow()
+                        return@collectLatest
+                    }
+                    if (shouldShow) {
+                        ensureCollapsedWindow()
+                        updateWindowLayoutParams(viewModel.expanded.value, settings)
+                    } else {
+                        removeCollapsedWindow()
                     }
                 }
             }
@@ -349,9 +381,15 @@ class SmartIslandOverlayService : AccessibilityService() {
                 val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 val isLocked = keyguardManager.isKeyguardLocked
                 isLockScreenActive = isLocked
+                val settingsValue = viewModel.settings.value
                 val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                val isHidden = (!viewModel.settings.value.showOnLockScreen && isLocked) || isLandscape
-                visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
+                val shouldHideByMode = settingsValue.visibilityMode == IslandVisibilityMode.ShowOnlyWhenActive && viewModel.notifications.value.isEmpty() && !viewModel.expanded.value
+                val shouldHideByForegroundApp = settingsValue.hideWhenForegroundAppMatches &&
+                    currentForegroundPackage != null &&
+                    viewModel.notifications.value.getOrNull(viewModel.selectedIndex.value)?.packageName == currentForegroundPackage
+                val shouldHideBySystemUi = isSystemUiPanelExpanded
+                val isHidden = shouldHideByMode || shouldHideByForegroundApp || shouldHideBySystemUi || (!settingsValue.showOnLockScreen && isLocked) || isLandscape
+                setOverlayVisibility(this, isHidden)
 
                 installOverlayViewTreeOwners()
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
@@ -486,9 +524,14 @@ class SmartIslandOverlayService : AccessibilityService() {
         viewModel.isLocked.value = isLocked
         
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val isHidden = (!settings.showOnLockScreen && isLocked) || isLandscape
+        val shouldHideByMode = settings.visibilityMode == IslandVisibilityMode.ShowOnlyWhenActive && viewModel.notifications.value.isEmpty() && !expanded
+        val shouldHideByForegroundApp = settings.hideWhenForegroundAppMatches &&
+            currentForegroundPackage != null &&
+            viewModel.notifications.value.getOrNull(viewModel.selectedIndex.value)?.packageName == currentForegroundPackage
+        val shouldHideBySystemUi = isSystemUiPanelExpanded
+        val isHidden = shouldHideByMode || shouldHideByForegroundApp || shouldHideBySystemUi || (!settings.showOnLockScreen && isLocked) || isLandscape
 
-        view.visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
+        setOverlayVisibility(view, isHidden)
 
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
@@ -642,6 +685,35 @@ class SmartIslandOverlayService : AccessibilityService() {
         viewModel.collapse()
     }
 
+    private fun setOverlayVisibility(view: android.view.View, hidden: Boolean) {
+        if (hidden) {
+            if (view.visibility != android.view.View.GONE) {
+                view.animate()
+                    .alpha(0f)
+                    .setDuration(120L)
+                    .withEndAction {
+                        if (view.alpha <= 0f) {
+                            view.visibility = android.view.View.GONE
+                            view.alpha = 1f
+                        }
+                    }
+                    .start()
+            }
+        } else {
+            if (view.visibility != android.view.View.VISIBLE) {
+                view.visibility = android.view.View.VISIBLE
+            }
+            view.animate().cancel()
+            view.alpha = 1f
+        }
+    }
+
+    private fun isSystemUiPanelEvent(event: AccessibilityEvent): Boolean {
+        val packageName = event.packageName?.toString().orEmpty()
+        val className = event.className?.toString().orEmpty()
+        return packageName == SYSTEM_UI_PACKAGE || className.contains("QuickSettings", ignoreCase = true) || className.contains("NotificationShade", ignoreCase = true) || className.contains("Panel", ignoreCase = true)
+    }
+
     private fun Float.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
     private fun ComposeView.installOverlayViewTreeOwners() {
@@ -697,6 +769,6 @@ class SmartIslandOverlayService : AccessibilityService() {
         private const val WINDOWING_MODE_FREEFORM = 5
         private const val OVERLAY_CHANNEL_ID = "smart_island_overlay"
         private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
-        private const val AUTO_COLLAPSE_DELAY_MS = 500L
+        private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
     }
 }
