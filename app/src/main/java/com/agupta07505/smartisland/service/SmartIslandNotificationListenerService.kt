@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.util.isDownloadComplete
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import com.agupta07505.smartisland.util.toIslandMode
@@ -212,15 +213,18 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 delay(350L)
                 if (sbn.packageName == packageName) return@runSuspendCatchingLogged
 
-                if (reason == REASON_LISTENER_CANCEL && isSuppressed(sbn.key)) {
-                    // We canceled this notification ourselves to hide it from the system shade.
-                    // Keep it alive in the island. Do NOT remove from suppressedKeys so that
-                    // if the notification is re-posted by the app, we'll suppress it again.
-                    android.util.Log.d(TAG, "Listener-cancelled, keeping island: ${sbn.key}")
+                val now = SystemClock.elapsedRealtime()
+                val lastSuppressedTime = suppressedKeys[sbn.key] ?: 0L
+                val isRecentInitialSuppression = (now - lastSuppressedTime) < INITIAL_SUPPRESSION_WINDOW_MS
+
+                if (reason == REASON_LISTENER_CANCEL && isRecentInitialSuppression) {
+                    // Smart Island just suppressed this notification from system shade < 1.5s ago.
+                    // Keep the island copy alive during initial suppression.
+                    android.util.Log.d(TAG, "Recent listener-cancel (<1.5s), keeping island: ${sbn.key}")
                     return@runSuspendCatchingLogged
                 }
 
-                // Genuinely removed by user or app — clean up both island and tracking set.
+                // Removed by posting app, user, framework timeout, or after initial suppression window.
                 android.util.Log.d(TAG, "Genuinely removed, cleaning up: ${sbn.key}")
                 clearSuppressed(sbn.key)
                 notificationRepository.removeNotification(sbn.key)
@@ -232,7 +236,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     // Keep the no-arg override as a fallback (some OEMs may only call this one).
-    // If it's called without a reason, fall back to the suppressedKeys check.
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         runCatchingLogged(TAG, "onNotificationRemoved fallback callback failed") {
         android.util.Log.d(TAG, "onNotificationRemoved (no reason): key=${sbn.key} pkg=${sbn.packageName}")
@@ -243,12 +246,16 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             runSuspendCatchingLogged(TAG, "NotificationRemoved (no reason) handling failed") {
                 delay(350L)
                 if (sbn.packageName == packageName) return@runSuspendCatchingLogged
-                if (isSuppressed(sbn.key)) {
-                    // We suppressed this one — keep in island, don't remove from suppressedKeys
-                    // so re-posts are still tracked.
-                    android.util.Log.d(TAG, "Suppressed key, keeping island: ${sbn.key}")
+
+                val now = SystemClock.elapsedRealtime()
+                val lastSuppressedTime = suppressedKeys[sbn.key] ?: 0L
+                val isRecentInitialSuppression = (now - lastSuppressedTime) < INITIAL_SUPPRESSION_WINDOW_MS
+
+                if (isRecentInitialSuppression) {
+                    android.util.Log.d(TAG, "Suppressed key recently (<1.5s), keeping island: ${sbn.key}")
                     return@runSuspendCatchingLogged
                 }
+
                 android.util.Log.d(TAG, "Removing from island repo: ${sbn.key}")
                 clearSuppressed(sbn.key)
                 notificationRepository.removeNotification(sbn.key)
@@ -402,6 +409,19 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             val existing = notificationRepository.notifications.value
             existing.filter { it.packageName == sbn.packageName && it.key != sbn.key }
                 .forEach { notificationRepository.removeNotification(it.key) }
+        }
+
+        if (mode == IslandMode.DownloadUpload) {
+            val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)
+            val progress = extras.getInt(Notification.EXTRA_PROGRESS, 0)
+            val isDone = notification.isDownloadComplete() || (progressMax > 0 && progress >= progressMax)
+            if (isDone) {
+                serviceScope.launch {
+                    delay(3500L)
+                    clearSuppressed(sbn.key)
+                    notificationRepository.removeNotification(sbn.key)
+                }
+            }
         }
     }
 
@@ -649,5 +669,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         private const val LARGE_ICON_BITMAP_SIZE = 128
         private const val MAX_SUPPRESSED_KEYS = 100
         private const val SUPPRESSED_KEY_TTL_MS = 10 * 60 * 1000L
+        private const val INITIAL_SUPPRESSION_WINDOW_MS = 1500L
     }
 }

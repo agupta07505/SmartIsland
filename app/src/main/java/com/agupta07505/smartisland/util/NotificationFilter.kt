@@ -181,3 +181,20 @@ fun Notification.toIslandMode(
         else -> IslandMode.Notification
     }
 }
+
+fun Notification.isDownloadComplete(): Boolean {
+    val extras = extras ?: return false
+    val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)
+    val progressCurrent = extras.getInt(Notification.EXTRA_PROGRESS, 0)
+    if (progressMax > 0 && progressCurrent >= progressMax) return true
+
+    val titleText = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+    val completionKeywords = listOf(
+        "download complete", "download completed", "download finished", "downloaded",
+        "upload complete", "upload completed", "upload finished", "uploaded",
+        "export complete", "export completed", "export finished", "exported",
+        "transfer complete", "transfer completed", "transfer finished",
+        "save complete", "saved"
+    )
+    return completionKeywords.any { titleText.contains(it) }
+}
