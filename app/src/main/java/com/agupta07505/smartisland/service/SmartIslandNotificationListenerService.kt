@@ -228,6 +228,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 android.util.Log.d(TAG, "Genuinely removed, cleaning up: ${sbn.key}")
                 clearSuppressed(sbn.key)
                 notificationRepository.removeNotification(sbn.key)
+                reconcileStaleNotifications()
             }
             pendingRemovals.remove(sbn.key)
         }
@@ -259,6 +260,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 android.util.Log.d(TAG, "Removing from island repo: ${sbn.key}")
                 clearSuppressed(sbn.key)
                 notificationRepository.removeNotification(sbn.key)
+                reconcileStaleNotifications()
             }
             pendingRemovals.remove(sbn.key)
         }
@@ -405,10 +407,13 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             playNotificationSound(sbn.packageName)
         }
 
-        if (mode == IslandMode.Music) {
+        if (mode in setOf(IslandMode.Hotspot, IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.Battery, IslandMode.Music)) {
             val existing = notificationRepository.notifications.value
-            existing.filter { it.packageName == sbn.packageName && it.key != sbn.key }
-                .forEach { notificationRepository.removeNotification(it.key) }
+            existing.filter { (it.mode == mode || it.packageName == sbn.packageName) && it.key != sbn.key }
+                .forEach {
+                    notificationRepository.removeNotification(it.key)
+                    clearSuppressed(it.key)
+                }
         }
 
         if (mode == IslandMode.DownloadUpload) {
@@ -420,6 +425,24 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     delay(3500L)
                     clearSuppressed(sbn.key)
                     notificationRepository.removeNotification(sbn.key)
+                }
+            }
+        }
+        reconcileStaleNotifications()
+    }
+
+    private fun reconcileStaleNotifications() {
+        runCatchingLogged(TAG, "reconcileStaleNotifications failed") {
+            val activeKeys = activeNotifications.map { it.key }.toSet()
+            val currentIslandNotifs = notificationRepository.notifications.value
+            currentIslandNotifs.forEach { notif ->
+                if (!notif.key.startsWith("demo_") && notif.key !in activeKeys) {
+                    val isOngoingProgress = notif.mode == IslandMode.DownloadUpload && notif.progressMax > 0 && notif.progress < notif.progressMax
+                    if (!isOngoingProgress) {
+                        android.util.Log.d(TAG, "Reconciling stale notification: ${notif.key}")
+                        clearSuppressed(notif.key)
+                        notificationRepository.removeNotification(notif.key)
+                    }
                 }
             }
         }
