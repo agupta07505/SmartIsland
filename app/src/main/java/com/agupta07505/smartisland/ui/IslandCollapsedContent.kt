@@ -109,7 +109,7 @@ fun IslandCollapsedContent(
                         Icon(
                             Icons.Rounded.Call,
                             contentDescription = null,
-                            tint = Color(0xFF7FD35E),
+                            tint = Color(settings.callColor),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -181,7 +181,7 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.IncomingCall -> {
                     val time = notification?.timeMillis ?: System.currentTimeMillis()
-                    CallTimer(postTimeMillis = time, color = Color(0xFF7FD35E))
+                    CallTimer(postTimeMillis = time, color = Color(settings.callColor))
                 }
                 IslandMode.Music -> {
                     AudioVisualizer(
@@ -207,7 +207,7 @@ fun IslandCollapsedContent(
                     DownloadUploadCollapsedRight(notification = notification)
                 }
                 IslandMode.Hotspot -> {
-                    HotspotCollapsedRight(notification = notification)
+                    HotspotCollapsedRight(notification = notification, settings = settings)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -242,14 +242,14 @@ private fun HotspotCollapsedGlyph(notification: IslandNotification?) {
 }
 
 @Composable
-private fun HotspotCollapsedRight(notification: IslandNotification?) {
+private fun HotspotCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings) {
     val countText = remember(notification?.text, notification?.title) {
         HotspotUtil.parseDeviceCount(notification?.title, notification?.text).toString()
     }
 
     Text(
         text = countText,
-        color = Color(0xFFFF9800),
+        color = Color(settings.hotspotColor),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
     )

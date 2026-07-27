@@ -82,6 +82,10 @@ fun CustomizationsSection(
                         "battery" -> repository.setBatteryColor(color)
                         "notification" -> repository.setNotificationDotColor(color)
                         "music" -> repository.setMusicVisualizerColor(color)
+                        "hotspot" -> repository.setHotspotColor(color)
+                        "call" -> repository.setCallColor(color)
+                        "live_activity" -> repository.setLiveActivityColor(color)
+                        "transfer" -> repository.setTransferColor(color)
                     }
                 }
             }
@@ -131,6 +135,58 @@ fun CustomizationsSection(
             }
         )
 
+        // Card 4: Mobile Hotspot Color
+        ColorSelectorCard(
+            title = "Mobile hotspot color",
+            description = "Color of the hotspot icon, connected device count, and tethering ring",
+            selectedColor = settings.hotspotColor,
+            onColorSelected = { scope.launch { repository.setHotspotColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.hotspotColor
+                currentColorTarget = "hotspot"
+                showDialog = true
+            }
+        )
+
+        // Card 5: Phone & Call Accent Color
+        ColorSelectorCard(
+            title = "Incoming call accent color",
+            description = "Color of the phone icon, call timer, and active call wave indicator",
+            selectedColor = settings.callColor,
+            onColorSelected = { scope.launch { repository.setCallColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.callColor
+                currentColorTarget = "call"
+                showDialog = true
+            }
+        )
+
+        // Card 6: Live Activity & Timer Color
+        ColorSelectorCard(
+            title = "Live Activity & timer color",
+            description = "Color of the countdown timer ring and live activity pill badges",
+            selectedColor = settings.liveActivityColor,
+            onColorSelected = { scope.launch { repository.setLiveActivityColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.liveActivityColor
+                currentColorTarget = "live_activity"
+                showDialog = true
+            }
+        )
+
+        // Card 7: Transfer & Download Color
+        ColorSelectorCard(
+            title = "Download & transfer color",
+            description = "Color of file transfer progress indicators and download arrow glyphs",
+            selectedColor = settings.transferColor,
+            onColorSelected = { scope.launch { repository.setTransferColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.transferColor
+                currentColorTarget = "transfer"
+                showDialog = true
+            }
+        )
+
         Spacer(Modifier.height(4.dp))
 
         // Reset Customizations button
@@ -140,6 +196,10 @@ fun CustomizationsSection(
                     repository.setBatteryColor(0xFF10B981L)
                     repository.setNotificationDotColor(0xFF2563EBL)
                     repository.setMusicVisualizerColor(0xFFFF6B9AL)
+                    repository.setHotspotColor(0xFFF59E0BL)
+                    repository.setCallColor(0xFF22C55EL)
+                    repository.setLiveActivityColor(0xFF8B5CF6L)
+                    repository.setTransferColor(0xFF06B6D4L)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -147,7 +207,7 @@ fun CustomizationsSection(
         ) {
             Icon(Icons.Rounded.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Reset customizations", fontWeight = FontWeight.SemiBold)
+            Text("Reset all feature colors", fontWeight = FontWeight.SemiBold)
         }
     }
 }

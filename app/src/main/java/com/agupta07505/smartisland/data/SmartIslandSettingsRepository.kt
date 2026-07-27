@@ -45,6 +45,10 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val BatteryColor = longPreferencesKey("battery_color")
         val NotificationDotColor = longPreferencesKey("notification_dot_color")
         val MusicVisualizerColor = longPreferencesKey("music_visualizer_color")
+        val HotspotColor = longPreferencesKey("hotspot_color")
+        val CallColor = longPreferencesKey("call_color")
+        val LiveActivityColor = longPreferencesKey("live_activity_color")
+        val TransferColor = longPreferencesKey("transfer_color")
         val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
         val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
@@ -110,6 +114,10 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     prefs[Keys.MusicVisualizerColor],
                     defaults.musicVisualizerColor
                 ),
+                hotspotColor = validColor(prefs[Keys.HotspotColor], defaults.hotspotColor),
+                callColor = validColor(prefs[Keys.CallColor], defaults.callColor),
+                liveActivityColor = validColor(prefs[Keys.LiveActivityColor], defaults.liveActivityColor),
+                transferColor = validColor(prefs[Keys.TransferColor], defaults.transferColor),
                 shortcutPackages = prefs[Keys.ShortcutPackages]
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
@@ -198,6 +206,18 @@ class SmartIslandSettingsRepository(private val context: Context) {
             value,
             SmartIslandSettings.Default.musicVisualizerColor
         )
+    }
+    suspend fun setHotspotColor(value: Long) = editSafely {
+        it[Keys.HotspotColor] = validColor(value, SmartIslandSettings.Default.hotspotColor)
+    }
+    suspend fun setCallColor(value: Long) = editSafely {
+        it[Keys.CallColor] = validColor(value, SmartIslandSettings.Default.callColor)
+    }
+    suspend fun setLiveActivityColor(value: Long) = editSafely {
+        it[Keys.LiveActivityColor] = validColor(value, SmartIslandSettings.Default.liveActivityColor)
+    }
+    suspend fun setTransferColor(value: Long) = editSafely {
+        it[Keys.TransferColor] = validColor(value, SmartIslandSettings.Default.transferColor)
     }
     suspend fun setShortcutPackages(value: Set<String>) = editSafely {
         it[Keys.ShortcutPackages] = value
