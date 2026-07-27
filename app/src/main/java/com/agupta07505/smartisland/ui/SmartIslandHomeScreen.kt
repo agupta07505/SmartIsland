@@ -671,7 +671,7 @@ fun SmartIslandHomeScreen(
                             )
                             ClickableRowItem(
                                 label = "About Smart Island",
-                                subtitle = "Version v3.2.1 • Open Source GPL-3.0",
+                                subtitle = "Version v4.0.0 • Open Source GPL-3.0",
                                 icon = Icons.Rounded.Info,
                                 iconTint = aboutTint,
                                 iconBg = aboutBg,
