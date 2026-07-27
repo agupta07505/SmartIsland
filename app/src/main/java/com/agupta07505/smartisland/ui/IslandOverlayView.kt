@@ -181,6 +181,50 @@ fun IslandOverlayView(
         modifier = outerModifier,
         contentAlignment = Alignment.TopStart
     ) {
+        // Stack Indicator Brackets: concentric parentheses curves drawn behind the pill when notifications > 1
+        if (notifications.size > 1 && collapsedAlpha > 0f) {
+            Canvas(
+                modifier = Modifier
+                    .width(width)
+                    .height(height)
+                    .graphicsLayer {
+                        val currentWidth = size.width
+                        val desiredCenterX = screenCenterPx + animatedXOffset.toPx()
+                        translationX = desiredCenterX - (currentWidth / 2f)
+                        translationY = yOffset.toPx() + dragOffset
+                        alpha = collapsedAlpha
+                    }
+            ) {
+                val h = size.height
+                val w = size.width
+                val r = radius.toPx().coerceAtMost(h / 2f)
+                val gap = STACK_INDICATOR_GAP_DP.dp.toPx()
+                val strokeW = STACK_INDICATOR_STROKE_DP.dp.toPx()
+                val rArc = r + gap
+
+                // Left Arc: concentric bracket curve on the left
+                drawArc(
+                    color = Color.Black,
+                    startAngle = STACK_LEFT_ARC_START,
+                    sweepAngle = STACK_INDICATOR_ARC_SWEEP,
+                    useCenter = false,
+                    topLeft = Offset(-gap - strokeW / 2f, h / 2f - rArc - strokeW / 2f),
+                    size = Size(rArc * 2f + strokeW, rArc * 2f + strokeW),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+
+                // Right Arc: concentric bracket curve on the right
+                drawArc(
+                    color = Color.Black,
+                    startAngle = STACK_RIGHT_ARC_START,
+                    sweepAngle = STACK_INDICATOR_ARC_SWEEP,
+                    useCenter = false,
+                    topLeft = Offset(w - r * 2f - gap - strokeW / 2f, h / 2f - rArc - strokeW / 2f),
+                    size = Size(rArc * 2f + strokeW, rArc * 2f + strokeW),
+                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
+                )
+            }
+        }
 
         // Inner Box: The actual visible pill container, managing the black background shape and size animations
         Box(
