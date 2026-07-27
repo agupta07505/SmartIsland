@@ -211,13 +211,15 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.Navigation -> NavigationExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.DownloadUpload -> DownloadExpanded(
                                 notification = notification,

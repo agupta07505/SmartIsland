@@ -86,6 +86,7 @@ fun CustomizationsSection(
                         "call" -> repository.setCallColor(color)
                         "live_activity" -> repository.setLiveActivityColor(color)
                         "transfer" -> repository.setTransferColor(color)
+                        "navigation" -> repository.setNavigationColor(color)
                     }
                 }
             }
@@ -187,6 +188,19 @@ fun CustomizationsSection(
             }
         )
 
+        // Card 8: Maps & Navigation Color
+        ColorSelectorCard(
+            title = "Maps & navigation color",
+            description = "Color of turn direction arrows, distance indicators, and navigation badges",
+            selectedColor = settings.navigationColor,
+            onColorSelected = { scope.launch { repository.setNavigationColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.navigationColor
+                currentColorTarget = "navigation"
+                showDialog = true
+            }
+        )
+
         Spacer(Modifier.height(4.dp))
 
         // Reset Customizations button
@@ -200,6 +214,7 @@ fun CustomizationsSection(
                     repository.setCallColor(0xFF22C55EL)
                     repository.setLiveActivityColor(0xFF8B5CF6L)
                     repository.setTransferColor(0xFF06B6D4L)
+                    repository.setNavigationColor(0xFF10B981L)
                 }
             },
             modifier = Modifier.fillMaxWidth(),

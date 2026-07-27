@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
@@ -53,12 +54,17 @@ fun LiveActivityExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
     onOpenNotification: () -> Unit = {},
-    onCollapse: () -> Unit = {}
+    onCollapse: () -> Unit = {},
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
 
-    val brandColor = remember(notification?.packageName) {
-        Color(LiveActivityParser.getBrandColor(notification?.packageName))
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
     }
 
     val (etaText, progressRatio, statusTitle, subStatusText) = remember(notification) {

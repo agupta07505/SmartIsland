@@ -49,6 +49,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val CallColor = longPreferencesKey("call_color")
         val LiveActivityColor = longPreferencesKey("live_activity_color")
         val TransferColor = longPreferencesKey("transfer_color")
+        val NavigationColor = longPreferencesKey("navigation_color")
         val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
         val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
@@ -118,6 +119,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 callColor = validColor(prefs[Keys.CallColor], defaults.callColor),
                 liveActivityColor = validColor(prefs[Keys.LiveActivityColor], defaults.liveActivityColor),
                 transferColor = validColor(prefs[Keys.TransferColor], defaults.transferColor),
+                navigationColor = validColor(prefs[Keys.NavigationColor], defaults.navigationColor),
                 shortcutPackages = prefs[Keys.ShortcutPackages]
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
@@ -218,6 +220,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setTransferColor(value: Long) = editSafely {
         it[Keys.TransferColor] = validColor(value, SmartIslandSettings.Default.transferColor)
+    }
+    suspend fun setNavigationColor(value: Long) = editSafely {
+        it[Keys.NavigationColor] = validColor(value, SmartIslandSettings.Default.navigationColor)
     }
     suspend fun setShortcutPackages(value: Set<String>) = editSafely {
         it[Keys.ShortcutPackages] = value

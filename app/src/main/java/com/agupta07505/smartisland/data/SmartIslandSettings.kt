@@ -21,6 +21,7 @@ data class SmartIslandSettings(
     val callColor: Long = 0xFF22C55EL,
     val liveActivityColor: Long = 0xFF8B5CF6L,
     val transferColor: Long = 0xFF06B6D4L,
+    val navigationColor: Long = 0xFF10B981L,
     val shortcutPackages: Set<String> = emptySet(),
     val showRecentApps: Boolean = false,
     val welcomeDialogShown: Boolean = false,

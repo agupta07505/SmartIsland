@@ -43,6 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
@@ -54,9 +56,11 @@ fun NavigationExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
     onOpenNotification: () -> Unit = {},
-    onCollapse: () -> Unit = {}
+    onCollapse: () -> Unit = {},
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
+    val navColor = Color(settings.navigationColor)
 
     val navInfo = remember(notification) {
         if (notification == null) {
@@ -93,6 +97,7 @@ fun NavigationExpanded(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .clickable { onOpenNotification() }
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -121,7 +126,7 @@ fun NavigationExpanded(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF10B981)),
+                        .background(navColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -157,13 +162,13 @@ fun NavigationExpanded(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF10B981).copy(alpha = 0.18f))
+                    .background(navColor.copy(alpha = 0.18f))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = distanceText,
-                    color = Color(0xFF10B981),
+                    color = navColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -184,21 +189,21 @@ fun NavigationExpanded(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF10B981).copy(alpha = 0.2f)),
+                    .background(navColor.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (turnDirection == TurnDirection.DESTINATION) {
                     Icon(
                         imageVector = Icons.Rounded.LocationOn,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = navColor,
                         modifier = Modifier.size(28.dp)
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Rounded.Navigation,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = navColor,
                         modifier = Modifier
                             .size(28.dp)
                             .rotate(angle)
@@ -217,7 +222,7 @@ fun NavigationExpanded(
                 )
                 Text(
                     text = distanceText,
-                    color = Color(0xFF10B981),
+                    color = navColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -244,7 +249,7 @@ fun NavigationExpanded(
                                 .background(Color(0xFFE2E8F0))
                                 .bounceClick {
                                     if (action.pendingIntent != null) {
-                                        triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
+                                        runCatching { action.pendingIntent.send() }
                                     } else {
                                         Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                     }
