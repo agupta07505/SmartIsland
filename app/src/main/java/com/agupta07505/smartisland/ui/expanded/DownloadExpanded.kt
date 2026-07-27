@@ -61,7 +61,7 @@ fun DownloadExpanded(
     val uploadKeywords = listOf("upload", "uploading", "sending", "posting", "exporting", "backing up", "backup")
     val isUpload = remember(textCombined) { uploadKeywords.any { textCombined.contains(it) } }
 
-    val accentColor = if (isUpload) Color(0xFFAB47BC) else Color(settings.transferColor)
+    val accentColor = Color(settings.transferColor)
     val containerBadgeBg = accentColor.copy(alpha = 0.2f)
 
     val progressFraction = remember(notification.progress, notification.progressMax) {

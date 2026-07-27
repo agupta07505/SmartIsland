@@ -94,7 +94,7 @@ fun IslandCollapsedContent(
             contentAlignment = Alignment.Center
         ) {
             when (mode) {
-                IslandMode.Notification -> NotificationGlyph(notification = notification)
+                IslandMode.Notification -> NotificationGlyph(notification = notification, settings = settings)
                 IslandMode.IncomingCall -> {
                     val icon = notification?.largeIcon ?: notification?.icon
                     if (icon != null) {
@@ -129,7 +129,7 @@ fun IslandCollapsedContent(
                             modifier = Modifier
                                 .size(22.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFFF6B9A)),
+                                .background(Color(settings.musicVisualizerColor)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -145,16 +145,16 @@ fun IslandCollapsedContent(
                     BatteryCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.LiveActivity -> {
-                    LiveActivityCollapsedGlyph(notification = notification)
+                    LiveActivityCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.Navigation -> {
-                    NavigationCollapsedGlyph(notification = notification)
+                    NavigationCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.DownloadUpload -> {
-                    NotificationGlyph(notification = notification)
+                    NotificationGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.Hotspot -> {
-                    HotspotCollapsedGlyph(notification = notification)
+                    HotspotCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -198,13 +198,13 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.LiveActivity -> {
-                    LiveActivityCollapsedRight(notification = notification)
+                    LiveActivityCollapsedRight(notification = notification, settings = settings)
                 }
                 IslandMode.Navigation -> {
-                    NavigationCollapsedRight(notification = notification)
+                    NavigationCollapsedRight(notification = notification, settings = settings)
                 }
                 IslandMode.DownloadUpload -> {
-                    DownloadUploadCollapsedRight(notification = notification)
+                    DownloadUploadCollapsedRight(notification = notification, settings = settings)
                 }
                 IslandMode.Hotspot -> {
                     HotspotCollapsedRight(notification = notification, settings = settings)
@@ -224,18 +224,19 @@ fun IslandCollapsedContent(
 }
 
 @Composable
-private fun HotspotCollapsedGlyph(notification: IslandNotification?) {
+private fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val hotspotColor = Color(settings.hotspotColor)
     Box(
         modifier = Modifier
             .size(22.dp)
             .clip(CircleShape)
-            .background(Color(0x33FF9800)),
+            .background(hotspotColor.copy(alpha = 0.2f)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Rounded.WifiTethering,
             contentDescription = "Hotspot",
-            tint = Color(0xFFFF9800),
+            tint = hotspotColor,
             modifier = Modifier.size(15.dp)
         )
     }
@@ -308,7 +309,7 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: S
 }
 
 @Composable
-private fun NotificationGlyph(notification: IslandNotification?) {
+private fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val largeIcon = notification?.largeIcon
     val icon = notification?.icon
     val mainIcon = largeIcon ?: icon
@@ -344,7 +345,7 @@ private fun NotificationGlyph(notification: IslandNotification?) {
             modifier = Modifier
                 .size(22.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF2563EB)),
+                .background(Color(settings.notificationDotColor)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -420,9 +421,13 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
 }
 
 @Composable
-private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
-    val brandColor = remember(notification?.packageName) {
-        Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification?.packageName))
+private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
     }
     val progress = remember(notification) {
         if (notification != null && notification.progressMax > 0) {
@@ -451,7 +456,7 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?) {
                     .clip(CircleShape)
             )
         } else {
-            NotificationGlyph(notification = notification)
+            NotificationGlyph(notification = notification, settings = settings)
         }
     }
 }
@@ -497,9 +502,13 @@ private fun SmoothCircularRingProgress(
 }
 
 @Composable
-private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
-    val brandColor = remember(notification?.packageName) {
-        Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification?.packageName))
+private fun LiveActivityCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
     }
     val etaText = remember(notification) {
         if (notification == null) return@remember "Active"
@@ -523,7 +532,8 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?) {
 }
 
 @Composable
-private fun NavigationCollapsedGlyph(notification: IslandNotification?) {
+private fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val navColor = Color(settings.liveActivityColor)
     val turnDirection = remember(notification) {
         val title = notification?.title.orEmpty()
         val text = notification?.text.orEmpty()
@@ -543,14 +553,14 @@ private fun NavigationCollapsedGlyph(notification: IslandNotification?) {
         Icon(
             imageVector = Icons.Rounded.LocationOn,
             contentDescription = "Destination",
-            tint = Color(0xFF10B981),
+            tint = navColor,
             modifier = Modifier.size(18.dp)
         )
     } else {
         Icon(
             imageVector = Icons.Rounded.Navigation,
             contentDescription = "Turn direction",
-            tint = Color(0xFF10B981),
+            tint = navColor,
             modifier = Modifier
                 .size(18.dp)
                 .rotate(angle)
@@ -559,7 +569,7 @@ private fun NavigationCollapsedGlyph(notification: IslandNotification?) {
 }
 
 @Composable
-private fun NavigationCollapsedRight(notification: IslandNotification?) {
+private fun NavigationCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val distanceText = remember(notification) {
         if (notification == null) return@remember "200 m"
         val title = notification.title
@@ -571,7 +581,7 @@ private fun NavigationCollapsedRight(notification: IslandNotification?) {
 
     Text(
         text = distanceText,
-        color = Color(0xFF10B981),
+        color = Color(settings.liveActivityColor),
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
     )
@@ -640,13 +650,16 @@ private fun CustomPremiumTransferIcon(
 }
 
 @Composable
-private fun DownloadUploadCollapsedRight(notification: IslandNotification?) {
+private fun DownloadUploadCollapsedRight(
+    notification: IslandNotification?,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
+) {
     val textCombined = remember(notification) {
         "${notification?.title} ${notification?.text}".lowercase()
     }
     val uploadKeywords = listOf("upload", "uploading", "sending", "posting", "exporting", "backing up", "backup")
     val isUpload = remember(textCombined) { uploadKeywords.any { textCombined.contains(it) } }
-    val accentColor = if (isUpload) Color(0xFFAB47BC) else Color(0xFF26C6DA)
+    val accentColor = Color(settings.transferColor)
 
     val progress = remember(notification) {
         if (notification != null && notification.progressMax > 0) {
