@@ -4,6 +4,38 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [4.0.0] - 2026-07-27
+
+### Added
+
+- **Material 3 Expressive Design Overhaul**: Complete UI overhaul featuring modern Material 3 design tokens (`surfaceContainer`, `outlineVariant`, `primaryContainer`), rounded shapes, and clean minimal visual aesthetics.
+- **Wallpaper Dynamic Color Support**: Enabled Android 12+ (API 31+) Dynamic System Color extraction (`dynamicLightColorScheme` / `dynamicDarkColorScheme`) for seamless wallpaper color harmonization.
+- **Wi-Fi Hotspot Monitor (`HotspotExpanded` & `HotspotUtil`)**: Added real-time Wi-Fi tethering monitoring via `HotspotUtil`, showing active connected client count parsed from system hotspot notifications, SSID details, data usage indicators, static hotspot icon and labels, and a quick turn-off action button.
+- **Live Activity Engine (`LiveActivityParser`, `LiveActivityExpanded`)**: Full live activity support for delivery and ride tracking with real-time status cards, dynamic brand colors per app, smooth Compose animations, and structured notification extras parsing.
+- **Download/Upload Progress Mode (`DownloadExpanded`)**: Real-time download and upload progress bars with transfer speeds (MB/s), file names, custom transfer icons, and refined download detection logic. Notifications are hidden from the system shade by default when displayed in the island.
+- **Turn-by-Turn Navigation Mode (`NavigationExpanded`, `NavigationParser`)**: Step-by-step navigation guidance showing next instruction, distance, ETA, maneuver arrow icons, and a dedicated navigation mode card.
+- **Per-App Notification & Sound Controls**: Added granular per-app notification enable/disable toggles and independent sound controls under `NotificationsAndPrivacySection`.
+- **Grouped Settings Architecture**: Consolidated 8 standalone settings sections into **4 minimal, clean expandable Category Hub Cards**:
+  - *Appearance & Layout* (Island layout, position, theme & custom visualizer styling).
+  - *Interactions & Shortcuts* (Gesture controls/playground & quick launch app shortcuts grid).
+  - *Permissions & Privacy* (System service setup & lockscreen notification rules).
+  - *Help & About* (Support, Telegram community & version information).
+- **Expanded Quick-Test Dashboard**: Added interactive preview triggers for Hotspot, Transfer, Live Activity, and Navigation preview modes.
+- **Enhanced Item Row Controls (`ClickableRowItem`)**: Upgraded item rows with soft MD3 rounded icon container badges, crisp icon tinting, and subtitle text support.
+
+### Changed
+
+- **Settings Hub Layout**: Refactored Settings tab into a minimal, uncluttered, expandable accordion design.
+- **Notification Actions & Ring Styling**: Updated notification action button styles and ring/badge visual treatment for better MD3 consistency.
+- **Download UI & Progress Visuals**: Refactored download card UI, progress bar stroke widths, heights, and padding to align with the new MD3 design system.
+- **Live Activity Brand Colors**: Added dynamic per-app brand color tinting to live activity cards for richer visual identity.
+- **Theme Updates**: Updated `Theme.kt` with finalized MD3 color roles and grouped settings card surface treatments.
+- **Release Version**: Updated application version to `4.0.0` (versionCode `4`).
+
+### Fixed
+
+- **Android Lint Debug Build Issue**: Resolved lint errors that were blocking the debug build pipeline.
+
 ## [3.2.1] - 2026-07-24
 
 ### Added

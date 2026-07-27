@@ -17,13 +17,22 @@ data class SmartIslandSettings(
     val batteryColor: Long = 0xFF10B981L,
     val notificationDotColor: Long = 0xFF2563EBL,
     val musicVisualizerColor: Long = 0xFFFF6B9AL,
+    val hotspotColor: Long = 0xFFF59E0BL,
+    val callColor: Long = 0xFF22C55EL,
+    val liveActivityColor: Long = 0xFF8B5CF6L,
+    val transferColor: Long = 0xFF06B6D4L,
+    val navigationColor: Long = 0xFF10B981L,
     val shortcutPackages: Set<String> = emptySet(),
     val showRecentApps: Boolean = false,
     val welcomeDialogShown: Boolean = false,
     val showOnLockScreen: Boolean = false,
     val lockScreenPrivacy: String = "AppIconOnly",
     val showNotificationActions: Boolean = true,
-    val hideFromNotificationShade: Boolean = false
+    val hideFromNotificationShade: Boolean = true,
+    val liveActivitiesEnabled: Boolean = true,
+    val navigationEnabled: Boolean = true,
+    val disabledNotificationPackages: Set<String> = emptySet(),
+    val disabledSoundPackages: Set<String> = emptySet()
 ) {
     companion object {
         val Default = SmartIslandSettings()

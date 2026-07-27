@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui
 
 import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.util.HotspotUtil
 import com.agupta07505.smartisland.ui.components.DottedRing
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -29,10 +30,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Navigation
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -86,7 +94,7 @@ fun IslandCollapsedContent(
             contentAlignment = Alignment.Center
         ) {
             when (mode) {
-                IslandMode.Notification -> NotificationGlyph(notification = notification)
+                IslandMode.Notification -> NotificationGlyph(notification = notification, settings = settings)
                 IslandMode.IncomingCall -> {
                     val icon = notification?.largeIcon ?: notification?.icon
                     if (icon != null) {
@@ -101,7 +109,7 @@ fun IslandCollapsedContent(
                         Icon(
                             Icons.Rounded.Call,
                             contentDescription = null,
-                            tint = Color(0xFF7FD35E),
+                            tint = Color(settings.callColor),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -121,7 +129,7 @@ fun IslandCollapsedContent(
                             modifier = Modifier
                                 .size(22.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFFF6B9A)),
+                                .background(Color(settings.musicVisualizerColor)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -135,6 +143,18 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.Battery -> {
                     BatteryCollapsedGlyph(notification = notification, settings = settings)
+                }
+                IslandMode.LiveActivity -> {
+                    LiveActivityCollapsedGlyph(notification = notification, settings = settings)
+                }
+                IslandMode.Navigation -> {
+                    NavigationCollapsedGlyph(notification = notification, settings = settings)
+                }
+                IslandMode.DownloadUpload -> {
+                    NotificationGlyph(notification = notification, settings = settings)
+                }
+                IslandMode.Hotspot -> {
+                    HotspotCollapsedGlyph(notification = notification, settings = settings)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -161,7 +181,7 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.IncomingCall -> {
                     val time = notification?.timeMillis ?: System.currentTimeMillis()
-                    CallTimer(postTimeMillis = time, color = Color(0xFF7FD35E))
+                    CallTimer(postTimeMillis = time, color = Color(settings.callColor))
                 }
                 IslandMode.Music -> {
                     AudioVisualizer(
@@ -177,6 +197,18 @@ fun IslandCollapsedContent(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                IslandMode.LiveActivity -> {
+                    LiveActivityCollapsedRight(notification = notification, settings = settings)
+                }
+                IslandMode.Navigation -> {
+                    NavigationCollapsedRight(notification = notification, settings = settings)
+                }
+                IslandMode.DownloadUpload -> {
+                    DownloadUploadCollapsedRight(notification = notification, settings = settings)
+                }
+                IslandMode.Hotspot -> {
+                    HotspotCollapsedRight(notification = notification, settings = settings)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -189,6 +221,39 @@ fun IslandCollapsedContent(
                 .background(Color.Black)
         )
     }
+}
+
+@Composable
+private fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val hotspotColor = Color(settings.hotspotColor)
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(hotspotColor.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.WifiTethering,
+            contentDescription = "Hotspot",
+            tint = hotspotColor,
+            modifier = Modifier.size(15.dp)
+        )
+    }
+}
+
+@Composable
+private fun HotspotCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings) {
+    val countText = remember(notification?.text, notification?.title) {
+        HotspotUtil.parseDeviceCount(notification?.title, notification?.text).toString()
+    }
+
+    Text(
+        text = countText,
+        color = Color(settings.hotspotColor),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 @Composable
@@ -244,7 +309,7 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: S
 }
 
 @Composable
-private fun NotificationGlyph(notification: IslandNotification?) {
+private fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val largeIcon = notification?.largeIcon
     val icon = notification?.icon
     val mainIcon = largeIcon ?: icon
@@ -280,7 +345,7 @@ private fun NotificationGlyph(notification: IslandNotification?) {
             modifier = Modifier
                 .size(22.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF2563EB)),
+                .background(Color(settings.notificationDotColor)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -353,6 +418,301 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold
     )
+}
+
+@Composable
+private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
+    }
+    val progress = remember(notification) {
+        if (notification != null && notification.progressMax > 0) {
+            (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.15f, 1f)
+        } else {
+            0.65f
+        }
+    }
+
+    Box(
+        modifier = Modifier.size(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        SmoothCircularRingProgress(
+            progress = progress,
+            color = brandColor,
+            modifier = Modifier.size(24.dp)
+        )
+        val mainIcon = notification?.largeIcon ?: notification?.icon
+        if (mainIcon != null) {
+            Image(
+                bitmap = mainIcon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            NotificationGlyph(notification = notification, settings = settings)
+        }
+    }
+}
+
+@Composable
+private fun SmoothCircularRingProgress(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    strokeWidthDp: Float = 3.5f
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val strokeWidth = strokeWidthDp.dp.toPx()
+        val diameter = size.minDimension - strokeWidth
+        val topLeftOffset = androidx.compose.ui.geometry.Offset(strokeWidth / 2f, strokeWidth / 2f)
+        val arcSize = androidx.compose.ui.geometry.Size(diameter, diameter)
+
+        // Track background ring
+        drawArc(
+            color = Color(0x33FFFFFF),
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeftOffset,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
+
+        // Filled progress arc (360 degrees for completed 1.0f)
+        val sweepAngle = (360f * progress.coerceIn(0f, 1f))
+        if (sweepAngle > 0f) {
+            drawArc(
+                color = color,
+                startAngle = -90f,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = topLeftOffset,
+                size = arcSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveActivityCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
+    }
+    val etaText = remember(notification) {
+        if (notification == null) return@remember "Active"
+        val text = "${notification.title} ${notification.text}"
+        val matcher = java.util.regex.Pattern.compile("(\\d+)\\s*(?:mins?|minutes?|min|m)\\b", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text)
+        if (matcher.find()) {
+            "${matcher.group(1)} min"
+        } else if (text.lowercase().contains("arrived")) {
+            "Arrived"
+        } else {
+            "Active"
+        }
+    }
+
+    Text(
+        text = etaText,
+        color = brandColor,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+private fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val navColor = Color(settings.liveActivityColor)
+    val turnDirection = remember(notification) {
+        val title = notification?.title.orEmpty()
+        val text = notification?.text.orEmpty()
+        com.agupta07505.smartisland.util.NavigationParser.parseTurnDirection("$title $text".lowercase())
+    }
+
+    val angle = when (turnDirection) {
+        com.agupta07505.smartisland.util.TurnDirection.LEFT -> -90f
+        com.agupta07505.smartisland.util.TurnDirection.RIGHT -> 90f
+        com.agupta07505.smartisland.util.TurnDirection.SLIGHT_LEFT -> -45f
+        com.agupta07505.smartisland.util.TurnDirection.SLIGHT_RIGHT -> 45f
+        com.agupta07505.smartisland.util.TurnDirection.U_TURN -> 180f
+        else -> 0f
+    }
+
+    if (turnDirection == com.agupta07505.smartisland.util.TurnDirection.DESTINATION) {
+        Icon(
+            imageVector = Icons.Rounded.LocationOn,
+            contentDescription = "Destination",
+            tint = navColor,
+            modifier = Modifier.size(18.dp)
+        )
+    } else {
+        Icon(
+            imageVector = Icons.Rounded.Navigation,
+            contentDescription = "Turn direction",
+            tint = navColor,
+            modifier = Modifier
+                .size(18.dp)
+                .rotate(angle)
+        )
+    }
+}
+
+@Composable
+private fun NavigationCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val distanceText = remember(notification) {
+        if (notification == null) return@remember "200 m"
+        val title = notification.title
+        val text = notification.text
+        val pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
+        val matcher = pattern.matcher("$title $text")
+        if (matcher.find()) matcher.group(0) else "In 200 m"
+    }
+
+    Text(
+        text = distanceText,
+        color = Color(settings.liveActivityColor),
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+private fun CustomPremiumTransferIcon(
+    isUpload: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier,
+    motionProgress: Float = 0.5f,
+    alphaFraction: Float = 1f
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+
+        val strokeWidth = 1.8.dp.toPx()
+        val arrowHeadWidth = 3.5.dp.toPx()
+        val arrowHeadHeight = 3.5.dp.toPx()
+        val shaftLength = 6.dp.toPx()
+
+        val startY = if (isUpload) h * 0.95f else -h * 0.15f
+        val endY = if (isUpload) -h * 0.15f else h * 0.95f
+        val currentCenterY = startY + (endY - startY) * motionProgress
+
+        val tipY = if (isUpload) currentCenterY - shaftLength / 2f else currentCenterY + shaftLength / 2f
+        val tailY = if (isUpload) currentCenterY + shaftLength / 2f else currentCenterY - shaftLength / 2f
+
+        val drawAlpha = alphaFraction.coerceIn(0f, 1f)
+        val drawColor = color.copy(alpha = drawAlpha)
+
+        // 1. Main Arrow Shaft
+        drawLine(
+            color = drawColor,
+            start = androidx.compose.ui.geometry.Offset(cx, tailY),
+            end = androidx.compose.ui.geometry.Offset(cx, tipY),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+
+        // 2. Main Arrow Head Wings
+        val wingY = if (isUpload) tipY + arrowHeadHeight else tipY - arrowHeadHeight
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(cx - arrowHeadWidth, wingY)
+            lineTo(cx, tipY)
+            lineTo(cx + arrowHeadWidth, wingY)
+        }
+        drawPath(
+            path = path,
+            color = drawColor,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        )
+
+        // 3. Subtle Trailing Particle Dot
+        val particleOffsetY = if (isUpload) 4.5.dp.toPx() else -4.5.dp.toPx()
+        val particleY = tailY + particleOffsetY
+        val particleAlpha = (drawAlpha * 0.5f).coerceIn(0f, 1f)
+        drawCircle(
+            color = color.copy(alpha = particleAlpha),
+            radius = strokeWidth * 0.6f,
+            center = androidx.compose.ui.geometry.Offset(cx, particleY)
+        )
+    }
+}
+
+@Composable
+private fun DownloadUploadCollapsedRight(
+    notification: IslandNotification?,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
+) {
+    val textCombined = remember(notification) {
+        "${notification?.title} ${notification?.text}".lowercase()
+    }
+    val uploadKeywords = listOf("upload", "uploading", "sending", "posting", "exporting", "backing up", "backup")
+    val isUpload = remember(textCombined) { uploadKeywords.any { textCombined.contains(it) } }
+    val accentColor = Color(settings.transferColor)
+
+    val progress = remember(notification) {
+        if (notification != null && notification.progressMax > 0) {
+            (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.1f, 1f)
+        } else {
+            0.55f
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "downloadUploadAnim")
+
+    val motionFraction by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "arrowFlow"
+    )
+
+    val arrowAlpha = when {
+        motionFraction < 0.2f -> motionFraction / 0.2f
+        motionFraction > 0.8f -> (1f - motionFraction) / 0.2f
+        else -> 1f
+    }.coerceIn(0f, 1f)
+
+    Box(
+        modifier = Modifier.size(22.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        SmoothCircularRingProgress(
+            progress = progress,
+            color = accentColor,
+            strokeWidthDp = 2.5f,
+            modifier = Modifier.size(19.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(19.dp)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            CustomPremiumTransferIcon(
+                isUpload = isUpload,
+                color = accentColor,
+                motionProgress = motionFraction,
+                alphaFraction = arrowAlpha,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
 }
 
 // Collapsed content animation

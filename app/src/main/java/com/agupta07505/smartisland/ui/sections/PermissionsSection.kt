@@ -56,6 +56,8 @@ import com.agupta07505.smartisland.util.ShizukuManager
 import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.rounded.CheckCircle
+
 @Composable
 fun PermissionsSection(
     overlayGranted: Boolean,
@@ -69,6 +71,8 @@ fun PermissionsSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isExecutingShizuku by remember { mutableStateOf(false) }
+    var isOemAutostartEnabled by remember { mutableStateOf(batteryIgnored) }
+    var isOverlayWarningDisabled by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Shizuku 1-Tap Auto Grant Card
@@ -150,6 +154,8 @@ fun PermissionsSection(
                                         isExecutingShizuku = false
                                         result.onSuccess { msg ->
                                             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                            isOemAutostartEnabled = true
+                                            isOverlayWarningDisabled = true
                                             onRefreshPermissions()
                                         }.onFailure { err ->
                                             Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
@@ -170,7 +176,7 @@ fun PermissionsSection(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Automatically grant Accessibility, Notification Access, and Battery Optimization in 1 tap using Shizuku.",
+                    text = "Automatically grant Accessibility, Notification Access, Battery Optimization, and OEM Autostart in 1 tap using Shizuku.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
@@ -201,6 +207,9 @@ fun PermissionsSection(
             onClick = onBatteryClick
         )
 
+        // Overlay System Warning Card
+        val warningIconColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.onSurfaceVariant
+        val warningBgColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -226,26 +235,44 @@ fun PermissionsSection(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp)),
+                                .background(warningBgColor, shape = RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.VisibilityOff,
+                                imageVector = if (isOverlayWarningDisabled) Icons.Rounded.CheckCircle else Icons.Rounded.VisibilityOff,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = warningIconColor,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        Text(
-                            text = "Overlay system warning",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "Overlay system warning",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isOverlayWarningDisabled) {
+                                Spacer(Modifier.height(3.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFF0F9F6E).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "Configured",
+                                        color = Color(0xFF0F9F6E),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                     Spacer(Modifier.width(10.dp))
                     OutlinedButton(
                         onClick = {
+                            isOverlayWarningDisabled = true
                             val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                                 putExtra(Settings.EXTRA_APP_PACKAGE, "android")
                             }
@@ -257,7 +284,7 @@ fun PermissionsSection(
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Text("Hide", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (isOverlayWarningDisabled) "Open" else "Hide", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -270,6 +297,9 @@ fun PermissionsSection(
             }
         }
 
+        // OEM Autostart & Kill Protection Card
+        val oemIconColor = if (isOemAutostartEnabled) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.tertiary
+        val oemBgColor = if (isOemAutostartEnabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -295,32 +325,71 @@ fun PermissionsSection(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f), shape = RoundedCornerShape(12.dp)),
+                                .background(oemBgColor, shape = RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Build,
+                                imageVector = if (isOemAutostartEnabled) Icons.Rounded.CheckCircle else Icons.Rounded.Build,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
+                                tint = oemIconColor,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
-                        Text(
-                            text = "OEM Autostart & Kill Protection",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Column {
+                            Text(
+                                text = "OEM Autostart & Kill Protection",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            if (isOemAutostartEnabled) {
+                                Spacer(Modifier.height(3.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFF0F9F6E).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "Granted",
+                                        color = Color(0xFF0F9F6E),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
                     }
                     Spacer(Modifier.width(10.dp))
-                    OutlinedButton(
-                        onClick = {
-                            OemAutostartUtil.openAutostartSettings(context)
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Text("Fix Kills", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (ShizukuManager.hasPermission() && !isOemAutostartEnabled) {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        val result = ShizukuManager.grantOemAutostartAndKillProtection(context)
+                                        result.onSuccess { msg ->
+                                            isOemAutostartEnabled = true
+                                            Toast.makeText(context, "OEM autostart granted via Shizuku!", Toast.LENGTH_SHORT).show()
+                                        }.onFailure { err ->
+                                            Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                            ) {
+                                Text("Shizuku", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                isOemAutostartEnabled = true
+                                OemAutostartUtil.openAutostartSettings(context)
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text("Fix Kills", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))

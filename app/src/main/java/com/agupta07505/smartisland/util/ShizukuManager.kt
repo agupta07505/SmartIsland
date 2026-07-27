@@ -114,10 +114,29 @@ object ShizukuManager {
             "appops set $pkg SYSTEM_ALERT_WINDOW allow",
             "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
             "appops set $pkg POST_NOTIFICATION allow",
+            "appops set $pkg AUTO_START allow",
+            "appops set $pkg RUN_IN_BACKGROUND allow",
+            "appops set $pkg RUN_ANY_IN_BACKGROUND allow",
             "settings put secure enabled_accessibility_services $accessibilityClass",
             "settings put secure accessibility_enabled 1",
             "cmd notification allow_listener $notificationClass",
             "settings put secure enabled_notification_listeners $notificationClass",
+            "am set-standby-bucket $pkg active",
+            "dumpsys deviceidle whitelist +$pkg"
+        )
+        runShizukuCommands(commands)
+    }
+
+    /**
+     * Grants OEM Autostart and disables background kill / app standby restrictions via Shizuku.
+     */
+    suspend fun grantOemAutostartAndKillProtection(context: Context): Result<String> = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val commands = listOf(
+            "appops set $pkg AUTO_START allow",
+            "appops set $pkg RUN_IN_BACKGROUND allow",
+            "appops set $pkg RUN_ANY_IN_BACKGROUND allow",
+            "am set-standby-bucket $pkg active",
             "dumpsys deviceidle whitelist +$pkg"
         )
         runShizukuCommands(commands)

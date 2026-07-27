@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 
@@ -40,12 +41,10 @@ import com.agupta07505.smartisland.ui.bounceClick
 fun IncomingCallExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
-    onCollapse: () -> Unit
+    onCollapse: () -> Unit,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
-    // FIX: Standardized to match Notification/Music expanded – same padding (18,20,12,bottom),
-    // constrained height (80-110dp), title 17sp with maxLines 1, and 48dp action buttons.
-    // Previously used 20sp + 52dp buttons causing taller expansion and glitch.
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -79,7 +78,7 @@ fun IncomingCallExpanded(
                 action.title.contains("accept", ignoreCase = true)
             } == true) {
             CircleActionButton(
-                color = Color(0xFF79C943),
+                color = Color(settings.callColor),
                 icon = Icons.Rounded.Call,
                 onClick = { 
                     notification.sendFirstAction(context, "answer", "accept") 

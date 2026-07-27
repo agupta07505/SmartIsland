@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui.expanded
 
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -28,10 +29,13 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -43,18 +47,40 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
-import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.util.LiveActivityParser
 
 @Composable
-fun NotificationExpanded(
+fun LiveActivityExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
-    onOpenNotification: () -> Unit,
-    onCollapse: () -> Unit,
-    showActions: Boolean = true,
+    onOpenNotification: () -> Unit = {},
+    onCollapse: () -> Unit = {},
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
+
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
+        if (notification != null) {
+            Color(LiveActivityParser.getBrandColor(notification.packageName))
+        } else {
+            Color(settings.liveActivityColor)
+        }
+    }
+
+    val (etaText, progressRatio, statusTitle, subStatusText) = remember(notification) {
+        if (notification == null) {
+            Tuple4("Active", 0.65f, "Live Tracking", "Tracking in real-time")
+        } else {
+            val text = "${notification.title} ${notification.text}"
+            val matcher = java.util.regex.Pattern.compile("(\\d+)\\s*(?:mins?|minutes?|min|m)\\b", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text)
+            val eta = if (matcher.find()) "${matcher.group(1)} min" else "Active"
+            val pct = if (notification.progressMax > 0) (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.15f, 0.95f) else 0.65f
+            val title = if (notification.title.isNotBlank()) notification.title else notification.appName
+            val sub = if (notification.text.isNotBlank()) notification.text else "Live activity update"
+            Tuple4(eta, pct, title, sub)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -62,6 +88,7 @@ fun NotificationExpanded(
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Top Section: Icon on Left (42.dp like NotificationExpanded) + Title/Text in Middle + ETA Badge on Right
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -70,6 +97,7 @@ fun NotificationExpanded(
             val largeIcon = notification?.largeIcon
             val icon = notification?.icon
             val mainIcon = largeIcon ?: icon
+
             if (mainIcon != null) {
                 val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
                 Box(modifier = Modifier.size(42.dp)) {
@@ -103,15 +131,22 @@ fun NotificationExpanded(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(settings.notificationDotColor)),
+                        .background(brandColor),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(notification?.appName?.firstOrNull()?.uppercase() ?: "S", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = notification?.appName?.firstOrNull()?.uppercase() ?: "L",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
                 }
             }
+
+            // Middle Column: Title & Text (Matching NotificationExpanded layout)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = notification?.title?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Notification",
+                    text = statusTitle,
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -120,9 +155,8 @@ fun NotificationExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = notification?.text?.takeIf { it.isNotBlank() } ?: "New activity",
+                    text = subStatusText,
                     color = Color(0xFFD5DAE0),
-                    minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -130,37 +164,101 @@ fun NotificationExpanded(
                 )
             }
 
-            // Time text on top right using the internal helper in IslandCollapsedContent
-            Text(
-                text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
-                color = Color(0xFFB7C0CA),
-                fontSize = 11.sp,
-                modifier = Modifier.padding(start = 8.dp)
-            )
+            // Right: ETA Status Badge
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(brandColor.copy(alpha = 0.18f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = etaText,
+                    color = brandColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
-        // Bottom Section: Action buttons (left) and Down Arrow Button (right)
+        // Route & Distance Progress Visualizer
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val width = size.width
+                    val cy = size.height / 2f
+                    val strokeWidth = 4.dp.toPx()
+
+                    // Background path line
+                    drawLine(
+                        color = Color(0x33FFFFFF),
+                        start = Offset(12.dp.toPx(), cy),
+                        end = Offset(width - 12.dp.toPx(), cy),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+
+                    // Traveled progress fill line
+                    val currentX = (12.dp.toPx() + (width - 24.dp.toPx()) * progressRatio).coerceIn(12.dp.toPx(), width - 12.dp.toPx())
+                    drawLine(
+                        color = brandColor,
+                        start = Offset(12.dp.toPx(), cy),
+                        end = Offset(currentX, cy),
+                        strokeWidth = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+
+                    // Start node dot (Origin)
+                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(12.dp.toPx(), cy))
+
+                    // Current position dot (Traveled position)
+                    drawCircle(color = Color.White, radius = 6.dp.toPx(), center = Offset(currentX, cy))
+                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(currentX, cy))
+
+                    // Destination node dot
+                    drawCircle(color = Color(0xFF64748B), radius = 4.dp.toPx(), center = Offset(width - 12.dp.toPx(), cy))
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Initial", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Destination", color = Color(0xFF94A3B8), fontSize = 10.sp)
+            }
+        }
+
+        // Action Buttons Row & Collapse Arrow (Matching NotificationExpanded)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left part of Bottom Section: Action Buttons Row
-            if (showActions && notification != null && notification.actionIntents.isNotEmpty()) {
+            if (notification != null && notification.actionIntents.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    notification.actionIntents.forEach { action ->
+                    notification.actionIntents.take(2).forEach { action ->
                         Box(
                             modifier = Modifier
                                 .height(28.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFE2E8F0)) // light grey background matching the Telegram button
+                                .background(Color(0xFFE2E8F0))
                                 .bounceClick {
                                     if (action.pendingIntent != null) {
-                                        runCatching { action.pendingIntent.send() }
+                                        triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
                                     } else {
                                         Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                     }
@@ -174,7 +272,7 @@ fun NotificationExpanded(
                         ) {
                             Text(
                                 text = action.title,
-                                color = Color(0xFF1F2937), // dark grey text
+                                color = Color(0xFF1F2937),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -185,7 +283,6 @@ fun NotificationExpanded(
                 Spacer(modifier = Modifier.weight(1f))
             }
 
-            // Down Arrow Button on bottom right
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -204,3 +301,5 @@ fun NotificationExpanded(
         }
     }
 }
+
+private data class Tuple4<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)

@@ -1,6 +1,6 @@
 # Smart Island Product Roadmap
 
-Last updated: July 18, 2026
+Last updated: July 27, 2026
 
 ## Product direction
 
@@ -12,15 +12,23 @@ The roadmap follows three principles:
 2. **Local by default.** Notification content and preferences stay on the device. Any future network feature must be optional, clearly explained, and independently disableable.
 3. **Fast and unobtrusive.** The island must use little battery, avoid blocking touches, and never make urgent actions harder to reach.
 
-## Current baseline (v3.x)
+## Current baseline (v4.0)
 
 Smart Island currently provides:
 
 - A Compose-based floating overlay on Android 8+
+- Complete **Material 3 Expressive** design system with Android 12+ wallpaper dynamic color adaptation
+- Grouped Settings Hub Architecture (Appearance, Interactions, Permissions, Help) with expandable accordions
 - Notification interception, filtering (`NotificationFilter`), system shade duplicate suppression, grouping, paging, opening, and dismissal
+- **Per-app notification & sound controls** with granular allow/deny and sound toggles (`NotificationsAndPrivacySection`)
 - Landscape orientation detection (`IslandOrientationListener`) for automatic overlay hiding during gaming and media
+- System Service Recovery (`SystemServiceRecovery`) for re-binding Accessibility & Notification Listener services
 - Battery optimization setup guide card in permissions settings
 - Lock screen opt-in display with sensitive notification content protection
+- **Wi-Fi Hotspot Monitor**: real-time tethering monitoring via `HotspotUtil` showing connected client count, SSID, data usage, and quick turn-off action
+- **Live Activity Engine** (`LiveActivityParser`, `LiveActivityExpanded`): delivery and ride tracking cards with dynamic brand colors per app
+- **Download/Upload Progress Mode** (`DownloadExpanded`): real-time progress bars, transfer speeds (MB/s), custom transfer icons, and refined download detection
+- **Turn-by-Turn Navigation Mode** (`NavigationExpanded`, `NavigationParser`): next instruction, distance, ETA, and maneuver arrows
 - Incoming-call, media playback (with animated wavy seek bar), and battery-charging modes
 - App shortcuts and best-effort floating-window launching
 - Size, position, corner-radius, preset/custom RGB color, and theme customization
@@ -34,13 +42,31 @@ This is a strong feature-complete baseline. The immediate constraint is platform
 | Phase | Target window | Theme | Exit outcome |
 | --- | --- | --- | --- |
 | 3.1 | Jul 2026 | Welcome and community release | New users receive a clear introduction and direct access to project support channels |
-| 3.2 / 3.2.1 | Jul 2026 | Pill touch, service stability & notification control | Reliable pill interactivity, safe lock screen support, system service recovery, and vendor ROM stability |
-| 3.3 | Oct-Nov 2026 | Onboarding and control | Users can set up, filter, pause, and recover the island without confusion |
-| 3.4 | Dec 2026-Jan 2027 | Richer live activities | Timer, navigation, and progress experiences work through a common mode architecture |
-| 4.0 | Jan-Mar 2027 | Adaptability and polish | Per-app behavior, profiles, accessibility, and responsive layouts are production-ready |
-| Later | Apr 2027 onward | Ecosystem and distribution | Sustainable distribution and carefully scoped integrations without weakening privacy |
+| 3.2 / 3.2.1 | Jul 2026 | Service recovery & ROM stability | Reliable pill interactivity, safe lock screen support, system service recovery, and vendor ROM stability |
+| 4.0 | Jul 2026 | Material 3 UI Overhaul & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings architecture |
+| 4.1 | Oct-Nov 2026 | Face Unlock & Richer Live Activities | Face Unlock overlay integration, advanced timer cards, app-specific notification rules, and custom templates |
+| 4.2 | Dec 2026-Jan 2027 | System Profiles & Floating Window Polish | Preset environment profiles (Gaming, Work, Silent), enhanced Shizuku automation, and multi-window launching |
+| 5.0 | Jan-Mar 2027 | Ecosystem & Extension Architecture | Plugin extension architecture and optional local cross-device status sync without sacrificing privacy |
 
 Dates are planning targets, not promises. A phase moves forward only after its release gates are met.
+
+## Released — v4.0: Complete Material 3 UI Overhaul & Grouped Settings
+
+Released July 27, 2026.
+
+- **Material 3 Expressive Design Overhaul**: Redesigned UI with modern MD3 color tokens (`surfaceContainer`, `outlineVariant`, `primaryContainer`), rounded shapes, and clean minimal visual aesthetics.
+- **Android 12+ Dynamic Wallpaper Colors**: Integrated `dynamicLightColorScheme` and `dynamicDarkColorScheme` for automatic wallpaper color adaptation.
+- **Grouped Settings Architecture**: Consolidated 8 standalone settings sections into **4 minimal, clean expandable Category Hub Cards** (*Appearance & Layout*, *Interactions & Shortcuts*, *Permissions & Privacy*, *Help & About*).
+- **Wi-Fi Hotspot Monitor**: Added `HotspotUtil` to parse active tethering notifications, showing connected client count, SSID info, data usage, and a quick turn-off action button (`HotspotExpanded`).
+- **Live Activity Engine**: Full delivery and ride tracking support via `LiveActivityParser` and `LiveActivityExpanded`, with dynamic brand colors per app and smooth Compose animations.
+- **Download/Upload Progress Mode**: `DownloadExpanded` renders real-time download/upload progress bars with transfer speeds, custom transfer icons, and refined detection logic. Notifications are hidden from the shade by default while active in the island.
+- **Turn-by-Turn Navigation Mode**: `NavigationExpanded` and `NavigationParser` present next instruction, distance, ETA, and maneuver arrows parsed from navigation app notifications.
+- **Per-App Notification & Sound Controls**: Granular per-app notification and sound toggles added under `NotificationsAndPrivacySection`.
+- **Enhanced Item Row Controls**: Redesigned `ClickableRowItem` with soft MD3 rounded icon container badges, crisp icon tinting, and subtitle text support.
+- **Android Lint Fix**: Resolved debug build lint errors blocking CI.
+- **UI Polish**: Updated notification action button and ring styles, download card progress stroke/heights, and live activity brand color tinting throughout.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
 ## Released — v3.1: Welcome and community
 

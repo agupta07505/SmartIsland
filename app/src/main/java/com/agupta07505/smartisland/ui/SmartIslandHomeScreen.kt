@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Apps
@@ -57,12 +58,25 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Navigation
+import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +86,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import com.agupta07505.smartisland.ui.components.ClickableRowItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -254,6 +269,12 @@ fun SmartIslandHomeScreen(
     var transitionDirection by remember { mutableStateOf(1) } // 1 = forward, -1 = backward
     val homeScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
+
+    val canEnable = overlayGranted && notificationGranted && batteryIgnored
+    var expandedAppearance by remember { mutableStateOf(false) }
+    var expandedInteractions by remember { mutableStateOf(false) }
+    var expandedPermissions by remember { mutableStateOf(false) }
+    var expandedAbout by remember { mutableStateOf(false) }
 
     BackHandler(
         enabled = activeSection != null || selectedDestination == MainDestination.Settings
@@ -453,6 +474,52 @@ fun SmartIslandHomeScreen(
                                     Text(stringResource(R.string.btn_battery), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.LiveActivity) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Navigation, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Live Activity", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Navigation) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Explore, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Navigation", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.DownloadUpload) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Transfer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.Hotspot) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.WifiTethering, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Hotspot", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
                             OutlinedButton(
                                 onClick = { resolvedNotificationRepository?.clearTestNotifications() },
                                 modifier = Modifier.fillMaxWidth(),
@@ -476,131 +543,156 @@ fun SmartIslandHomeScreen(
                     } else {
                         SettingsHeader()
 
-                CategoryHeader("SETUP")
+                        GroupedSettingCard(
+                            title = "Appearance & Layout",
+                            description = "Sizing, offsets, colors, dynamic theme & animated seekbar",
+                            icon = Icons.Rounded.Style,
+                            iconBgColor = customizationsBg,
+                            iconTint = customizationsTint,
+                            isExpanded = expandedAppearance,
+                            onHeaderClick = { expandedAppearance = !expandedAppearance }
+                        ) {
+                            ClickableRowItem(
+                                label = "Island layout & position",
+                                subtitle = "Adjust width, height, X/Y offset & corner radius",
+                                icon = Icons.Rounded.Tune,
+                                iconTint = positionsTint,
+                                iconBg = positionsBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.Positions
+                                }
+                            )
+                            ClickableRowItem(
+                                label = "Colors & visual styling",
+                                subtitle = "Island theme, dynamic color, battery & music seekbar",
+                                icon = Icons.Rounded.Palette,
+                                iconTint = customizationsTint,
+                                iconBg = customizationsBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.Customizations
+                                }
+                            )
+                        }
 
-                SectionRow(
-                    title = "Permissions & setup",
-                    description = "Manage the system access Smart Island needs",
-                    icon = Icons.Rounded.Lock,
-                    iconBgColor = permissionsBg,
-                    iconTint = permissionsTint,
-                    statusText = if (overlayGranted && notificationGranted && batteryIgnored) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
-                    statusColor = if (overlayGranted && notificationGranted && batteryIgnored) Color(0xFF0F9F6E) else Color(0xFFE88C25),
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Permissions
-                    }
-                )
+                        GroupedSettingCard(
+                            title = "Interactions & Shortcuts",
+                            description = "Touch gestures, swipe actions & empty island app grid",
+                            icon = Icons.Rounded.TouchApp,
+                            iconBgColor = gesturesBg,
+                            iconTint = gesturesTint,
+                            isExpanded = expandedInteractions,
+                            onHeaderClick = { expandedInteractions = !expandedInteractions }
+                        ) {
+                            ClickableRowItem(
+                                label = "Gesture controls & guide",
+                                subtitle = "Swipe gestures & interactive playground",
+                                icon = Icons.Rounded.Gesture,
+                                iconTint = gesturesTint,
+                                iconBg = gesturesBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.Gestures
+                                }
+                            )
+                            ClickableRowItem(
+                                label = "App shortcuts grid",
+                                subtitle = when {
+                                    settings.shortcutPackages.isNotEmpty() -> "${settings.shortcutPackages.size} apps configured"
+                                    settings.showRecentApps -> "Recent apps active"
+                                    else -> "Configure quick launch apps"
+                                },
+                                icon = Icons.Rounded.Apps,
+                                iconTint = shortcutsTint,
+                                iconBg = shortcutsBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.AppShortcuts
+                                }
+                            )
+                        }
 
-                CategoryHeader("PERSONALIZATION")
+                        GroupedSettingCard(
+                            title = "Permissions & Privacy",
+                            description = "System access, notification filters & lockscreen rules",
+                            icon = Icons.Rounded.Shield,
+                            iconBgColor = permissionsBg,
+                            iconTint = permissionsTint,
+                            isExpanded = expandedPermissions,
+                            onHeaderClick = { expandedPermissions = !expandedPermissions },
+                            statusText = if (canEnable) stringResource(R.string.status_active) else stringResource(R.string.status_action_required),
+                            statusColor = if (canEnable) Color(0xFF0F9F6E) else Color(0xFFE88C25)
+                        ) {
+                            ClickableRowItem(
+                                label = "App permissions & setup",
+                                subtitle = "Overlay, notification listener, Shizuku & battery",
+                                icon = Icons.Rounded.Lock,
+                                iconTint = permissionsTint,
+                                iconBg = permissionsBg,
+                                value = if (canEnable) "Ready" else "Action needed",
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.Permissions
+                                }
+                            )
+                            ClickableRowItem(
+                                label = "Notifications & lockscreen privacy",
+                                subtitle = if (settings.showOnLockScreen) "Lockscreen display active" else "Lockscreen display disabled",
+                                icon = Icons.Rounded.Notifications,
+                                iconTint = privacyTint,
+                                iconBg = privacyBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.NotificationsPrivacy
+                                }
+                            )
+                        }
 
-                SectionRow(
-                    title = "Island layout",
-                    description = "Adjust the size, position, and corner radius",
-                    icon = Icons.Rounded.Refresh,
-                    iconBgColor = positionsBg,
-                    iconTint = positionsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Positions
-                    }
-                )
+                        GroupedSettingCard(
+                            title = "Help & About",
+                            description = "App version, support, Telegram community & credits",
+                            icon = Icons.AutoMirrored.Rounded.HelpOutline,
+                            iconBgColor = aboutBg,
+                            iconTint = aboutTint,
+                            isExpanded = expandedAbout,
+                            onHeaderClick = { expandedAbout = !expandedAbout }
+                        ) {
+                            ClickableRowItem(
+                                label = "Help & community feedback",
+                                subtitle = "Get support, feature requests & Telegram group",
+                                icon = Icons.Rounded.Feedback,
+                                iconTint = supportTint,
+                                iconBg = supportBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.Support
+                                }
+                            )
+                            ClickableRowItem(
+                                label = "About Smart Island",
+                                subtitle = "Version v3.2.1 • Open Source GPL-3.0",
+                                icon = Icons.Rounded.Info,
+                                iconTint = aboutTint,
+                                iconBg = aboutBg,
+                                onClick = {
+                                    transitionDirection = 1
+                                    activeSection = HomeSection.About
+                                }
+                            )
+                        }
 
-                SectionRow(
-                    title = "Colors & appearance",
-                    description = "Personalize battery, notification, and visualizer colors",
-                    icon = Icons.Rounded.Palette,
-                    iconBgColor = customizationsBg,
-                    iconTint = customizationsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Customizations
-                    }
-                )
-
-                CategoryHeader("CONTENT & INTERACTIONS")
-
-                SectionRow(
-                    title = "Notifications & privacy",
-                    description = "Control lock screen visibility, privacy, and quick actions",
-                    icon = Icons.Rounded.Notifications,
-                    iconBgColor = privacyBg,
-                    iconTint = privacyTint,
-                    statusText = if (settings.showOnLockScreen) "Lock screen on" else "Lock screen off",
-                    statusColor = privacyTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.NotificationsPrivacy
-                    }
-                )
-
-                SectionRow(
-                    title = "App shortcuts",
-                    description = "Choose apps available whenever the expanded island is empty",
-                    icon = Icons.Rounded.Apps,
-                    iconBgColor = shortcutsBg,
-                    iconTint = shortcutsTint,
-                    statusText = when {
-                        settings.shortcutPackages.isNotEmpty() -> "${settings.shortcutPackages.size} selected"
-                        settings.showRecentApps -> "Recent apps enabled"
-                        else -> "Set up"
-                    },
-                    statusColor = shortcutsTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.AppShortcuts
-                    }
-                )
-
-                SectionRow(
-                    title = "Gesture guide",
-                    description = "Learn how to interact with the Smart Island",
-                    icon = Icons.Rounded.Gesture,
-                    iconBgColor = gesturesBg,
-                    iconTint = gesturesTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Gestures
-                    }
-                )
-
-                CategoryHeader("HELP & ABOUT")
-
-                SectionRow(
-                    title = "Help & feedback",
-                    description = "Get support, report an issue, or suggest an improvement",
-                    icon = Icons.Rounded.Feedback,
-                    iconBgColor = supportBg,
-                    iconTint = supportTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.Support
-                    }
-                )
-
-                SectionRow(
-                    title = "About Smart Island",
-                    description = "Version, contributors, community, and project links",
-                    icon = Icons.Rounded.Info,
-                    iconBgColor = aboutBg,
-                    iconTint = aboutTint,
-                    onClick = {
-                        transitionDirection = 1
-                        activeSection = HomeSection.About
-                    }
-                )
-
-                Spacer(Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.made_by),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
+                        Spacer(Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.made_by),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
                 Spacer(Modifier.height(12.dp))
                     }
             }
@@ -823,6 +915,110 @@ private fun CategoryHeader(title: String) {
         letterSpacing = 1.sp,
         modifier = Modifier.padding(top = 10.dp, bottom = 2.dp, start = 4.dp)
     )
+}
+
+@Composable
+private fun GroupedSettingCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    iconBgColor: Color,
+    iconTint: Color,
+    isExpanded: Boolean,
+    onHeaderClick: () -> Unit,
+    statusText: String? = null,
+    statusColor: Color? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    val defaultStatusColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val resolvedStatusColor = statusColor ?: defaultStatusColor
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onHeaderClick)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(iconBgColor, shape = RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                    if (statusText != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(resolvedStatusColor.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = statusText,
+                                color = resolvedStatusColor,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Icon(
+                    imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, bottom = 12.dp, top = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                    )
+                    content()
+                }
+            }
+        }
+    }
 }
 
 @Composable

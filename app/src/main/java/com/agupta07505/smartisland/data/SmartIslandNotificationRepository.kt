@@ -32,6 +32,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
     override val commands: SharedFlow<SmartIslandCommand> = _commands.asSharedFlow()
 
     override fun postNotification(notification: IslandNotification, autoExpand: Boolean) {
+        var isNewNotification = false
         _notifications.update { existingNotifications ->
             val updated = existingNotifications.toMutableList()
             val index = updated.indexOfFirst { it.key == notification.key }
@@ -42,11 +43,12 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     largeIcon = notification.largeIcon ?: existing.largeIcon
                 )
             } else {
+                isNewNotification = true
                 updated.add(notification)
             }
             updated.takeLast(MAX_STORED_NOTIFICATIONS)
         }
-        if (autoExpand) {
+        if (autoExpand && isNewNotification) {
             _autoExpandEvent.tryEmit(notification.key)
         }
     }
@@ -118,6 +120,81 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 text = "85%",
                 timeMillis = System.currentTimeMillis(),
                 mode = IslandMode.Battery
+            )
+            IslandMode.LiveActivity -> IslandNotification(
+                key = "demo_live_activity",
+                packageName = "com.ubercab",
+                appName = "Uber",
+                title = "Driver is on the way",
+                text = "Arriving in 8 mins • 2.5 km away",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.LiveActivity,
+                progress = 40,
+                progressMax = 100,
+                actionIntents = listOf(
+                    IslandNotificationAction("Call Driver", null),
+                    IslandNotificationAction("Share Trip", null)
+                )
+            )
+            IslandMode.Navigation -> IslandNotification(
+                key = "demo_navigation",
+                packageName = "com.google.android.apps.maps",
+                appName = "Google Maps",
+                title = "Turn left onto MG Road",
+                text = "In 300 m • 24 min remaining (8.5 km)",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Navigation,
+                actionIntents = listOf(
+                    IslandNotificationAction("Mute Voice", null),
+                    IslandNotificationAction("Exit", null)
+                )
+            )
+            IslandMode.DownloadUpload -> {
+                val hasDownload = _notifications.value.any { it.key == "demo_download" }
+                if (!hasDownload) {
+                    IslandNotification(
+                        key = "demo_download",
+                        packageName = "com.android.chrome",
+                        appName = "Chrome",
+                        title = "video_2026_download.mp4",
+                        text = "Downloading... 145 MB of 280 MB • 52%",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.DownloadUpload,
+                        progress = 52,
+                        progressMax = 100,
+                        actionIntents = listOf(
+                            IslandNotificationAction("Pause", null),
+                            IslandNotificationAction("Cancel", null)
+                        )
+                    )
+                } else {
+                    IslandNotification(
+                        key = "demo_upload",
+                        packageName = "com.google.android.apps.docs",
+                        appName = "Google Drive",
+                        title = "presentation_2026.pdf",
+                        text = "Uploading... 85 MB of 120 MB • 70%",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.DownloadUpload,
+                        progress = 70,
+                        progressMax = 100,
+                        actionIntents = listOf(
+                            IslandNotificationAction("Cancel", null)
+                        )
+                    )
+                }
+            }
+            IslandMode.Hotspot -> IslandNotification(
+                key = "demo_hotspot",
+                packageName = "com.android.settings",
+                appName = "Mobile Hotspot",
+                title = "Mobile Hotspot",
+                text = "Active • 2 devices connected",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Hotspot,
+                actionIntents = listOf(
+                    IslandNotificationAction("Hotspot Settings", null)
+                )
             )
             IslandMode.Empty -> null
         }

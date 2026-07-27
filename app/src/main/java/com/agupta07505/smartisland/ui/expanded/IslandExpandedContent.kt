@@ -118,10 +118,14 @@ fun IslandExpandedContent(
 
         fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
             return when (notif?.mode) {
-                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 120.dp)
-                IslandMode.Notification -> height.coerceIn(90.dp, 135.dp)
-                IslandMode.Music -> height.coerceIn(110.dp, 170.dp)
-                else -> height.coerceIn(80.dp, 150.dp)
+                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
+                IslandMode.Notification -> height.coerceIn(95.dp, 145.dp)
+                IslandMode.Music -> height.coerceIn(115.dp, 180.dp)
+                IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
+                IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
+                IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
+                IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
+                else -> height.coerceIn(80.dp, 160.dp)
             }
         }
 
@@ -140,7 +144,7 @@ fun IslandExpandedContent(
             val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
             val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) } ?: currentPageHeight)
             val fraction = kotlin.math.abs(offsetFraction)
-            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 170.dp)
+            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 205.dp)
         } else {
             null
         }
@@ -184,20 +188,51 @@ fun IslandExpandedContent(
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
                                 onCollapse = onCollapse,
-                                showActions = settings.showNotificationActions
+                                showActions = settings.showNotificationActions,
+                                settings = settings
                             )
                             IslandMode.IncomingCall -> IncomingCallExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.Music -> MusicExpanded(
                                 notification = notification,
-                                bottomPadding = bottomPadding
+                                bottomPadding = bottomPadding,
+                                settings = settings
                             )
                             IslandMode.Battery -> BatteryExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
+                                settings = settings
+                            )
+                            IslandMode.LiveActivity -> LiveActivityExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Navigation -> NavigationExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.DownloadUpload -> DownloadExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Hotspot -> HotspotExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
                                 settings = settings
                             )
                             IslandMode.Empty -> EmptyExpanded(

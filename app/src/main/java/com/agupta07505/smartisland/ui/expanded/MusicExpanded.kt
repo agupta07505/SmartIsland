@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.WavyMusicSeekBar
@@ -62,7 +63,8 @@ import kotlin.math.cos
 @Composable
 fun MusicExpanded(
     notification: IslandNotification?,
-    bottomPadding: Dp
+    bottomPadding: Dp,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
     val positionMs = notification?.mediaPositionMs
@@ -318,7 +320,7 @@ fun MusicExpanded(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFF6B9A))
+                        .background(Color(settings.musicVisualizerColor))
                         .padding(8.dp)
                 )
             }

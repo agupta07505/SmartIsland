@@ -45,6 +45,11 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val BatteryColor = longPreferencesKey("battery_color")
         val NotificationDotColor = longPreferencesKey("notification_dot_color")
         val MusicVisualizerColor = longPreferencesKey("music_visualizer_color")
+        val HotspotColor = longPreferencesKey("hotspot_color")
+        val CallColor = longPreferencesKey("call_color")
+        val LiveActivityColor = longPreferencesKey("live_activity_color")
+        val TransferColor = longPreferencesKey("transfer_color")
+        val NavigationColor = longPreferencesKey("navigation_color")
         val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
         val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
@@ -52,6 +57,10 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val LockScreenPrivacy = stringPreferencesKey("lock_screen_privacy")
         val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
         val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
+        val LiveActivitiesEnabled = booleanPreferencesKey("live_activities_enabled")
+        val NavigationEnabled = booleanPreferencesKey("navigation_enabled")
+        val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
+        val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -106,6 +115,11 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     prefs[Keys.MusicVisualizerColor],
                     defaults.musicVisualizerColor
                 ),
+                hotspotColor = validColor(prefs[Keys.HotspotColor], defaults.hotspotColor),
+                callColor = validColor(prefs[Keys.CallColor], defaults.callColor),
+                liveActivityColor = validColor(prefs[Keys.LiveActivityColor], defaults.liveActivityColor),
+                transferColor = validColor(prefs[Keys.TransferColor], defaults.transferColor),
+                navigationColor = validColor(prefs[Keys.NavigationColor], defaults.navigationColor),
                 shortcutPackages = prefs[Keys.ShortcutPackages]
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
@@ -121,7 +135,21 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 showNotificationActions = prefs[Keys.ShowNotificationActions]
                     ?: defaults.showNotificationActions,
                 hideFromNotificationShade = prefs[Keys.HideFromNotificationShade]
-                    ?: defaults.hideFromNotificationShade
+                    ?: defaults.hideFromNotificationShade,
+                liveActivitiesEnabled = prefs[Keys.LiveActivitiesEnabled]
+                    ?: defaults.liveActivitiesEnabled,
+                navigationEnabled = prefs[Keys.NavigationEnabled]
+                    ?: defaults.navigationEnabled,
+                disabledNotificationPackages = prefs[Keys.DisabledNotificationPackages]
+                    ?.asSequence()
+                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.toSet()
+                    ?: defaults.disabledNotificationPackages,
+                disabledSoundPackages = prefs[Keys.DisabledSoundPackages]
+                    ?.asSequence()
+                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.toSet()
+                    ?: defaults.disabledSoundPackages
             )
         }
 
@@ -181,6 +209,21 @@ class SmartIslandSettingsRepository(private val context: Context) {
             SmartIslandSettings.Default.musicVisualizerColor
         )
     }
+    suspend fun setHotspotColor(value: Long) = editSafely {
+        it[Keys.HotspotColor] = validColor(value, SmartIslandSettings.Default.hotspotColor)
+    }
+    suspend fun setCallColor(value: Long) = editSafely {
+        it[Keys.CallColor] = validColor(value, SmartIslandSettings.Default.callColor)
+    }
+    suspend fun setLiveActivityColor(value: Long) = editSafely {
+        it[Keys.LiveActivityColor] = validColor(value, SmartIslandSettings.Default.liveActivityColor)
+    }
+    suspend fun setTransferColor(value: Long) = editSafely {
+        it[Keys.TransferColor] = validColor(value, SmartIslandSettings.Default.transferColor)
+    }
+    suspend fun setNavigationColor(value: Long) = editSafely {
+        it[Keys.NavigationColor] = validColor(value, SmartIslandSettings.Default.navigationColor)
+    }
     suspend fun setShortcutPackages(value: Set<String>) = editSafely {
         it[Keys.ShortcutPackages] = value
             .asSequence()
@@ -217,6 +260,24 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setHideFromNotificationShade(value: Boolean) = editSafely {
         it[Keys.HideFromNotificationShade] = value
+    }
+    suspend fun setLiveActivitiesEnabled(value: Boolean) = editSafely {
+        it[Keys.LiveActivitiesEnabled] = value
+    }
+    suspend fun setNavigationEnabled(value: Boolean) = editSafely {
+        it[Keys.NavigationEnabled] = value
+    }
+    suspend fun setDisabledNotificationPackages(value: Set<String>) = editSafely {
+        it[Keys.DisabledNotificationPackages] = value
+            .asSequence()
+            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
+            .toSet()
+    }
+    suspend fun setDisabledSoundPackages(value: Set<String>) = editSafely {
+        it[Keys.DisabledSoundPackages] = value
+            .asSequence()
+            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
+            .toSet()
     }
 
     suspend fun resetPosition() = editSafely {
