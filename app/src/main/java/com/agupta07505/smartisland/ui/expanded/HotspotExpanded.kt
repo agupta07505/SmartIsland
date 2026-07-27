@@ -48,6 +48,7 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.util.HotspotUtil
 
 @Composable
 fun HotspotExpanded(
@@ -61,14 +62,8 @@ fun HotspotExpanded(
     val badgeBg = Color(0x33FF9800)
 
     val deviceCountText = remember(notification.text, notification.title) {
-        val fullText = "${notification.title} ${notification.text}"
-        val digits = Regex("""\b(\d+)\s*(device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
-            .find(fullText)?.groupValues?.get(1)
-        when {
-            digits != null -> "$digits connected"
-            fullText.lowercase().contains("no device") || fullText.lowercase().contains("0 device") -> "0 connected"
-            else -> "Active"
-        }
+        val count = HotspotUtil.parseDeviceCount(notification.title, notification.text)
+        "$count connected"
     }
 
     // Strip "Active . 2 device" string from subtitle so it displays clean description
@@ -135,7 +130,7 @@ fun HotspotExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Mobile Hotspot",
+                    text = cleanSubtitle,
                     color = Color(0xFFD5DAE0),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

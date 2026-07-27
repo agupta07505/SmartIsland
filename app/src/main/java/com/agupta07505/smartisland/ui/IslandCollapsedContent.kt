@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui
 
 import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.util.HotspotUtil
 import com.agupta07505.smartisland.ui.components.DottedRing
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -243,14 +244,7 @@ private fun HotspotCollapsedGlyph(notification: IslandNotification?) {
 @Composable
 private fun HotspotCollapsedRight(notification: IslandNotification?) {
     val countText = remember(notification?.text, notification?.title) {
-        val fullText = "${notification?.title} ${notification?.text}"
-        val digits = Regex("""\b(\d+)\s*(device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
-            .find(fullText)?.groupValues?.get(1)
-        when {
-            digits != null -> digits
-            fullText.lowercase().contains("no device") || fullText.lowercase().contains("0 device") -> "0"
-            else -> "1"
-        }
+        HotspotUtil.parseDeviceCount(notification?.title, notification?.text).toString()
     }
 
     Text(
