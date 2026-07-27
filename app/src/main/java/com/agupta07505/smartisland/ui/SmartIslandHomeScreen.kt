@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.Apps
@@ -63,6 +64,9 @@ import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -267,9 +271,9 @@ fun SmartIslandHomeScreen(
     val settingsScrollState = rememberScrollState()
 
     val canEnable = overlayGranted && notificationGranted && batteryIgnored
-    var expandedAppearance by remember { mutableStateOf(true) }
+    var expandedAppearance by remember { mutableStateOf(false) }
     var expandedInteractions by remember { mutableStateOf(false) }
-    var expandedPermissions by remember { mutableStateOf(!canEnable) }
+    var expandedPermissions by remember { mutableStateOf(false) }
     var expandedAbout by remember { mutableStateOf(false) }
 
     BackHandler(
@@ -542,7 +546,7 @@ fun SmartIslandHomeScreen(
                         GroupedSettingCard(
                             title = "Appearance & Layout",
                             description = "Sizing, offsets, colors, dynamic theme & animated seekbar",
-                            icon = Icons.Rounded.Palette,
+                            icon = Icons.Rounded.Style,
                             iconBgColor = customizationsBg,
                             iconTint = customizationsTint,
                             isExpanded = expandedAppearance,
@@ -551,7 +555,7 @@ fun SmartIslandHomeScreen(
                             ClickableRowItem(
                                 label = "Island layout & position",
                                 subtitle = "Adjust width, height, X/Y offset & corner radius",
-                                icon = Icons.Rounded.Refresh,
+                                icon = Icons.Rounded.Tune,
                                 iconTint = positionsTint,
                                 iconBg = positionsBg,
                                 onClick = {
@@ -575,7 +579,7 @@ fun SmartIslandHomeScreen(
                         GroupedSettingCard(
                             title = "Interactions & Shortcuts",
                             description = "Touch gestures, swipe actions & empty island app grid",
-                            icon = Icons.Rounded.Gesture,
+                            icon = Icons.Rounded.TouchApp,
                             iconBgColor = gesturesBg,
                             iconTint = gesturesTint,
                             isExpanded = expandedInteractions,
@@ -612,7 +616,7 @@ fun SmartIslandHomeScreen(
                         GroupedSettingCard(
                             title = "Permissions & Privacy",
                             description = "System access, notification filters & lockscreen rules",
-                            icon = Icons.Rounded.Lock,
+                            icon = Icons.Rounded.Shield,
                             iconBgColor = permissionsBg,
                             iconTint = permissionsTint,
                             isExpanded = expandedPermissions,
@@ -648,7 +652,7 @@ fun SmartIslandHomeScreen(
                         GroupedSettingCard(
                             title = "Help & About",
                             description = "App version, support, Telegram community & credits",
-                            icon = Icons.Rounded.Info,
+                            icon = Icons.AutoMirrored.Rounded.HelpOutline,
                             iconBgColor = aboutBg,
                             iconTint = aboutTint,
                             isExpanded = expandedAbout,
@@ -943,7 +947,7 @@ private fun GroupedSettingCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onHeaderClick)
-                    .padding(18.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -1003,12 +1007,12 @@ private fun GroupedSettingCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 12.dp, end = 12.dp, bottom = 14.dp, top = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(start = 10.dp, end = 10.dp, bottom = 12.dp, top = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(bottom = 6.dp)
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
                     )
                     content()
                 }

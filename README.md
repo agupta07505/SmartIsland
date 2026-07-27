@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v3.2.1</strong>
+  <strong>Current release: v4.0.0</strong>
 </p>
 
 <p align="center">
@@ -72,21 +72,27 @@ The project is designed to be transparent, hackable, and privacy-conscious: noti
 | Area | What Smart Island does |
 | --- | --- |
 | Floating overlay | Draws a compact island above other apps using Android's overlay window APIs. |
+| Material 3 UI & Grouping | Sleek Material 3 Expressive UI with dynamic wallpaper color adaptation and minimal expandable category cards. |
+| Wi-Fi Hotspot monitor | Monitors active tethering via `HotspotUtil`, shows connected client count, hotspot SSID, data usage indicators, and quick turn-off action. |
+| Live Activity tracking | Delivery and ride tracking cards via `LiveActivityParser` with dynamic per-app brand colors and real-time status updates. |
+| Download/Upload progress | Real-time download and upload progress bars with transfer speeds (MB/s), file names, and custom transfer icons. System shade notifications hidden by default while active. |
+| Navigation guidance | Turn-by-turn navigation overlay via `NavigationParser` showing next instruction, distance, ETA, and maneuver arrow icons. |
 | Notification listener & suppression | Intercepts notifications locally, presenting them in the island while suppressing system shade duplicates. |
+| Per-app notification & sound controls | Granular per-app notification and independent sound toggles under Notifications & Privacy settings. |
 | Landscape auto-hide | Automatically detects landscape orientation and temporarily hides the overlay during gaming and media. |
 | Battery optimization guide | Includes dedicated setup cards to guide users in setting background battery optimization to 'No restrictions'. |
 | Lock screen privacy | Opt-in support for displaying island status on the lock screen with optional sensitive content hiding. |
 | Wavy music player | Renders an animated organic wavy seek bar with heart/repeat actions, active track metadata, and dynamic color pickers. |
-| Smooth animations | Morphs seamlessly between collapsed and expanded states with Compose animations. |
+| Smooth animations | Morphs seamlessly between collapsed and expanded states with sweet Compose animations. |
 | Multiple notifications | Maintains an active notification stack allowing users to page horizontally between active items. |
 | Calls and media | Detects incoming calls, music/media sessions, album artwork, playback state, and seek progress. |
 | Battery charging | Displays charging percentage, pulsing indicator icon, and dynamic remaining time-until-full estimates. |
 | Quick actions | Opens, dismisses, or launches supported notification content into floating windows. |
 | App shortcuts | Lets users configure up to eight apps for instant launch from the empty expanded island. |
 | Custom controls | Provides sliders for width, height, X/Y offsets, corner radius, and preset/custom RGB color themes. |
-| Theme support | Native light and dark theme styling for the settings interface and floating overlay UI. |
-| Local settings | Persists all preferences locally using AndroidX DataStore Preferences. |
-| Demo modes | Includes quick-test preview triggers for notifications, call alerts, music player, and battery charging. |
+| Theme support | Native light and dark theme styling with Android 12+ dynamic color support. |
+| Local settings | Persists all preferences locally using AndroidX DataStore Preferences with zero internet permission. |
+| Demo modes | Includes quick-test preview triggers for notifications, call alerts, music, battery, hotspot, transfer, live activity & navigation. |
 | Gesture guide | Interactive playground and animated tutorials demonstrating swipe up, swipe down, and horizontal paging. |
 
 ## Architecture
