@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
@@ -50,7 +51,8 @@ fun NotificationExpanded(
     bottomPadding: Dp,
     onOpenNotification: () -> Unit,
     onCollapse: () -> Unit,
-    showActions: Boolean = true
+    showActions: Boolean = true,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
     Column(
@@ -101,7 +103,7 @@ fun NotificationExpanded(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF2563EB)),
+                        .background(Color(settings.notificationDotColor)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(notification?.appName?.firstOrNull()?.uppercase() ?: "S", color = Color.White, fontWeight = FontWeight.Bold)
@@ -158,7 +160,7 @@ fun NotificationExpanded(
                                 .background(Color(0xFFE2E8F0)) // light grey background matching the Telegram button
                                 .bounceClick {
                                     if (action.pendingIntent != null) {
-                                        triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
+                                        runCatching { action.pendingIntent.send() }
                                     } else {
                                         Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                     }

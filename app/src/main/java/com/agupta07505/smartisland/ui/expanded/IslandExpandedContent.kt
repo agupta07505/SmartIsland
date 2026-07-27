@@ -188,16 +188,19 @@ fun IslandExpandedContent(
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
                                 onCollapse = onCollapse,
-                                showActions = settings.showNotificationActions
+                                showActions = settings.showNotificationActions,
+                                settings = settings
                             )
                             IslandMode.IncomingCall -> IncomingCallExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.Music -> MusicExpanded(
                                 notification = notification,
-                                bottomPadding = bottomPadding
+                                bottomPadding = bottomPadding,
+                                settings = settings
                             )
                             IslandMode.Battery -> BatteryExpanded(
                                 notification = notification,
@@ -220,13 +223,15 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.Hotspot -> HotspotExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
-                                onCollapse = onCollapse
+                                onCollapse = onCollapse,
+                                settings = settings
                             )
                             IslandMode.Empty -> EmptyExpanded(
                                 settings = settings,

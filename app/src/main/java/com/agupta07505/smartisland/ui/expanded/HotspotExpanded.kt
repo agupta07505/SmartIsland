@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandCommand
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
@@ -55,11 +56,12 @@ fun HotspotExpanded(
     notification: IslandNotification,
     bottomPadding: Dp,
     onOpenNotification: () -> Unit,
-    onCollapse: () -> Unit
+    onCollapse: () -> Unit,
+    settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
-    val accentColor = Color(0xFFFF9800)
-    val badgeBg = Color(0x33FF9800)
+    val accentColor = Color(settings.hotspotColor)
+    val badgeBg = Color(settings.hotspotColor).copy(alpha = 0.2f)
 
     val deviceCountText = remember(notification.text, notification.title) {
         val count = HotspotUtil.parseDeviceCount(notification.title, notification.text)
