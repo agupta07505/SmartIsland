@@ -66,12 +66,13 @@ fun IslandExpandedContent(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                // The island starts at collapsed height. Unbounded measurement is
-                // required here so the launcher can discover its natural height.
-                .wrapContentHeight(unbounded = true)
+                .wrapContentHeight()
                 .onSizeChanged {
                     val measuredHeight = with(density) { it.height.toDp() }
-                    if (measuredHeight > 0.dp) onHeightMeasured(measuredHeight)
+                    if (measuredHeight > 0.dp) {
+                        val clamped = measuredHeight.coerceIn(80.dp, 180.dp)
+                        onHeightMeasured(clamped)
+                    }
                 }
         ) {
             EmptyExpanded(settings = settings, apps = launcherApps, onLaunchApp = onLaunchApp)
