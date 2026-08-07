@@ -235,6 +235,17 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
+
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Notifications-state collector failed") {
+                viewModel.notifications.collectLatest {
+                    if (destroyed || !viewModel.settings.value.enabled) {
+                        return@collectLatest
+                    }
+                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                }
+            }
+        }
     }
 
     override fun onServiceConnected() {
