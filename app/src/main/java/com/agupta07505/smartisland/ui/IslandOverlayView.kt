@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalDensity
@@ -130,7 +131,7 @@ fun IslandOverlayView(
     }
 
     val compactGap = COMPACT_INDICATOR_GAP_DP.dp
-    val miniPillWidth = MINI_PILL_WIDTH_DP.dp
+    val miniPillWidth = settings.width.dp
     val circleSize = settings.height.dp
     val compactShapes = compactNotificationShapes(notifications.size, expanded)
     val hasCompanion = notifications.size >= 2
@@ -254,6 +255,13 @@ fun IslandOverlayView(
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
         label = "secondaryBubbleWidth"
     )
+    val secondaryPillProgress = (miniPillWidth - circleSize).value.let { widthDelta ->
+        if (widthDelta == 0f) {
+            if (secondaryIsPill) 1f else 0f
+        } else {
+            ((secondaryBubbleWidth - circleSize).value / widthDelta).coerceIn(0f, 1f)
+        }
+    }
     val secondaryBubbleCorner by animateDpAsState(
         targetValue = if (secondaryIsPill) settings.cornerRadius.dp else circleSize / 2f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
@@ -437,7 +445,7 @@ fun IslandOverlayView(
         }
 
         // Collapsed: secondary circle. Expanded with 2: the same item morphs
-        // into a mini-pill. Expanded with 3+: it stays the circle on the right.
+        // into a full-size pill. Expanded with 3+: it stays the circle on the right.
         if (secondaryAlpha > 0f && secondaryNotification != null) {
             Box(
                 modifier = Modifier
@@ -469,10 +477,31 @@ fun IslandOverlayView(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                SecondaryBubbleContent(
-                    notification = secondaryNotification,
-                    settings = settings
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = 1f - secondaryPillProgress },
+                    contentAlignment = Alignment.Center
+                ) {
+                    SecondaryBubbleContent(
+                        notification = secondaryNotification,
+                        settings = settings
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .requiredWidth(miniPillWidth)
+                        .height(circleSize)
+                        .graphicsLayer { alpha = secondaryPillProgress },
+                    contentAlignment = Alignment.Center
+                ) {
+                    IslandCollapsedContent(
+                        mode = secondaryNotification.mode,
+                        notification = secondaryNotification,
+                        collapsedAlpha = 1f,
+                        settings = settings
+                    )
+                }
             }
         }
 
@@ -507,8 +536,10 @@ fun IslandOverlayView(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                SecondaryBubbleContent(
+                IslandCollapsedContent(
+                    mode = tertiaryNotification.mode,
                     notification = tertiaryNotification,
+                    collapsedAlpha = 1f,
                     settings = settings
                 )
             }
@@ -599,7 +630,6 @@ private fun SecondaryBubbleContent(
 private const val EXPANDED_WIDTH_RATIO = 0.95f
 private const val SWIPE_THRESHOLD_DP = 35f
 private const val DRAG_MAX_OFFSET_DP = 100f
-private const val MINI_PILL_WIDTH_DP = 76f
 private const val COMPACT_INDICATOR_GAP_DP = 8f
 
 internal enum class CompactNotificationShape { MiniPill, Circle }
