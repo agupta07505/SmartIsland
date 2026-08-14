@@ -418,24 +418,35 @@ class SmartIslandOverlayService : AccessibilityService() {
                     } else {
                         // PILL-ONLY TOUCHABLE REGION:
                         // Restrict touch interception to ONLY the pill bounds + padding.
-                        // Since the window starts at y = 0, we offset the touchable region
-                        // vertically by yOffset. Touches outside the pill (status bar zone
-                        // and top offset area) pass through to the system natively, which
-                        // handles left/right notification and quick settings pull-down.
+                        // The region is local to this already-offset window. Touches outside
+                        // the visible collapsed group pass through to the system.
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
                         
                         val density = resources.displayMetrics.density
                         val screenWidth = resources.displayMetrics.widthPixels
                         val settingsVal = viewModel.settings.value
-                        val pillWidthPx = (settingsVal.width + 12f) * density
+                        val notificationsCount = viewModel.notifications.value.size
+                        val isSplitMode = notificationsCount >= 2
+
+                        val mainWidthPx = settingsVal.width * density
+                        val groupWidthPx = (
+                            settingsVal.width + if (isSplitMode) 8f + settingsVal.height else 0f
+                        ) * density
+                        val edgePaddingPx = 8f * density
+                        val touchPaddingPx = 6f * density
                         val pillHeightPx = (settingsVal.height + 16f) * density
+
+                        val desiredMainLeftPx = screenWidth / 2f +
+                            settingsVal.xOffset * density - mainWidthPx / 2f
+                        val maxMainLeftPx = (screenWidth - groupWidthPx - edgePaddingPx)
+                            .coerceAtLeast(edgePaddingPx)
+                        val mainLeftPx = desiredMainLeftPx.coerceIn(edgePaddingPx, maxMainLeftPx)
+                        val left = (mainLeftPx - touchPaddingPx).toInt()
+                        val top = 0
+                        val right = (mainLeftPx + groupWidthPx + touchPaddingPx).toInt()
+                        val bottom = pillHeightPx.toInt()
                         
-                        val left = ((screenWidth - pillWidthPx) / 2f + settingsVal.xOffset * density).toInt()
-                        val top = (settingsVal.yOffset * density).toInt()
-                        val right = (left + pillWidthPx).toInt()
-                        val bottom = (top + pillHeightPx).toInt()
-                        
-                        android.util.Log.d(TAG, "onComputeInternalInsets: region set to ($left, $top, $right, $bottom)")
+                        android.util.Log.d(TAG, "onComputeInternalInsets: region set to ($left, $top, $right, $bottom), isSplitMode=$isSplitMode")
                         val region = touchableRegionField.get(insets) as android.graphics.Region
                         region.set(left, top, right, bottom)
                     }

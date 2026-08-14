@@ -15,22 +15,20 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,7 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +52,19 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.LaunchableApp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun IslandOverlayView(
@@ -81,7 +94,9 @@ fun IslandOverlayView(
 
     val context = LocalContext.current
     val displayMetrics = context.resources.displayMetrics
-    val screenCenterPx = displayMetrics.widthPixels / 2f
+    val density = LocalDensity.current
+    val screenWidth = with(density) { displayMetrics.widthPixels.toDp() }
+    val screenCenter = screenWidth / 2f
     val expandedWidth = ((displayMetrics.widthPixels / displayMetrics.density) * EXPANDED_WIDTH_RATIO).dp
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
@@ -114,6 +129,24 @@ fun IslandOverlayView(
         mutableStateOf(settings.height.dp)
     }
 
+    val compactGap = COMPACT_INDICATOR_GAP_DP.dp
+    val miniPillWidth = MINI_PILL_WIDTH_DP.dp
+    val circleSize = settings.height.dp
+    val compactShapes = compactNotificationShapes(notifications.size, expanded)
+    val hasCompanion = notifications.size >= 2
+    val collapsedGroupWidth = settings.width.dp + if (hasCompanion) compactGap + circleSize else 0.dp
+    val collapsedMainLeft = (screenCenter + settings.xOffset.dp - settings.width.dp / 2f)
+        .coerceIn(
+            compactGap,
+            (screenWidth - collapsedGroupWidth - compactGap).coerceAtLeast(compactGap)
+        )
+    val collapsedMainOffset = collapsedMainLeft + settings.width.dp / 2f - screenCenter
+    val expandedTopOffset = if (hasCompanion) {
+        statusBarHeight.dp.coerceAtLeast(circleSize + compactGap)
+    } else {
+        statusBarHeight.dp
+    }
+
     val width by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandWidth") {
         if (it) expandedWidth else settings.width.dp
     }
@@ -124,13 +157,13 @@ fun IslandOverlayView(
         if (it) expandedHeight else settings.height.dp
     }
     val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
-        if (it) statusBarHeight.dp else 0.dp
+        if (it) expandedTopOffset else 0.dp
     }
     val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
         if (it) 34.dp else settings.cornerRadius.dp
     }
     val animatedXOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandXOffset") {
-        if (it) 0.dp else settings.xOffset.dp
+        if (it) 0.dp else collapsedMainOffset
     }
 
     val collapsedAlpha by transition.animateFloat(
@@ -161,8 +194,99 @@ fun IslandOverlayView(
         if (it) 0.dp else (-12).dp
     }
 
-    val activeNotification = notifications.getOrNull(selectedIndex)
+    val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
+    val activeNotification = notifications.getOrNull(safeIndex)
     val activeMode = activeNotification?.mode ?: IslandMode.Empty
+
+    // Tactile spring scale bounce animation when switching active items between pill and circle
+    val switchScaleAnim = remember { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(selectedIndex) {
+        switchScaleAnim.animateTo(
+            targetValue = 0.88f,
+            animationSpec = tween(60, easing = FastOutSlowInEasing)
+        )
+        switchScaleAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
+    }
+
+    // Dual Pill (Multi-Tasking Split Island) Detection:
+    // When 2 or more notifications exist (e.g. Music + Notification/Timer/Call), split into Main Pill + Secondary Bubble
+    val secondaryNotification = if (notifications.size >= 2) {
+        val musicIndex = notifications.indexOfFirst { it.mode == IslandMode.Music }
+        if (activeNotification?.mode != IslandMode.Music && musicIndex >= 0) {
+            notifications[musicIndex]
+        } else {
+            notifications.firstOrNull { it.key != activeNotification?.key }
+        }
+    } else null
+    val secondaryIndex = if (secondaryNotification != null) {
+        notifications.indexOfFirst { it.key == secondaryNotification.key }
+    } else -1
+    val tertiaryNotification = if (notifications.size >= 3) {
+        notifications.firstOrNull {
+            it.key != activeNotification?.key && it.key != secondaryNotification?.key
+        }
+    } else null
+    val tertiaryIndex = if (tertiaryNotification != null) {
+        notifications.indexOfFirst { it.key == tertiaryNotification.key }
+    } else -1
+    val isSplitMode = secondaryNotification != null
+    val secondaryIsPill = compactShapes.singleOrNull() == CompactNotificationShape.MiniPill
+    val showTertiaryPill = compactShapes.size == 2 && tertiaryNotification != null
+
+    val secondaryAlpha by animateFloatAsState(
+        targetValue = if (isSplitMode) 1f else 0f,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "secondaryAlpha"
+    )
+    val secondaryScale by animateFloatAsState(
+        targetValue = if (isSplitMode) 1f else 0.4f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "secondaryScale"
+    )
+    val secondaryBubbleWidth by animateDpAsState(
+        targetValue = if (secondaryIsPill) miniPillWidth else circleSize,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "secondaryBubbleWidth"
+    )
+    val secondaryBubbleCorner by animateDpAsState(
+        targetValue = if (secondaryIsPill) settings.cornerRadius.dp else circleSize / 2f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "secondaryBubbleCorner"
+    )
+    val tertiaryAlpha by animateFloatAsState(
+        targetValue = if (showTertiaryPill) 1f else 0f,
+        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        label = "tertiaryAlpha"
+    )
+    val tertiaryScale by animateFloatAsState(
+        targetValue = if (showTertiaryPill) 1f else 0.4f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        label = "tertiaryScale"
+    )
+
+    val expandedCompactWidth = miniPillWidth +
+        if (tertiaryNotification != null) compactGap + circleSize else 0.dp
+    val expandedCompactX = (screenCenter + settings.xOffset.dp - expandedCompactWidth / 2f)
+        .coerceIn(
+            compactGap,
+            (screenWidth - expandedCompactWidth - compactGap).coerceAtLeast(compactGap)
+        )
+    val collapsedSecondaryX = collapsedMainLeft + settings.width.dp + compactGap
+    val secondaryX by animateDpAsState(
+        targetValue = when {
+            !expanded -> collapsedSecondaryX
+            secondaryIsPill -> expandedCompactX
+            else -> expandedCompactX + miniPillWidth + compactGap
+        },
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "secondaryX"
+    )
 
     // Outer Box: Fills the entire WindowManager window bounds (which are padded for easy touch)
     val outerModifier = if (currentExpanded) {
@@ -179,52 +303,8 @@ fun IslandOverlayView(
 
     Box(
         modifier = outerModifier,
-        contentAlignment = Alignment.TopStart
+        contentAlignment = Alignment.TopCenter
     ) {
-        // Stack Indicator Brackets: concentric parentheses curves drawn behind the pill when notifications > 1
-        if (notifications.size > 1 && collapsedAlpha > 0f) {
-            Canvas(
-                modifier = Modifier
-                    .width(width)
-                    .height(height)
-                    .graphicsLayer {
-                        val currentWidth = size.width
-                        val desiredCenterX = screenCenterPx + animatedXOffset.toPx()
-                        translationX = desiredCenterX - (currentWidth / 2f)
-                        translationY = yOffset.toPx() + dragOffset
-                        alpha = collapsedAlpha
-                    }
-            ) {
-                val h = size.height
-                val w = size.width
-                val r = radius.toPx().coerceAtMost(h / 2f)
-                val gap = STACK_INDICATOR_GAP_DP.dp.toPx()
-                val strokeW = STACK_INDICATOR_STROKE_DP.dp.toPx()
-                val rArc = r + gap
-
-                // Left Arc: concentric bracket curve on the left
-                drawArc(
-                    color = Color.Black,
-                    startAngle = STACK_LEFT_ARC_START,
-                    sweepAngle = STACK_INDICATOR_ARC_SWEEP,
-                    useCenter = false,
-                    topLeft = Offset(-gap - strokeW / 2f, h / 2f - rArc - strokeW / 2f),
-                    size = Size(rArc * 2f + strokeW, rArc * 2f + strokeW),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                )
-
-                // Right Arc: concentric bracket curve on the right
-                drawArc(
-                    color = Color.Black,
-                    startAngle = STACK_RIGHT_ARC_START,
-                    sweepAngle = STACK_INDICATOR_ARC_SWEEP,
-                    useCenter = false,
-                    topLeft = Offset(w - r * 2f - gap - strokeW / 2f, h / 2f - rArc - strokeW / 2f),
-                    size = Size(rArc * 2f + strokeW, rArc * 2f + strokeW),
-                    style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                )
-            }
-        }
 
         // Inner Box: The actual visible pill container, managing the black background shape and size animations
         Box(
@@ -232,10 +312,10 @@ fun IslandOverlayView(
                 .width(width)
                 .height(height)
                 .graphicsLayer {
-                    val currentWidth = size.width
-                    val desiredCenterX = screenCenterPx + animatedXOffset.toPx()
-                    translationX = desiredCenterX - (currentWidth / 2f)
+                    translationX = animatedXOffset.toPx()
                     translationY = yOffset.toPx() + dragOffset
+                    scaleX = switchScaleAnim.value
+                    scaleY = switchScaleAnim.value
                 }
                 .clip(RoundedCornerShape(radius))
                 .background(Color.Black)
@@ -303,15 +383,15 @@ fun IslandOverlayView(
                 },
             contentAlignment = Alignment.TopCenter
         ) {
-            // Collapsed content layer (purely visual, no gesture handlers)
+            // Collapsed content layer (pinned to fixed pill bounds at top-center, cancelling yOffset)
             if (collapsedAlpha > 0f) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .width(settings.width.dp)
+                        .height(settings.height.dp)
+                        .align(Alignment.TopCenter)
                         .graphicsLayer {
                             alpha = collapsedAlpha
-                            scaleX = collapsedAlpha * COLLAPSED_SCALE_RANGE + COLLAPSED_SCALE_MIN
-                            scaleY = collapsedAlpha * COLLAPSED_SCALE_RANGE + COLLAPSED_SCALE_MIN
                         }
                 ) {
                     IslandCollapsedContent(
@@ -355,20 +435,181 @@ fun IslandOverlayView(
                 }
             }
         }
+
+        // Collapsed: secondary circle. Expanded with 2: the same item morphs
+        // into a mini-pill. Expanded with 3+: it stays the circle on the right.
+        if (secondaryAlpha > 0f && secondaryNotification != null) {
+            Box(
+                modifier = Modifier
+                    .absoluteOffset {
+                        IntOffset(
+                            (secondaryX - screenCenter + secondaryBubbleWidth / 2f).roundToPx(),
+                            0
+                        )
+                    }
+                    .width(secondaryBubbleWidth)
+                    .height(circleSize)
+                    .graphicsLayer {
+                        alpha = secondaryAlpha
+                        scaleX = secondaryScale * switchScaleAnim.value
+                        scaleY = secondaryScale * switchScaleAnim.value
+                    }
+                    .clip(RoundedCornerShape(secondaryBubbleCorner))
+                    .background(Color.Black)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (secondaryIndex >= 0) {
+                            onPageSelected(secondaryIndex)
+                        }
+                        if (!currentExpanded) {
+                            currentOnToggle()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                SecondaryBubbleContent(
+                    notification = secondaryNotification,
+                    settings = settings
+                )
+            }
+        }
+
+        if (tertiaryAlpha > 0f && tertiaryNotification != null) {
+            Box(
+                modifier = Modifier
+                    .absoluteOffset {
+                        IntOffset(
+                            (expandedCompactX - screenCenter + miniPillWidth / 2f).roundToPx(),
+                            0
+                        )
+                    }
+                    .width(miniPillWidth)
+                    .height(circleSize)
+                    .graphicsLayer {
+                        alpha = tertiaryAlpha
+                        scaleX = tertiaryScale * switchScaleAnim.value
+                        scaleY = tertiaryScale * switchScaleAnim.value
+                    }
+                    .clip(RoundedCornerShape(settings.cornerRadius.dp))
+                    .background(Color.Black)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (tertiaryIndex >= 0) {
+                            onPageSelected(tertiaryIndex)
+                        }
+                        if (!currentExpanded) {
+                            currentOnToggle()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                SecondaryBubbleContent(
+                    notification = tertiaryNotification,
+                    settings = settings
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecondaryBubbleContent(
+    notification: IslandNotification,
+    settings: SmartIslandSettings
+) {
+    when (notification.mode) {
+        IslandMode.Music -> {
+            val artwork = notification.largeIcon ?: notification.icon
+            if (artwork != null) {
+                Image(
+                    bitmap = artwork.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(settings.musicVisualizerColor)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+        }
+        IslandMode.IncomingCall -> {
+            Icon(
+                Icons.Rounded.Call,
+                contentDescription = null,
+                tint = Color(settings.callColor),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+        IslandMode.Battery -> {
+            Icon(
+                Icons.Rounded.Bolt,
+                contentDescription = null,
+                tint = Color(settings.batteryColor),
+                modifier = Modifier.size(14.dp)
+            )
+        }
+        else -> {
+            val artwork = notification.largeIcon ?: notification.icon
+            if (artwork != null) {
+                Image(
+                    bitmap = artwork.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Color(settings.notificationDotColor)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = notification.appName.firstOrNull()?.uppercase() ?: "S",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }
 
 // Animation specs
 private const val EXPANDED_WIDTH_RATIO = 0.95f
 private const val SWIPE_THRESHOLD_DP = 35f
-private const val COLLAPSE_ANIMATION_DELAY_MS = 500L
 private const val DRAG_MAX_OFFSET_DP = 100f
-private const val COLLAPSED_SCALE_MIN = 0.9f
-private const val COLLAPSED_SCALE_RANGE = 0.1f
+private const val MINI_PILL_WIDTH_DP = 76f
+private const val COMPACT_INDICATOR_GAP_DP = 8f
 
-// Visual specs
-private const val STACK_INDICATOR_GAP_DP = 3.5f
-private const val STACK_INDICATOR_STROKE_DP = 1.5f
-private const val STACK_INDICATOR_ARC_SWEEP = 70f
-private const val STACK_LEFT_ARC_START = 145f
-private const val STACK_RIGHT_ARC_START = 325f
+internal enum class CompactNotificationShape { MiniPill, Circle }
+
+internal fun compactNotificationShapes(
+    notificationCount: Int,
+    expanded: Boolean
+): List<CompactNotificationShape> = when {
+    notificationCount < 2 -> emptyList()
+    !expanded -> listOf(CompactNotificationShape.Circle)
+    notificationCount == 2 -> listOf(CompactNotificationShape.MiniPill)
+    else -> listOf(CompactNotificationShape.MiniPill, CompactNotificationShape.Circle)
+}
