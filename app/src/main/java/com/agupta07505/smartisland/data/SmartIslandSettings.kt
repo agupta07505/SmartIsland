@@ -32,7 +32,8 @@ data class SmartIslandSettings(
     val liveActivitiesEnabled: Boolean = true,
     val navigationEnabled: Boolean = true,
     val disabledNotificationPackages: Set<String> = emptySet(),
-    val disabledSoundPackages: Set<String> = emptySet()
+    val disabledSoundPackages: Set<String> = emptySet(),
+    val hideWhenIdle: Boolean = false
 ) {
     companion object {
         val Default = SmartIslandSettings()

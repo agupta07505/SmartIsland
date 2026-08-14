@@ -61,6 +61,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val NavigationEnabled = booleanPreferencesKey("navigation_enabled")
         val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
         val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
+        val HideWhenIdle = booleanPreferencesKey("hide_when_idle")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -149,7 +150,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
                     ?.toSet()
-                    ?: defaults.disabledSoundPackages
+                    ?: defaults.disabledSoundPackages,
+                hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle
             )
         }
 
@@ -278,6 +280,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
             .asSequence()
             .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
             .toSet()
+    }
+    suspend fun setHideWhenIdle(value: Boolean) = editSafely {
+        it[Keys.HideWhenIdle] = value
     }
 
     suspend fun resetPosition() = editSafely {

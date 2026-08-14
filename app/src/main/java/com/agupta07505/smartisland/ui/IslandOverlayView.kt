@@ -25,10 +25,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -127,7 +129,7 @@ fun IslandOverlayView(
     // Keyed on `expanded` so it resets to collapsed height on every expand/collapse
     // cycle, avoiding stale measurements from a previous expansion.
     var expandedHeight by remember(expanded) {
-        mutableStateOf(settings.height.dp)
+        mutableStateOf(if (notifications.isEmpty()) 135.dp else settings.height.dp)
     }
 
     val compactGap = COMPACT_INDICATOR_GAP_DP.dp
@@ -147,21 +149,19 @@ fun IslandOverlayView(
     } else {
         statusBarHeight.dp
     }
+    val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
 
     val width by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandWidth") {
-        if (it) expandedWidth else settings.width.dp
+        if (it) expandedWidth else if (isIdleHiding) 0.dp else settings.width.dp
     }
     val height by transition.animateDp(transitionSpec = { heightSpec }, label = "islandHeight") {
-        // FIX: No more 160.dp hardcoded fallback. expandedHeight is always non-null now.
-        // It starts at collapsed height and gets updated to the real content height
-        // within 1-2 frames. The spring animation smoothly follows.
-        if (it) expandedHeight else settings.height.dp
+        if (it) expandedHeight else if (isIdleHiding) 0.dp else settings.height.dp
     }
     val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
         if (it) expandedTopOffset else 0.dp
     }
     val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
-        if (it) 34.dp else settings.cornerRadius.dp
+        if (it) 34.dp else if (isIdleHiding) 0.dp else settings.cornerRadius.dp
     }
     val animatedXOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandXOffset") {
         if (it) 0.dp else collapsedMainOffset
@@ -171,7 +171,7 @@ fun IslandOverlayView(
         transitionSpec = { alphaSpec },
         label = "collapsedAlpha"
     ) {
-        if (it) 0f else 1f
+        if (it || isIdleHiding) 0f else 1f
     }
 
     val expandedAlpha by transition.animateFloat(
@@ -194,6 +194,10 @@ fun IslandOverlayView(
     ) {
         if (it) 0.dp else (-12).dp
     }
+
+    val safeWidth = width.coerceAtLeast(0.dp)
+    val safeHeight = height.coerceAtLeast(0.dp)
+    val safeRadius = radius.coerceAtLeast(0.dp)
 
     val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
     val activeNotification = notifications.getOrNull(safeIndex)
@@ -308,18 +312,35 @@ fun IslandOverlayView(
         contentAlignment = Alignment.TopCenter
     ) {
 
+        // Invisible touch target over the pill location when idle-hiding, so tapping the camera cutout opens shortcuts
+        if (isIdleHiding && !currentExpanded) {
+            Box(
+                modifier = Modifier
+                    .width(settings.width.dp)
+                    .height(settings.height.dp)
+                    .graphicsLayer {
+                        translationX = collapsedMainOffset.toPx()
+                    }
+                    .pointerInput(Unit) {
+                        detectTapGestures {
+                            currentOnToggle()
+                        }
+                    }
+            )
+        }
+
         // Inner Box: The actual visible pill container, managing the black background shape and size animations
         Box(
             modifier = Modifier
-                .width(width)
-                .height(height)
+                .width(safeWidth)
+                .height(safeHeight)
                 .graphicsLayer {
                     translationX = animatedXOffset.toPx()
                     translationY = yOffset.toPx() + dragOffset
                     scaleX = switchScaleAnim.value
                     scaleY = switchScaleAnim.value
                 }
-                .clip(RoundedCornerShape(radius))
+                .clip(RoundedCornerShape(safeRadius))
                 .background(Color.Black)
                 .pointerInput(Unit) {
                     detectTapGestures {
@@ -411,7 +432,8 @@ fun IslandOverlayView(
             if (expanded) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .wrapContentHeight()
                         .graphicsLayer {
                             alpha = expandedAlpha
                             scaleX = contentScale
