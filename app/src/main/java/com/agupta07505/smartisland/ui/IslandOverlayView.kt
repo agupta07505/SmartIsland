@@ -278,13 +278,7 @@ fun IslandOverlayView(
         label = "tertiaryScale"
     )
 
-    val expandedCompactWidth = miniPillWidth +
-        if (tertiaryNotification != null) compactGap + circleSize else 0.dp
-    val expandedCompactX = (screenCenter + settings.xOffset.dp - expandedCompactWidth / 2f)
-        .coerceIn(
-            compactGap,
-            (screenWidth - expandedCompactWidth - compactGap).coerceAtLeast(compactGap)
-        )
+    val expandedCompactX = collapsedMainLeft
     val collapsedSecondaryX = collapsedMainLeft + settings.width.dp + compactGap
     val secondaryX by animateDpAsState(
         targetValue = when {
