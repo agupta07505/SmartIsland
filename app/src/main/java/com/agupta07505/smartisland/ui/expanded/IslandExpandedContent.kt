@@ -66,7 +66,7 @@ fun IslandExpandedContent(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .wrapContentHeight()
+                .wrapContentHeight(unbounded = true)
                 .onSizeChanged {
                     val measuredHeight = with(density) { it.height.toDp() }
                     if (measuredHeight > 0.dp) {
