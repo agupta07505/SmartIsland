@@ -59,6 +59,10 @@ class SmartIslandNotificationRepository : INotificationRepository {
         }
     }
 
+    override fun removeAllNotifications() {
+        _notifications.update { emptyList() }
+    }
+
     override fun resetTimer() {
         _resetTimerEvent.tryEmit(Unit)
     }

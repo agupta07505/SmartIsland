@@ -20,6 +20,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.positionChange
+import kotlin.math.abs
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
@@ -48,7 +53,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
@@ -81,6 +88,7 @@ fun IslandOverlayView(
     onLaunchApp: (String) -> Unit,
     onToggleExpanded: () -> Unit,
     onDismissNotification: () -> Unit,
+    onDismissAllNotifications: () -> Unit = {},
     onOpenFloatingWindow: () -> Unit,
     statusBarHeight: Float,
     modifier: Modifier = Modifier
@@ -89,8 +97,10 @@ fun IslandOverlayView(
     // even though pointerInput(Unit) never restarts its coroutine
     val currentOnToggle by rememberUpdatedState(onToggleExpanded)
     val currentOnDismiss by rememberUpdatedState(onDismissNotification)
+    val currentOnDismissAll by rememberUpdatedState(onDismissAllNotifications)
     val currentOnOpenFloatingWindow by rememberUpdatedState(onOpenFloatingWindow)
     val currentExpanded by rememberUpdatedState(expanded)
+    val haptic = LocalHapticFeedback.current
 
     val scope = rememberCoroutineScope()
     var dragOffset by remember { mutableStateOf(0f) }
@@ -342,67 +352,85 @@ fun IslandOverlayView(
                 }
                 .clip(RoundedCornerShape(safeRadius))
                 .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        if (currentExpanded) {
-                            SmartIslandRepositories.notificationRepository(context).resetTimer()
-                        } else {
-                            currentOnToggle()
+                .pointerInput(displayMetrics.density) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val pressTimeMs = System.currentTimeMillis()
+                        var isHoldRegistered = false
+                        var dragAccumulator = 0f
+                        var isDragging = false
+
+                        val holdJob = scope.launch {
+                            kotlinx.coroutines.delay(HOLD_GESTURE_THRESHOLD_MS)
+                            isHoldRegistered = true
+                            triggerHapticVibration(context)
+                        }
+
+                        val pointerId = down.id
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+
+                            if (change.changedToUp()) {
+                                change.consume()
+                                holdJob.cancel()
+                                val totalElapsedMs = System.currentTimeMillis() - pressTimeMs
+                                val swipeUpThreshold = -SWIPE_THRESHOLD_DP * displayMetrics.density
+                                val swipeDownThreshold = SWIPE_THRESHOLD_DP * displayMetrics.density
+
+                                if (currentExpanded) {
+                                    if (isDragging && dragOffset < swipeUpThreshold) {
+                                        if (isHoldRegistered || totalElapsedMs >= HOLD_GESTURE_THRESHOLD_MS) {
+                                            currentOnDismissAll()
+                                        } else {
+                                            currentOnDismiss()
+                                        }
+                                    } else if (isDragging && dragOffset > swipeDownThreshold) {
+                                        currentOnOpenFloatingWindow()
+                                    } else if (!isDragging || abs(dragOffset) < 10f) {
+                                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                                    }
+                                } else {
+                                    if (!isDragging || abs(dragOffset) < 10f) {
+                                        currentOnToggle()
+                                    }
+                                }
+                                break
+                            } else if (change.isConsumed) {
+                                holdJob.cancel()
+                                break
+                            } else {
+                                val dragAmount = change.positionChange().y
+                                if (abs(dragAmount) > 0.5f) {
+                                    isDragging = true
+                                    if (currentExpanded) {
+                                        change.consume()
+                                        dragAccumulator += dragAmount
+                                        dragOffset = dragAccumulator.coerceIn(
+                                            -DRAG_MAX_OFFSET_DP * displayMetrics.density,
+                                            DRAG_MAX_OFFSET_DP * displayMetrics.density
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        holdJob.cancel()
+                        if (dragOffset != 0f) {
+                            scope.launch {
+                                androidx.compose.animation.core.Animatable(dragOffset).animateTo(
+                                    targetValue = 0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                ) {
+                                    dragOffset = value
+                                }
+                            }
                         }
                     }
-                }
-                .pointerInput(displayMetrics.density) {
-                    var dragAccumulator = 0f
-                    detectVerticalDragGestures(
-                        onDragStart = {
-                            dragAccumulator = 0f
-                        },
-                        onVerticalDrag = { change, dragAmount ->
-                            dragAccumulator += dragAmount
-                            if (currentExpanded) {
-                                change.consume()
-                                dragOffset = dragAccumulator.coerceIn(
-                                    -DRAG_MAX_OFFSET_DP * displayMetrics.density,
-                                    DRAG_MAX_OFFSET_DP * displayMetrics.density
-                                )
-                            }
-                        },
-                        onDragEnd = {
-                            val swipeUpThreshold = -SWIPE_THRESHOLD_DP * displayMetrics.density
-                            val swipeDownThreshold = SWIPE_THRESHOLD_DP * displayMetrics.density
-                            if (currentExpanded) {
-                                if (dragOffset < swipeUpThreshold) {
-                                    currentOnDismiss()
-                                } else if (dragOffset > swipeDownThreshold) {
-                                    currentOnOpenFloatingWindow()
-                                }
-                            }
-                            scope.launch {
-                                androidx.compose.animation.core.Animatable(dragOffset).animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                ) {
-                                    dragOffset = value
-                                }
-                            }
-                        },
-                        onDragCancel = {
-                            scope.launch {
-                                androidx.compose.animation.core.Animatable(dragOffset).animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                ) {
-                                    dragOffset = value
-                                }
-                            }
-                        }
-                    )
                 },
             contentAlignment = Alignment.TopCenter
         ) {
@@ -647,6 +675,30 @@ private const val EXPANDED_WIDTH_RATIO = 0.95f
 private const val SWIPE_THRESHOLD_DP = 35f
 private const val DRAG_MAX_OFFSET_DP = 100f
 private const val COMPACT_INDICATOR_GAP_DP = 8f
+private const val HOLD_GESTURE_THRESHOLD_MS = 300L
+
+private fun triggerHapticVibration(context: android.content.Context) {
+    runCatching {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            val vm = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+            val vibrator = vm?.defaultVibrator
+            if (vibrator?.hasVibrator() == true) {
+                vibrator.vibrate(android.os.VibrationEffect.createOneShot(60L, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                return
+            }
+        }
+        @Suppress("DEPRECATION")
+        val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+        if (vibrator?.hasVibrator() == true) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(android.os.VibrationEffect.createOneShot(60L, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(60L)
+            }
+        }
+    }
+}
 
 internal enum class CompactNotificationShape { MiniPill, Circle }
 

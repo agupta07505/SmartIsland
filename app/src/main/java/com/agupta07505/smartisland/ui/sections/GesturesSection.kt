@@ -99,14 +99,14 @@ private fun SwipeUpGuide() {
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Dismiss active notification",
+                        text = "Swipe Up & Hold + Swipe Up Gestures",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Text(
-                    text = "Swipe UP on the expanded island card to dismiss the notification. It will collapse and slide out of view smoothly, clearing it from your active list.",
+                    text = "• Quick Swipe UP: Dismisses the currently active notification from the island stack.\n• Hold & Swipe UP: Press & hold the expanded island card for 300ms, then swipe UP to remove ALL notifications from Smart Island at once.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -229,6 +229,8 @@ private fun SwipeUpGuide() {
         GesturePlaygroundCard(title = "Try it yourself") {
             var expanded by remember { mutableStateOf(true) }
             var dragOffset by remember { mutableStateOf(0f) }
+            var isClearedAll by remember { mutableStateOf(false) }
+            var startTimeMs by remember { mutableStateOf(0L) }
             val density = LocalDensity.current
 
             Box(
@@ -250,16 +252,20 @@ private fun SwipeUpGuide() {
                             .background(Color.Black)
                             .pointerInput(Unit) {
                                 detectVerticalDragGestures(
-                                    onDragStart = { dragOffset = 0f },
+                                    onDragStart = {
+                                        dragOffset = 0f
+                                        startTimeMs = System.currentTimeMillis()
+                                    },
                                     onVerticalDrag = { change, dragAmount ->
                                         change.consume()
                                         dragOffset += dragAmount
                                     },
                                     onDragEnd = {
                                         val thresholdPx = with(density) { -60.dp.toPx() }
+                                        val elapsedMs = System.currentTimeMillis() - startTimeMs
                                         if (dragOffset < thresholdPx) {
-                                            // Swipe up threshold reached
                                             expanded = false
+                                            isClearedAll = elapsedMs >= 300L
                                         }
                                         dragOffset = 0f
                                     },
@@ -268,7 +274,10 @@ private fun SwipeUpGuide() {
                             }
                             .padding(12.dp)
                     ) {
-                        MockNotificationContent(title = "Messenger", text = "Drag up on this card to dismiss!")
+                        MockNotificationContent(
+                            title = "Messenger",
+                            text = "Swipe UP to dismiss • Hold 300ms & Swipe UP to clear ALL!"
+                        )
                     }
                 } else {
                     Column(
@@ -284,14 +293,17 @@ private fun SwipeUpGuide() {
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Notification dismissed!",
+                            text = if (isClearedAll) "All notifications cleared! (Hold + Swipe Up)" else "Notification dismissed! (Quick Swipe Up)",
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF0F9F6E),
-                            fontSize = 14.sp
+                            fontSize = 13.sp
                         )
                         Spacer(Modifier.height(10.dp))
                         Button(
-                            onClick = { expanded = true },
+                            onClick = {
+                                expanded = true
+                                isClearedAll = false
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Reset preview", fontSize = 12.sp)

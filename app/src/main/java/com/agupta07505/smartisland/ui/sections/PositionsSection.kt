@@ -37,12 +37,20 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.agupta07505.smartisland.util.CameraCutoutDetector
+
 @Composable
 fun PositionsSection(
     settings: SmartIslandSettings,
     repository: SmartIslandSettingsRepository
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -79,6 +87,34 @@ fun PositionsSection(
             SliderSettingItem("Corner radius", settings.cornerRadius, 8f..40f, { scope.launch { repository.setCornerRadius(it) } })
 
             Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    scope.launch {
+                        val cutoutInfo = CameraCutoutDetector.detect(context)
+                        repository.setPosition(
+                            width = cutoutInfo.widthDp,
+                            height = cutoutInfo.heightDp,
+                            xOffset = cutoutInfo.xOffsetDp,
+                            yOffset = cutoutInfo.yOffsetDp
+                        )
+                        val msg = if (cutoutInfo.hasHardwareCutout) {
+                            "Aligned to camera cutout (X: ${cutoutInfo.xOffsetDp.toInt()}dp, Y: ${cutoutInfo.yOffsetDp.toInt()}dp)"
+                        } else {
+                            "Aligned pill to top status bar (No hardware cutout detected)"
+                        }
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Rounded.CameraAlt, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Auto-align to Camera Cutout", fontWeight = FontWeight.SemiBold)
+            }
+
+            Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = { scope.launch { repository.resetPosition() } },
                 modifier = Modifier.fillMaxWidth(),

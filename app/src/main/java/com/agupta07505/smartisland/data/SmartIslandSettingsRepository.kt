@@ -188,6 +188,17 @@ class SmartIslandSettingsRepository(private val context: Context) {
             SmartIslandSettings.MAX_Y_OFFSET
         )
     }
+    suspend fun setPosition(
+        width: Float,
+        height: Float,
+        xOffset: Float,
+        yOffset: Float
+    ) = editSafely {
+        it[Keys.Width] = validDimension(width, SmartIslandSettings.Default.width, SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH)
+        it[Keys.Height] = validDimension(height, SmartIslandSettings.Default.height, SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT)
+        it[Keys.XOffset] = validDimension(xOffset, SmartIslandSettings.Default.xOffset, SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET)
+        it[Keys.YOffset] = validDimension(yOffset, SmartIslandSettings.Default.yOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET)
+    }
     suspend fun setCornerRadius(value: Float) = editSafely {
         it[Keys.CornerRadius] = validDimension(
             value,

@@ -152,6 +152,15 @@ class IslandViewModel(
         collapse()
     }
 
+    fun dismissAllNotifications() {
+        val list = notifications.value
+        for (notification in list) {
+            notificationRepo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+        }
+        notificationRepo.removeAllNotifications()
+        collapse()
+    }
+
     companion object {
         private const val TAG = "IslandViewModel"
         private const val AUTO_COLLAPSE_DELAY_MS = 5000L

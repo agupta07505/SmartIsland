@@ -20,6 +20,7 @@ interface INotificationRepository {
 
     fun postNotification(notification: IslandNotification, autoExpand: Boolean = false)
     fun removeNotification(key: String)
+    fun removeAllNotifications()
     fun resetTimer()
     fun sendCommand(command: SmartIslandCommand)
     fun showDemo(mode: IslandMode)
