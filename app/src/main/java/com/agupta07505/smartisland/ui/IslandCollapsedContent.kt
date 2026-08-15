@@ -164,13 +164,13 @@ fun IslandCollapsedContent(
                         modifier = Modifier
                             .size(22.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF2563EB).copy(alpha = 0.2f)),
+                            .background(Color(settings.bluetoothColor).copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Rounded.BluetoothConnected,
                             contentDescription = "Bluetooth",
-                            tint = Color(0xFF3B82F6),
+                            tint = Color(settings.bluetoothColor),
                             modifier = Modifier.size(14.dp)
                         )
                     }
@@ -180,19 +180,19 @@ fun IslandCollapsedContent(
                         modifier = Modifier
                             .size(22.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
+                            .background(Color(settings.flashlightColor).copy(alpha = 0.25f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Rounded.FlashlightOn,
                             contentDescription = "Flashlight",
-                            tint = Color(0xFFFACC15),
+                            tint = Color(settings.flashlightColor),
                             modifier = Modifier.size(14.dp)
                         )
                     }
                 }
                 IslandMode.ScreenRecording -> {
-                    ScreenRecordingCollapsedGlyph()
+                    ScreenRecordingCollapsedGlyph(settings = settings)
                 }
                 IslandMode.Empty -> Unit
             }
@@ -785,7 +785,7 @@ private fun DownloadUploadCollapsedRight(
 }
 
 @Composable
-internal fun ScreenRecordingCollapsedGlyph() {
+internal fun ScreenRecordingCollapsedGlyph(settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val infiniteTransition = rememberInfiniteTransition(label = "collapsedRecordingPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -797,11 +797,13 @@ internal fun ScreenRecordingCollapsedGlyph() {
         label = "pulseAlpha"
     )
 
+    val recordingColor = Color(settings.screenRecordingColor)
+
     Box(
         modifier = Modifier
             .size(22.dp)
             .clip(CircleShape)
-            .background(Color(0xFFEF4444).copy(alpha = 0.25f)),
+            .background(recordingColor.copy(alpha = 0.25f)),
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -809,7 +811,7 @@ internal fun ScreenRecordingCollapsedGlyph() {
                 .size(10.dp)
                 .graphicsLayer { alpha = pulseAlpha }
                 .clip(CircleShape)
-                .background(Color(0xFFEF4444))
+                .background(recordingColor)
         )
     }
 }

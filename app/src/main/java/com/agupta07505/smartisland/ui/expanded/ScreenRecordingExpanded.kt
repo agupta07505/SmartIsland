@@ -104,6 +104,8 @@ fun ScreenRecordingExpanded(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val recColor = Color(settings.screenRecordingColor)
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -112,7 +114,7 @@ fun ScreenRecordingExpanded(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFEF4444).copy(alpha = pulseAlpha * 0.3f)),
+                    .background(recColor.copy(alpha = pulseAlpha * 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -123,7 +125,7 @@ fun ScreenRecordingExpanded(
                             scaleY = pulseScale
                         }
                         .clip(CircleShape)
-                        .background(Color(0xFFEF4444))
+                        .background(recColor)
                 )
             }
 
@@ -144,7 +146,7 @@ fun ScreenRecordingExpanded(
                     )
                     Text(
                         text = timerText,
-                        color = Color(0xFFEF4444),
+                        color = recColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -156,7 +158,7 @@ fun ScreenRecordingExpanded(
             modifier = Modifier
                 .height(36.dp)
                 .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFEF4444))
+                .background(recColor)
                 .clickable {
                     val repository = SmartIslandRepositories.notificationRepository(context)
                     val stopAction = notification?.actionIntents?.firstOrNull {

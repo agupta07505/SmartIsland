@@ -64,13 +64,13 @@ fun BluetoothExpanded(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2563EB).copy(alpha = 0.2f)),
+                    .background(Color(settings.bluetoothColor).copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.BluetoothConnected,
                     contentDescription = "Bluetooth Connected",
-                    tint = Color(0xFF3B82F6),
+                    tint = Color(settings.bluetoothColor),
                     modifier = Modifier.size(24.dp)
                 )
             }

@@ -58,6 +58,8 @@ fun FlashlightExpanded(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val torchColor = Color(settings.flashlightColor)
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -66,13 +68,13 @@ fun FlashlightExpanded(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
+                    .background(torchColor.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.FlashlightOn,
                     contentDescription = "Flashlight Active",
-                    tint = Color(0xFFFACC15),
+                    tint = torchColor,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -90,12 +92,12 @@ fun FlashlightExpanded(
                         modifier = Modifier
                             .size(6.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFFACC15))
+                            .background(torchColor)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "Torch Active",
-                        color = Color(0xFFFACC15),
+                        color = torchColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -110,7 +112,7 @@ fun FlashlightExpanded(
             },
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF59E0B),
+                containerColor = torchColor,
                 contentColor = Color.Black
             )
         ) {

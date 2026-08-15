@@ -50,6 +50,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val LiveActivityColor = longPreferencesKey("live_activity_color")
         val TransferColor = longPreferencesKey("transfer_color")
         val NavigationColor = longPreferencesKey("navigation_color")
+        val BluetoothColor = longPreferencesKey("bluetooth_color")
+        val FlashlightColor = longPreferencesKey("flashlight_color")
+        val ScreenRecordingColor = longPreferencesKey("screen_recording_color")
         val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
         val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
@@ -124,6 +127,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 liveActivityColor = validColor(prefs[Keys.LiveActivityColor], defaults.liveActivityColor),
                 transferColor = validColor(prefs[Keys.TransferColor], defaults.transferColor),
                 navigationColor = validColor(prefs[Keys.NavigationColor], defaults.navigationColor),
+                bluetoothColor = validColor(prefs[Keys.BluetoothColor], defaults.bluetoothColor),
+                flashlightColor = validColor(prefs[Keys.FlashlightColor], defaults.flashlightColor),
+                screenRecordingColor = validColor(prefs[Keys.ScreenRecordingColor], defaults.screenRecordingColor),
                 shortcutPackages = prefs[Keys.ShortcutPackages]
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
@@ -245,6 +251,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setNavigationColor(value: Long) = editSafely {
         it[Keys.NavigationColor] = validColor(value, SmartIslandSettings.Default.navigationColor)
     }
+    suspend fun setBluetoothColor(value: Long) = editSafely {
+        it[Keys.BluetoothColor] = validColor(value, SmartIslandSettings.Default.bluetoothColor)
+    }
+    suspend fun setFlashlightColor(value: Long) = editSafely {
+        it[Keys.FlashlightColor] = validColor(value, SmartIslandSettings.Default.flashlightColor)
+    }
+    suspend fun setScreenRecordingColor(value: Long) = editSafely {
+        it[Keys.ScreenRecordingColor] = validColor(value, SmartIslandSettings.Default.screenRecordingColor)
+    }
     suspend fun setShortcutPackages(value: Set<String>) = editSafely {
         it[Keys.ShortcutPackages] = value
             .asSequence()
@@ -332,12 +347,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         max: Float
     ): Float = value?.takeIf { it.isFinite() }?.coerceIn(min, max) ?: fallback
 
-    private fun validColor(value: Long?, fallback: Long): Long {
-        val color = value ?: return fallback
-        val hasValidArgbBits = color in MIN_ARGB_COLOR..MAX_ARGB_COLOR
-        val hasVisibleAlpha = (color ushr ALPHA_SHIFT) != 0L
-        return if (hasValidArgbBits && hasVisibleAlpha) color else fallback
-    }
+    private fun validColor(value: Long?, fallback: Long): Long =
+        value?.takeIf { it != 0L } ?: fallback
 
     private companion object {
         const val TAG = "SmartIslandSettings"

@@ -88,6 +88,9 @@ fun CustomizationsSection(
                         "live_activity" -> repository.setLiveActivityColor(color)
                         "transfer" -> repository.setTransferColor(color)
                         "navigation" -> repository.setNavigationColor(color)
+                        "bluetooth" -> repository.setBluetoothColor(color)
+                        "flashlight" -> repository.setFlashlightColor(color)
+                        "screen_recording" -> repository.setScreenRecordingColor(color)
                     }
                 }
             }
@@ -244,6 +247,45 @@ fun CustomizationsSection(
             }
         )
 
+        // Card 9: Bluetooth Color
+        ColorSelectorCard(
+            title = "Bluetooth color",
+            description = "Color of Bluetooth device icons, connection status, and battery percentage badges",
+            selectedColor = settings.bluetoothColor,
+            onColorSelected = { scope.launch { repository.setBluetoothColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.bluetoothColor
+                currentColorTarget = "bluetooth"
+                showDialog = true
+            }
+        )
+
+        // Card 10: Flashlight & Torch Color
+        ColorSelectorCard(
+            title = "Flashlight & torch color",
+            description = "Color of the flashlight indicator beam and status glyph",
+            selectedColor = settings.flashlightColor,
+            onColorSelected = { scope.launch { repository.setFlashlightColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.flashlightColor
+                currentColorTarget = "flashlight"
+                showDialog = true
+            }
+        )
+
+        // Card 11: Screen Recording Color
+        ColorSelectorCard(
+            title = "Screen recording color",
+            description = "Color of the screen recording live dot, pulse ring, and timer controls",
+            selectedColor = settings.screenRecordingColor,
+            onColorSelected = { scope.launch { repository.setScreenRecordingColor(it) } },
+            onCustomRgbClicked = {
+                initialColor = settings.screenRecordingColor
+                currentColorTarget = "screen_recording"
+                showDialog = true
+            }
+        )
+
         Spacer(Modifier.height(4.dp))
 
         // Reset Customizations button
@@ -258,6 +300,9 @@ fun CustomizationsSection(
                     repository.setLiveActivityColor(0xFF8B5CF6L)
                     repository.setTransferColor(0xFF06B6D4L)
                     repository.setNavigationColor(0xFF10B981L)
+                    repository.setBluetoothColor(0xFF2563EBL)
+                    repository.setFlashlightColor(0xFFF59E0BL)
+                    repository.setScreenRecordingColor(0xFFEF4444L)
                 }
             },
             modifier = Modifier.fillMaxWidth(),

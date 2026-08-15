@@ -701,7 +701,7 @@ private fun SecondaryBubbleContent(
             }
         }
         IslandMode.ScreenRecording -> {
-            ScreenRecordingCollapsedGlyph()
+            ScreenRecordingCollapsedGlyph(settings = settings)
         }
         IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
             NotificationGlyph(notification = notification, settings = settings)
