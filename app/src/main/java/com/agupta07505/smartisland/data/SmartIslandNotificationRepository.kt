@@ -7,6 +7,11 @@
 
 package com.agupta07505.smartisland.data
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
@@ -117,6 +122,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 title = "Starlight",
                 text = "Muse - Black Holes and Revelations",
                 timeMillis = System.currentTimeMillis(),
+                largeIcon = createDemoArtworkBitmap(),
                 mode = IslandMode.Music,
                 mediaIsPlaying = true,
                 mediaDurationMs = 240000L,
@@ -243,6 +249,19 @@ class SmartIslandNotificationRepository : INotificationRepository {
         _notifications.update { list ->
             list.filterNot { it.key.startsWith("demo_") }
         }
+    }
+
+    private fun createDemoArtworkBitmap(): Bitmap {
+        val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.shader = LinearGradient(
+            0f, 0f, 256f, 256f,
+            intArrayOf(0xFF7C3AED.toInt(), 0xFFEC4899.toInt(), 0xFFF59E0B.toInt()),
+            null, Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, 256f, 256f, paint)
+        return bitmap
     }
 
     private companion object {

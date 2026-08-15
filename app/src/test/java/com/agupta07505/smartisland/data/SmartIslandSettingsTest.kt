@@ -24,6 +24,8 @@ class SmartIslandSettingsTest {
         assertEquals(true, settings.showNotificationActions)
         assertEquals(true, settings.hideFromNotificationShade)
         assertEquals(true, settings.autoExpandOnNotification)
+        assertEquals(true, settings.enableShadow)
+        assertEquals(true, settings.enableMusicArtworkBackground)
     }
 
     @Test

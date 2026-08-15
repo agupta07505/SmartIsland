@@ -157,7 +157,7 @@ class AppNotificationFilterTest {
         val appInfo = ApplicationInfo().apply { flags = ApplicationInfo.FLAG_SYSTEM }
         every { mockPm.getApplicationInfo("com.miui.securitycenter", 0) } returns appInfo
 
-        val mockSbn = mockk<StatusBarNotification>()
+        val mockSbn = mockk<StatusBarNotification>(relaxed = true)
         val mockNotif = mockk<Notification>()
         mockNotif.flags = 0
         mockNotif.category = null

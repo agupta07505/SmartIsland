@@ -7,7 +7,9 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -85,36 +89,39 @@ fun PositionsSection(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
             SliderSettingItem("Corner radius", settings.cornerRadius, 8f..40f, { scope.launch { repository.setCornerRadius(it) } })
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    scope.launch {
-                        val cutoutInfo = CameraCutoutDetector.detect(context)
-                        repository.setPosition(
-                            width = cutoutInfo.widthDp,
-                            height = cutoutInfo.heightDp,
-                            xOffset = cutoutInfo.xOffsetDp,
-                            yOffset = cutoutInfo.yOffsetDp
-                        )
-                        val msg = if (cutoutInfo.hasHardwareCutout) {
-                            "Aligned to camera cutout (X: ${cutoutInfo.xOffsetDp.toInt()}dp, Y: ${cutoutInfo.yOffsetDp.toInt()}dp)"
-                        } else {
-                            "Aligned pill to top status bar (No hardware cutout detected)"
-                        }
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Rounded.CameraAlt, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Auto-align to Camera Cutout", fontWeight = FontWeight.SemiBold)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Island Drop Shadow",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "Add a soft ambient drop shadow for a premium floating effect",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = settings.enableShadow,
+                    onCheckedChange = { checked ->
+                        scope.launch { repository.setEnableShadow(checked) }
+                    }
+                )
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
             OutlinedButton(
                 onClick = { scope.launch { repository.resetPosition() } },
                 modifier = Modifier.fillMaxWidth(),

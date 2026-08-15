@@ -63,6 +63,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
         val HideWhenIdle = booleanPreferencesKey("hide_when_idle")
         val AutoExpandOnNotification = booleanPreferencesKey("auto_expand_on_notification")
+        val EnableShadow = booleanPreferencesKey("enable_shadow")
+        val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -153,11 +155,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     ?.toSet()
                     ?: defaults.disabledSoundPackages,
                 hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle,
-                autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification
+                autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification,
+                enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
+                enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground
             )
         }
 
     suspend fun setEnabled(value: Boolean) = editSafely { it[Keys.Enabled] = value }
+    suspend fun setEnableShadow(value: Boolean) = editSafely { it[Keys.EnableShadow] = value }
+    suspend fun setEnableMusicArtworkBackground(value: Boolean) = editSafely { it[Keys.EnableMusicArtworkBackground] = value }
     suspend fun setWidth(value: Float) = editSafely {
         it[Keys.Width] = validDimension(
             value,

@@ -43,8 +43,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -296,15 +299,55 @@ fun MusicExpanded(
         }
     }
 
-    Column(
+    val metadataArtwork = remember(controller, controller?.metadata) {
+        val meta = controller?.metadata
+        if (meta != null) {
+            runCatchingLogged("MusicExpanded", "Failed to extract metadata artwork") {
+                meta.getBitmap(android.media.MediaMetadata.METADATA_KEY_ART)
+                    ?: meta.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
+                    ?: meta.getBitmap(android.media.MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+            }
+        } else null
+    }
+
+    val artwork = notification?.largeIcon ?: metadataArtwork ?: notification?.icon
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            val artwork = notification?.largeIcon ?: notification?.icon
-            if (artwork != null) {
+        if (settings.enableMusicArtworkBackground && artwork != null) {
+            Image(
+                bitmap = artwork.asImageBitmap(),
+                contentDescription = "Album artwork background",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0.45f }
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.35f),
+                                Color.Black.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (artwork != null) {
                 Image(
                     bitmap = artwork.asImageBitmap(),
                     contentDescription = null,
@@ -490,4 +533,5 @@ fun MusicExpanded(
             }
         }
     }
+}
 }

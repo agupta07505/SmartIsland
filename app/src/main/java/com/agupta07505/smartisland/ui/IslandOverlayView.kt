@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -347,6 +348,17 @@ fun IslandOverlayView(
                     scaleX = switchScaleAnim.value
                     scaleY = switchScaleAnim.value
                 }
+                .then(
+                    if (settings.enableShadow && !isIdleHiding) {
+                        Modifier.shadow(
+                            elevation = if (currentExpanded) 22.dp else 14.dp,
+                            shape = RoundedCornerShape(safeRadius),
+                            clip = false,
+                            ambientColor = Color.Black,
+                            spotColor = Color.Black
+                        )
+                    } else Modifier
+                )
                 .clip(RoundedCornerShape(safeRadius))
                 .background(Color.Black)
                 .pointerInput(displayMetrics.density) {
@@ -503,6 +515,17 @@ fun IslandOverlayView(
                         scaleX = secondaryScale * switchScaleAnim.value
                         scaleY = secondaryScale * switchScaleAnim.value
                     }
+                    .then(
+                        if (settings.enableShadow) {
+                            Modifier.shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(secondaryBubbleCorner),
+                                clip = false,
+                                ambientColor = Color.Black,
+                                spotColor = Color.Black
+                            )
+                        } else Modifier
+                    )
                     .clip(RoundedCornerShape(secondaryBubbleCorner))
                     .background(Color.Black)
                     .clickable(
