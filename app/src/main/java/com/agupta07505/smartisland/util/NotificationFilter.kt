@@ -67,11 +67,20 @@ object NotificationFilter {
             return true
         }
 
-        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, or hotspot
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
+
+        // Suppress background message syncing / polling notifications (e.g. Snapchat, WhatsApp, Telegram "Syncing messages", "Checking for messages")
+        val isMessageSync = isMessageSyncNotification(titleText)
+        if (isOngoing && isMessageSync) {
+            return true
+        }
+
+        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, or hotspot
         if (isOngoing) {
-            val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS ||
+            val isProgressNotification = !isMessageSync && (
+                notification.category == Notification.CATEGORY_PROGRESS ||
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
+            )
             if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording) {
                 return true
             }
@@ -165,13 +174,17 @@ fun Notification.toIslandMode(
     val isScreenRecordingKeyword = listOf("screen recording", "recording screen", "screen recorder", "screen record", "recording file", "record screen").any { titleText.contains(it) }
     val isScreenRecordingActive = isScreenRecordingKeyword && !isScreenRecordingComplete()
 
+    val isMessageSync = isMessageSyncNotification(titleText)
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
     val isIndeterminate = extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true
-    val activeTransferKeywords = listOf("downloading", "uploading", "exporting", "transferring", "saving", "fetching", "sending").any { titleText.contains(it) }
-    val genericTransferKeywords = listOf("download", "upload", "export", "transfer", "file", "apk", "pdf", "mp4", "zip").any { titleText.contains(it) }
-    val isDownloadOrUpload = isProgressCategory || progressMax > 0 || isIndeterminate || activeTransferKeywords ||
-        (genericTransferKeywords && (progressMax > 0 || isIndeterminate || isProgressCategory))
+    val activeTransferKeywords = listOf("downloading", "uploading", "exporting", "transferring", "saving file", "downloading file", "uploading file").any { titleText.contains(it) }
+    val genericTransferKeywords = listOf("download", "upload", "export", "transfer", "file", "apk", "pdf", "mp4", "zip", "media").any { titleText.contains(it) }
+    val isDownloadOrUpload = !isMessageSync && (
+        isProgressCategory ||
+        (progressMax > 0 && (genericTransferKeywords || activeTransferKeywords)) ||
+        (isIndeterminate && (genericTransferKeywords || activeTransferKeywords))
+    )
 
     return when {
         // Screen Recording
@@ -250,4 +263,18 @@ fun Notification.isCallEnded(): Boolean {
     if (!isOngoing && category == Notification.CATEGORY_CALL) return true
 
     return false
+}
+
+fun isMessageSyncNotification(text: String): Boolean {
+    val syncPhrases = listOf(
+        "syncing messages", "syncing message", "checking for messages", "checking for new messages",
+        "syncing chats", "syncing chat", "updating messages", "updating chat", "updating chats",
+        "waiting for messages", "waiting for message", "looking for messages", "looking for new messages",
+        "connecting to chat", "connecting to messages", "refreshing messages", "refreshing chats",
+        "sync in progress", "message sync", "chat sync", "syncing...", "checking messages",
+        "checking message", "syncing snaps", "checking snaps", "syncing snapchat", "synchronizing messages",
+        "synchronizing chats", "synchronizing...", "backup in progress", "syncing backup",
+        "checking for updates", "checking for chats", "connecting..."
+    )
+    return syncPhrases.any { text.contains(it) }
 }

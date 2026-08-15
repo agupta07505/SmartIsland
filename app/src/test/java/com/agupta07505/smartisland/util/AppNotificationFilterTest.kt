@@ -241,4 +241,54 @@ class AppNotificationFilterTest {
 
         assertTrue(endedNotif.isCallEnded())
     }
+
+    @Test
+    fun testMessageSyncNotificationNotDownloadMode() {
+        val syncNotif = mockk<Notification>(relaxed = true)
+        syncNotif.category = null
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Snapchat"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Syncing messages..."
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns true
+        syncNotif.extras = extras
+
+        assertEquals(IslandMode.Notification, syncNotif.toIslandMode())
+    }
+
+    @Test
+    fun testOngoingMessageSyncSuppressedFromIsland() {
+        val mockPm = mockk<PackageManager>()
+        val appInfo = ApplicationInfo().apply { flags = 0 }
+        every { mockPm.getApplicationInfo("com.snapchat.android", 0) } returns appInfo
+
+        val mockSbn = mockk<StatusBarNotification>()
+        val mockNotif = mockk<Notification>()
+        mockNotif.flags = Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE
+        mockNotif.category = null
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Snapchat"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Checking for new messages..."
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns true
+        mockNotif.extras = extras
+
+        every { mockSbn.packageName } returns "com.snapchat.android"
+        every { mockSbn.notification } returns mockNotif
+
+        val isSuppressed = NotificationFilter.shouldSuppressFromIsland(
+            sbn = mockSbn,
+            packageManager = mockPm
+        )
+
+        assertTrue(isSuppressed)
+    }
 }
