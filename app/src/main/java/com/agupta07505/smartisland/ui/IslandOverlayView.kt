@@ -70,6 +70,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.asImageBitmap
@@ -597,6 +599,62 @@ private fun SecondaryBubbleContent(
     settings: SmartIslandSettings
 ) {
     when (notification.mode) {
+        IslandMode.Bluetooth -> {
+            Image(
+                painter = painterResource(id = com.agupta07505.smartisland.R.drawable.ic_bluetooth_device),
+                contentDescription = "Bluetooth Device",
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+            )
+        }
+        IslandMode.Flashlight -> {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.FlashlightOn,
+                    contentDescription = "Flashlight",
+                    tint = Color(0xFFFACC15),
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
+        IslandMode.Hotspot -> {
+            HotspotCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.Battery -> {
+            BatteryCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.LiveActivity -> {
+            LiveActivityCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.Navigation -> {
+            NavigationCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.IncomingCall -> {
+            val icon = notification.largeIcon ?: notification.icon
+            if (icon != null) {
+                Image(
+                    bitmap = icon.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.Call,
+                    contentDescription = null,
+                    tint = Color(settings.callColor),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
         IslandMode.Music -> {
             val artwork = notification.largeIcon ?: notification.icon
             if (artwork != null) {
@@ -624,48 +682,8 @@ private fun SecondaryBubbleContent(
                 }
             }
         }
-        IslandMode.IncomingCall -> {
-            Icon(
-                Icons.Rounded.Call,
-                contentDescription = null,
-                tint = Color(settings.callColor),
-                modifier = Modifier.size(14.dp)
-            )
-        }
-        IslandMode.Battery -> {
-            Icon(
-                Icons.Rounded.Bolt,
-                contentDescription = null,
-                tint = Color(settings.batteryColor),
-                modifier = Modifier.size(14.dp)
-            )
-        }
-        else -> {
-            val artwork = notification.largeIcon ?: notification.icon
-            if (artwork != null) {
-                Image(
-                    bitmap = artwork.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Color(settings.notificationDotColor)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = notification.appName.firstOrNull()?.uppercase() ?: "S",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+        IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
+            NotificationGlyph(notification = notification, settings = settings)
         }
     }
 }

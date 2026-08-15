@@ -276,7 +276,7 @@ fun IslandCollapsedContent(
 }
 
 @Composable
-private fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val hotspotColor = Color(settings.hotspotColor)
     Box(
         modifier = Modifier
@@ -309,7 +309,7 @@ private fun HotspotCollapsedRight(notification: IslandNotification?, settings: S
 }
 
 @Composable
-private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings) {
+internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings) {
     val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
@@ -361,7 +361,7 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: S
 }
 
 @Composable
-private fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val largeIcon = notification?.largeIcon
     val icon = notification?.icon
     val mainIcon = largeIcon ?: icon
@@ -473,7 +473,7 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
 }
 
 @Composable
-private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
         if (notification != null) {
             Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
@@ -584,7 +584,7 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?, settin
 }
 
 @Composable
-private fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val navColor = Color(settings.liveActivityColor)
     val turnDirection = remember(notification) {
         val title = notification?.title.orEmpty()
