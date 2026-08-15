@@ -7,12 +7,8 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,31 +19,92 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 
 @Composable
 fun GesturesSection() {
-    var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Swipe Up", "Swipe Down", "Swipe Left/Right")
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf(
+        "1. Tap",
+        "2. Swipe Up",
+        "3. Hold + Swipe Up",
+        "4. Swipe Down",
+        "5. Swipe Left/Right"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Tab Row for selecting gestures
-        TabRow(
+        // Quick Reference Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Gesture,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Smart Island Gesture Guide",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "5 intuitive gestures to control notifications, calls & multitasking",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Summary Row Chips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    GestureSummaryBadge(icon = Icons.Rounded.TouchApp, label = "Tap", sub = "Expand", color = Color(0xFF38BDF8), modifier = Modifier.weight(1f))
+                    GestureSummaryBadge(icon = Icons.Rounded.ArrowUpward, label = "Swipe ↑", sub = "Dismiss", color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
+                    GestureSummaryBadge(icon = Icons.Rounded.DeleteSweep, label = "Hold+↑", sub = "Clear All", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f))
+                    GestureSummaryBadge(icon = Icons.Rounded.ArrowDownward, label = "Swipe ↓", sub = "Floating", color = Color(0xFF10B981), modifier = Modifier.weight(1f))
+                    GestureSummaryBadge(icon = Icons.Rounded.Swipe, label = "Swipe ↔", sub = "Switch", color = Color(0xFFA855F7), modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        // Scrollable Tabs for Selecting Each Gesture Guide
+        ScrollableTabRow(
             selectedTabIndex = selectedTab,
+            edgePadding = 0.dp,
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
@@ -59,7 +116,7 @@ fun GesturesSection() {
                     text = {
                         Text(
                             text = label,
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
                             fontSize = 13.sp
                         )
                     }
@@ -67,948 +124,269 @@ fun GesturesSection() {
             }
         }
 
+        // Detailed Text Step-by-Step Instructions for Selected Gesture
         when (selectedTab) {
-            0 -> SwipeUpGuide()
-            1 -> SwipeDownGuide()
-            2 -> SwipeHorizontalGuide()
+            0 -> GestureDetailCard(
+                gestureNumber = "Gesture 1 of 5",
+                gestureName = "Single Tap / Click",
+                actionBadge = "Expand & Collapse",
+                badgeColor = Color(0xFF38BDF8),
+                icon = Icons.Rounded.TouchApp,
+                overview = "Quickly expand the pill to view rich notification cards, media controls, or app shortcuts, and collapse it when done.",
+                steps = listOf(
+                    "Touch Position: Tap once anywhere on the black collapsed island pill at the top of your screen.",
+                    "Finger Motion: Tap cleanly without dragging or swiping.",
+                    "Visual Response: The pill smoothly expands into the full card showing notification details, action buttons, and media scrubber.",
+                    "To Collapse Back: Tap anywhere on the empty screen background or tap outside the expanded card to collapse it back into the pill."
+                ),
+                proTip = "When 'Hide when idle' is enabled, tapping the camera cutout region still awakens the pill and opens your favorite app shortcuts."
+            )
+            1 -> GestureDetailCard(
+                gestureNumber = "Gesture 2 of 5",
+                gestureName = "Quick Swipe Up",
+                actionBadge = "Dismiss Current Notification",
+                badgeColor = Color(0xFFEF4444),
+                icon = Icons.Rounded.ArrowUpward,
+                overview = "Dismiss the currently active notification card from the island stack without clearing other pending notifications.",
+                steps = listOf(
+                    "Touch Position: Touch anywhere on the expanded notification card.",
+                    "Finger Motion: Quickly flick or swipe your finger upward toward the top bezel of your device.",
+                    "Threshold: Drag upward by at least 48dp and release your finger.",
+                    "Visual Response: The card animates upward with momentum and leaves the screen. If more notifications exist, the next one smoothly slides forward."
+                ),
+                proTip = "If you release your finger before reaching the swipe threshold, spring physics smoothly restores the card back to center."
+            )
+            2 -> GestureDetailCard(
+                gestureNumber = "Gesture 3 of 5",
+                gestureName = "Hold + Swipe Up",
+                actionBadge = "Clear ALL Notifications",
+                badgeColor = Color(0xFFF59E0B),
+                icon = Icons.Rounded.DeleteSweep,
+                overview = "Clear all active notifications from Smart Island at once in a single fast motion without dismissing cards one by one.",
+                steps = listOf(
+                    "Touch Position: Touch and hold your finger on the expanded island card.",
+                    "Hold Duration: Keep your finger down for 300ms until you feel a distinct haptic vibration pulse.",
+                    "Finger Motion: As soon as you feel the vibration, immediately swipe your finger upward toward the top of the screen and release.",
+                    "Visual Response: All pending notifications in the stack are dismissed simultaneously, and the island collapses cleanly."
+                ),
+                proTip = "The haptic vibration confirms that 'Clear All' mode is engaged. Swiping up before the vibration only dismisses the single active notification."
+            )
+            3 -> GestureDetailCard(
+                gestureNumber = "Gesture 4 of 5",
+                gestureName = "Swipe Down",
+                actionBadge = "Open in Floating Window",
+                badgeColor = Color(0xFF10B981),
+                icon = Icons.Rounded.ArrowDownward,
+                overview = "Launch the notification's app directly into a freeform floating window overlay for seamless multitasking.",
+                steps = listOf(
+                    "Touch Position: Touch the expanded notification card.",
+                    "Finger Motion: Drag or swipe downward toward the center of your screen by at least 48dp.",
+                    "Release: Release your finger once the downward drag threshold is reached.",
+                    "Visual Response: SmartIsland triggers a freeform floating window for the target application over your current app."
+                ),
+                proTip = "Freeform floating window mode works best when Shizuku service is running or on Android ROMs with native freeform multi-window enabled."
+            )
+            4 -> GestureDetailCard(
+                gestureNumber = "Gesture 5 of 5",
+                gestureName = "Swipe Left / Right",
+                actionBadge = "Switch Between Notifications",
+                badgeColor = Color(0xFFA855F7),
+                icon = Icons.Rounded.Swipe,
+                overview = "Browse through multiple active notifications or toggle between media playback and notifications in your stack.",
+                steps = listOf(
+                    "Prerequisite: 2 or more notifications or an active media session are present in Smart Island.",
+                    "Touch Position: Place your finger on the expanded card.",
+                    "Finger Motion: Swipe horizontally to the LEFT to view the next notification, or swipe to the RIGHT to return to the previous one.",
+                    "Snapping: The horizontal pager automatically snaps cleanly to the centered card with smooth physics."
+                ),
+                proTip = "You can swipe between cards as fast as you like — the updated pager uses settled-page synchronization to ensure cards never get stuck midway."
+            )
         }
     }
 }
 
-// ==========================================
-// 1. SWIPE UP: DISMISS NOTIFICATION
-// ==========================================
 @Composable
-private fun SwipeUpGuide() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Description Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(16.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+private fun GestureSummaryBadge(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = color.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Rounded.ArrowUpward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Swipe Up & Hold + Swipe Up Gestures",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Text(
-                    text = "• Quick Swipe UP: Dismisses the currently active notification from the island stack.\n• Hold & Swipe UP: Press & hold the expanded island card for 300ms, then swipe UP to remove ALL notifications from Smart Island at once.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
+            Text(sub, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
 
-        // Looping Animation Demo
-        GestureDemoCard(title = "Animation Guide") {
-            val infiniteTransition = rememberInfiniteTransition(label = "swipeUp")
-            
-            // Loop progress from 0f to 1f over 3 seconds
-            val progress by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(3000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "progress"
-            )
-
-            // Calculate animated values from loop progress
-            val islandHeight: Dp
-            val islandAlpha: Float
-            val fingerYOffset: Float
-            val fingerAlpha: Float
-            
-            val dragStartPx = with(LocalDensity.current) { 60.dp.toPx() }
-            val dragEndPx = with(LocalDensity.current) { -60.dp.toPx() }
-
-            when {
-                // Phase 1 (0.0 to 0.2): Rest on expanded state
-                progress < 0.2f -> {
-                    islandHeight = 80.dp
-                    islandAlpha = 1f
-                    fingerYOffset = dragStartPx
-                    fingerAlpha = 0f
-                }
-                // Phase 2 (0.2 to 0.3): Finger fades in
-                progress < 0.3f -> {
-                    val p = (progress - 0.2f) / 0.1f
-                    islandHeight = 80.dp
-                    islandAlpha = 1f
-                    fingerYOffset = dragStartPx
-                    fingerAlpha = p
-                }
-                // Phase 3 (0.3 to 0.6): Finger drags upward, island compresses slightly
-                progress < 0.6f -> {
-                    val p = (progress - 0.3f) / 0.3f
-                    // Drag finger up from start to end
-                    fingerYOffset = dragStartPx - ((dragStartPx - dragEndPx) * p)
-                    fingerAlpha = 1f
-                    // Compress island height from 80.dp to 70.dp
-                    islandHeight = (80 - (10 * p)).dp
-                    islandAlpha = 1f
-                }
-                // Phase 4 (0.6 to 0.8): Swipe released -> Island collapses and disappears, finger fades out
-                progress < 0.8f -> {
-                    val p = (progress - 0.6f) / 0.2f
-                    fingerYOffset = dragEndPx
-                    fingerAlpha = 1f - p
-                    // Island height shrinks to collapsed 34.dp
-                    islandHeight = (70 - (36 * p)).dp
-                    // Fade out
-                    islandAlpha = 1f - p
-                }
-                // Phase 5 (0.8 to 1.0): Offscreen / Rest state before resetting
-                else -> {
-                    islandHeight = 80.dp
-                    islandAlpha = 0f
-                    fingerYOffset = dragStartPx
-                    fingerAlpha = 0f
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
+@Composable
+private fun GestureDetailCard(
+    gestureNumber: String,
+    gestureName: String,
+    actionBadge: String,
+    badgeColor: Color,
+    icon: ImageVector,
+    overview: String,
+    steps: List<String>,
+    proTip: String
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Simulated status bar
-                SimulatedStatusBar()
-
-                // Simulated Island
-                Box(
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .width(220.dp)
-                        .height(islandHeight)
-                        .graphicsLayer { alpha = islandAlpha }
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black)
-                        .padding(12.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (islandHeight > 45.dp) {
-                        MockNotificationContent(title = "Telegram", text = "Swipe up to dismiss this message")
-                    }
-                }
-
-                // Animated finger dot
-                if (fingerAlpha > 0f) {
                     Box(
                         modifier = Modifier
-                            .graphicsLayer {
-                                translationY = fingerYOffset
-                                alpha = fingerAlpha
-                            }
-                            .padding(top = 16.dp) // align relative to status bar
-                            .size(34.dp)
-                            .border(1.5.dp, Color.White, CircleShape)
-                            .background(Color.White.copy(alpha = 0.45f), CircleShape)
-                    )
-                }
-            }
-        }
-
-        // Try it yourself Card (Interactive Playground)
-        GesturePlaygroundCard(title = "Try it yourself") {
-            var expanded by remember { mutableStateOf(true) }
-            var dragOffset by remember { mutableStateOf(0f) }
-            var isClearedAll by remember { mutableStateOf(false) }
-            var startTimeMs by remember { mutableStateOf(0L) }
-            val density = LocalDensity.current
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                SimulatedStatusBar()
-
-                if (expanded) {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 16.dp)
-                            .width(220.dp)
-                            .height(if (dragOffset < 0f) (80.dp + (dragOffset / density.density).dp).coerceAtLeast(34.dp) else 80.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.Black)
-                            .pointerInput(Unit) {
-                                detectVerticalDragGestures(
-                                    onDragStart = {
-                                        dragOffset = 0f
-                                        startTimeMs = System.currentTimeMillis()
-                                    },
-                                    onVerticalDrag = { change, dragAmount ->
-                                        change.consume()
-                                        dragOffset += dragAmount
-                                    },
-                                    onDragEnd = {
-                                        val thresholdPx = with(density) { -60.dp.toPx() }
-                                        val elapsedMs = System.currentTimeMillis() - startTimeMs
-                                        if (dragOffset < thresholdPx) {
-                                            expanded = false
-                                            isClearedAll = elapsedMs >= 300L
-                                        }
-                                        dragOffset = 0f
-                                    },
-                                    onDragCancel = { dragOffset = 0f }
-                                )
-                            }
-                            .padding(12.dp)
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(badgeColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        MockNotificationContent(
-                            title = "Messenger",
-                            text = "Swipe UP to dismiss • Hold 300ms & Swipe UP to clear ALL!"
-                        )
+                        Icon(icon, contentDescription = null, tint = badgeColor, modifier = Modifier.size(24.dp))
                     }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = "Cleared",
-                            tint = Color(0xFF0F9F6E),
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(Modifier.height(8.dp))
+                    Column {
                         Text(
-                            text = if (isClearedAll) "All notifications cleared! (Hold + Swipe Up)" else "Notification dismissed! (Quick Swipe Up)",
+                            text = gestureNumber,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F9F6E),
-                            fontSize = 13.sp
+                            color = badgeColor
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Button(
-                            onClick = {
-                                expanded = true
-                                isClearedAll = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Text("Reset preview", fontSize = 12.sp)
-                        }
+                        Text(
+                            text = gestureName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
-            }
-        }
-    }
-}
 
-// ==========================================
-// 2. SWIPE DOWN: FLOATING WINDOWS
-// ==========================================
-@Composable
-private fun SwipeDownGuide() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Description Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Rounded.ArrowDownward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeColor.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.3f))
+                ) {
                     Text(
-                        text = "Open app in floating window",
-                        style = MaterialTheme.typography.titleMedium,
+                        text = actionBadge,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = badgeColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
-                Text(
-                    text = "Swipe DOWN on the expanded island card to launch the notification app in a floating window (Freeform Multi-Window mode). This allows you to reply or interact without leaving your current app.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
-        }
 
-        // Looping Animation Demo
-        GestureDemoCard(title = "Animation Guide") {
-            val infiniteTransition = rememberInfiniteTransition(label = "swipeDown")
-            val progress by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(3500, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "progress"
+            // Overview
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 20.sp
             )
 
-            val islandHeight: Dp
-            val fingerYOffset: Float
-            val fingerAlpha: Float
-            val windowScale: Float
-            val windowAlpha: Float
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-            val dragStartPx = with(LocalDensity.current) { 30.dp.toPx() }
-            val dragEndPx = with(LocalDensity.current) { 130.dp.toPx() }
-
-            when {
-                // Phase 1 (0.0 to 0.15): Rest on expanded state
-                progress < 0.15f -> {
-                    islandHeight = 80.dp
-                    fingerYOffset = dragStartPx
-                    fingerAlpha = 0f
-                    windowScale = 0.5f
-                    windowAlpha = 0f
-                }
-                // Phase 2 (0.15 to 0.25): Finger fades in
-                progress < 0.25f -> {
-                    val p = (progress - 0.15f) / 0.1f
-                    islandHeight = 80.dp
-                    fingerYOffset = dragStartPx
-                    fingerAlpha = p
-                    windowScale = 0.5f
-                    windowAlpha = 0f
-                }
-                // Phase 3 (0.25 to 0.55): Finger drags downward
-                progress < 0.55f -> {
-                    val p = (progress - 0.25f) / 0.3f
-                    fingerYOffset = dragStartPx + ((dragEndPx - dragStartPx) * p)
-                    fingerAlpha = 1f
-                    islandHeight = (80 + (16 * p)).dp
-                    windowScale = 0.5f
-                    windowAlpha = 0f
-                }
-                // Phase 4 (0.55 to 0.85): Swipe released -> Island collapses, floating window scales up and fades in
-                progress < 0.85f -> {
-                    val p = (progress - 0.55f) / 0.3f
-                    fingerYOffset = dragEndPx
-                    fingerAlpha = 1f - p
-                    islandHeight = (96 - (62 * p)).dp
-                    windowScale = 0.5f + (0.5f * p)
-                    windowAlpha = p
-                }
-                // Phase 5 (0.85 to 1.0): Display floating window before reset
-                else -> {
-                    islandHeight = 34.dp
-                    fingerYOffset = dragEndPx
-                    fingerAlpha = 0f
-                    windowScale = 1.0f
-                    windowAlpha = 1f
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                SimulatedStatusBar()
-
-                // Simulated Island
-                Box(
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .width(if (islandHeight < 40.dp) 112.dp else 220.dp)
-                        .height(islandHeight)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black)
-                        .padding(12.dp)
-                ) {
-                    if (islandHeight > 45.dp) {
-                        MockNotificationContent(title = "WhatsApp", text = "Swipe down to open floating chat")
-                    }
-                }
-
-                // Simulated Floating Window
-                if (windowAlpha > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(top = 34.dp)
-                            .size(width = 160.dp, height = 110.dp)
-                            .graphicsLayer {
-                                scaleX = windowScale
-                                scaleY = windowScale
-                                alpha = windowAlpha
-                            }
-                            .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-                    ) {
-                        // Title bar
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(22.dp)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-                                .padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.size(6.dp).background(Color.Red, CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Box(modifier = Modifier.size(6.dp).background(Color.Yellow, CircleShape))
-                            Spacer(Modifier.width(4.dp))
-                            Box(modifier = Modifier.size(6.dp).background(Color.Green, CircleShape))
-                            Spacer(Modifier.weight(1f))
-                            Text("WhatsApp", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        }
-
-                        // Content body
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 26.dp, start = 8.dp, end = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(modifier = Modifier.size(width = 110.dp, height = 8.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f), RoundedCornerShape(2.dp)))
-                            Box(modifier = Modifier.size(width = 80.dp, height = 8.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f), RoundedCornerShape(2.dp)))
-                            Spacer(Modifier.weight(1f))
-                            // Reply button mockup
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.End)
-                                    .size(width = 44.dp, height = 16.dp)
-                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("Send", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.height(4.dp))
-                        }
-                    }
-                }
-
-                // Animated finger dot
-                if (fingerAlpha > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                translationY = fingerYOffset
-                                alpha = fingerAlpha
-                            }
-                            .padding(top = 16.dp)
-                            .size(34.dp)
-                            .border(1.5.dp, Color.White, CircleShape)
-                            .background(Color.White.copy(alpha = 0.45f), CircleShape)
-                    )
-                }
-            }
-        }
-
-        // Try it yourself Card (Interactive Playground)
-        GesturePlaygroundCard(title = "Try it yourself") {
-            var expanded by remember { mutableStateOf(true) }
-            var windowOpen by remember { mutableStateOf(false) }
-            var dragOffset by remember { mutableStateOf(0f) }
-            val density = LocalDensity.current
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                SimulatedStatusBar()
-
-                if (expanded) {
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 16.dp)
-                            .width(220.dp)
-                            .height(if (dragOffset > 0f) (80.dp + (dragOffset / density.density).dp).coerceAtMost(100.dp) else 80.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.Black)
-                            .pointerInput(Unit) {
-                                detectVerticalDragGestures(
-                                    onDragStart = { dragOffset = 0f },
-                                    onVerticalDrag = { change, dragAmount ->
-                                        change.consume()
-                                        dragOffset += dragAmount
-                                    },
-                                    onDragEnd = {
-                                        val thresholdPx = with(density) { 60.dp.toPx() }
-                                        if (dragOffset > thresholdPx) {
-                                            expanded = false
-                                            windowOpen = true
-                                        }
-                                        dragOffset = 0f
-                                    },
-                                    onDragCancel = { dragOffset = 0f }
-                                )
-                            }
-                            .padding(12.dp)
-                    ) {
-                        MockNotificationContent(title = "SMS Message", text = "Drag DOWN on this card to open in popup!")
-                    }
-                } else {
-                    // Collapsed island
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 16.dp)
-                            .size(width = 112.dp, height = 34.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(Color.Black)
-                    )
-
-                    if (windowOpen) {
-                        // Interactive Floating Window
-                        Card(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(top = 34.dp)
-                                .size(width = 180.dp, height = 120.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                        ) {
-                            Column(Modifier.fillMaxSize()) {
-                                // Titlebar
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Messages (Floating)", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    Spacer(Modifier.weight(1f))
-                                    IconButton(
-                                        onClick = {
-                                            windowOpen = false
-                                            expanded = true
-                                        },
-                                        modifier = Modifier.size(14.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.Red, modifier = Modifier.size(10.dp))
-                                    }
-                                }
-
-                                // Body
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text("Incoming SMS details...", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface)
-                                    Text("Sender: +1 555-0199", fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(Modifier.weight(1f))
-                                    OutlinedButton(
-                                        onClick = {
-                                            windowOpen = false
-                                            expanded = true
-                                        },
-                                        modifier = Modifier.align(Alignment.CenterHorizontally).height(24.dp).padding(horizontal = 4.dp)
-                                    ) {
-                                        Text("Close and Reset", fontSize = 8.sp, modifier = Modifier.padding(bottom = 2.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ==========================================
-// 3. HORIZONTAL SWIPE: PAGINATION
-// ==========================================
-@Composable
-private fun SwipeHorizontalGuide() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Description Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Rounded.SwapHoriz,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "Switch between active notifications",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            // Step-by-Step Instructions
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "When you have multiple active items in the Smart Island stack, swipe LEFT or RIGHT on the expanded island card to navigate and switch pages between them.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Looping Animation Demo
-        GestureDemoCard(title = "Animation Guide") {
-            val infiniteTransition = rememberInfiniteTransition(label = "swipeHorizontal")
-            val progress by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(4000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
-                ),
-                label = "progress"
-            )
-
-            val fingerXOffset: Float
-            val fingerAlpha: Float
-            val pageTranslationX: Float
-            val isPageTwo: Boolean
-
-            val pageWidthPx = with(LocalDensity.current) { 196.dp.toPx() }
-            val fingerStartPx = with(LocalDensity.current) { 60.dp.toPx() }
-            val fingerEndPx = with(LocalDensity.current) { -60.dp.toPx() }
-
-            when {
-                // Phase 1 (0.0 to 0.15): Rest on page 1
-                progress < 0.15f -> {
-                    fingerXOffset = fingerStartPx
-                    fingerAlpha = 0f
-                    pageTranslationX = 0f
-                    isPageTwo = false
-                }
-                // Phase 2 (0.15 to 0.25): Finger fades in
-                progress < 0.25f -> {
-                    val p = (progress - 0.15f) / 0.1f
-                    fingerXOffset = fingerStartPx
-                    fingerAlpha = p
-                    pageTranslationX = 0f
-                    isPageTwo = false
-                }
-                // Phase 3 (0.25 to 0.45): Finger swipes left, dragging page content
-                progress < 0.45f -> {
-                    val p = (progress - 0.25f) / 0.2f
-                    fingerXOffset = fingerStartPx - ((fingerStartPx - fingerEndPx) * p)
-                    fingerAlpha = 1f
-                    pageTranslationX = -pageWidthPx * p
-                    isPageTwo = false
-                }
-                // Phase 4 (0.45 to 0.55): Finger fades out, Page 2 active
-                progress < 0.55f -> {
-                    val p = (progress - 0.45f) / 0.1f
-                    fingerXOffset = fingerEndPx
-                    fingerAlpha = 1f - p
-                    pageTranslationX = -pageWidthPx
-                    isPageTwo = true
-                }
-                // Phase 5 (0.55 to 0.65): Finger appears on left
-                progress < 0.65f -> {
-                    val p = (progress - 0.55f) / 0.1f
-                    fingerXOffset = fingerEndPx
-                    fingerAlpha = p
-                    pageTranslationX = -pageWidthPx
-                    isPageTwo = true
-                }
-                // Phase 6 (0.65 to 0.85): Finger swipes right, dragging page content back
-                progress < 0.85f -> {
-                    val p = (progress - 0.65f) / 0.2f
-                    fingerXOffset = fingerEndPx + ((fingerStartPx - fingerEndPx) * p)
-                    fingerAlpha = 1f
-                    pageTranslationX = -pageWidthPx + (pageWidthPx * p)
-                    isPageTwo = true
-                }
-                // Phase 7 (0.85 to 0.95): Finger fades out
-                progress < 0.95f -> {
-                    val p = (progress - 0.85f) / 0.1f
-                    fingerXOffset = fingerStartPx
-                    fingerAlpha = 1f - p
-                    pageTranslationX = 0f
-                    isPageTwo = false
-                }
-                // Phase 8 (0.95 to 1.0): Display page 1 at rest before reset
-                else -> {
-                    fingerXOffset = fingerStartPx
-                    fingerAlpha = 0f
-                    pageTranslationX = 0f
-                    isPageTwo = false
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                SimulatedStatusBar()
-
-                // Simulated Stack concentric arcs representation
-                Box(
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .width(228.dp)
-                        .height(88.dp)
-                        .border(1.5.dp, Color.Black.copy(alpha = 0.25f), RoundedCornerShape(26.dp))
+                    text = "How to Perform This Gesture:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                // Simulated Island Container
-                Box(
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .width(220.dp)
-                        .height(80.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black)
-                        .padding(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                translationX = pageTranslationX
-                            }
-                    ) {
-                        Row(modifier = Modifier.width(440.dp)) {
-                            // Page 1
-                            Box(modifier = Modifier.width(196.dp).fillMaxHeight()) {
-                                MockNotificationContent(title = "Slack (1/2)", text = "Hey, check this release build ASAP")
-                            }
-                            // Page 2
-                            Box(modifier = Modifier.width(196.dp).fillMaxHeight()) {
-                                MockNotificationContent(title = "Spotify (2/2)", text = "Animesh - Playing Music track")
-                            }
-                        }
-                    }
-
-                    // Pager Page indicator dots at the bottom
+                steps.forEachIndexed { index, step ->
                     Row(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Box(modifier = Modifier.size(4.dp).background(if (!isPageTwo) Color.White else Color.White.copy(alpha = 0.4f), CircleShape))
-                        Box(modifier = Modifier.size(4.dp).background(if (isPageTwo) Color.White else Color.White.copy(alpha = 0.4f), CircleShape))
-                    }
-                }
-
-                // Animated finger dot
-                if (fingerAlpha > 0f) {
-                    Box(
-                        modifier = Modifier
-                            .graphicsLayer {
-                                translationX = fingerXOffset
-                                alpha = fingerAlpha
-                            }
-                            .padding(top = 46.dp)
-                            .size(34.dp)
-                            .border(1.5.dp, Color.White, CircleShape)
-                            .background(Color.White.copy(alpha = 0.45f), CircleShape)
-                    )
-                }
-            }
-        }
-
-        // Try it yourself Card (Interactive Playground)
-        GesturePlaygroundCard(title = "Try it yourself") {
-            var currentPage by remember { mutableStateOf(0) }
-            var dragOffset by remember { mutableStateOf(0f) }
-            val density = LocalDensity.current
-            val pageWidthPx = with(density) { 196.dp.toPx() }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color.Black.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                SimulatedStatusBar()
-
-                Box(
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .width(220.dp)
-                        .height(80.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black)
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { dragOffset = 0f },
-                                onHorizontalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragOffset += dragAmount
-                                },
-                                onDragEnd = {
-                                    if (dragOffset < -pageWidthPx / 4f && currentPage == 0) {
-                                        currentPage = 1
-                                    } else if (dragOffset > pageWidthPx / 4f && currentPage == 1) {
-                                        currentPage = 0
-                                    }
-                                    dragOffset = 0f
-                                },
-                                onDragCancel = { dragOffset = 0f }
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(CircleShape)
+                                .background(badgeColor.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${index + 1}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = badgeColor
                             )
                         }
-                        .padding(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                val pageBaseX = if (currentPage == 0) 0f else -pageWidthPx
-                                val constrainedDrag = if (currentPage == 0) dragOffset.coerceAtMost(0f) else dragOffset.coerceAtLeast(0f)
-                                translationX = pageBaseX + constrainedDrag.coerceIn(-pageWidthPx, pageWidthPx)
-                            }
-                    ) {
-                        Row(modifier = Modifier.width(440.dp)) {
-                            // Page 1
-                            Box(modifier = Modifier.width(196.dp).fillMaxHeight()) {
-                                MockNotificationContent(title = "Email (1/2)", text = "Swipe left to check the next notification")
-                            }
-                            // Page 2
-                            Box(modifier = Modifier.width(196.dp).fillMaxHeight()) {
-                                MockNotificationContent(title = "Calendar (2/2)", text = "Swipe right to return to email card")
-                            }
-                        }
+                        Text(
+                            text = step,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = 18.sp,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+                }
+            }
 
-                    // Pager Page indicator dots at the bottom
-                    Row(
-                        modifier = Modifier.align(Alignment.BottomCenter),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(modifier = Modifier.size(4.dp).background(if (currentPage == 0) Color.White else Color.White.copy(alpha = 0.4f), CircleShape))
-                        Box(modifier = Modifier.size(4.dp).background(if (currentPage == 1) Color.White else Color.White.copy(alpha = 0.4f), CircleShape))
+            // Pro Tip Box
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Rounded.Lightbulb,
+                        contentDescription = "Pro Tip",
+                        tint = Color(0xFFFACC15),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "PRO TIP",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFFACC15)
+                        )
+                        Text(
+                            text = proTip,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 16.sp
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-// ==========================================
-// COMMON HELPERS
-// ==========================================
-
-@Composable
-private fun GestureDemoCard(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun GesturePlaygroundCard(title: String, content: @Composable () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun SimulatedStatusBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(24.dp)
-            .background(Color.Black.copy(alpha = 0.05f))
-            .padding(horizontal = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("9:41 AM", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Rounded.SignalCellular4Bar, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(10.dp))
-            Icon(Icons.Rounded.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(10.dp))
-            Icon(Icons.Rounded.Battery5Bar, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), modifier = Modifier.size(10.dp))
-        }
-    }
-}
-
-@Composable
-private fun MockNotificationContent(title: String, text: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = title.firstOrNull()?.toString() ?: "N",
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Text(
-            text = text,
-            color = Color.White.copy(alpha = 0.8f),
-            fontSize = 11.sp,
-            lineHeight = 14.sp
-        )
     }
 }
