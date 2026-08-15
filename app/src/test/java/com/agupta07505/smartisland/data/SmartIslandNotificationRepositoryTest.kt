@@ -190,6 +190,19 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testBluetoothDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Bluetooth)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_bluetooth", notif.key)
+        assertEquals(IslandMode.Bluetooth, notif.mode)
+        assertEquals("AirPods Pro", notif.title)
+    }
+
+    @Test
     fun testShowDemoNotification() {
         val repository = SmartIslandNotificationRepository()
         repository.showDemo(IslandMode.Battery)

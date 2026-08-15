@@ -41,6 +41,8 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material.icons.rounded.BluetoothConnected
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -156,6 +158,22 @@ fun IslandCollapsedContent(
                 IslandMode.Hotspot -> {
                     HotspotCollapsedGlyph(notification = notification, settings = settings)
                 }
+                IslandMode.Bluetooth -> {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF2563EB).copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.BluetoothConnected,
+                            contentDescription = "Bluetooth",
+                            tint = Color(0xFF3B82F6),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -208,6 +226,15 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.Hotspot -> {
                     HotspotCollapsedRight(notification = notification, settings = settings)
+                }
+                IslandMode.Bluetooth -> {
+                    Image(
+                        painter = painterResource(id = com.agupta07505.smartisland.R.drawable.ic_bluetooth_device),
+                        contentDescription = "Bluetooth Device",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                    )
                 }
                 IslandMode.Empty -> Unit
             }

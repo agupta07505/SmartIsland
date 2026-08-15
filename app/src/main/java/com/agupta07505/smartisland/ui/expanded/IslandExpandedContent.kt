@@ -126,6 +126,7 @@ fun IslandExpandedContent(
                 IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
                 IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
                 IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
+                IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -233,6 +234,12 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Bluetooth -> BluetoothExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
                                 onCollapse = onCollapse,
                                 settings = settings
                             )

@@ -211,6 +211,15 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Hotspot Settings", null)
                 )
             )
+            IslandMode.Bluetooth -> IslandNotification(
+                key = "demo_bluetooth",
+                packageName = "com.android.bluetooth",
+                appName = "Bluetooth",
+                title = "AirPods Pro",
+                text = "Connected • 100%",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Bluetooth
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

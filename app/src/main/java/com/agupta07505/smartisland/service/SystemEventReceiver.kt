@@ -18,6 +18,8 @@ import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.util.runCatchingLogged
 import android.os.Build
 
+import android.bluetooth.BluetoothDevice
+
 class SystemEventReceiver(
     private val notificationRepository: INotificationRepository
 ) : BroadcastReceiver() {
@@ -27,8 +29,36 @@ class SystemEventReceiver(
     private var isCurrentlyCharging: Boolean = false
 
     override fun onReceive(context: Context, intent: Intent) {
-        runCatchingLogged("SystemEventReceiver", "Battery broadcast callback failed") {
+        runCatchingLogged("SystemEventReceiver", "Broadcast callback failed") {
         when (intent.action) {
+            BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                }
+                val deviceName = try {
+                    device?.name ?: "Bluetooth Device"
+                } catch (e: SecurityException) {
+                    "Bluetooth Device"
+                }
+                notificationRepository.postNotification(
+                    IslandNotification(
+                        key = "system_bluetooth",
+                        packageName = "com.android.bluetooth",
+                        appName = "Bluetooth",
+                        title = deviceName,
+                        text = "Connected",
+                        mode = IslandMode.Bluetooth,
+                        timeMillis = System.currentTimeMillis()
+                    ),
+                    autoExpand = true
+                )
+            }
+            BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                notificationRepository.removeNotification("system_bluetooth")
+            }
             Intent.ACTION_POWER_CONNECTED -> {
                 isCurrentlyCharging = true
                 // Auto-expand ONCE when the charger is plugged in.

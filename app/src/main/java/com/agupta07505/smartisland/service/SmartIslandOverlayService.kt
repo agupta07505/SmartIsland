@@ -192,6 +192,8 @@ class SmartIslandOverlayService : AccessibilityService() {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
         
         // CRASH FIX: Android 13+/14+ requires explicit export flag for system broadcasts
