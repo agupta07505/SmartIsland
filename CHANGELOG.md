@@ -10,7 +10,7 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 
 - **Low Battery & Battery Saver Modes (`IslandMode.Battery`)**:
   - Added dedicated visual states for battery health:
-    - *Low Battery* (\le 20%): Pulsing red `BatteryAlert` indicator glyph with live battery percentage badge.
+    - *Low Battery* (20%): Pulsing red `BatteryAlert` indicator glyph with live battery percentage badge.
     - *Battery Saver*: Warm amber `BatterySaver` energy-savings glyph with live battery percentage badge.
     - *Charging*: Electric green lightning bolt with remaining charge time estimate.
   - Broadcast receiver integration via `ACTION_BATTERY_LOW`, `ACTION_BATTERY_OKAY`, and `ACTION_POWER_SAVE_MODE_CHANGED` in `SystemEventReceiver`.
