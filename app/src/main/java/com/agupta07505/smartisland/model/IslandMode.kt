@@ -18,5 +18,6 @@ enum class IslandMode {
     DownloadUpload,
     Hotspot,
     Bluetooth,
-    Flashlight
+    Flashlight,
+    ScreenRecording
 }

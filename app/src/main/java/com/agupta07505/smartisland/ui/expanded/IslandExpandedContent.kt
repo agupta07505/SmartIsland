@@ -128,6 +128,7 @@ fun IslandExpandedContent(
                 IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
                 IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
                 IslandMode.Flashlight -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -245,6 +246,12 @@ fun IslandExpandedContent(
                                 settings = settings
                             )
                             IslandMode.Flashlight -> FlashlightExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.ScreenRecording -> ScreenRecordingExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onCollapse = onCollapse,

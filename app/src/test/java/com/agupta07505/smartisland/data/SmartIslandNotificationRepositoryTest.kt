@@ -105,6 +105,19 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testScreenRecordingDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.ScreenRecording)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_screen_recording", notif.key)
+        assertEquals(IslandMode.ScreenRecording, notif.mode)
+        assertEquals("Screen Recording", notif.title)
+    }
+
+    @Test
     fun testRemoveNotificationsForPackage() {
         val repository = SmartIslandNotificationRepository()
         val notif1 = IslandNotification(

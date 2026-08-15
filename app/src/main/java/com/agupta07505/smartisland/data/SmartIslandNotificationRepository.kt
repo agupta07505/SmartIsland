@@ -238,6 +238,18 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Turn Off", null)
                 )
             )
+            IslandMode.ScreenRecording -> IslandNotification(
+                key = "demo_screen_recording",
+                packageName = "com.android.systemui",
+                appName = "Screen Recorder",
+                title = "Screen Recording",
+                text = "Recording screen...",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.ScreenRecording,
+                actionIntents = listOf(
+                    IslandNotificationAction("Stop", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

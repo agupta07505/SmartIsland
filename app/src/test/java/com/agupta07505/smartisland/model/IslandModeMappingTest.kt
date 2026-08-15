@@ -51,6 +51,7 @@ class IslandModeMappingTest {
     fun testCategoryCallMapsToIncomingCall() {
         val notification = mockk<Notification>()
         notification.category = Notification.CATEGORY_CALL
+        notification.flags = Notification.FLAG_ONGOING_EVENT
         notification.actions = null
         notification.extras = createBaseExtras()
 

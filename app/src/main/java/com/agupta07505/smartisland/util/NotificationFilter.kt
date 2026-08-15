@@ -72,7 +72,7 @@ object NotificationFilter {
         if (isOngoing) {
             val isProgressNotification = notification.category == Notification.CATEGORY_PROGRESS ||
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
-            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot) {
+            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording) {
                 return true
             }
         }
@@ -162,6 +162,8 @@ fun Notification.toIslandMode(
 
     val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
     val isHotspotKeyword = listOf("hotspot", "tethering", "portable hotspot", "mobile hotspot", "wifi hotspot").any { titleText.contains(it) }
+    val isScreenRecordingKeyword = listOf("screen recording", "recording screen", "screen recorder", "screen record", "recording file", "record screen").any { titleText.contains(it) }
+    val isScreenRecordingActive = isScreenRecordingKeyword && !isScreenRecordingComplete()
 
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
@@ -172,11 +174,14 @@ fun Notification.toIslandMode(
         (genericTransferKeywords && (progressMax > 0 || isIndeterminate || isProgressCategory))
 
     return when {
+        // Screen Recording
+        isScreenRecordingActive -> IslandMode.ScreenRecording
+
         // Hotspot & Tethering status
         isHotspotKeyword -> IslandMode.Hotspot
 
-        // Missed calls are historical notifications, not active incoming calls.
-        category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair -> {
+        // Missed calls and ended calls are historical notifications, not active incoming/ongoing calls.
+        (category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair) && !isCallEnded() -> {
             IslandMode.IncomingCall
         }
 
@@ -212,6 +217,37 @@ fun Notification.isDownloadComplete(): Boolean {
     if (progressMax == 0 && !isIndeterminate && !isCurrentlyActiveText) {
         return true
     }
+
+    return false
+}
+
+fun Notification.isScreenRecordingComplete(): Boolean {
+    val extras = extras ?: return false
+    val titleText = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+    val isOngoing = (flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
+
+    val completionKeywords = listOf(
+        "saved", "complete", "completed", "finished", "stopped",
+        "tap to view", "tap to share", "video saved", "recording saved", "ended"
+    )
+    if (completionKeywords.any { titleText.contains(it) }) return true
+    if (!isOngoing) return true
+
+    return false
+}
+
+fun Notification.isCallEnded(): Boolean {
+    val extras = extras ?: return false
+    val titleText = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+    val isOngoing = (flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
+
+    val callEndedKeywords = listOf(
+        "call ended", "call finished", "call declined", "call rejected",
+        "missed call", "missed video call", "call disconnected", "hung up",
+        "call duration", "ended"
+    )
+    if (callEndedKeywords.any { titleText.contains(it) }) return true
+    if (!isOngoing && category == Notification.CATEGORY_CALL) return true
 
     return false
 }

@@ -203,4 +203,41 @@ class AppNotificationFilterTest {
 
         assertTrue(finishedNoProgressNotif.isDownloadComplete())
     }
+
+    @Test
+    fun testScreenRecordingCompleteDetection() {
+        val completedNotif = mockk<Notification>(relaxed = true)
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen recording"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Screen recording saved"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        completedNotif.flags = 0
+        every { completedNotif.extras } returns extras
+
+        assertTrue(completedNotif.isScreenRecordingComplete())
+
+        val activeNotif = mockk<Notification>(relaxed = true)
+        val extras2 = mockk<Bundle>(relaxed = true)
+        every { extras2.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen recording"
+        every { extras2.getCharSequence(Notification.EXTRA_TEXT) } returns "Recording screen..."
+        every { extras2.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        activeNotif.flags = Notification.FLAG_ONGOING_EVENT
+        every { activeNotif.extras } returns extras2
+
+        assertFalse(activeNotif.isScreenRecordingComplete())
+    }
+
+    @Test
+    fun testCallEndedDetection() {
+        val endedNotif = mockk<Notification>(relaxed = true)
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Call ended"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Call duration 01:24"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        endedNotif.flags = 0
+        endedNotif.category = Notification.CATEGORY_CALL
+        every { endedNotif.extras } returns extras
+
+        assertTrue(endedNotif.isCallEnded())
+    }
 }

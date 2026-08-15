@@ -7,7 +7,9 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.util.isCallEnded
 import com.agupta07505.smartisland.util.isDownloadComplete
+import com.agupta07505.smartisland.util.isScreenRecordingComplete
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import com.agupta07505.smartisland.util.toIslandMode
@@ -364,6 +366,25 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
         val isNewNotif = notificationRepository.notifications.value.none { it.key == sbn.key }
 
+        val existingNotif = notificationRepository.notifications.value.find { it.key == sbn.key || (it.mode == IslandMode.IncomingCall && it.packageName == sbn.packageName) }
+        val actions = notification.actions?.mapNotNull { action ->
+            action.title?.toString()?.let { title ->
+                IslandNotificationAction(title = title, pendingIntent = action.actionIntent)
+            }
+        }.orEmpty()
+        val isNowRinging = actions.any { it.title.lowercase().let { t -> t.contains("answer") || t.contains("accept") || t.contains("take") } }
+
+        val computedTimeMillis = when {
+            mode == IslandMode.IncomingCall && existingNotif != null && existingNotif.isCallRinging && !isNowRinging -> {
+                System.currentTimeMillis()
+            }
+            existingNotif != null && mode == IslandMode.IncomingCall && !isNowRinging && existingNotif.timeMillis > 0 -> {
+                existingNotif.timeMillis
+            }
+            notification.`when` != 0L -> notification.`when`
+            else -> sbn.postTime
+        }
+
         notificationRepository.postNotification(
             IslandNotification(
                 key = sbn.key,
@@ -372,14 +393,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
                 text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
                     ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty(),
-                timeMillis = if (notification.`when` != 0L) notification.`when` else sbn.postTime,
+                timeMillis = computedTimeMillis,
                 icon = loadAppIconBitmap(sbn.packageName),
                 largeIcon = mediaInfo?.artwork ?: notification.loadLargeIconBitmap(),
-                actionIntents = notification.actions?.mapNotNull { action ->
-                    action.title?.toString()?.let { title ->
-                        IslandNotificationAction(title = title, pendingIntent = action.actionIntent)
-                    }
-                }.orEmpty(),
+                actionIntents = actions,
                 category = notification.category,
                 progress = extras.getInt(Notification.EXTRA_PROGRESS, 0),
                 progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
@@ -411,10 +428,32 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 .forEach { notificationRepository.removeNotification(it.key) }
         }
 
+        if (mode == IslandMode.IncomingCall) {
+            val isEnded = notification.isCallEnded()
+            if (isEnded) {
+                pendingRemovals.remove(sbn.key)?.cancel()
+                clearSuppressed(sbn.key)
+                notificationRepository.removeNotification(sbn.key)
+            }
+        }
+
         if (mode == IslandMode.DownloadUpload) {
             val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)
             val progress = extras.getInt(Notification.EXTRA_PROGRESS, 0)
             val isDone = notification.isDownloadComplete() || (progressMax > 0 && progress >= progressMax)
+            if (isDone) {
+                pendingRemovals.remove(sbn.key)?.cancel()
+                val job = serviceScope.launch {
+                    delay(3500L)
+                    clearSuppressed(sbn.key)
+                    notificationRepository.removeNotification(sbn.key)
+                }
+                pendingRemovals[sbn.key] = job
+            }
+        }
+
+        if (mode == IslandMode.ScreenRecording) {
+            val isDone = notification.isScreenRecordingComplete()
             if (isDone) {
                 pendingRemovals.remove(sbn.key)?.cancel()
                 val job = serviceScope.launch {

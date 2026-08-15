@@ -191,6 +191,9 @@ fun IslandCollapsedContent(
                         )
                     }
                 }
+                IslandMode.ScreenRecording -> {
+                    ScreenRecordingCollapsedGlyph()
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -215,8 +218,17 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.IncomingCall -> {
-                    val time = notification?.timeMillis ?: System.currentTimeMillis()
-                    CallTimer(postTimeMillis = time, color = Color(settings.callColor))
+                    if (notification?.isCallRinging == true) {
+                        Text(
+                            text = "Ringing...",
+                            color = Color(settings.callColor),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        val time = notification?.timeMillis ?: System.currentTimeMillis()
+                        CallTimer(postTimeMillis = time, color = Color(settings.callColor))
+                    }
                 }
                 IslandMode.Music -> {
                     AudioVisualizer(
@@ -260,6 +272,10 @@ fun IslandCollapsedContent(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+                IslandMode.ScreenRecording -> {
+                    val time = notification?.timeMillis ?: System.currentTimeMillis()
+                    CallTimer(postTimeMillis = time, color = Color(0xFFEF4444))
                 }
                 IslandMode.Empty -> Unit
             }
@@ -452,7 +468,7 @@ private fun AudioVisualizer(
 
 
 @Composable
-private fun CallTimer(postTimeMillis: Long, color: Color) {
+internal fun CallTimer(postTimeMillis: Long, color: Color) {
     var elapsedSeconds by remember(postTimeMillis) {
         mutableStateOf(((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L))
     }
@@ -496,6 +512,7 @@ internal fun LiveActivityCollapsedGlyph(notification: IslandNotification?, setti
         SmoothCircularRingProgress(
             progress = progress,
             color = brandColor,
+            strokeWidthDp = 4.8f,
             modifier = Modifier.size(24.dp)
         )
         val mainIcon = notification?.largeIcon ?: notification?.icon
@@ -504,7 +521,7 @@ internal fun LiveActivityCollapsedGlyph(notification: IslandNotification?, setti
                 bitmap = mainIcon.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(13.dp)
                     .clip(CircleShape)
             )
         } else {
@@ -518,7 +535,7 @@ private fun SmoothCircularRingProgress(
     progress: Float,
     color: Color,
     modifier: Modifier = Modifier,
-    strokeWidthDp: Float = 3.5f
+    strokeWidthDp: Float = 4.5f
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val strokeWidth = strokeWidthDp.dp.toPx()
@@ -528,7 +545,7 @@ private fun SmoothCircularRingProgress(
 
         // Track background ring
         drawArc(
-            color = Color(0x33FFFFFF),
+            color = Color(0x4DFFFFFF),
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,
@@ -764,6 +781,36 @@ private fun DownloadUploadCollapsedRight(
                 modifier = Modifier.size(14.dp)
             )
         }
+    }
+}
+
+@Composable
+internal fun ScreenRecordingCollapsedGlyph() {
+    val infiniteTransition = rememberInfiniteTransition(label = "collapsedRecordingPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFEF4444).copy(alpha = 0.25f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .graphicsLayer { alpha = pulseAlpha }
+                .clip(CircleShape)
+                .background(Color(0xFFEF4444))
+        )
     }
 }
 

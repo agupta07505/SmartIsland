@@ -141,6 +141,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Button
 import androidx.compose.foundation.Canvas
 import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
@@ -543,6 +544,20 @@ fun SmartIslandHomeScreen(
                                     Icon(Icons.Rounded.FlashlightOn, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text("Flashlight", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                ElevatedButton(
+                                    onClick = { resolvedNotificationRepository?.showDemo(IslandMode.ScreenRecording) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Videocam, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Screen Recording", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                             OutlinedButton(
