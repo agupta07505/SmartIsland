@@ -1234,6 +1234,7 @@ private fun StudioBottomNavigationBar(
     }
 }
 
+@SuppressLint("BatteryLife")
 @Composable
 private fun DetailScreenHost(
     section: FeatureDetailSection,

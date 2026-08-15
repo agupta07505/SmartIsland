@@ -91,10 +91,10 @@ fun IslandOverlayView(
     onLaunchApp: (String) -> Unit,
     onToggleExpanded: () -> Unit,
     onDismissNotification: () -> Unit,
-    onDismissAllNotifications: () -> Unit = {},
     onOpenFloatingWindow: () -> Unit,
     statusBarHeight: Float,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismissAllNotifications: () -> Unit = {}
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
     // even though pointerInput(Unit) never restarts its coroutine

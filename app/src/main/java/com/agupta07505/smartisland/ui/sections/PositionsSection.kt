@@ -49,8 +49,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,10 +68,11 @@ fun PositionsSection(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val configuration = LocalConfiguration.current
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
 
     // Dynamically calculate responsive notch coordinates for the current device screen
-    val screenWidthDp = configuration.screenWidthDp.toFloat()
+    val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp().value }
     val calculatedLeftX = (-(screenWidthDp / 2f - 40f)).coerceIn(
         SmartIslandSettings.MIN_X_OFFSET,
         -30f
