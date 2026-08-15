@@ -203,6 +203,19 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testFlashlightDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Flashlight)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_flashlight", notif.key)
+        assertEquals(IslandMode.Flashlight, notif.mode)
+        assertEquals("Flashlight ON", notif.title)
+    }
+
+    @Test
     fun testShowDemoNotification() {
         val repository = SmartIslandNotificationRepository()
         repository.showDemo(IslandMode.Battery)

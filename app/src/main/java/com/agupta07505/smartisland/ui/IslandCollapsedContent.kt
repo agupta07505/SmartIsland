@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material.icons.rounded.BluetoothConnected
+import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -174,6 +175,22 @@ fun IslandCollapsedContent(
                         )
                     }
                 }
+                IslandMode.Flashlight -> {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.FlashlightOn,
+                            contentDescription = "Flashlight",
+                            tint = Color(0xFFFACC15),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -234,6 +251,14 @@ fun IslandCollapsedContent(
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
+                    )
+                }
+                IslandMode.Flashlight -> {
+                    Text(
+                        text = "ON",
+                        color = Color(0xFFFACC15),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 IslandMode.Empty -> Unit

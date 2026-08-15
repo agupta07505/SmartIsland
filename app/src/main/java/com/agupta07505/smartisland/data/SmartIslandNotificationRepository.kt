@@ -220,6 +220,18 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 timeMillis = System.currentTimeMillis(),
                 mode = IslandMode.Bluetooth
             )
+            IslandMode.Flashlight -> IslandNotification(
+                key = "demo_flashlight",
+                packageName = "com.android.systemui",
+                appName = "Flashlight",
+                title = "Flashlight ON",
+                text = "Tap to turn off",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Flashlight,
+                actionIntents = listOf(
+                    IslandNotificationAction("Turn Off", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {

@@ -66,8 +66,34 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var isLockScreenActive: Boolean = false
     private var systemEventReceiverRegistered = false
     private var screenStateReceiverRegistered = false
+    private var torchCallbackRegistered = false
     private var foregroundStarted = false
     @Volatile private var destroyed = false
+
+    private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (destroyed || !::viewModel.isInitialized) return
+            if (enabled) {
+                notificationRepository.postNotification(
+                    IslandNotification(
+                        key = "system_flashlight",
+                        packageName = "com.android.systemui",
+                        appName = "Flashlight",
+                        title = "Flashlight ON",
+                        text = "Tap to turn off",
+                        mode = com.agupta07505.smartisland.model.IslandMode.Flashlight,
+                        timeMillis = System.currentTimeMillis(),
+                        actionIntents = listOf(
+                            com.agupta07505.smartisland.model.IslandNotificationAction("Turn Off", null)
+                        )
+                    ),
+                    autoExpand = true
+                )
+            } else {
+                notificationRepository.removeNotification("system_flashlight")
+            }
+        }
+    }
 
     private val serviceScope = kotlinx.coroutines.CoroutineScope(
         SupervisorJob() +
@@ -225,6 +251,12 @@ class SmartIslandOverlayService : AccessibilityService() {
             screenStateReceiverRegistered = true
         }
 
+        runCatchingLogged(TAG, "registerTorchCallback failed") {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? android.hardware.camera2.CameraManager
+            cameraManager?.registerTorchCallback(torchCallback, android.os.Handler(android.os.Looper.getMainLooper()))
+            torchCallbackRegistered = true
+        }
+
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Settings collector failed") {
                 repository.settings.collect { settings ->
@@ -318,6 +350,13 @@ class SmartIslandOverlayService : AccessibilityService() {
                 unregisterReceiver(screenStateReceiver)
             }
             screenStateReceiverRegistered = false
+        }
+        if (torchCallbackRegistered) {
+            runCatchingLogged(TAG, "unregisterTorchCallback failed") {
+                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? android.hardware.camera2.CameraManager
+                cameraManager?.unregisterTorchCallback(torchCallback)
+            }
+            torchCallbackRegistered = false
         }
 
         removeCollapsedWindow()

@@ -59,6 +59,14 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
         if (title.isNullOrBlank() && text.isNullOrBlank()) return true
 
+        // Suppress external torch / flashlight notifications from entering Smart Island,
+        // because Smart Island natively manages physical torch state via CameraManager.TorchCallback.
+        val titleText = "$title $text".lowercase()
+        val isTorchNotification = listOf("flashlight", "torch", "flash light").any { titleText.contains(it) }
+        if (isTorchNotification && packageName != "com.agupta07505.smartisland") {
+            return true
+        }
+
         // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, or hotspot
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
         if (isOngoing) {

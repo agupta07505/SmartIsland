@@ -17,5 +17,6 @@ enum class IslandMode {
     Navigation,
     DownloadUpload,
     Hotspot,
-    Bluetooth
+    Bluetooth,
+    Flashlight
 }

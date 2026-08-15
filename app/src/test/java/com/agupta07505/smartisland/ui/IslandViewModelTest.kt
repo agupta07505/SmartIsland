@@ -22,7 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito.mock
+import io.mockk.mockk
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class IslandViewModelTest {
@@ -41,7 +41,7 @@ class IslandViewModelTest {
 
     @Test
     fun testMusicPillHidesInForegroundAndReappearsInBackground() = runTest {
-        val settingsRepo = mock(SmartIslandSettingsRepository::class.java)
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
         val notifRepo = SmartIslandNotificationRepository()
         val viewModel = IslandViewModel(settingsRepo, notifRepo)
 

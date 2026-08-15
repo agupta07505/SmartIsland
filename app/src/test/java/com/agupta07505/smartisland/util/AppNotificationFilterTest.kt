@@ -150,4 +150,29 @@ class AppNotificationFilterTest {
         assertTrue(NotificationFilter.isAppEligibleForIsland("com.android.chrome", mockPm))
         assertFalse(NotificationFilter.shouldSuppressFromIsland(mockSbn, mockPm))
     }
+
+    @Test
+    fun testTorchNotificationSuppression() {
+        val mockPm = mockk<PackageManager>()
+        val appInfo = ApplicationInfo().apply { flags = ApplicationInfo.FLAG_SYSTEM }
+        every { mockPm.getApplicationInfo("com.miui.securitycenter", 0) } returns appInfo
+
+        val mockSbn = mockk<StatusBarNotification>()
+        val mockNotif = mockk<Notification>()
+        mockNotif.flags = 0
+        mockNotif.category = null
+        mockNotif.actions = null
+        val extras = mockk<Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Torch is on"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to turn off"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
+        every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
+        mockNotif.extras = extras
+
+        every { mockSbn.packageName } returns "com.miui.securitycenter"
+        every { mockSbn.notification } returns mockNotif
+
+        assertTrue(NotificationFilter.shouldSuppressFromIsland(mockSbn, mockPm))
+    }
 }
