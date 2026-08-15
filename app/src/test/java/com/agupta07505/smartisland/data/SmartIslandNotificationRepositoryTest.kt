@@ -105,6 +105,48 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testRemoveNotificationsForPackage() {
+        val repository = SmartIslandNotificationRepository()
+        val notif1 = IslandNotification(
+            key = "key1",
+            packageName = "com.app.a",
+            appName = "App A",
+            title = "Title 1",
+            text = "Text 1",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        val notif2 = IslandNotification(
+            key = "key2",
+            packageName = "com.app.a",
+            appName = "App A",
+            title = "Title 2",
+            text = "Text 2",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        val notif3 = IslandNotification(
+            key = "key3",
+            packageName = "com.app.b",
+            appName = "App B",
+            title = "Title 3",
+            text = "Text 3",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+
+        repository.postNotification(notif1)
+        repository.postNotification(notif2)
+        repository.postNotification(notif3)
+        assertEquals(3, repository.notifications.value.size)
+
+        repository.removeNotificationsForPackage("com.app.a")
+        val remaining = repository.notifications.value
+        assertEquals(1, remaining.size)
+        assertEquals("key3", remaining[0].key)
+    }
+
+    @Test
     fun testResetTimer() = runTest {
         val repository = SmartIslandNotificationRepository()
         var triggered = false

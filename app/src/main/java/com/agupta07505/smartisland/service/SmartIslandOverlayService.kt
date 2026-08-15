@@ -124,6 +124,22 @@ class SmartIslandOverlayService : AccessibilityService() {
                 isLockScreenActive = locked
                 updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
             }
+
+            if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                val openedPackage = event.packageName?.toString()
+                if (!openedPackage.isNullOrEmpty() &&
+                    openedPackage != packageName &&
+                    openedPackage != "com.android.systemui"
+                ) {
+                    viewModel.foregroundPackage.value = openedPackage
+                    val hasNonMusicNotifications = notificationRepository.notifications.value.any {
+                        it.packageName == openedPackage && it.mode != com.agupta07505.smartisland.model.IslandMode.Music
+                    }
+                    if (hasNonMusicNotifications) {
+                        notificationRepository.removeNotificationsForPackage(openedPackage)
+                    }
+                }
+            }
         }
     }
 
@@ -592,8 +608,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
-        notificationRepository.removeNotification(notification.key)
-        notificationRepository.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+        notificationRepository.removeNotificationsForPackage(notification.packageName)
         viewModel.collapse()
     }
 
@@ -607,6 +622,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         runCatchingLogged(TAG, "Failed to launch shortcut app") {
             startActivity(launchIntent)
         }
+        notificationRepository.removeNotificationsForPackage(packageName)
         viewModel.collapse()
     }
 
