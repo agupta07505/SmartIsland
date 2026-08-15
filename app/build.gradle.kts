@@ -80,7 +80,11 @@ android {
             "UnusedResources",
             "IconLauncherShape",
             "MonochromeLauncherIcon",
-            "UseKtx"
+            "UseKtx",
+            "IconXmlAndPng",
+            "BatteryLife",
+            "ConfigurationScreenWidthHeight",
+            "ModifierParameter"
         )
     }
 

@@ -98,7 +98,7 @@ object CameraCutoutDetector {
         val screenWidthPx = metrics.widthPixels
         val density = metrics.density
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val display = runCatching { windowManager.defaultDisplay }.getOrNull()
             val cutout: DisplayCutout? = try {
                 display?.cutout
