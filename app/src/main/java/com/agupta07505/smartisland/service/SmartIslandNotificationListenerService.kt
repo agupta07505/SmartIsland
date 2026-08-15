@@ -394,7 +394,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
                     ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty(),
                 timeMillis = computedTimeMillis,
-                icon = loadAppIconBitmap(sbn.packageName),
+                icon = loadNotificationIconBitmap(sbn, notification),
                 largeIcon = mediaInfo?.artwork ?: notification.loadLargeIconBitmap(),
                 actionIntents = actions,
                 category = notification.category,
@@ -595,12 +595,44 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     private val iconCache = android.util.LruCache<String, Bitmap>(50)
 
-    private fun loadAppIconBitmap(packageName: String): Bitmap? {
-        iconCache.get(packageName)?.let { return it }
-        return runCatchingLogged(TAG, "LoadAppIconBitmap failed") {
-            val drawable = packageManager.getApplicationIcon(packageName)
-            drawable.toBitmap(width = ICON_BITMAP_SIZE, height = ICON_BITMAP_SIZE).also { iconCache.put(packageName, it) }
+    private fun loadNotificationIconBitmap(sbn: android.service.notification.StatusBarNotification, notification: Notification): Bitmap? {
+        val packageName = sbn.packageName
+        val smallIcon = notification.smallIcon
+        val cacheKey = if (smallIcon != null) "${packageName}_${smallIcon.hashCode()}" else packageName
+
+        iconCache.get(cacheKey)?.let { return it }
+
+        val defaultRobotDrawable = runCatchingLogged(TAG, "GetDefaultActivityIcon failed") {
+            packageManager.defaultActivityIcon
         }
+
+        // 1. Primary: Try loading notification's specific smallIcon (status bar icon)
+        val smallIconBitmap = runCatchingLogged(TAG, "LoadSmallIcon failed") {
+            val drawable = smallIcon?.loadDrawable(this@SmartIslandNotificationListenerService)
+            if (drawable != null && (defaultRobotDrawable == null || drawable.constantState != defaultRobotDrawable.constantState)) {
+                drawable.toBitmap(width = ICON_BITMAP_SIZE, height = ICON_BITMAP_SIZE)
+            } else null
+        }
+
+        if (smallIconBitmap != null) {
+            iconCache.put(cacheKey, smallIconBitmap)
+            return smallIconBitmap
+        }
+
+        // 2. Fallback: Try loading package manager application icon if not generic default robot
+        val appIconBitmap = runCatchingLogged(TAG, "LoadAppIconBitmap failed") {
+            val drawable = packageManager.getApplicationIcon(packageName)
+            if (defaultRobotDrawable == null || drawable.constantState != defaultRobotDrawable.constantState) {
+                drawable.toBitmap(width = ICON_BITMAP_SIZE, height = ICON_BITMAP_SIZE)
+            } else null
+        }
+
+        if (appIconBitmap != null) {
+            iconCache.put(cacheKey, appIconBitmap)
+            return appIconBitmap
+        }
+
+        return null
     }
 
     private fun Notification.loadLargeIconBitmap(): Bitmap? {

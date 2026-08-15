@@ -94,16 +94,32 @@ fun IslandExpandedContent(
         pageCount = { notifications.size }
     )
 
-    // Sync external selectedIndex updates
+    // Sync external selectedIndex updates ONLY when not currently user-scrolling,
+    // preventing gesture interrupts mid-swipe that cause half-page frozen states.
     LaunchedEffect(selectedIndex) {
-        if (selectedIndex in notifications.indices && pagerState.currentPage != selectedIndex) {
+        if (selectedIndex in notifications.indices &&
+            !pagerState.isScrollInProgress &&
+            pagerState.currentPage != selectedIndex
+        ) {
             pagerState.animateScrollToPage(selectedIndex)
         }
     }
 
-    // Sync pager page updates back to caller
-    LaunchedEffect(pagerState.currentPage) {
-        onPageSelected(pagerState.currentPage)
+    // Sync settled page updates back to caller ONLY when scroll has settled
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage in notifications.indices) {
+            onPageSelected(pagerState.settledPage)
+        }
+    }
+
+    // Safety net: Ensure pager never stays stuck at a non-zero offset fraction when scroll finishes
+    LaunchedEffect(pagerState.isScrollInProgress) {
+        if (!pagerState.isScrollInProgress && pagerState.currentPageOffsetFraction != 0f) {
+            val targetPage = pagerState.settledPage.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
+            if (targetPage in notifications.indices) {
+                pagerState.animateScrollToPage(targetPage)
+            }
+        }
     }
 
     val bottomPadding = 16.dp
