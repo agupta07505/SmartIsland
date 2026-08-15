@@ -3,8 +3,9 @@
 ## Project Context
 
 SmartIsland is an Android overlay application that displays notifications,
-calls, media, charging information, navigation, live activities and other
-system events inside a floating Dynamic Island-style interface.
+calls, media, charging & battery status, navigation, live activities, downloads,
+flashlight, screen recording, bluetooth devices, and system events inside a floating
+Dynamic Island-style interface.
 
 Project details:
 
@@ -14,7 +15,7 @@ Project details:
 - Dependency injection: Hilt
 - State: Kotlin Coroutines, StateFlow and DataStore Preferences
 - Platform integration: NotificationListenerService, foreground services,
-  WindowManager overlays and Shizuku
+  WindowManager overlays, system broadcast receivers and Shizuku
 - Minimum Android version: Android 8.0 / API 26
 - Compile and target SDK: API 36
 - Java and Kotlin JVM target: 17
@@ -30,14 +31,34 @@ explicitly documents and justifies that product-level change.
 
 Preserve the existing event flow:
 
-1. `SmartIslandNotificationListenerService` receives notification events.
-2. `NotificationFilter` decides filtering and suppression behaviour.
-3. `SmartIslandNotificationRepository` manages notification state.
-4. `SmartIslandOverlayService` manages the overlay lifecycle.
-5. `WindowManager` hosts the Jetpack Compose island interface.
+1. `SmartIslandNotificationListenerService` receives notification and media events.
+2. `NotificationFilter` decides filtering, suppression, and mode classification.
+3. `SystemEventReceiver` listens to battery, power, bluetooth, and system broadcasts.
+4. `SmartIslandNotificationRepository` manages centralized notification & system island state.
+5. `SmartIslandOverlayService` manages the floating WindowManager overlay lifecycle.
+6. `WindowManager` hosts the Jetpack Compose collapsed pill and expanded cards.
 
 Use existing models, repositories, services and utilities before creating
 new abstractions. Prefer small, focused changes over broad rewrites.
+
+## Island Modes & Event Handling
+
+SmartIsland supports the following primary modes:
+
+- `Notification`: Standard incoming app notifications with full-color app launcher icons.
+- `IncomingCall`: Ringing / active phone call timer and caller badge.
+- `Music`: Media playback controls, live progress scrubber, animated visualizer, and artwork.
+- `Battery`: 
+  - *Charging*: Green electric flow gradient with remaining charge time.
+  - *Low Battery* ($\le 20\%$): Pulsing red warning glyph with live battery percentage.
+  - *Battery Saver*: Warm amber energy savings glyph with live battery percentage.
+- `LiveActivity`: Real-time tracking and delivery updates (e.g. Uber, delivery apps).
+- `Navigation`: Turn-by-turn routing indicators and directions.
+- `DownloadUpload`: Active file transfers with animated progress meters. Background message synchronization/polling (e.g. Snapchat, WhatsApp) is explicitly excluded.
+- `Hotspot`: Tethering status and connected client counter.
+- `Bluetooth`: Device connectivity and battery level.
+- `Flashlight`: Torch state indicator and toggle controls.
+- `ScreenRecording`: Active recording elapsed timer and controls.
 
 ## General Development Rules
 
@@ -93,13 +114,15 @@ Check for:
 - Regressions in landscape auto-hide, lock-screen behaviour or touch pass-through.
 - Behaviour that may fail on API 26 or common OEM Android versions.
 
-### Notifications, Calls and Media
+### Notifications, App Icons and Media
 
 Check for:
 
+- **App Icon Fidelity**: `SmartIslandNotificationListenerService` must load full-color application launcher icons via `loadAppIconBitmap(packageName)`. Do not substitute monochromatic 1-bit status bar `smallIcon` for the main app launcher icon in the collapsed pill or expanded card.
+- **Message Sync Exclusion**: Background polling or message sync notifications (e.g. *"Syncing messages..."*, *"Checking for messages..."*) must be suppressed from hijacking the download/upload progress mode.
+- **Expanded Pager Snapping**: Horizontal notification pagers in `IslandExpandedContent` must synchronize against `pagerState.settledPage` and guard programmatic scrolling with `!pagerState.isScrollInProgress` to avoid mid-swipe freezing.
 - Duplicate notifications or incorrect system-shade suppression.
 - Stale notifications remaining after cancellation.
-- Incorrect notification grouping or paging.
 - Invalid or cancelled notification actions.
 - Media state, progress or album artwork becoming stale.
 - Call actions being executed without checking permissions or current call state.
@@ -136,30 +159,19 @@ Check for:
 - Missing or unsafe defaults for newly introduced preferences.
 - Race conditions that can show an incorrect island mode.
 
-### Build and Compatibility
+### Build, CI/CD and Compatibility
 
 Check whether the change:
 
 - Compiles with JDK 17 and Android SDK 36.
 - Preserves minimum API 26 support.
-- Requires missing resources, dependencies or manifest declarations.
+- Uses official stable GitHub Actions versions (`actions/checkout@v4`, `actions/setup-java@v4`, `actions/upload-artifact@v4`, `actions/download-artifact@v4`).
+- Passes the full local CI command with zero errors:
+  ```bash
+  ./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest assembleDebug
+  ```
 - Breaks release shrinking or requires an appropriate ProGuard rule.
-- Introduces lint errors or warnings treated as errors.
-- Requires device testing that is not mentioned in the pull request.
-
-## Validation
-
-For code changes, use the same checks as GitHub Actions:
-
-```bash
-./gradlew --no-daemon --stacktrace lintDebug testDebugUnitTest assembleDebug
-```
-
-Do not attempt a signed release build unless release-signing credentials are
-intentionally available.
-
-Overlay, notification listener, calls, media, Shizuku and OEM-specific changes
-should also be tested on a physical Android device whenever possible.
+- Introduces lint errors or unhandled `NewApi` violations on supported API levels (API 26–36).
 
 ## Review Comment Format
 
@@ -185,36 +197,3 @@ Severity levels:
 
 Do not claim that something fails unless the failure can be traced to the
 changed code. Ask a question when required context is missing.
-
-## Issue Summaries
-
-When asked to summarize a bug report, produce:
-
-- Problem
-- Affected component
-- Device, Android and SmartIsland versions
-- Reproduction steps
-- Expected behaviour
-- Actual behaviour
-- Available evidence
-- Likely affected code
-- Missing information
-- Recommended next step
-
-When asked to summarize a feature request, produce:
-
-- Feature summary
-- User problem
-- Proposed behaviour
-- Affected SmartIsland components
-- Privacy and permission impact
-- API 26–36 and OEM compatibility concerns
-- UI and accessibility considerations
-- Implementation risks
-- Acceptance criteria
-- Questions requiring a maintainer decision
-
-Do not invent missing details. Clearly write `Unknown` or `Needs confirmation`
-when the issue does not contain enough information.
-
-Keep summaries concise and understandable for contributors.
