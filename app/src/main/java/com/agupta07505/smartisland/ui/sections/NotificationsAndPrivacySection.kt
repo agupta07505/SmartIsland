@@ -112,6 +112,7 @@ fun NotificationsAndPrivacySection(
                     title = "Show Island on Lock Screen",
                     subtitle = "Keep Smart Island floating when device is locked",
                     icon = Icons.Rounded.Lock,
+                    iconColor = Color(0xFFF59E0B),
                     checked = settings.showOnLockScreen,
                     onCheckedChange = { scope.launch { repository.setShowOnLockScreen(it) } }
                 )
@@ -183,6 +184,7 @@ fun NotificationsAndPrivacySection(
                     title = "Auto-Expand on New Notification",
                     subtitle = "Pop open island card when new alerts arrive, or keep minimized in pill",
                     icon = Icons.Rounded.NotificationsActive,
+                    iconColor = Color(0xFF38BDF8),
                     checked = settings.autoExpandOnNotification,
                     onCheckedChange = { scope.launch { repository.setAutoExpandOnNotification(it) } }
                 )
@@ -192,6 +194,7 @@ fun NotificationsAndPrivacySection(
                     title = "Notification Quick Actions",
                     subtitle = "Show actionable buttons like Reply, Mark Read, and Dismiss in expanded card",
                     icon = Icons.Rounded.TouchApp,
+                    iconColor = Color(0xFF6366F1),
                     checked = settings.showNotificationActions,
                     onCheckedChange = { scope.launch { repository.setShowNotificationActions(it) } }
                 )
@@ -201,6 +204,7 @@ fun NotificationsAndPrivacySection(
                     title = "Mirror Only (Hide from System Shade)",
                     subtitle = "Show notification only in Smart Island and hide from default notification shade",
                     icon = Icons.Rounded.VisibilityOff,
+                    iconColor = Color(0xFFA855F7),
                     checked = settings.hideFromNotificationShade,
                     onCheckedChange = { scope.launch { repository.setHideFromNotificationShade(it) } }
                 )
@@ -210,6 +214,7 @@ fun NotificationsAndPrivacySection(
                     title = "Auto-Hide Pill When Idle",
                     subtitle = "Hide the pill completely when there are no active alerts, music, or dynamic events",
                     icon = Icons.Rounded.Visibility,
+                    iconColor = Color(0xFF06B6D4),
                     checked = settings.hideWhenIdle,
                     onCheckedChange = { scope.launch { repository.setHideWhenIdle(it) } }
                 )
@@ -248,6 +253,7 @@ fun NotificationsAndPrivacySection(
                     title = "Live Delivery & Ride Tracking",
                     subtitle = "Real-time live badges for Uber, Swiggy, Zomato, Blinkit, Rapido, Ola, etc.",
                     icon = Icons.Rounded.DirectionsCar,
+                    iconColor = Color(0xFF10B981),
                     checked = settings.liveActivitiesEnabled,
                     onCheckedChange = { scope.launch { repository.setLiveActivitiesEnabled(it) } }
                 )
@@ -257,6 +263,7 @@ fun NotificationsAndPrivacySection(
                     title = "Turn-by-Turn Map Navigation",
                     subtitle = "Real-time direction arrows and distance for Google Maps & Waze",
                     icon = Icons.Rounded.Map,
+                    iconColor = Color(0xFFF97316),
                     checked = settings.navigationEnabled,
                     onCheckedChange = { scope.launch { repository.setNavigationEnabled(it) } }
                 )
@@ -404,6 +411,7 @@ private fun ToggleRowItem(
     subtitle: String,
     icon: ImageVector,
     checked: Boolean,
+    iconColor: Color = MaterialTheme.colorScheme.primary,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -423,15 +431,15 @@ private fun ToggleRowItem(
                     .size(38.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (checked) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                        else MaterialTheme.colorScheme.surfaceVariant
+                        if (checked) iconColor.copy(alpha = 0.14f)
+                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (checked) iconColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.size(20.dp)
                 )
             }

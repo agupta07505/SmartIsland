@@ -76,6 +76,7 @@ fun AboutSection() {
                     label = "Version",
                     value = getAppVersion(context),
                     icon = Icons.Rounded.Info,
+                    iconTint = Color(0xFF38BDF8),
                     onClick = {}
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
@@ -84,6 +85,7 @@ fun AboutSection() {
                     label = "Privacy Policy",
                     subtitle = "100% On-Device & Zero Tracking",
                     icon = Icons.Rounded.Lock,
+                    iconTint = Color(0xFF10B981),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/PRIVACY.md"))
                         runCatchingLogged("AboutSection", "Failed to open Privacy Policy") {
@@ -97,6 +99,7 @@ fun AboutSection() {
                     label = "Terms of Use",
                     subtitle = "GNU GPL v3 License Terms",
                     icon = Icons.Rounded.Description,
+                    iconTint = Color(0xFFF59E0B),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/TERMS.md"))
                         runCatchingLogged("AboutSection", "Failed to open Terms of Use") {
@@ -110,6 +113,7 @@ fun AboutSection() {
                     label = "Open Source Repository",
                     subtitle = "GitHub • Star & Contribute",
                     icon = Icons.Rounded.Code,
+                    iconTint = Color(0xFFA855F7),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
                         runCatchingLogged("AboutSection", "Failed to open Open Source link") {
@@ -344,6 +348,6 @@ private fun getAppVersion(context: Context): String {
             @Suppress("DEPRECATION")
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
-        packageInfo.versionName ?: "4.0.0"
-    } ?: "4.0.0"
+        packageInfo.versionName ?: com.agupta07505.smartisland.BuildConfig.VERSION_NAME
+    } ?: com.agupta07505.smartisland.BuildConfig.VERSION_NAME
 }

@@ -507,6 +507,7 @@ private fun StudioTopHeader(
                 )
             }
         }
+    }
 }
 
 @Composable
@@ -1003,8 +1004,7 @@ private fun FeaturesOverviewSection(
             title = "Notifications & Privacy Rules",
             subtitle = "Lock screen modes, auto-expand rules, quick actions, and app filters",
             icon = Icons.Rounded.Notifications,
-            iconBg = Color(0xFF1E3A8A),
-            iconTint = Color(0xFF38BDF8),
+            iconColor = Color(0xFF38BDF8),
             statusText = if (settings.showOnLockScreen) "Lock Screen Active" else "Standard",
             onClick = { onNavigateTo(FeatureDetailSection.NotificationRules) }
         )
@@ -1014,8 +1014,7 @@ private fun FeaturesOverviewSection(
             title = "App Shortcuts Launcher",
             subtitle = "Quick-launch up to 8 pinned apps or auto-fill with recent applications",
             icon = Icons.Rounded.Apps,
-            iconBg = Color(0xFF164E63),
-            iconTint = Color(0xFF22D3EE),
+            iconColor = Color(0xFF22D3EE),
             statusText = "${settings.shortcutPackages.size}/8 pinned",
             onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
         )
@@ -1025,8 +1024,7 @@ private fun FeaturesOverviewSection(
             title = "Feature Accent Colors Studio",
             subtitle = "Customize color themes for music, battery, calls, and dynamic events",
             icon = Icons.Rounded.ColorLens,
-            iconBg = Color(0xFF311B92),
-            iconTint = Color(0xFFB39DDB),
+            iconColor = Color(0xFFA855F7),
             statusText = "11 Modes",
             onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
         )
@@ -1062,8 +1060,7 @@ private fun SystemOverviewSection(
             title = "Permissions & System Setup",
             subtitle = "Shizuku 1-tap auto grant, Accessibility, notification access, and OEM killers",
             icon = Icons.Rounded.Shield,
-            iconBg = Color(0xFF064E3B),
-            iconTint = Color(0xFF34D399),
+            iconColor = Color(0xFF10B981),
             statusText = if (canEnable) "All Granted" else "Action Required",
             statusColor = if (canEnable) Color(0xFF0F9F6E) else Color(0xFFE88C25),
             onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) }
@@ -1074,8 +1071,7 @@ private fun SystemOverviewSection(
             title = "Gesture Controls & Playground",
             subtitle = "Swipe Up to dismiss, Swipe Down for floating multi-window, and swipe pagination",
             icon = Icons.Rounded.Gesture,
-            iconBg = Color(0xFF1E1B4B),
-            iconTint = Color(0xFF818CF8),
+            iconColor = Color(0xFF6366F1),
             statusText = "3 Gestures",
             onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
         )
@@ -1085,18 +1081,16 @@ private fun SystemOverviewSection(
             title = "Support & Feature Requests",
             subtitle = "Star on GitHub, report issues, and join our active Telegram community",
             icon = Icons.Rounded.People,
-            iconBg = Color(0xFF78350F),
-            iconTint = Color(0xFFFBBF24),
+            iconColor = Color(0xFFF59E0B),
             onClick = { onNavigateTo(FeatureDetailSection.SupportCommunity) }
         )
 
         // Item 4: About & Developer
         FeatureStudioNavigationCard(
             title = "About Smart Island",
-            subtitle = "Version v4.0.0 • Open Source GNU GPL-3.0 • Developer social profiles",
+            subtitle = "Version v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME} • Open Source GNU GPL-3.0 • Developer social profiles",
             icon = Icons.Rounded.Info,
-            iconBg = Color(0xFF581C87),
-            iconTint = Color(0xFFC084FC),
+            iconColor = Color(0xFFEC4899),
             onClick = { onNavigateTo(FeatureDetailSection.AboutApp) }
         )
     }
@@ -1107,8 +1101,7 @@ private fun FeatureStudioNavigationCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    iconBg: Color,
-    iconTint: Color,
+    iconColor: Color,
     statusText: String? = null,
     statusColor: Color = MaterialTheme.colorScheme.primary,
     onClick: () -> Unit
@@ -1132,13 +1125,13 @@ private fun FeatureStudioNavigationCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(iconBg.copy(alpha = 0.2f)),
+                    .background(iconColor.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = iconTint,
+                    tint = iconColor,
                     modifier = Modifier.size(22.dp)
                 )
             }

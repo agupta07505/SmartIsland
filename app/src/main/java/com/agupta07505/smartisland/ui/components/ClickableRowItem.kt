@@ -40,7 +40,7 @@ fun ClickableRowItem(
     subtitle: String? = null,
     value: String? = null,
     iconTint: Color = MaterialTheme.colorScheme.primary,
-    iconBg: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+    iconBg: Color = iconTint.copy(alpha = 0.12f),
     onClick: () -> Unit
 ) {
     Row(

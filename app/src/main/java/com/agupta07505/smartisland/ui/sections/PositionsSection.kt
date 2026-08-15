@@ -8,8 +8,7 @@
 package com.agupta07505.smartisland.ui.sections
 
 import android.widget.Toast
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,20 +20,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.automirrored.rounded.AlignHorizontalLeft
+import androidx.compose.material.icons.automirrored.rounded.AlignHorizontalRight
 import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.FitScreen
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -49,18 +47,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SliderSettingItem
-import com.agupta07505.smartisland.util.CameraCutoutDetector
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun PositionsSection(
@@ -69,12 +67,24 @@ fun PositionsSection(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+
+    // Dynamically calculate responsive notch coordinates for the current device screen
+    val screenWidthDp = configuration.screenWidthDp.toFloat()
+    val calculatedLeftX = (-(screenWidthDp / 2f - 40f)).coerceIn(
+        SmartIslandSettings.MIN_X_OFFSET,
+        -30f
+    )
+    val calculatedRightX = ((screenWidthDp / 2f - 40f)).coerceIn(
+        30f,
+        SmartIslandSettings.MAX_X_OFFSET
+    )
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Card 1: Interactive Live Notch Alignment Visualizer & 1-Tap Auto Align
+        // Card 1: Quick Responsive Layout Presets
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
@@ -93,222 +103,141 @@ fun PositionsSection(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column {
                         Text(
-                            text = "Camera Cutout Calibration",
+                            text = "Quick Layout Presets",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Auto-detect your device camera hole or fine-tune pill placement",
+                            text = "Instant 1-tap positioning calibrated to your device screen width (${screenWidthDp.toInt()} dp)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Interactive Mini Simulation Screen Top
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                            RoundedCornerShape(16.dp)
-                        ),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    // Status bar guide line
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(28.dp)
-                            .background(Color.Black.copy(alpha = 0.05f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Presets 2x2 Responsive Grid
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Row 1: Center Hole & Wide Island
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "9:41",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.size(6.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
-                                Box(modifier = Modifier.size(6.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
-                            }
-                        }
+                        val isCenterSelected = abs(settings.xOffset) < 5f && abs(settings.width - 112f) < 8f
+                        PresetCardItem(
+                            title = "Center Hole",
+                            subtitle = "Centered punch hole camera",
+                            icon = Icons.Rounded.CenterFocusStrong,
+                            isSelected = isCenterSelected,
+                            onClick = {
+                                scope.launch {
+                                    repository.setPosition(
+                                        width = 112f,
+                                        height = 34f,
+                                        xOffset = 0f,
+                                        yOffset = 10f
+                                    )
+                                    repository.setCornerRadius(20f)
+                                }
+                                Toast.makeText(context, "Applied Center Hole preset", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        val isWideSelected = abs(settings.xOffset) < 5f && abs(settings.width - 150f) < 8f
+                        PresetCardItem(
+                            title = "Wide Island",
+                            subtitle = "Spacious expanded layout",
+                            icon = Icons.Rounded.FitScreen,
+                            isSelected = isWideSelected,
+                            onClick = {
+                                scope.launch {
+                                    repository.setPosition(
+                                        width = 150f,
+                                        height = 38f,
+                                        xOffset = 0f,
+                                        yOffset = 12f
+                                    )
+                                    repository.setCornerRadius(22f)
+                                }
+                                Toast.makeText(context, "Applied Wide Island preset", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
-                    // Simulated Camera Cutout Dot
-                    Box(
-                        modifier = Modifier
-                            .padding(top = 10.dp)
-                            .size(14.dp)
-                            .background(Color(0xFF0F172A), CircleShape)
-                            .border(1.5.dp, Color(0xFF38BDF8).copy(alpha = 0.6f), CircleShape)
-                    )
-
-                    // Positioned Preview Island Pill (scaled down for canvas)
-                    val scaleFactor = 0.75f
-                    val animatedWidth by animateDpAsState(
-                        targetValue = (settings.width * scaleFactor).dp,
-                        animationSpec = tween(150),
-                        label = "pillWidth"
-                    )
-                    val animatedHeight by animateDpAsState(
-                        targetValue = (settings.height * scaleFactor).dp,
-                        animationSpec = tween(150),
-                        label = "pillHeight"
-                    )
-                    val animatedXOffset by animateDpAsState(
-                        targetValue = (settings.xOffset * scaleFactor).dp,
-                        animationSpec = tween(150),
-                        label = "pillX"
-                    )
-                    val animatedYOffset by animateDpAsState(
-                        targetValue = (settings.yOffset * scaleFactor).dp,
-                        animationSpec = tween(150),
-                        label = "pillY"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .offset(x = animatedXOffset, y = animatedYOffset)
-                            .size(width = animatedWidth, height = animatedHeight)
-                            .then(
-                                if (settings.enableShadow) {
-                                    Modifier.shadow(8.dp, RoundedCornerShape((settings.cornerRadius * scaleFactor).dp))
-                                } else Modifier
-                            )
-                            .clip(RoundedCornerShape((settings.cornerRadius * scaleFactor).dp))
-                            .background(Color.Black)
-                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape((settings.cornerRadius * scaleFactor).dp)),
-                        contentAlignment = Alignment.Center
+                    // Row 2: Left Corner & Right Corner
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(horizontal = 6.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF38BDF8), CircleShape)
-                            )
-                            Text(
-                                text = "Smart Island",
-                                color = Color.White,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        val isLeftSelected = settings.xOffset < -30f
+                        PresetCardItem(
+                            title = "Left Corner",
+                            subtitle = "Left-aligned punch hole",
+                            icon = Icons.AutoMirrored.Rounded.AlignHorizontalLeft,
+                            isSelected = isLeftSelected,
+                            onClick = {
+                                scope.launch {
+                                    repository.setPosition(
+                                        width = 105f,
+                                        height = 34f,
+                                        xOffset = calculatedLeftX,
+                                        yOffset = 10f
+                                    )
+                                    repository.setCornerRadius(20f)
+                                }
+                                Toast.makeText(context, "Applied Left Corner preset (${calculatedLeftX.toInt()}dp)", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        val isRightSelected = settings.xOffset > 30f
+                        PresetCardItem(
+                            title = "Right Corner",
+                            subtitle = "Right-aligned camera hole",
+                            icon = Icons.AutoMirrored.Rounded.AlignHorizontalRight,
+                            isSelected = isRightSelected,
+                            onClick = {
+                                scope.launch {
+                                    repository.setPosition(
+                                        width = 105f,
+                                        height = 34f,
+                                        xOffset = calculatedRightX,
+                                        yOffset = 10f
+                                    )
+                                    repository.setCornerRadius(20f)
+                                }
+                                Toast.makeText(context, "Applied Right Corner preset (+${calculatedRightX.toInt()}dp)", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
-                }
 
-                // 1-Tap Auto Align Button
-                Button(
-                    onClick = {
-                        val detected = CameraCutoutDetector.detect(context)
-                        scope.launch {
-                            repository.setPosition(
-                                width = detected.widthDp,
-                                height = detected.heightDp,
-                                xOffset = detected.xOffsetDp,
-                                yOffset = detected.yOffsetDp
-                            )
-                        }
-                        if (detected.hasHardwareCutout) {
-                            Toast.makeText(
-                                context,
-                                "Hardware camera cutout detected! Aligned perfectly.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Status bar height calibrated to center pill.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "1-Tap Auto-Align with Camera Cutout",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                }
-
-                // Presets Segment Buttons
-                Text(
-                    text = "Quick Notch Presets",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PresetButton(
-                        label = "Center Hole",
+                    // Row 3: Compact Pill
+                    val isCompactSelected = abs(settings.xOffset) < 5f && abs(settings.width - 92f) < 6f
+                    PresetCardItem(
+                        title = "Compact Pill",
+                        subtitle = "Minimal discreet footprint for small status bars",
+                        icon = Icons.Rounded.Smartphone,
+                        isSelected = isCompactSelected,
                         onClick = {
                             scope.launch {
-                                repository.setPosition(width = 112f, height = 34f, xOffset = 0f, yOffset = 12f)
+                                repository.setPosition(
+                                    width = 92f,
+                                    height = 30f,
+                                    xOffset = 0f,
+                                    yOffset = 8f
+                                )
+                                repository.setCornerRadius(18f)
                             }
+                            Toast.makeText(context, "Applied Compact Pill preset", Toast.LENGTH_SHORT).show()
                         },
-                        modifier = Modifier.weight(1f)
-                    )
-                    PresetButton(
-                        label = "Left Corner",
-                        onClick = {
-                            scope.launch {
-                                repository.setPosition(width = 112f, height = 34f, xOffset = -90f, yOffset = 12f)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    PresetButton(
-                        label = "Right Corner",
-                        onClick = {
-                            scope.launch {
-                                repository.setPosition(width = 112f, height = 34f, xOffset = 90f, yOffset = 12f)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    PresetButton(
-                        label = "Wide Island",
-                        onClick = {
-                            scope.launch {
-                                repository.setPosition(width = 145f, height = 38f, xOffset = 0f, yOffset = 14f)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -324,13 +253,13 @@ fun PositionsSection(
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text(
-                    text = "Precision Sizing & Position",
+                    text = "Precision Sizing & Fine Tuning",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Fine-tune dimension and offset millimeters for pixel-perfect notch wrapping",
+                    text = "Fine-tune dimension millimeters and offsets with precision controls",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
@@ -410,7 +339,7 @@ fun PositionsSection(
                 OutlinedButton(
                     onClick = {
                         scope.launch { repository.resetPosition() }
-                        Toast.makeText(context, "Position reset to defaults", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Position reset to factory defaults", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -425,26 +354,80 @@ fun PositionsSection(
 }
 
 @Composable
-private fun PresetButton(
-    label: String,
+private fun PresetCardItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        label = "presetBorder"
+    )
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        label = "presetBg"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        label = "presetIconTint"
+    )
+
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(bgColor)
+            .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 4.dp),
-        contentAlignment = Alignment.Center
+            .padding(14.dp)
     ) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(iconTint.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = "Active",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 14.sp
+                )
+            }
+        }
     }
 }
