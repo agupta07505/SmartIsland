@@ -62,6 +62,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
         val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
         val HideWhenIdle = booleanPreferencesKey("hide_when_idle")
+        val AutoExpandOnNotification = booleanPreferencesKey("auto_expand_on_notification")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -151,7 +152,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
                     ?.toSet()
                     ?: defaults.disabledSoundPackages,
-                hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle
+                hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle,
+                autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification
             )
         }
 
@@ -294,6 +296,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setHideWhenIdle(value: Boolean) = editSafely {
         it[Keys.HideWhenIdle] = value
+    }
+    suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
+        it[Keys.AutoExpandOnNotification] = value
     }
 
     suspend fun resetPosition() = editSafely {

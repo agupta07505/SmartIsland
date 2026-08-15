@@ -177,6 +177,50 @@ fun NotificationsAndPrivacySection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
+                    text = "Auto-expand on new notification",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Automatically expand the island card when a new notification arrives. When turned off, notifications stay quietly in the pill and you can tap to expand anytime.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 16.sp
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = settings.autoExpandOnNotification,
+                onCheckedChange = { checked ->
+                    scope.launch { repository.setAutoExpandOnNotification(checked) }
+                }
+            )
+        }
+    }
+
+    Spacer(Modifier.height(16.dp))
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
                     text = "Notification action buttons",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,

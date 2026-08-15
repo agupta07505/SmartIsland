@@ -23,6 +23,7 @@ class SmartIslandSettingsTest {
         assertEquals(22f, settings.cornerRadius)
         assertEquals(true, settings.showNotificationActions)
         assertEquals(true, settings.hideFromNotificationShade)
+        assertEquals(true, settings.autoExpandOnNotification)
     }
 
     @Test

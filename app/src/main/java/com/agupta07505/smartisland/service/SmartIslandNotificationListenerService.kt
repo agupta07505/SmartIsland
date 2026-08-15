@@ -398,7 +398,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 mode = mode,
                 contentIntent = notification.contentIntent
             ),
-            autoExpand = shouldIslandOnly
+            autoExpand = shouldIslandOnly && settings.autoExpandOnNotification
         )
 
         if (isNewNotif && (mode == IslandMode.Notification || shouldIslandOnly) && mode != IslandMode.DownloadUpload) {
