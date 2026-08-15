@@ -229,6 +229,31 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testClearTestNotificationsOnlyRemovesDemoNotifications() {
+        val repository = SmartIslandNotificationRepository()
+        
+        val realNotif = IslandNotification(
+            key = "real_whatsapp_1",
+            packageName = "com.whatsapp",
+            appName = "WhatsApp",
+            title = "Alice",
+            text = "Hello!",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        repository.postNotification(realNotif)
+        repository.showDemo(IslandMode.Battery)
+
+        assertEquals(2, repository.notifications.value.size)
+
+        repository.clearTestNotifications()
+
+        val remaining = repository.notifications.value
+        assertEquals(1, remaining.size)
+        assertEquals("real_whatsapp_1", remaining[0].key)
+    }
+
+    @Test
     fun keepsOnlyTheMostRecentFiftyNotifications() {
         val repository = SmartIslandNotificationRepository()
 
