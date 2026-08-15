@@ -47,7 +47,7 @@ class AppNotificationFilterTest {
         val mockNotif = mockk<Notification>()
         mockNotif.flags = 0
         mockNotif.category = Notification.CATEGORY_MESSAGE
-        val extras = mockk<Bundle>()
+        val extras = mockk<Bundle>(relaxed = true)
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Alice"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Hello"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -81,7 +81,7 @@ class AppNotificationFilterTest {
         val mockNotif = mockk<Notification>()
         mockNotif.flags = 0
         mockNotif.category = Notification.CATEGORY_MESSAGE
-        val extras = mockk<Bundle>()
+        val extras = mockk<Bundle>(relaxed = true)
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Alice"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Hello"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -109,7 +109,7 @@ class AppNotificationFilterTest {
     fun testProgressNotificationMapsToDownloadUploadMode() {
         val mockNotif = mockk<Notification>()
         mockNotif.category = Notification.CATEGORY_PROGRESS
-        val extras = mockk<Bundle>()
+        val extras = mockk<Bundle>(relaxed = true)
         every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
@@ -133,7 +133,7 @@ class AppNotificationFilterTest {
         val mockNotif = mockk<Notification>()
         mockNotif.flags = Notification.FLAG_ONGOING_EVENT
         mockNotif.category = Notification.CATEGORY_PROGRESS
-        val extras = mockk<Bundle>()
+        val extras = mockk<Bundle>(relaxed = true)
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "app-release.apk"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Downloading..."
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -162,7 +162,8 @@ class AppNotificationFilterTest {
         mockNotif.flags = 0
         mockNotif.category = null
         mockNotif.actions = null
-        val extras = mockk<Bundle>()
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Torch is on"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to turn off"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -181,25 +182,25 @@ class AppNotificationFilterTest {
     fun testDownloadCompleteDetection() {
         val completedNotif = mockk<Notification>(relaxed = true)
         val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 100
         every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "file.apk"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Download complete"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
-        every { completedNotif.extras } returns extras
+        completedNotif.extras = extras
 
         assertTrue(completedNotif.isDownloadComplete())
 
         val finishedNoProgressNotif = mockk<Notification>(relaxed = true)
         val extras2 = mockk<Bundle>(relaxed = true)
+        every { extras2.getCharSequence(any()) } returns null
         every { extras2.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
         every { extras2.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
         every { extras2.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
         every { extras2.getCharSequence(Notification.EXTRA_TITLE) } returns "File downloaded"
         every { extras2.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to view"
-        every { extras2.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
-        every { finishedNoProgressNotif.extras } returns extras2
+        finishedNoProgressNotif.extras = extras2
 
         assertTrue(finishedNoProgressNotif.isDownloadComplete())
     }
@@ -208,21 +209,21 @@ class AppNotificationFilterTest {
     fun testScreenRecordingCompleteDetection() {
         val completedNotif = mockk<Notification>(relaxed = true)
         val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen recording"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Screen recording saved"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         completedNotif.flags = 0
-        every { completedNotif.extras } returns extras
+        completedNotif.extras = extras
 
         assertTrue(completedNotif.isScreenRecordingComplete())
 
         val activeNotif = mockk<Notification>(relaxed = true)
         val extras2 = mockk<Bundle>(relaxed = true)
+        every { extras2.getCharSequence(any()) } returns null
         every { extras2.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen recording"
         every { extras2.getCharSequence(Notification.EXTRA_TEXT) } returns "Recording screen..."
-        every { extras2.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         activeNotif.flags = Notification.FLAG_ONGOING_EVENT
-        every { activeNotif.extras } returns extras2
+        activeNotif.extras = extras2
 
         assertFalse(activeNotif.isScreenRecordingComplete())
     }
@@ -231,12 +232,12 @@ class AppNotificationFilterTest {
     fun testCallEndedDetection() {
         val endedNotif = mockk<Notification>(relaxed = true)
         val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Call ended"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Call duration 01:24"
-        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
         endedNotif.flags = 0
         endedNotif.category = Notification.CATEGORY_CALL
-        every { endedNotif.extras } returns extras
+        endedNotif.extras = extras
 
         assertTrue(endedNotif.isCallEnded())
     }

@@ -25,17 +25,20 @@ data class DetectedCutoutInfo(
 object CameraCutoutDetector {
 
     /**
-     * Calculates the physical pill position and dimensions matching the device's camera cutout.
+     * Calculates the physical pill position and dimensions matching the device's camera cutout coordinates.
      */
     fun calculateCutoutOffset(
-        rect: Rect,
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
         screenWidthPx: Int,
         density: Float
     ): DetectedCutoutInfo {
         if (density <= 0f) {
             return DetectedCutoutInfo(0f, 12f, 112f, 34f, false)
         }
-        val cutoutCenterX = rect.centerX().toFloat()
+        val cutoutCenterX = (left + right) / 2f
         val screenCenterX = screenWidthPx / 2f
         val xOffsetPx = cutoutCenterX - screenCenterX
         val xOffsetDp = (xOffsetPx / density).coerceIn(
@@ -43,18 +46,18 @@ object CameraCutoutDetector {
             SmartIslandSettings.MAX_X_OFFSET
         )
 
-        val yOffsetDp = (rect.top.toFloat() / density).coerceIn(
+        val yOffsetDp = (top.toFloat() / density).coerceIn(
             SmartIslandSettings.MIN_Y_OFFSET,
             SmartIslandSettings.MAX_Y_OFFSET
         )
 
         val paddingW = 24f
         val paddingH = 10f
-        val widthDp = (rect.width().toFloat() / density + paddingW).coerceIn(
+        val widthDp = ((right - left).toFloat() / density + paddingW).coerceIn(
             SmartIslandSettings.MIN_WIDTH,
             SmartIslandSettings.MAX_WIDTH
         )
-        val heightDp = (rect.height().toFloat() / density + paddingH).coerceIn(
+        val heightDp = ((bottom - top).toFloat() / density + paddingH).coerceIn(
             SmartIslandSettings.MIN_HEIGHT,
             SmartIslandSettings.MAX_HEIGHT
         )
@@ -67,6 +70,22 @@ object CameraCutoutDetector {
             hasHardwareCutout = true
         )
     }
+
+    /**
+     * Calculates the physical pill position and dimensions matching the device's camera cutout rect.
+     */
+    fun calculateCutoutOffset(
+        rect: Rect,
+        screenWidthPx: Int,
+        density: Float
+    ): DetectedCutoutInfo = calculateCutoutOffset(
+        left = rect.left,
+        top = rect.top,
+        right = rect.right,
+        bottom = rect.bottom,
+        screenWidthPx = screenWidthPx,
+        density = density
+    )
 
     /**
      * Detects hardware camera cutout on the current device using WindowInsets / DisplayCutout API.

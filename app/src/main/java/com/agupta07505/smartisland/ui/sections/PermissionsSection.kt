@@ -11,16 +11,31 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -28,35 +43,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.agupta07505.smartisland.ui.PermissionCard
-
-import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.ui.PermissionCard
 import com.agupta07505.smartisland.util.OemAutostartUtil
 import com.agupta07505.smartisland.util.ShizukuManager
 import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.launch
-
-import androidx.compose.material.icons.rounded.CheckCircle
 
 @Composable
 fun PermissionsSection(
@@ -74,19 +78,25 @@ fun PermissionsSection(
     var isOemAutostartEnabled by remember { mutableStateOf(batteryIgnored) }
     var isOverlayWarningDisabled by remember { mutableStateOf(false) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Shizuku 1-Tap Auto Grant Card
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Shizuku 1-Tap Auto Setup Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -100,20 +110,23 @@ fun PermissionsSection(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp)),
+                                .size(42.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.FlashOn,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Column {
                             Text(
-                                text = "Shizuku 1-Tap Setup",
+                                text = "Shizuku 1-Tap Auto Setup",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -164,52 +177,55 @@ fun PermissionsSection(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = if (isExecutingShizuku) "Granting..." else if (ShizukuManager.hasPermission()) "1-Tap Grant" else "Grant Access",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Automatically grant Accessibility, Notification Access, Battery Optimization, and OEM Autostart in 1 tap using Shizuku.",
+                    text = "Automatically grant Accessibility, Notification Access, Battery Optimization, and OEM Autostart in 1 tap without visiting multiple system menus.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             }
         }
+
+        // Required Permission 1: Accessibility
         PermissionCard(
-            title = "Accessibility service",
-            description = "Required to draw the pill over the status bar and receive touches without interference.",
+            title = "Accessibility Floating Service",
+            description = "Draws the floating island over the status bar and receives touch gestures without blocking other apps.",
             granted = overlayGranted,
-            buttonText = "Enable",
+            buttonText = "Grant Permission",
             onClick = onOverlayClick
         )
 
+        // Required Permission 2: Notification Listener
         PermissionCard(
-            title = "Notification listener",
-            description = "Lets Smart Island show incoming notification content.",
+            title = "Notification Access Listener",
+            description = "Reads incoming notifications to display alerts, media playback, calls, and dynamic island events.",
             granted = notificationGranted,
-            buttonText = "Enable",
+            buttonText = "Grant Permission",
             onClick = onNotificationClick
         )
 
+        // Recommended Permission 3: Battery Optimization
         PermissionCard(
-            title = "Battery optimization",
-            description = "Recommended: set to 'No restrictions' / ignore battery optimizations so the system does not stop Smart Island in the background.",
+            title = "Battery Optimization (No Restrictions)",
+            description = "Prevents Android from killing the Smart Island background process when memory gets tight.",
             granted = batteryIgnored,
-            buttonText = "Enable",
+            buttonText = "Disable Restrictions",
             onClick = onBatteryClick
         )
 
         // Overlay System Warning Card
         val warningIconColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.onSurfaceVariant
-        val warningBgColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
+        val warningBgColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -247,7 +263,7 @@ fun PermissionsSection(
                         }
                         Column {
                             Text(
-                                text = "Overlay system warning",
+                                text = "Suppress System Overlay Warning",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -284,12 +300,12 @@ fun PermissionsSection(
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Text(if (isOverlayWarningDisabled) "Open" else "Hide", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (isOverlayWarningDisabled) "Open" else "Hide Alert", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Redirect to notification settings to hide the \"displaying over other apps\" alert.",
+                    text = "Opens Android system notification channels to hide the persistent \"Smart Island is displaying over other apps\" banner.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
@@ -350,7 +366,7 @@ fun PermissionsSection(
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "Granted",
+                                        text = "Configured",
                                         color = Color(0xFF0F9F6E),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
@@ -366,7 +382,7 @@ fun PermissionsSection(
                                 onClick = {
                                     scope.launch {
                                         val result = ShizukuManager.grantOemAutostartAndKillProtection(context)
-                                        result.onSuccess { msg ->
+                                        result.onSuccess {
                                             isOemAutostartEnabled = true
                                             Toast.makeText(context, "OEM autostart granted via Shizuku!", Toast.LENGTH_SHORT).show()
                                         }.onFailure { err ->
@@ -394,7 +410,7 @@ fun PermissionsSection(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "On Xiaomi/MIUI, OPPO, Vivo, and Samsung, enable Autostart and set Battery Saver to 'No restrictions' to prevent system task killers from stopping Smart Island.",
+                    text = "On Xiaomi/HyperOS, Samsung OneUI, OPPO ColorOS, and Vivo OriginOS, enable Autostart to prevent custom OEM task killers from terminating Smart Island.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
