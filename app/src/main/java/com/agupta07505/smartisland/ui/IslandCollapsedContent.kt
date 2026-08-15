@@ -38,6 +38,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.BatteryAlert
+import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.WifiTethering
@@ -237,9 +239,18 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.Battery -> {
+                    val pctText = notification?.text ?: "49%"
+                    val title = notification?.title?.lowercase() ?: ""
+                    val isBatterySaver = title.contains("saver") || notification?.category == "battery_saver"
+                    val isLowBattery = title.contains("low") || notification?.category == "battery_low" || (pctText.replace("%", "").toFloatOrNull() ?: 50f) <= 20f
+                    val textColor = when {
+                        isLowBattery -> Color(0xFFEF4444)
+                        isBatterySaver -> Color(0xFFF59E0B)
+                        else -> Color(settings.batteryColor)
+                    }
                     Text(
-                        text = notification?.text ?: "49%",
-                        color = Color(settings.batteryColor),
+                        text = pctText,
+                        color = textColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -329,7 +340,15 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
     val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
-    val batteryColor = Color(settings.batteryColor)
+    val title = notification?.title?.lowercase() ?: ""
+    val isBatterySaver = title.contains("saver") || notification?.category == "battery_saver"
+    val isLowBattery = title.contains("low") || notification?.category == "battery_low" || pct <= 20f
+
+    val batteryColor = when {
+        isLowBattery -> Color(0xFFEF4444)
+        isBatterySaver -> Color(0xFFF59E0B)
+        else -> Color(settings.batteryColor)
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "batteryPulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -362,17 +381,42 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
             modifier = Modifier.size(22.dp),
             color = batteryColor
         )
-        Icon(
-            Icons.Rounded.Bolt,
-            contentDescription = "Charging",
-            tint = batteryColor,
-            modifier = Modifier
-                .size(14.dp)
-                .graphicsLayer {
-                    scaleX = pulseScale
-                    scaleY = pulseScale
-                }
-        )
+        when {
+            isBatterySaver -> {
+                Icon(
+                    Icons.Rounded.BatterySaver,
+                    contentDescription = "Battery Saver",
+                    tint = batteryColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            isLowBattery -> {
+                Icon(
+                    Icons.Rounded.BatteryAlert,
+                    contentDescription = "Low Battery",
+                    tint = batteryColor,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                )
+            }
+            else -> {
+                Icon(
+                    Icons.Rounded.Bolt,
+                    contentDescription = "Charging",
+                    tint = batteryColor,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                )
+            }
+        }
     }
 }
 

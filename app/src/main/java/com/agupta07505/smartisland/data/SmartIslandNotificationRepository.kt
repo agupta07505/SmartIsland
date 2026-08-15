@@ -133,15 +133,41 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Next", null)
                 )
             )
-            IslandMode.Battery -> IslandNotification(
-                key = "demo_battery",
-                packageName = "com.android.systemui",
-                appName = "System",
-                title = "Charging",
-                text = "85%",
-                timeMillis = System.currentTimeMillis(),
-                mode = IslandMode.Battery
-            )
+            IslandMode.Battery -> {
+                val current = notifications.value.find { it.key == "demo_battery" }
+                when (current?.title) {
+                    "Charging" -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Low Battery",
+                        text = "15%",
+                        category = "battery_low",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                    "Low Battery" -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Battery Saver ON",
+                        text = "18%",
+                        category = "battery_saver",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                    else -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Charging",
+                        text = "85%",
+                        category = "battery_charging",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                }
+            }
             IslandMode.LiveActivity -> IslandNotification(
                 key = "demo_live_activity",
                 packageName = "com.ubercab",
