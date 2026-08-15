@@ -66,12 +66,13 @@ fun IslandExpandedContent(
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                // The island starts at collapsed height. Unbounded measurement is
-                // required here so the launcher can discover its natural height.
                 .wrapContentHeight(unbounded = true)
                 .onSizeChanged {
                     val measuredHeight = with(density) { it.height.toDp() }
-                    if (measuredHeight > 0.dp) onHeightMeasured(measuredHeight)
+                    if (measuredHeight > 0.dp) {
+                        val clamped = measuredHeight.coerceIn(80.dp, 180.dp)
+                        onHeightMeasured(clamped)
+                    }
                 }
         ) {
             EmptyExpanded(settings = settings, apps = launcherApps, onLaunchApp = onLaunchApp)
@@ -93,16 +94,32 @@ fun IslandExpandedContent(
         pageCount = { notifications.size }
     )
 
-    // Sync external selectedIndex updates
+    // Sync external selectedIndex updates ONLY when not currently user-scrolling,
+    // preventing gesture interrupts mid-swipe that cause half-page frozen states.
     LaunchedEffect(selectedIndex) {
-        if (selectedIndex in notifications.indices && pagerState.currentPage != selectedIndex) {
+        if (selectedIndex in notifications.indices &&
+            !pagerState.isScrollInProgress &&
+            pagerState.currentPage != selectedIndex
+        ) {
             pagerState.animateScrollToPage(selectedIndex)
         }
     }
 
-    // Sync pager page updates back to caller
-    LaunchedEffect(pagerState.currentPage) {
-        onPageSelected(pagerState.currentPage)
+    // Sync settled page updates back to caller ONLY when scroll has settled
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage in notifications.indices) {
+            onPageSelected(pagerState.settledPage)
+        }
+    }
+
+    // Safety net: Ensure pager never stays stuck at a non-zero offset fraction when scroll finishes
+    LaunchedEffect(pagerState.isScrollInProgress) {
+        if (!pagerState.isScrollInProgress && pagerState.currentPageOffsetFraction != 0f) {
+            val targetPage = pagerState.settledPage.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
+            if (targetPage in notifications.indices) {
+                pagerState.animateScrollToPage(targetPage)
+            }
+        }
     }
 
     val bottomPadding = 16.dp
@@ -125,6 +142,9 @@ fun IslandExpandedContent(
                 IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
                 IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
                 IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
+                IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.Flashlight -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -232,6 +252,24 @@ fun IslandExpandedContent(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
                                 onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Bluetooth -> BluetoothExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Flashlight -> FlashlightExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.ScreenRecording -> ScreenRecordingExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
                                 onCollapse = onCollapse,
                                 settings = settings
                             )

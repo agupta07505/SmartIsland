@@ -54,29 +54,39 @@ fun IncomingCallExpanded(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = notification?.title?.takeIf { it.isNotBlank() }
-                ?: notification?.text?.takeIf { it.isNotBlank() }
-                ?: "Incoming call",
-            color = Color.White,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        val isRinging = notification?.isCallRinging == true
+
+        androidx.compose.foundation.layout.Column(
             modifier = Modifier.weight(1f)
-        )
+        ) {
+            Text(
+                text = notification?.title?.takeIf { it.isNotBlank() }
+                    ?: notification?.text?.takeIf { it.isNotBlank() }
+                    ?: if (isRinging) "Incoming call" else "Active call",
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!isRinging) {
+                val time = notification?.timeMillis ?: System.currentTimeMillis()
+                com.agupta07505.smartisland.ui.CallTimer(
+                    postTimeMillis = time,
+                    color = Color(settings.callColor)
+                )
+            }
+        }
+
         CircleActionButton(
             color = Color(0xFFE11D48),
             icon = Icons.Rounded.Close,
             onClick = { 
-                notification.sendFirstAction(context, "decline", "reject", "hang", "end") 
+                notification.sendFirstAction(context, "decline", "reject", "hang", "end", "cancel") 
                 onCollapse()
             }
         )
-        if (notification?.actionIntents?.any { action ->
-                action.title.contains("answer", ignoreCase = true) ||
-                action.title.contains("accept", ignoreCase = true)
-            } == true) {
+        if (isRinging) {
             CircleActionButton(
                 color = Color(settings.callColor),
                 icon = Icons.Rounded.Call,

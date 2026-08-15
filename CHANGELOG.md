@@ -4,6 +4,58 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [5.0.0] - 2026-08-15
+
+### Added
+
+- **Low Battery & Battery Saver Modes (`IslandMode.Battery`)**:
+  - Added dedicated visual states for battery health:
+    - *Low Battery* (20%): Pulsing red `BatteryAlert` indicator glyph with live battery percentage badge.
+    - *Battery Saver*: Warm amber `BatterySaver` energy-savings glyph with live battery percentage badge.
+    - *Charging*: Electric green lightning bolt with remaining charge time estimate.
+  - Broadcast receiver integration via `ACTION_BATTERY_LOW`, `ACTION_BATTERY_OKAY`, and `ACTION_POWER_SAVE_MODE_CHANGED` in `SystemEventReceiver`.
+- **Full-Color App Launcher Icons (v4 Parity)**:
+  - Restored `loadAppIconBitmap(packageName)` utilizing `packageManager.getApplicationIcon(packageName)` with LRU bitmap caching in `SmartIslandNotificationListenerService`.
+  - Displays original, full-color application launcher icons (WhatsApp, Snapchat, Gmail, Instagram, etc.) in the collapsed pill and expanded cards, eliminating 1-bit status bar silhouettes.
+- **Message Sync Notification Filtering**:
+  - Implemented `NotificationFilter.isMessageSyncNotification` to detect background chat polling and synchronization notifications (*"Syncing messages..."*, *"Checking for new messages"*, *"Connecting..."*, *"Syncing snaps"*).
+  - Explicitly suppressed sync notifications from triggering or hijacking the active download/upload progress mode.
+- **Revamped 5-Gesture Guide & Controls (`GesturesSection.kt`)**:
+  - Completely updated gesture guide with structured, step-by-step text instructions, badges, and quick reference chips for all 5 gestures:
+    1. *Single Tap / Click*: Expand pill & collapse back *(Cutout region triggers shortcuts even when idle-hidden)*.
+    2. *Quick Swipe Up*: Dismiss the currently active notification card.
+    3. *Hold + Swipe Up*: Press & hold for 300ms until haptic vibration pulse, then swipe up to clear **all** notifications simultaneously.
+    4. *Swipe Down*: Drag downward by \ge 48dp to launch the application in a freeform floating window overlay.
+    5. *Swipe Left / Right*: Smooth horizontal swipe navigation between multiple notifications and media in the stack.
+- **Horizontal Pager Snapping Stability**:
+  - Synchronized horizontal notification card pager in `IslandExpandedContent` with `pagerState.settledPage` and guarded programmatic page scrolling with `!pagerState.isScrollInProgress`, preventing mid-swipe freezing or locking between notification cards.
+- **Flashlight Dynamic Island Mode**:
+  - Added `IslandMode.Flashlight` with active torch indicator badge and 1-tap quick turn-off action.
+- **Screen Recording Mode**:
+  - Added `IslandMode.ScreenRecording` with live elapsed recording timer.
+- **Custom RGB Slider Color Picker**:
+  - Added fine-grained Red, Green, Blue slider dialog with real-time Hex color preview for all 11 dynamic island modes.
+- **Split Island Multi-State Pill**:
+  - Added secondary auxiliary bubble pill support for concurrent background events (e.g. Music + Hotspot, Call + Bluetooth).
+- **Refreshed Showcase Screenshots**:
+  - Added 16 high-resolution screenshots in `assets/screenshots/` detailing the Simulation Lab, Notch Layouts, Sizing Controls, Features Hub, Privacy Rules, Live Activities, App Shortcuts, Color Studio, Custom RGB Picker, Expanded Music Player, About Screen, Community Feedback, 5 Gesture Guides, Permissions Center, and Floating Home Screen Island.
+
+### Changed
+
+- **Version Bump**: Updated application version to **`5.0.0`** (`versionCode 5`).
+- **Copilot & Contributing Guidelines**: Updated `.github/copilot-instructions.md` with all v5.0.0 island modes, icon loading rules, pager snapping requirements, and CI/CD validation instructions.
+
+### Fixed
+
+- **GitHub Actions CI/CD Pipeline**:
+  - Fixed workflow version incompatibilities by updating all GitHub action dependencies to stable official `@v4` (`actions/checkout@v4`, `actions/setup-java@v4`, `actions/upload-artifact@v4`, `actions/download-artifact@v4`).
+- **Camera Cutout Detector API Guard**:
+  - Updated `display?.cutout` check from API 28 (P) to API 29 (Q) in `CameraCutoutDetector.kt` to fix `NewApi` compilation errors.
+- **Compose Lint Suppressions**:
+  - Added lint rule suppressions in `app/build.gradle.kts` for non-fatal compose warnings (`IconXmlAndPng`, `BatteryLife`, `ConfigurationScreenWidthHeight`, `ModifierParameter`), ensuring 100% clean CI builds.
+- **On-Device Version Verification**:
+  - Verified `versionName = 5.0.0` and `versionCode = 5` across Settings, About screen, and ADB package dumpsys.
+
 ## [4.0.0] - 2026-07-27
 
 ### Added

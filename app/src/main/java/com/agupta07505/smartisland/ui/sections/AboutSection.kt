@@ -12,10 +12,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
-import com.agupta07505.smartisland.util.runCatchingLogged
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,14 +26,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -43,35 +41,51 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
+import com.agupta07505.smartisland.util.runCatchingLogged
 
 @Composable
 fun AboutSection() {
     val context = LocalContext.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Application Information",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
                 ClickableRowItem(
                     label = "Version",
                     value = getAppVersion(context),
                     icon = Icons.Rounded.Info,
+                    iconTint = Color(0xFF38BDF8),
                     onClick = {}
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
                 ClickableRowItem(
                     label = "Privacy Policy",
+                    subtitle = "100% On-Device & Zero Tracking",
                     icon = Icons.Rounded.Lock,
+                    iconTint = Color(0xFF10B981),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/PRIVACY.md"))
                         runCatchingLogged("AboutSection", "Failed to open Privacy Policy") {
@@ -79,9 +93,13 @@ fun AboutSection() {
                         } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
                 ClickableRowItem(
                     label = "Terms of Use",
+                    subtitle = "GNU GPL v3 License Terms",
                     icon = Icons.Rounded.Description,
+                    iconTint = Color(0xFFF59E0B),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/TERMS.md"))
                         runCatchingLogged("AboutSection", "Failed to open Terms of Use") {
@@ -89,9 +107,13 @@ fun AboutSection() {
                         } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
                 ClickableRowItem(
-                    label = "Open Source",
+                    label = "Open Source Repository",
+                    subtitle = "GitHub • Star & Contribute",
                     icon = Icons.Rounded.Code,
+                    iconTint = Color(0xFFA855F7),
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
                         runCatchingLogged("AboutSection", "Failed to open Open Source link") {
@@ -104,14 +126,19 @@ fun AboutSection() {
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text("Contact developer", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Developer & Contact",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -140,7 +167,7 @@ fun AboutSection() {
                         modifier = Modifier.weight(1f)
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -176,8 +203,6 @@ fun AboutSection() {
     }
 }
 
-
-
 @Composable
 private fun ContactButton(
     icon: @Composable () -> Unit,
@@ -188,11 +213,11 @@ private fun ContactButton(
     OutlinedButton(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             icon()
@@ -200,7 +225,7 @@ private fun ContactButton(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -249,14 +274,13 @@ private fun LinkedinIcon() {
     Box(
         modifier = Modifier
             .size(18.dp)
-            .background(Color(0xFF0A66C2), shape = RoundedCornerShape(3.dp)),
+            .background(Color(0xFF0A66C2), shape = RoundedCornerShape(4.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "in",
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
             fontSize = 11.sp,
             modifier = Modifier.padding(bottom = 2.dp)
         )
@@ -324,6 +348,6 @@ private fun getAppVersion(context: Context): String {
             @Suppress("DEPRECATION")
             context.packageManager.getPackageInfo(context.packageName, 0)
         }
-        packageInfo.versionName ?: "1.0"
-    } ?: "1.0"
+        packageInfo.versionName ?: com.agupta07505.smartisland.BuildConfig.VERSION_NAME
+    } ?: com.agupta07505.smartisland.BuildConfig.VERSION_NAME
 }

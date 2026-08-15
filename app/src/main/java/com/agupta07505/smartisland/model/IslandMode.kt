@@ -16,5 +16,8 @@ enum class IslandMode {
     LiveActivity,
     Navigation,
     DownloadUpload,
-    Hotspot
+    Hotspot,
+    Bluetooth,
+    Flashlight,
+    ScreenRecording
 }

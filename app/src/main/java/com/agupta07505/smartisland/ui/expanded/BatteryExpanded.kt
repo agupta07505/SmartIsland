@@ -35,6 +35,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BatteryAlert
+import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -47,13 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.lerp
-import com.agupta07505.smartisland.data.SmartIslandSettings
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.components.DottedRing
 import com.agupta07505.smartisland.util.runCatchingLogged
@@ -65,14 +67,22 @@ fun BatteryExpanded(
     settings: SmartIslandSettings
 ) {
     val context = LocalContext.current
-    val batteryColor = Color(settings.batteryColor)
-    val midBatteryColor = lerp(batteryColor, Color.White, 0.35f)
-    val lightestBatteryColor = lerp(batteryColor, Color.White, 0.65f)
     val pctText = notification.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
 
-    // Animatable progress slide up
+    val titleLower = notification.title.lowercase()
+    val isBatterySaver = titleLower.contains("saver") || notification.category == "battery_saver"
+    val isLowBattery = titleLower.contains("low") || notification.category == "battery_low" || pct <= 20f
+
+    val batteryColor = when {
+        isLowBattery -> Color(0xFFEF4444)
+        isBatterySaver -> Color(0xFFF59E0B)
+        else -> Color(settings.batteryColor)
+    }
+    val midBatteryColor = lerp(batteryColor, Color.White, 0.35f)
+    val lightestBatteryColor = lerp(batteryColor, Color.White, 0.65f)
+
     val animatedProgress = remember { Animatable(0f) }
     LaunchedEffect(progress) {
         animatedProgress.animateTo(
@@ -102,44 +112,34 @@ fun BatteryExpanded(
         label = "dottedRingRotation"
     )
 
-    /*
-     * ⚠️ HIDDEN API: BatteryManager.computeChargeTimeRemaining()
-     *
-     * This is a non-SDK interface restricted on Android 9+ (API 28+).
-     * Behavior varies by device:
-     *   - Some devices: returns accurate remaining time in milliseconds
-     *   - Most devices: returns -1 (hidden API blocked)
-     *   - Some OEMs: may throw or return 0
-     *
-     * We fall back to a heuristic: ~1.5 minutes per remaining percent.
-     * This is intentionally a rough estimate — it does not account for
-     * varying charge speeds (fast charging, wireless, etc.).
-     */
-    val timeText = remember(pct) {
-        val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
-        val remainingMs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            runCatchingLogged("BatteryExpanded", "computeChargeTimeRemaining failed") {
-                batteryManager?.computeChargeTimeRemaining() ?: -1L
-            } ?: -1L
+    val timeText = remember(pct, isBatterySaver, isLowBattery) {
+        if (isBatterySaver) {
+            "Power Saver active"
+        } else if (isLowBattery) {
+            "Connect charger"
         } else {
-            -1L
-        }
-        if (remainingMs > 0L) {
-            val totalMins = remainingMs / 60000L
-            val h = totalMins / 60L
-            val m = totalMins % 60L
-            if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
-        } else {
-            val totalMins = ((100f - pct) * 1.5f).toInt()
-            val h = totalMins / 60
-            val m = totalMins % 60
-            if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
+            val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val remainingMs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                runCatchingLogged("BatteryExpanded", "computeChargeTimeRemaining failed") {
+                    batteryManager?.computeChargeTimeRemaining() ?: -1L
+                } ?: -1L
+            } else {
+                -1L
+            }
+            if (remainingMs > 0L) {
+                val totalMins = remainingMs / 60000L
+                val h = totalMins / 60L
+                val m = totalMins % 60L
+                if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
+            } else {
+                val totalMins = ((100f - pct) * 1.5f).toInt()
+                val h = totalMins / 60
+                val m = totalMins % 60
+                if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
+            }
         }
     }
 
-    // FIX: Standardized to match Notification/Music expanded height to avoid glitch where
-    // Battery island expanded more (taller) than other modes. Now uses same padding (18,20,18,bottom)
-    // and constrained height similar to NotificationExpanded (90-120dp range).
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -172,18 +172,38 @@ fun BatteryExpanded(
                         .border(1.2.dp, batteryColor.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Rounded.Bolt,
-                        contentDescription = null,
-                        tint = batteryColor,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    when {
+                        isBatterySaver -> {
+                            Icon(
+                                Icons.Rounded.BatterySaver,
+                                contentDescription = null,
+                                tint = batteryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        isLowBattery -> {
+                            Icon(
+                                Icons.Rounded.BatteryAlert,
+                                contentDescription = null,
+                                tint = batteryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                Icons.Rounded.Bolt,
+                                contentDescription = null,
+                                tint = batteryColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
 
             Column {
                 Text(
-                    text = notification.title.takeIf { it.isNotBlank() } ?: "Charging",
+                    text = notification.title.takeIf { it.isNotBlank() } ?: if (isBatterySaver) "Battery Saver ON" else if (isLowBattery) "Low Battery" else "Charging",
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,

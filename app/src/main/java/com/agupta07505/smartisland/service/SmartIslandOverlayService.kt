@@ -66,8 +66,34 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var isLockScreenActive: Boolean = false
     private var systemEventReceiverRegistered = false
     private var screenStateReceiverRegistered = false
+    private var torchCallbackRegistered = false
     private var foregroundStarted = false
     @Volatile private var destroyed = false
+
+    private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
+        override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
+            if (destroyed || !::viewModel.isInitialized) return
+            if (enabled) {
+                notificationRepository.postNotification(
+                    IslandNotification(
+                        key = "system_flashlight",
+                        packageName = "com.android.systemui",
+                        appName = "Flashlight",
+                        title = "Flashlight ON",
+                        text = "Tap to turn off",
+                        mode = com.agupta07505.smartisland.model.IslandMode.Flashlight,
+                        timeMillis = System.currentTimeMillis(),
+                        actionIntents = listOf(
+                            com.agupta07505.smartisland.model.IslandNotificationAction("Turn Off", null)
+                        )
+                    ),
+                    autoExpand = true
+                )
+            } else {
+                notificationRepository.removeNotification("system_flashlight")
+            }
+        }
+    }
 
     private val serviceScope = kotlinx.coroutines.CoroutineScope(
         SupervisorJob() +
@@ -124,6 +150,22 @@ class SmartIslandOverlayService : AccessibilityService() {
                 isLockScreenActive = locked
                 updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
             }
+
+            if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                val openedPackage = event.packageName?.toString()
+                if (!openedPackage.isNullOrEmpty() &&
+                    openedPackage != packageName &&
+                    openedPackage != "com.android.systemui"
+                ) {
+                    viewModel.foregroundPackage.value = openedPackage
+                    val hasNonMusicNotifications = notificationRepository.notifications.value.any {
+                        it.packageName == openedPackage && it.mode != com.agupta07505.smartisland.model.IslandMode.Music
+                    }
+                    if (hasNonMusicNotifications) {
+                        notificationRepository.removeNotificationsForPackage(openedPackage)
+                    }
+                }
+            }
         }
     }
 
@@ -176,6 +218,11 @@ class SmartIslandOverlayService : AccessibilityService() {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction(Intent.ACTION_BATTERY_CHANGED)
+            addAction(Intent.ACTION_BATTERY_LOW)
+            addAction(Intent.ACTION_BATTERY_OKAY)
+            addAction(android.os.PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED)
         }
         
         // CRASH FIX: Android 13+/14+ requires explicit export flag for system broadcasts
@@ -207,6 +254,12 @@ class SmartIslandOverlayService : AccessibilityService() {
             screenStateReceiverRegistered = true
         }
 
+        runCatchingLogged(TAG, "registerTorchCallback failed") {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? android.hardware.camera2.CameraManager
+            cameraManager?.registerTorchCallback(torchCallback, android.os.Handler(android.os.Looper.getMainLooper()))
+            torchCallbackRegistered = true
+        }
+
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Settings collector failed") {
                 repository.settings.collect { settings ->
@@ -232,6 +285,17 @@ class SmartIslandOverlayService : AccessibilityService() {
                         kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
                         updateWindowLayoutParams(false, viewModel.settings.value)
                     }
+                }
+            }
+        }
+
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Notifications-state collector failed") {
+                viewModel.notifications.collectLatest {
+                    if (destroyed || !viewModel.settings.value.enabled) {
+                        return@collectLatest
+                    }
+                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
                 }
             }
         }
@@ -289,6 +353,13 @@ class SmartIslandOverlayService : AccessibilityService() {
                 unregisterReceiver(screenStateReceiver)
             }
             screenStateReceiverRegistered = false
+        }
+        if (torchCallbackRegistered) {
+            runCatchingLogged(TAG, "unregisterTorchCallback failed") {
+                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? android.hardware.camera2.CameraManager
+                cameraManager?.unregisterTorchCallback(torchCallback)
+            }
+            torchCallbackRegistered = false
         }
 
         removeCollapsedWindow()
@@ -418,24 +489,35 @@ class SmartIslandOverlayService : AccessibilityService() {
                     } else {
                         // PILL-ONLY TOUCHABLE REGION:
                         // Restrict touch interception to ONLY the pill bounds + padding.
-                        // Since the window starts at y = 0, we offset the touchable region
-                        // vertically by yOffset. Touches outside the pill (status bar zone
-                        // and top offset area) pass through to the system natively, which
-                        // handles left/right notification and quick settings pull-down.
+                        // The region is local to this already-offset window. Touches outside
+                        // the visible collapsed group pass through to the system.
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
                         
                         val density = resources.displayMetrics.density
                         val screenWidth = resources.displayMetrics.widthPixels
                         val settingsVal = viewModel.settings.value
-                        val pillWidthPx = (settingsVal.width + 12f) * density
+                        val notificationsCount = viewModel.notifications.value.size
+                        val isSplitMode = notificationsCount >= 2
+
+                        val mainWidthPx = settingsVal.width * density
+                        val groupWidthPx = (
+                            settingsVal.width + if (isSplitMode) 8f + settingsVal.height else 0f
+                        ) * density
+                        val edgePaddingPx = 8f * density
+                        val touchPaddingPx = 6f * density
                         val pillHeightPx = (settingsVal.height + 16f) * density
+
+                        val desiredMainLeftPx = screenWidth / 2f +
+                            settingsVal.xOffset * density - mainWidthPx / 2f
+                        val maxMainLeftPx = (screenWidth - groupWidthPx - edgePaddingPx)
+                            .coerceAtLeast(edgePaddingPx)
+                        val mainLeftPx = desiredMainLeftPx.coerceIn(edgePaddingPx, maxMainLeftPx)
+                        val left = (mainLeftPx - touchPaddingPx).toInt()
+                        val top = 0
+                        val right = (mainLeftPx + groupWidthPx + touchPaddingPx).toInt()
+                        val bottom = pillHeightPx.toInt()
                         
-                        val left = ((screenWidth - pillWidthPx) / 2f + settingsVal.xOffset * density).toInt()
-                        val top = (settingsVal.yOffset * density).toInt()
-                        val right = (left + pillWidthPx).toInt()
-                        val bottom = (top + pillHeightPx).toInt()
-                        
-                        android.util.Log.d(TAG, "onComputeInternalInsets: region set to ($left, $top, $right, $bottom)")
+                        android.util.Log.d(TAG, "onComputeInternalInsets: region set to ($left, $top, $right, $bottom), isSplitMode=$isSplitMode")
                         val region = touchableRegionField.get(insets) as android.graphics.Region
                         region.set(left, top, right, bottom)
                     }
@@ -570,8 +652,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
-        notificationRepository.removeNotification(notification.key)
-        notificationRepository.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+        notificationRepository.removeNotificationsForPackage(notification.packageName)
         viewModel.collapse()
     }
 
@@ -585,6 +666,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         runCatchingLogged(TAG, "Failed to launch shortcut app") {
             startActivity(launchIntent)
         }
+        notificationRepository.removeNotificationsForPackage(packageName)
         viewModel.collapse()
     }
 

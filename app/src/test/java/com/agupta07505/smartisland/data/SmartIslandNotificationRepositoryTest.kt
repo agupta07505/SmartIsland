@@ -75,6 +75,91 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testRemoveAllNotifications() {
+        val repository = SmartIslandNotificationRepository()
+        val notif1 = IslandNotification(
+            key = "key1",
+            packageName = "com.test",
+            appName = "TestApp",
+            title = "Title 1",
+            text = "Text 1",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        val notif2 = IslandNotification(
+            key = "key2",
+            packageName = "com.test",
+            appName = "TestApp",
+            title = "Title 2",
+            text = "Text 2",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+
+        repository.postNotification(notif1)
+        repository.postNotification(notif2)
+        assertEquals(2, repository.notifications.value.size)
+
+        repository.removeAllNotifications()
+        assertTrue(repository.notifications.value.isEmpty())
+    }
+
+    @Test
+    fun testScreenRecordingDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.ScreenRecording)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_screen_recording", notif.key)
+        assertEquals(IslandMode.ScreenRecording, notif.mode)
+        assertEquals("Screen Recording", notif.title)
+    }
+
+    @Test
+    fun testRemoveNotificationsForPackage() {
+        val repository = SmartIslandNotificationRepository()
+        val notif1 = IslandNotification(
+            key = "key1",
+            packageName = "com.app.a",
+            appName = "App A",
+            title = "Title 1",
+            text = "Text 1",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        val notif2 = IslandNotification(
+            key = "key2",
+            packageName = "com.app.a",
+            appName = "App A",
+            title = "Title 2",
+            text = "Text 2",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        val notif3 = IslandNotification(
+            key = "key3",
+            packageName = "com.app.b",
+            appName = "App B",
+            title = "Title 3",
+            text = "Text 3",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+
+        repository.postNotification(notif1)
+        repository.postNotification(notif2)
+        repository.postNotification(notif3)
+        assertEquals(3, repository.notifications.value.size)
+
+        repository.removeNotificationsForPackage("com.app.a")
+        val remaining = repository.notifications.value
+        assertEquals(1, remaining.size)
+        assertEquals("key3", remaining[0].key)
+    }
+
+    @Test
     fun testResetTimer() = runTest {
         val repository = SmartIslandNotificationRepository()
         var triggered = false
@@ -118,6 +203,32 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testBluetoothDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Bluetooth)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_bluetooth", notif.key)
+        assertEquals(IslandMode.Bluetooth, notif.mode)
+        assertEquals("AirPods Pro", notif.title)
+    }
+
+    @Test
+    fun testFlashlightDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Flashlight)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_flashlight", notif.key)
+        assertEquals(IslandMode.Flashlight, notif.mode)
+        assertEquals("Flashlight ON", notif.title)
+    }
+
+    @Test
     fun testShowDemoNotification() {
         val repository = SmartIslandNotificationRepository()
         repository.showDemo(IslandMode.Battery)
@@ -128,6 +239,31 @@ class SmartIslandNotificationRepositoryTest {
         assertEquals("demo_battery", demo.key)
         assertEquals(IslandMode.Battery, demo.mode)
         assertEquals("85%", demo.text)
+    }
+
+    @Test
+    fun testClearTestNotificationsOnlyRemovesDemoNotifications() {
+        val repository = SmartIslandNotificationRepository()
+        
+        val realNotif = IslandNotification(
+            key = "real_whatsapp_1",
+            packageName = "com.whatsapp",
+            appName = "WhatsApp",
+            title = "Alice",
+            text = "Hello!",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        repository.postNotification(realNotif)
+        repository.showDemo(IslandMode.Battery)
+
+        assertEquals(2, repository.notifications.value.size)
+
+        repository.clearTestNotifications()
+
+        val remaining = repository.notifications.value
+        assertEquals(1, remaining.size)
+        assertEquals("real_whatsapp_1", remaining[0].key)
     }
 
     @Test

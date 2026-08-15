@@ -31,7 +31,7 @@ fun OverlayIsland(
 ) {
     val settings by viewModel.settings.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
-    val notifications by viewModel.notifications.collectAsState()
+    val notifications by viewModel.visibleNotifications.collectAsState()
     val selectedIndex by viewModel.selectedIndex.collectAsState()
     val isLocked by viewModel.isLocked.collectAsState()
     val context = LocalContext.current
@@ -88,6 +88,7 @@ fun OverlayIsland(
         onLaunchApp = onLaunchApp,
         onToggleExpanded = { viewModel.toggleExpanded() },
         onDismissNotification = { viewModel.dismissCurrentNotification() },
+        onDismissAllNotifications = { viewModel.dismissAllNotifications() },
         onOpenFloatingWindow = onOpenFloatingWindow,
         statusBarHeight = statusBarHeight,
         modifier = modifier

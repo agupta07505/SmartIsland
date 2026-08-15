@@ -7,6 +7,11 @@
 
 package com.agupta07505.smartisland.data
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
@@ -59,6 +64,21 @@ class SmartIslandNotificationRepository : INotificationRepository {
         }
     }
 
+    override fun removeNotificationsForPackage(packageName: String) {
+        val matching = _notifications.value.filter { it.packageName == packageName && it.mode != IslandMode.Music }
+        if (matching.isEmpty()) return
+        _notifications.update { list ->
+            list.filterNot { it.packageName == packageName && it.mode != IslandMode.Music }
+        }
+        for (notif in matching) {
+            _commands.tryEmit(SmartIslandCommand.CancelNotification(notif.key))
+        }
+    }
+
+    override fun removeAllNotifications() {
+        _notifications.update { emptyList() }
+    }
+
     override fun resetTimer() {
         _resetTimerEvent.tryEmit(Unit)
     }
@@ -102,6 +122,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 title = "Starlight",
                 text = "Muse - Black Holes and Revelations",
                 timeMillis = System.currentTimeMillis(),
+                largeIcon = createDemoArtworkBitmap(),
                 mode = IslandMode.Music,
                 mediaIsPlaying = true,
                 mediaDurationMs = 240000L,
@@ -112,15 +133,41 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Next", null)
                 )
             )
-            IslandMode.Battery -> IslandNotification(
-                key = "demo_battery",
-                packageName = "com.android.systemui",
-                appName = "System",
-                title = "Charging",
-                text = "85%",
-                timeMillis = System.currentTimeMillis(),
-                mode = IslandMode.Battery
-            )
+            IslandMode.Battery -> {
+                val current = notifications.value.find { it.key == "demo_battery" }
+                when (current?.title) {
+                    "Charging" -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Low Battery",
+                        text = "15%",
+                        category = "battery_low",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                    "Low Battery" -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Battery Saver ON",
+                        text = "18%",
+                        category = "battery_saver",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                    else -> IslandNotification(
+                        key = "demo_battery",
+                        packageName = "com.android.systemui",
+                        appName = "System",
+                        title = "Charging",
+                        text = "85%",
+                        category = "battery_charging",
+                        timeMillis = System.currentTimeMillis(),
+                        mode = IslandMode.Battery
+                    )
+                }
+            }
             IslandMode.LiveActivity -> IslandNotification(
                 key = "demo_live_activity",
                 packageName = "com.ubercab",
@@ -196,6 +243,39 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Hotspot Settings", null)
                 )
             )
+            IslandMode.Bluetooth -> IslandNotification(
+                key = "demo_bluetooth",
+                packageName = "com.android.bluetooth",
+                appName = "Bluetooth",
+                title = "AirPods Pro",
+                text = "Connected • 100%",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Bluetooth
+            )
+            IslandMode.Flashlight -> IslandNotification(
+                key = "demo_flashlight",
+                packageName = "com.android.systemui",
+                appName = "Flashlight",
+                title = "Flashlight ON",
+                text = "Tap to turn off",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Flashlight,
+                actionIntents = listOf(
+                    IslandNotificationAction("Turn Off", null)
+                )
+            )
+            IslandMode.ScreenRecording -> IslandNotification(
+                key = "demo_screen_recording",
+                packageName = "com.android.systemui",
+                appName = "Screen Recorder",
+                title = "Screen Recording",
+                text = "Recording screen...",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.ScreenRecording,
+                actionIntents = listOf(
+                    IslandNotificationAction("Stop", null)
+                )
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {
@@ -205,13 +285,21 @@ class SmartIslandNotificationRepository : INotificationRepository {
 
     override fun clearTestNotifications() {
         _notifications.update { list ->
-            val demoFiltered = list.filterNot { it.key.startsWith("demo_") }
-            if (demoFiltered.size == list.size) {
-                emptyList()
-            } else {
-                demoFiltered
-            }
+            list.filterNot { it.key.startsWith("demo_") }
         }
+    }
+
+    private fun createDemoArtworkBitmap(): Bitmap {
+        val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.shader = LinearGradient(
+            0f, 0f, 256f, 256f,
+            intArrayOf(0xFF7C3AED.toInt(), 0xFFEC4899.toInt(), 0xFFF59E0B.toInt()),
+            null, Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, 256f, 256f, paint)
+        return bitmap
     }
 
     private companion object {

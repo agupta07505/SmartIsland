@@ -38,9 +38,14 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.BatteryAlert
+import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material.icons.rounded.BluetoothConnected
+import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material3.Icon
@@ -156,6 +161,41 @@ fun IslandCollapsedContent(
                 IslandMode.Hotspot -> {
                     HotspotCollapsedGlyph(notification = notification, settings = settings)
                 }
+                IslandMode.Bluetooth -> {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(settings.bluetoothColor).copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.BluetoothConnected,
+                            contentDescription = "Bluetooth",
+                            tint = Color(settings.bluetoothColor),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                IslandMode.Flashlight -> {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(settings.flashlightColor).copy(alpha = 0.25f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.FlashlightOn,
+                            contentDescription = "Flashlight",
+                            tint = Color(settings.flashlightColor),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                IslandMode.ScreenRecording -> {
+                    ScreenRecordingCollapsedGlyph(settings = settings)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -180,8 +220,17 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.IncomingCall -> {
-                    val time = notification?.timeMillis ?: System.currentTimeMillis()
-                    CallTimer(postTimeMillis = time, color = Color(settings.callColor))
+                    if (notification?.isCallRinging == true) {
+                        Text(
+                            text = "Ringing...",
+                            color = Color(settings.callColor),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        val time = notification?.timeMillis ?: System.currentTimeMillis()
+                        CallTimer(postTimeMillis = time, color = Color(settings.callColor))
+                    }
                 }
                 IslandMode.Music -> {
                     AudioVisualizer(
@@ -190,9 +239,18 @@ fun IslandCollapsedContent(
                     )
                 }
                 IslandMode.Battery -> {
+                    val pctText = notification?.text ?: "49%"
+                    val title = notification?.title?.lowercase() ?: ""
+                    val isBatterySaver = title.contains("saver") || notification?.category == "battery_saver"
+                    val isLowBattery = title.contains("low") || notification?.category == "battery_low" || (pctText.replace("%", "").toFloatOrNull() ?: 50f) <= 20f
+                    val textColor = when {
+                        isLowBattery -> Color(0xFFEF4444)
+                        isBatterySaver -> Color(0xFFF59E0B)
+                        else -> Color(settings.batteryColor)
+                    }
                     Text(
-                        text = notification?.text ?: "49%",
-                        color = Color(settings.batteryColor),
+                        text = pctText,
+                        color = textColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -209,6 +267,27 @@ fun IslandCollapsedContent(
                 IslandMode.Hotspot -> {
                     HotspotCollapsedRight(notification = notification, settings = settings)
                 }
+                IslandMode.Bluetooth -> {
+                    Image(
+                        painter = painterResource(id = com.agupta07505.smartisland.R.drawable.ic_bluetooth_device),
+                        contentDescription = "Bluetooth Device",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                    )
+                }
+                IslandMode.Flashlight -> {
+                    Text(
+                        text = "ON",
+                        color = Color(0xFFFACC15),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                IslandMode.ScreenRecording -> {
+                    val time = notification?.timeMillis ?: System.currentTimeMillis()
+                    CallTimer(postTimeMillis = time, color = Color(0xFFEF4444))
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -224,7 +303,7 @@ fun IslandCollapsedContent(
 }
 
 @Composable
-private fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val hotspotColor = Color(settings.hotspotColor)
     Box(
         modifier = Modifier
@@ -257,11 +336,19 @@ private fun HotspotCollapsedRight(notification: IslandNotification?, settings: S
 }
 
 @Composable
-private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings) {
+internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings) {
     val pctText = notification?.text?.replace("%", "")?.trim() ?: "49"
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
-    val batteryColor = Color(settings.batteryColor)
+    val title = notification?.title?.lowercase() ?: ""
+    val isBatterySaver = title.contains("saver") || notification?.category == "battery_saver"
+    val isLowBattery = title.contains("low") || notification?.category == "battery_low" || pct <= 20f
+
+    val batteryColor = when {
+        isLowBattery -> Color(0xFFEF4444)
+        isBatterySaver -> Color(0xFFF59E0B)
+        else -> Color(settings.batteryColor)
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "batteryPulse")
     val pulseScale by infiniteTransition.animateFloat(
@@ -294,22 +381,47 @@ private fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: S
             modifier = Modifier.size(22.dp),
             color = batteryColor
         )
-        Icon(
-            Icons.Rounded.Bolt,
-            contentDescription = "Charging",
-            tint = batteryColor,
-            modifier = Modifier
-                .size(14.dp)
-                .graphicsLayer {
-                    scaleX = pulseScale
-                    scaleY = pulseScale
-                }
-        )
+        when {
+            isBatterySaver -> {
+                Icon(
+                    Icons.Rounded.BatterySaver,
+                    contentDescription = "Battery Saver",
+                    tint = batteryColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            isLowBattery -> {
+                Icon(
+                    Icons.Rounded.BatteryAlert,
+                    contentDescription = "Low Battery",
+                    tint = batteryColor,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                )
+            }
+            else -> {
+                Icon(
+                    Icons.Rounded.Bolt,
+                    contentDescription = "Charging",
+                    tint = batteryColor,
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun NotificationGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val largeIcon = notification?.largeIcon
     val icon = notification?.icon
     val mainIcon = largeIcon ?: icon
@@ -400,7 +512,7 @@ private fun AudioVisualizer(
 
 
 @Composable
-private fun CallTimer(postTimeMillis: Long, color: Color) {
+internal fun CallTimer(postTimeMillis: Long, color: Color) {
     var elapsedSeconds by remember(postTimeMillis) {
         mutableStateOf(((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L))
     }
@@ -421,7 +533,7 @@ private fun CallTimer(postTimeMillis: Long, color: Color) {
 }
 
 @Composable
-private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
         if (notification != null) {
             Color(com.agupta07505.smartisland.util.LiveActivityParser.getBrandColor(notification.packageName))
@@ -444,6 +556,7 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settin
         SmoothCircularRingProgress(
             progress = progress,
             color = brandColor,
+            strokeWidthDp = 4.8f,
             modifier = Modifier.size(24.dp)
         )
         val mainIcon = notification?.largeIcon ?: notification?.icon
@@ -452,7 +565,7 @@ private fun LiveActivityCollapsedGlyph(notification: IslandNotification?, settin
                 bitmap = mainIcon.asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(13.dp)
                     .clip(CircleShape)
             )
         } else {
@@ -466,7 +579,7 @@ private fun SmoothCircularRingProgress(
     progress: Float,
     color: Color,
     modifier: Modifier = Modifier,
-    strokeWidthDp: Float = 3.5f
+    strokeWidthDp: Float = 4.5f
 ) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val strokeWidth = strokeWidthDp.dp.toPx()
@@ -476,7 +589,7 @@ private fun SmoothCircularRingProgress(
 
         // Track background ring
         drawArc(
-            color = Color(0x33FFFFFF),
+            color = Color(0x4DFFFFFF),
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,
@@ -532,7 +645,7 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?, settin
 }
 
 @Composable
-private fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+internal fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val navColor = Color(settings.liveActivityColor)
     val turnDirection = remember(notification) {
         val title = notification?.title.orEmpty()
@@ -712,6 +825,38 @@ private fun DownloadUploadCollapsedRight(
                 modifier = Modifier.size(14.dp)
             )
         }
+    }
+}
+
+@Composable
+internal fun ScreenRecordingCollapsedGlyph(settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val infiniteTransition = rememberInfiniteTransition(label = "collapsedRecordingPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
+    val recordingColor = Color(settings.screenRecordingColor)
+
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(recordingColor.copy(alpha = 0.25f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .graphicsLayer { alpha = pulseAlpha }
+                .clip(CircleShape)
+                .background(recordingColor)
+        )
     }
 }
 

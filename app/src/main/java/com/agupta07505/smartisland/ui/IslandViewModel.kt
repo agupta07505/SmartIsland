@@ -15,6 +15,7 @@ import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -40,12 +41,30 @@ class IslandViewModel(
     )
 
     val notifications = notificationRepo.notifications
+    val foregroundPackage = MutableStateFlow<String?>(null)
+
+    val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
+        notifications,
+        foregroundPackage
+    ) { list, fgPkg ->
+        if (fgPkg.isNullOrEmpty()) {
+            list
+        } else {
+            list.filterNot { notif ->
+                notif.mode == IslandMode.Music && notif.packageName == fgPkg
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList()
+    )
 
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
     val isLocked = MutableStateFlow(false)
 
-    val mode: StateFlow<IslandMode> = combine(notifications, selectedIndex) { list, idx ->
+    val mode: StateFlow<IslandMode> = combine(visibleNotifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty
     }.stateIn(
         scope = viewModelScope,
@@ -58,7 +77,7 @@ class IslandViewModel(
     init {
         viewModelScope.launch {
             runSuspendCatchingLogged(TAG, "Notifications collector failed") {
-                notifications.collect { list ->
+                visibleNotifications.collect { list ->
                     selectedIndex.update { currentSelected ->
                         currentSelected.coerceIn(0, (list.size - 1).coerceAtLeast(0))
                     }
@@ -68,7 +87,7 @@ class IslandViewModel(
         viewModelScope.launch {
             runSuspendCatchingLogged(TAG, "Auto-expand collector failed") {
                 notificationRepo.autoExpandEvent.collect { key ->
-                    val list = notifications.value
+                    val list = visibleNotifications.value
                     val index = list.indexOfFirst { it.key == key }
                     if (index >= 0) {
                         selectedIndex.value = index
@@ -134,7 +153,7 @@ class IslandViewModel(
     }
 
     fun setSelectedNotificationIndex(index: Int) {
-        val list = notifications.value
+        val list = visibleNotifications.value
         if (index in list.indices) {
             selectedIndex.value = index
             resetAutoCollapseTimer()
@@ -142,13 +161,22 @@ class IslandViewModel(
     }
 
     fun dismissCurrentNotification() {
-        val list = notifications.value
+        val list = visibleNotifications.value
         val index = selectedIndex.value
         if (index in list.indices) {
             val notification = list[index]
             notificationRepo.removeNotification(notification.key)
             notificationRepo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
         }
+        collapse()
+    }
+
+    fun dismissAllNotifications() {
+        val list = visibleNotifications.value
+        for (notification in list) {
+            notificationRepo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+        }
+        notificationRepo.removeAllNotifications()
         collapse()
     }
 

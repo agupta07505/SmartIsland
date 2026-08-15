@@ -33,6 +33,12 @@ data class IslandNotification(
     // Derived: no need to store separately
     val actions: List<String>
         get() = actionIntents.map { it.title }
+
+    val isCallRinging: Boolean
+        get() = actionIntents.any { action ->
+            val label = action.title.lowercase()
+            label.contains("answer") || label.contains("accept") || label.contains("take")
+        }
 }
 
 data class IslandNotificationAction(

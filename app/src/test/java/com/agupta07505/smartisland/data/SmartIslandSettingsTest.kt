@@ -23,6 +23,12 @@ class SmartIslandSettingsTest {
         assertEquals(22f, settings.cornerRadius)
         assertEquals(true, settings.showNotificationActions)
         assertEquals(true, settings.hideFromNotificationShade)
+        assertEquals(true, settings.autoExpandOnNotification)
+        assertEquals(true, settings.enableShadow)
+        assertEquals(true, settings.enableMusicArtworkBackground)
+        assertEquals(0xFF2563EBL, settings.bluetoothColor)
+        assertEquals(0xFFF59E0BL, settings.flashlightColor)
+        assertEquals(0xFFEF4444L, settings.screenRecordingColor)
     }
 
     @Test

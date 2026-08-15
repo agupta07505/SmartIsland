@@ -30,8 +30,8 @@ android {
         applicationId = "com.agupta07505.smartisland"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "4.0.0"
+        versionCode = 5
+        versionName = "5.0.0"
     }
 
     buildFeatures {
@@ -80,13 +80,23 @@ android {
             "UnusedResources",
             "IconLauncherShape",
             "MonochromeLauncherIcon",
-            "UseKtx"
+            "UseKtx",
+            "IconXmlAndPng",
+            "BatteryLife",
+            "ConfigurationScreenWidthHeight",
+            "ModifierParameter"
         )
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
     }
 
     kotlin {

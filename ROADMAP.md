@@ -1,293 +1,131 @@
 # Smart Island Product Roadmap
 
-Last updated: July 27, 2026
+Last updated: August 15, 2026
 
 ## Product direction
 
-Smart Island should become the most reliable, privacy-first, and customizable glanceable activity overlay for Android. It should make important live information easier to act on without replacing the notification shade or collecting personal data.
+Smart Island should become the most reliable, privacy-first, and customizable glanceable activity overlay for Android. It makes important live information easier to act on without replacing the notification shade or collecting personal data.
 
-The roadmap follows three principles:
+The roadmap follows three core principles:
 
-1. **Reliability before feature count.** Overlay, notification, media, and call behavior must remain stable across Android versions and major OEMs.
-2. **Local by default.** Notification content and preferences stay on the device. Any future network feature must be optional, clearly explained, and independently disableable.
-3. **Fast and unobtrusive.** The island must use little battery, avoid blocking touches, and never make urgent actions harder to reach.
+1. **Reliability before feature count.** Overlay, notification, media, call, and battery behavior must remain rock-solid across Android versions and major OEM ROMs.
+2. **Local by default.** Notification content and preferences stay strictly on-device. Zero analytics, zero tracking, and zero internet permission.
+3. **Fast, fluid, and unobtrusive.** The island must use negligible battery, avoid blocking touches, and provide instant haptic and visual feedback.
 
-## Current baseline (v4.0)
+---
+
+## Current baseline (v5.0.0)
 
 Smart Island currently provides:
 
-- A Compose-based floating overlay on Android 8+
+- A Compose-based floating overlay on Android 8+ (API 26 through API 36)
 - Complete **Material 3 Expressive** design system with Android 12+ wallpaper dynamic color adaptation
-- Grouped Settings Hub Architecture (Appearance, Interactions, Permissions, Help) with expandable accordions
-- Notification interception, filtering (`NotificationFilter`), system shade duplicate suppression, grouping, paging, opening, and dismissal
-- **Per-app notification & sound controls** with granular allow/deny and sound toggles (`NotificationsAndPrivacySection`)
-- Landscape orientation detection (`IslandOrientationListener`) for automatic overlay hiding during gaming and media
-- System Service Recovery (`SystemServiceRecovery`) for re-binding Accessibility & Notification Listener services
-- Battery optimization setup guide card in permissions settings
-- Lock screen opt-in display with sensitive notification content protection
-- **Wi-Fi Hotspot Monitor**: real-time tethering monitoring via `HotspotUtil` showing connected client count, SSID, data usage, and quick turn-off action
-- **Live Activity Engine** (`LiveActivityParser`, `LiveActivityExpanded`): delivery and ride tracking cards with dynamic brand colors per app
-- **Download/Upload Progress Mode** (`DownloadExpanded`): real-time progress bars, transfer speeds (MB/s), custom transfer icons, and refined download detection
-- **Turn-by-Turn Navigation Mode** (`NavigationExpanded`, `NavigationParser`): next instruction, distance, ETA, and maneuver arrows
-- Incoming-call, media playback (with animated wavy seek bar), and battery-charging modes
-- App shortcuts and best-effort floating-window launching
-- Size, position, corner-radius, preset/custom RGB color, and theme customization
-- Local DataStore settings with no Internet permission or analytics
-- Unit tests, an overlay smoke test, strict lint, and automated APK releases
+- **11 Dynamic Island Modes**:
+  - `Notification` (with full-color app launcher icons & LRU caching)
+  - `IncomingCall` (call timer, caller badge & waveform animations)
+  - `Music` (wavy audio scrubber, heart/repeat actions, ambient album art glow)
+  - `Battery` (*Charging*, *Low Battery &le; 20%*, *Battery Saver ON*)
+  - `LiveActivity` (real-time delivery & ride tracking with app brand colors)
+  - `Navigation` (turn-by-turn routing arrows, distance, and ETA)
+  - `DownloadUpload` (transfer speeds MB/s, progress meters, sync suppression)
+  - `Hotspot` (active tethering client count & quick turn-off)
+  - `Bluetooth` (device battery & connectivity)
+  - `Flashlight` (torch state indicator & toggle)
+  - `ScreenRecording` (live elapsed timer)
+- **Split Island Multi-State Pill** for concurrent background states
+- **5-Gesture Control Engine**: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Swipe Left/Right (Pager)
+- **Message Sync Filtering**: Background chat polling (Snapchat, WhatsApp) excluded from download mode
+- **Custom RGB Slider Color Picker**: Fine-grained color customization for all modes
+- **Grouped Settings Hub Architecture** with 4 minimal Category Hub Cards
+- **Landscape orientation detection** for automatic overlay hiding during full-screen apps
+- **Shizuku 1-Tap Auto Setup** for automated system permission granting
+- **Lock screen privacy guard** with sensitive notification content protection
+- **Zero Internet Permission** and 100% local DataStore persistence
+- **Strict Lint & Stable @v4 GitHub Actions CI/CD** pipeline
 
-This is a strong feature-complete baseline. The immediate constraint is platform and device reliability, not a lack of visible features.
+---
 
 ## Roadmap at a glance
 
 | Phase | Target window | Theme | Exit outcome |
 | --- | --- | --- | --- |
-| 3.1 | Jul 2026 | Welcome and community release | New users receive a clear introduction and direct access to project support channels |
-| 3.2 / 3.2.1 | Jul 2026 | Service recovery & ROM stability | Reliable pill interactivity, safe lock screen support, system service recovery, and vendor ROM stability |
-| 4.0 | Jul 2026 | Material 3 UI Overhaul & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings architecture |
-| 4.1 | Oct-Nov 2026 | Face Unlock & Richer Live Activities | Face Unlock overlay integration, advanced timer cards, app-specific notification rules, and custom templates |
-| 4.2 | Dec 2026-Jan 2027 | System Profiles & Floating Window Polish | Preset environment profiles (Gaming, Work, Silent), enhanced Shizuku automation, and multi-window launching |
-| 5.0 | Jan-Mar 2027 | Ecosystem & Extension Architecture | Plugin extension architecture and optional local cross-device status sync without sacrificing privacy |
+| **v4.0** | Jul 2026 | Material 3 UI & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings |
+| **v5.0.0** | Aug 2026 | Battery Saver, App Icons & 5-Gesture Engine | Low Battery/Saver modes, full-color app launcher icons, sync filtering, 5 gestures text guide, and stable CI |
+| **v5.1** | Oct-Nov 2026 | Face Unlock, Custom Sounds & Widgets | Face Unlock animation overlay, dynamic widget extensions (Calendar/Timer/Reminders), and custom sound packs |
+| **v5.2** | Dec 2026-Jan 2027 | System Profiles & Floating Window Polish | Preset environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
+| **v6.0** | Q1-Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
 
-Dates are planning targets, not promises. A phase moves forward only after its release gates are met.
+*Dates are planning targets. A phase moves forward only after its release gates and automated CI suites are fully validated.*
+
+---
+
+## Released — v5.0.0: Battery Saver, App Icons, Split Island & 5-Gesture Engine
+
+Released August 15, 2026.
+
+- **Low Battery & Battery Saver Modes**: Added pulsing red `BatteryAlert` for low battery (&le; 20%) and warm amber `BatterySaver` glyph with live percentage badge.
+- **Full-Color App Launcher Icons**: Restored `loadAppIconBitmap(packageName)` with `packageManager.getApplicationIcon(packageName)` and LRU caching for authentic app branding.
+- **Message Sync Notification Filtering**: Implemented `NotificationFilter.isMessageSyncNotification` to prevent background sync notifications (Snapchat, WhatsApp) from falsely triggering download mode.
+- **5-Gesture Controls & Text Guide**: Revamped `GesturesSection.kt` with step-by-step instructions, haptic vibration indicators, and quick reference chips for Single Tap, Quick Swipe Up, Hold + Swipe Up, Swipe Down, and Horizontal Swipe Left/Right.
+- **Horizontal Pager Snapping Stability**: Synchronized expanded notification pager with `pagerState.settledPage` and guarded with `!pagerState.isScrollInProgress` to eliminate swipe lockups.
+- **Flashlight & Screen Recording Modes**: Added `IslandMode.Flashlight` and `IslandMode.ScreenRecording` with live timer and toggle controls.
+- **Custom RGB Color Picker**: Added fine-grained Red, Green, Blue slider dialog with live hex code preview for all 11 dynamic island modes.
+- **Split Island Architecture**: Added secondary bubble pill support for concurrent background events.
+- **GitHub Actions CI/CD Fix**: Updated all GitHub actions to stable official `@v4` and added lint suppressions for flawless builds.
+- **Refreshed Screenshots Gallery**: Added 16 high-resolution screenshots showcasing the entire v5.0.0 feature set.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
+
+---
 
 ## Released — v4.0: Complete Material 3 UI Overhaul & Grouped Settings
 
 Released July 27, 2026.
 
-- **Material 3 Expressive Design Overhaul**: Redesigned UI with modern MD3 color tokens (`surfaceContainer`, `outlineVariant`, `primaryContainer`), rounded shapes, and clean minimal visual aesthetics.
-- **Android 12+ Dynamic Wallpaper Colors**: Integrated `dynamicLightColorScheme` and `dynamicDarkColorScheme` for automatic wallpaper color adaptation.
-- **Grouped Settings Architecture**: Consolidated 8 standalone settings sections into **4 minimal, clean expandable Category Hub Cards** (*Appearance & Layout*, *Interactions & Shortcuts*, *Permissions & Privacy*, *Help & About*).
-- **Wi-Fi Hotspot Monitor**: Added `HotspotUtil` to parse active tethering notifications, showing connected client count, SSID info, data usage, and a quick turn-off action button (`HotspotExpanded`).
-- **Live Activity Engine**: Full delivery and ride tracking support via `LiveActivityParser` and `LiveActivityExpanded`, with dynamic brand colors per app and smooth Compose animations.
-- **Download/Upload Progress Mode**: `DownloadExpanded` renders real-time download/upload progress bars with transfer speeds, custom transfer icons, and refined detection logic. Notifications are hidden from the shade by default while active in the island.
-- **Turn-by-Turn Navigation Mode**: `NavigationExpanded` and `NavigationParser` present next instruction, distance, ETA, and maneuver arrows parsed from navigation app notifications.
-- **Per-App Notification & Sound Controls**: Granular per-app notification and sound toggles added under `NotificationsAndPrivacySection`.
-- **Enhanced Item Row Controls**: Redesigned `ClickableRowItem` with soft MD3 rounded icon container badges, crisp icon tinting, and subtitle text support.
-- **Android Lint Fix**: Resolved debug build lint errors blocking CI.
-- **UI Polish**: Updated notification action button and ring styles, download card progress stroke/heights, and live activity brand color tinting throughout.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
-
-## Released — v3.1: Welcome and community
-
-Released July 15, 2026.
-
-- Added a first-run welcome dialog describing Smart Island's privacy-first experience.
-- Added direct GitHub and Telegram community actions.
-- Persisted welcome completion locally so the dialog appears only once.
-- Improved support links and updated Android release tooling.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
-
-## Released — v3.2: Pill touch, lock screen & notification suppression
-
-Released July 18, 2026.
-
-- **Collapsed Pill Touch & Pass-Through Insets**: Bypassed hidden API restrictions to compute window touch bounds (`WindowTouchBounds`) cleanly, resolving pill touch non-responsiveness and touch dead zones.
-- **System Notification Suppression**: Implemented `SmartIslandNotificationListenerService` and `NotificationFilter` to hide system tray notification duplicates when active in Smart Island.
-- **Landscape Auto-Hide**: Integrated `IslandOrientationListener` to detect device orientation changes and temporarily hide the floating island overlay during full-screen landscape apps.
-- **Battery Optimization Setup**: Added guidance and direct settings launcher in Permissions screen to help users grant background execution exceptions.
-- **Lock Screen Support & Privacy**: Integrated `showOnLockScreen` and `hideSensitiveOnLockScreen` toggles with keyguard detection.
-- **UI & Lifecycle Fixes**: Eliminated height jumping on large window expansion, fixed crash on app clear, and resolved service lifecycle retention.
-- **Community Merges**: Merged Pull Request [#11](https://github.com/agupta07505/SmartIsland/pull/11) from [@likhithkrishna1103-tech](https://github.com/likhithkrishna1103-tech) (Likhith Krishna) for touchable region optimization, lock screen privacy, and notification icon handling.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
-
-## Released — v3.2.1: System service recovery & ROM stability
-
-Released July 24, 2026.
-
-- **System Service Recovery**: Added `SystemServiceRecovery` utility to automatically reconnect `AccessibilityService` and `NotificationListenerService` on service interruptions or app restarts.
-- **Accessibility Service Lifecycle Protection**: Refactored `SmartIslandOverlayService` toggle handling to keep system accessibility permissions intact when turned off, eliminating the need to re-grant permissions.
-- **OEM Vendor ROM Autostart & Keep-Alive**: Added background autostart guards to prevent aggressive service kills on OEM skins (MIUI/HyperOS, ColorOS/RealmeUI, FuntouchOS, OneUI).
-- **Notification Shade Suppression Setting**: Introduced a toggle under Notifications & Privacy ("Hide from notification shade") to optionally suppress third-party notifications from Android's system shade.
-- **Shizuku Integration & Crash Prevention**: Integrated optional Shizuku permission support for system service management and crash resilience.
-- **New Application Icon & Visual Branding**: Refreshed the application launcher icon and modernized overall visual branding.
-- **Settings UI & Navigation Bar Redesign**: Redesigned settings layout, added navigation bar, and optimized DataStore and Notification repository atomic handling.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
-
-**Goal:** Make the pill reliably interactive everywhere it is shown, then make it safely available on the lock screen.
-
-### Priority 0 — fix the pill touch issue
-
-This is the first release blocker. No new activity mode should ship until collapsed-pill taps and gestures are dependable.
-
-- Reproduce and document failures by Android version, display density, cutout position, pill position, and OEM.
-- Audit the collapsed overlay window bounds, Compose hit target, touchable region, pass-through inset calculation, and transitions between collapsed and expanded windows.
-- Ensure the pill captures taps and supported swipes only inside its visible hit area while all space outside the pill passes through to the app underneath.
-- Prevent stale bounds during animation, density/configuration changes, rotation, theme changes, notification replacement, and service recreation.
-- Add debug visualization for the actual overlay bounds and touchable region, available only in debug builds.
-- Add instrumented tests for tap-to-expand, swipe up, swipe down, horizontal paging, outside-touch pass-through, rapid repeated input, and notification changes during a gesture.
-
-**Acceptance criteria:** 100 consecutive taps and each supported gesture succeed on every reference device; touches immediately outside the visible pill reach the underlying app; and rotation, process recreation, or notification updates do not create a dead zone.
-
-### Priority 1 — add Smart Island to the lock screen
-
-- Add an opt-in **Show on lock screen** setting, disabled by default on upgrade until the user reviews its privacy behavior.
-- Detect locked, unlocked, and secure-keyguard state and update overlay behavior immediately when that state changes.
-- Provide lock-screen privacy choices: hide all content, show app/icon only, or show full content. Default to app/icon only.
-- Allow glanceable status for calls, media, alarms/timers, charging, and permitted notifications while locked.
-- Require device authentication before opening an app, executing sensitive notification actions, showing hidden content, replying, or launching a floating window.
-- Respect Android lock-screen notification visibility, secret/private notification metadata, Do Not Disturb, and system security restrictions. Never attempt to bypass the keyguard.
-- Prevent the island from covering emergency, PIN/pattern/password, biometric, or critical system UI. Fall back to non-interactive or hidden mode when a safe touch surface cannot be guaranteed.
-- Add tests for screen off/on, secure and non-secure locks, biometric/PIN flows, content visibility levels, incoming calls, media controls, rotation, and unlock transitions.
-
-**Acceptance criteria:** no private notification text appears under the default setting; sensitive actions always require authentication; the pill never blocks authentication or emergency controls; and lock/unlock transitions do not duplicate or strand overlay windows.
-
-### Product work
-
-- Add a first-run compatibility check for overlay permission, notification access, battery optimization, and OEM background restrictions.
-- Add a local diagnostics screen showing permission state, service state, last handled event category, and app version. Provide a user-triggered copy/export action that redacts notification content by default.
-- Add clear recovery actions when Android revokes access or kills the overlay service.
-- Publish a compatibility matrix covering Android 8-16 and the most reported Samsung, Xiaomi/Redmi, OnePlus, Oppo/Realme, Vivo, Pixel, and Motorola behaviors.
-- Reconcile version naming across the app, README, changelog, APK, and Git tags.
-
-### Engineering work
-
-- Add lifecycle and command-state tests around listener reconnects, rapid notification replacement, service restart, process recreation, and permission revocation.
-- Expand instrumented tests for collapsed/expanded rendering and gestures on multiple SDK levels.
-- Add release smoke checks for minified builds and settings migration.
-- Measure cold start, overlay appearance latency, idle memory, and idle battery use with repeatable benchmark scripts. Store only aggregate test results in the repository.
-- Remove committed signing material from the repository and rotate the release key if any real signing secret has ever been exposed. Keep signing credentials only in the release secret store.
-
-### Release gates
-
-- The pill-touch acceptance criteria pass before lock-screen work is promoted to beta.
-- Lock-screen support passes its privacy and secure-keyguard acceptance criteria.
-- No known crash in the core notification-to-overlay path.
-- Unit tests, lint, debug build, release build, and instrumented smoke tests pass.
-- Overlay appears within 500 ms of a handled event on the reference devices.
-- No persistent foreground-service restart loop.
-- Setup and recovery are documented for the supported OEM test set.
-
-## Phase 2 — v3.3: Better onboarding, filtering, and everyday control
-
-**Goal:** Give users confidence and control over when the island appears.
-
-### Product work
-
-- Replace permission setup with a guided checklist that explains the benefit and risk of each permission before opening Android settings.
-- Add per-app allow/deny controls and category controls for calls, messages, media, progress, battery, and other notifications.
-- Add quiet hours, temporary pause, and "hide while" rules for fullscreen apps, landscape video, screen sharing, and Do Not Disturb where platform APIs permit.
-- Add backup and restore to a local file for non-sensitive preferences; exclude notification content.
-- Improve empty states, permission-loss messages, and in-app help based on common support questions.
-- Add a short, skippable interactive tutorial using the existing demo modes and gesture playground.
-
-### Engineering work
-
-- Version the settings schema and test forward migrations and malformed imports.
-- Separate notification eligibility rules from presentation priority so each can be tested independently.
-- Cache installed-app metadata efficiently and refresh it on package changes.
-- Add screenshot and accessibility checks for light/dark themes, large fonts, RTL, and reduced-motion settings.
-
-### Release gates
-
-- A new user can complete setup and trigger a demo in under two minutes.
-- Every supported mode can be disabled independently.
-- Settings survive upgrade, process death, backup, and restore.
-- Core screens remain usable at 200% font scale and with TalkBack.
-
-## Phase 3 — v3.4: Richer live activities
-
-**Goal:** Expand utility through reusable, well-tested activity modes rather than one-off UI branches.
-
-### Product work
-
-- Add timer, stopwatch, alarm, download/upload progress, and calendar-event modes where reliable notification metadata is available.
-- Add navigation glance mode for supported navigation notifications, initially showing the next instruction, distance, and app-open action.
-- Add smarter priority and queue behavior so calls and time-critical events pre-empt passive progress updates without losing the previous item.
-- Add action templates for reply, mark as read, pause/resume, stop, and open when the originating notification safely exposes them.
-- Add user-selectable auto-collapse duration by mode.
-
-### Engineering work
-
-- Introduce a common mode-renderer contract with capability flags for progress, artwork, actions, priority, timeout, and privacy level.
-- Build parser fixtures from synthetic notifications; never commit real personal notification payloads.
-- Add deterministic priority/queue tests and visual regression coverage for every mode.
-- Gracefully fall back to a generic notification card when an OEM or app omits expected metadata.
-
-### Release gates
-
-- New modes do not regress call or media handling.
-- Unsupported apps always fall back safely.
-- Priority behavior is deterministic under simultaneous events.
-- Each new mode ships with parser, state, UI, and accessibility tests.
-
-## Phase 4 — v4.0: Personalization, accessibility, and responsive design
-
-**Goal:** Make Smart Island adapt naturally to different users, screens, and contexts.
-
-### Product work
-
-- Add profiles such as Default, Work, Gaming, Driving, and Bedtime with manual switching first.
-- Add per-app size, position, color, timeout, and expansion behavior.
-- Add device-layout presets for centered cameras, corner cameras, tablets, foldables, landscape, and cutout-free screens.
-- Add reduced motion, high contrast, color-independent indicators, larger touch targets, and complete screen-reader labels.
-- Add optional import/exportable theme presets with a human-readable, versioned format.
-- Redesign the settings information architecture if usability testing shows the dashboard no longer scales.
-
-### Engineering work
-
-- Move large mode-specific UI and service responsibilities behind clear domain interfaces.
-- Add window-size and fold-state adaptation tests.
-- Establish performance budgets for recomposition, animation frame time, memory, and battery.
-- Add Baseline Profiles and startup benchmarks for release builds.
-
-### Release gates
-
-- No major layout breakage across phone, tablet, foldable, portrait, and landscape reference configurations.
-- Accessibility audit has no critical findings.
-- Profile changes are reversible and cannot strand the overlay off-screen.
-- v3 settings migrate automatically with a tested rollback-safe path.
-
-## Later opportunities — validate before committing
-
-These ideas should enter development only after user research or issue demand demonstrates value:
-
-- Play Store and F-Droid distribution, subject to overlay, notification-access, foreground-service, signing, and reproducible-build requirements.
-- Optional, privacy-preserving update checks. This would require the Internet permission and therefore needs a separate product and privacy decision.
-- Companion integrations with wearables, desktop devices, or automation apps through explicit opt-in interfaces.
-- A documented extension model for community-contributed notification parsers or visual modes, if it can be sandboxed and kept maintainable.
-- Localization beyond the initial language set, led by community-reviewed translations.
-
-## Explicit non-goals
-
-- Storing or syncing notification content to a server by default
-- Replacing the Android notification shade or lock screen
-- Circumventing Android security, background execution, or OEM restrictions
-- Advertising, behavioral profiling, or selling usage data
-- Shipping app-specific hacks without a generic fallback and automated tests
-
-## Success measures
-
-Because the app currently has no analytics or Internet permission, success should be measured with privacy-safe operational signals:
-
-| Area | Measure | Initial target |
-| --- | --- | --- |
-| Reliability | Crash-free core test runs and unresolved core-path reports | Zero known release-blocking core crashes |
-| Setup | Moderated users completing setup and demo | At least 90% without developer help |
-| Responsiveness | Event-to-overlay latency on reference devices | p95 under 500 ms |
-| Efficiency | Overnight idle battery impact in controlled testing | Under 1% over 8 hours on reference devices |
-| Compatibility | Maintained device/Android test matrix | Android 8-16 plus six major OEM families |
-| Quality | Required CI and release gates | 100% passing before release |
-| Community | Median first response to reproducible bug reports | Under seven days |
-
-Targets should be revised after the v3.2 reliability baseline is measured. Do not add telemetry merely to satisfy a metric; prefer opt-in surveys, GitHub issue labels, release downloads, and controlled device tests.
-
-## Delivery process
-
-1. Maintain one GitHub milestone per planned release and label work as `reliability`, `privacy`, `accessibility`, `performance`, `feature`, or `documentation`.
-2. Prioritize work using: user impact, number of affected devices, privacy/security risk, confidence, and implementation cost.
-3. Keep no more than one major mode and one platform-quality initiative in active development at once.
-4. Release small betas from the `dev` branch, publish known limitations, and promote only after the release gates pass.
-5. Require every feature proposal to specify fallback behavior, permissions, battery impact, accessibility, tests, and removal/migration strategy.
-6. Review this roadmap after every minor release and at least once per quarter.
-
-## Recommended next five issues
-
-1. **Release blocker: fix collapsed-pill touch handling.** Reproduce failures, correct bounds and touch-region synchronization, and meet the repeated-input/pass-through acceptance criteria.
-2. **Core feature: implement privacy-safe lock-screen support.** Start with the opt-in setting, keyguard state model, redacted default UI, and authenticated sensitive actions.
-3. **Security: remove and rotate exposed signing material.** Audit tracked files and release history, remove secrets from the working tree, rotate if required, and document secret-only signing.
-4. **Quality: create the Android/OEM compatibility matrix.** Define reference devices/emulators and a repeatable unlocked/locked core-flow checklist.
-5. **Reliability: test service death and listener reconnect.** Cover process recreation, permission loss, rapid event replacement, and lock/unlock transitions.
+- **Material 3 Expressive Design Overhaul**: Redesigned UI with modern MD3 color tokens, rounded shapes, and clean minimal visual aesthetics.
+- **Android 12+ Dynamic Wallpaper Colors**: Integrated `dynamicLightColorScheme` and `dynamicDarkColorScheme`.
+- **Grouped Settings Architecture**: Consolidated 8 standalone settings sections into 4 Category Hub Cards.
+- **Wi-Fi Hotspot Monitor**: Added `HotspotUtil` and `HotspotExpanded` for active tethering monitoring.
+- **Live Activity Engine**: Added `LiveActivityParser` and `LiveActivityExpanded` for delivery/ride tracking.
+- **Download/Upload Progress Mode**: Real-time progress bars with transfer speeds (MB/s).
+- **Turn-by-Turn Navigation Mode**: Instruction cards, distance, ETA, and maneuver arrows.
+- **Per-App Notification & Sound Controls**: Granular toggles under `NotificationsAndPrivacySection`.
+
+---
+
+## Future Roadmap Details
+
+### Phase 5.1 — Face Unlock, Custom Sounds & Dynamic Widgets (Q4 2026)
+
+**Goal:** Expand glanceable indicators to hardware authentication and custom ambient widgets.
+
+- **Face Unlock Integration**: Detect keyguard face recognition events via Shizuku/Accessibility and render smooth animated face-scan rings in the island.
+- **Dynamic Widgets**:
+  - Native Timer & Stopwatch cards with direct pause/reset controls.
+  - Calendar & Reminder glance cards for upcoming meetings and alarms.
+- **Custom Sound Packs**:
+  - Option to assign custom micro-sound effects (subtle pop, bubble, mechanical click) to island expand and collapse animations.
+- **App Whitelist / Blacklist Rules**:
+  - More granular per-app rules for minimum notification importance, vibration suppression, and custom expanded card heights.
+
+### Phase 5.2 — System Profiles & Floating Window Polish (Q1 2027)
+
+**Goal:** Provide contextual island automation and desktop-class multitasking.
+
+- **Contextual System Profiles**:
+  - *Gaming Profile*: Auto-hide all non-urgent notifications; show only low-battery alerts and high-priority callers in compact pill.
+  - *Work / Focus Profile*: Prioritize calendar, live activities, and direct messaging; suppress social media alerts.
+  - *Sleep / Night Profile*: Dim island brightness, disable ambient glow, and enforce silent animations.
+- **Enhanced Freeform Window Docking**:
+  - Preset window sizes (Quarter screen, Half screen, Pip) when triggering Swipe Down gesture.
+  - Smooth animation morphing from expanded island card directly into Android Freeform window.
+
+### Phase 6.0 — Ecosystem & Local Cross-Device Status (Q2 2027)
+
+**Goal:** Enable modular community widgets and private multi-device glanceability.
+
+- **Plugin Extension Architecture**:
+  - Expose a secure, local IPC API for third-party Android apps to feed live activity status into Smart Island.
+- **Local Cross-Device Status Sync**:
+  - Peer-to-peer sync over Bluetooth Low Energy (BLE) or local Wi-Fi to view tablet or secondary phone battery, call, or media status on your primary device.
+  - Strictly zero cloud servers or remote accounts required.

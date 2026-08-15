@@ -1,11 +1,11 @@
 <h1 align="center">Smart Island</h1>
 
 <p align="center">
-  A lightweight Android overlay that turns notifications, calls, and media playback into a floating glanceable island.
+  A lightweight, privacy-first Android overlay that turns notifications, calls, media playback, battery states, and system activities into a floating glanceable Dynamic Island.
 </p>
 
 <p align="center">
-  <strong>Current release: v4.0.0</strong>
+  <strong>Current release: v5.0.0</strong>
 </p>
 
 <p align="center">
@@ -21,11 +21,13 @@
 
 <p align="center">
   <a href="#downloads--safety">Downloads</a> |
+  <a href="#screenshots">Screenshots</a> |
   <a href="#features">Features</a> |
+  <a href="#gesture-guide">5-Gesture Guide</a> |
   <a href="#getting-started">Getting Started</a> |
   <a href="#privacy-and-permissions">Privacy</a> |
   <a href="ROADMAP.md">Roadmap</a> |
-  <a href="#contributing">Contributing</a> |
+  <a href="CHANGELOG.md">Changelog</a> |
   <a href="https://telegram.me/SmartIslandApp">Telegram Community</a>
 </p>
 
@@ -33,188 +35,184 @@
 
 ## Overview
 
-Smart Island is an open-source Android app that adds a small animated pill near the status bar. It listens for notification events locally, groups active items, and expands into a richer view for quick actions, media details, incoming calls, and notification previews.
+Smart Island is an open-source Android application that renders a fluid, dynamic floating pill near your device's camera notch or status bar. It intercepts system notifications, live activities, media playback, calls, charging events, hotspot connections, navigation instructions, and battery alerts locally—expanding into rich interactive cards with zero cloud tracking.
 
-The project is designed to be transparent, hackable, and privacy-conscious: notification data is processed on the device, settings are stored locally, and the app currently does not request the Android `INTERNET` permission.
+The project is designed to be 100% transparent, hackable, and privacy-conscious: all data is processed on-device, preferences are stored in local DataStore, and the app requests **zero internet permissions**.
+
+---
 
 ## Downloads & Safety
 
-* **Download APK**: Obtain the pre-compiled application package directly from the [GitHub Releases (Latest)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
+* **Download APK**: Obtain the pre-compiled APK directly from the [GitHub Releases (v5.0.0)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
 * **Total Downloads**: ![Total Downloads](https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github)
-* **Telegram Channel**: Join our community at [telegram.me/SmartIslandApp](https://telegram.me/SmartIslandApp) to stay updated, suggest features, and discuss the app.
-* **Security Verification**: To ensure transparency and safety, you can inspect the files using [VirusTotal](https://www.virustotal.com/gui/file/c07da408e7fa3e3fdeb25ec6415af07f1d56eff099840221138e9364c6065102/details) or review the automatic building and packaging logs under the GitHub Actions tab.
+* **Telegram Channel**: Join our active community at [telegram.me/SmartIslandApp](https://telegram.me/SmartIslandApp) to suggest features, get support, and discuss updates.
+* **Security Verification**: To ensure complete safety, inspect packages via [VirusTotal](https://www.virustotal.com/gui/file/c07da408e7fa3e3fdeb25ec6415af07f1d56eff099840221138e9364c6065102/details) or review automatic GitHub Actions CI builds.
+
+---
 
 ## Screenshots
 
 <p align="center">
-  <img src="/assets/screenshots/Home.jpg" width="24%" alt="Home Dashboard" />
-  <img src="/assets/screenshots/Settings.jpg" width="24%" alt="Redesigned Settings Hub" />
-  <img src="/assets/screenshots/Permissions.jpg" width="24%" alt="Permissions & Shizuku Setup" />
-  <img src="/assets/screenshots/Customizations.jpg" width="24%" alt="Theme Color Customizations" />
+  <img src="/assets/screenshots/01_studio_simulation_lab.jpg" width="24%" alt="Studio Simulation Lab" />
+  <img src="/assets/screenshots/02_notch_layout_presets.jpg" width="24%" alt="Notch & Layout Presets" />
+  <img src="/assets/screenshots/03_precision_sizing_controls.jpg" width="24%" alt="Precision Sizing & Drop Shadow" />
+  <img src="/assets/screenshots/04_features_hub.jpg" width="24%" alt="Features & Settings Hub" />
 </p>
 
 <p align="center">
-  <img src="/assets/screenshots/SmartIslandNavigation.jpg" width="24%" alt="Maps & Navigation Card" />
-  <img src="/assets/screenshots/SmartIslandMusic.jpg" width="24%" alt="Expanded Wavy Music Player" />
-  <img src="/assets/screenshots/SmartIslandBattery.jpg" width="24%" alt="Battery Charging & Color" />
-  <img src="/assets/screenshots/Positions.jpg" width="24%" alt="Position & Sizing Controls" />
+  <img src="/assets/screenshots/05_notifications_privacy_rules.jpg" width="24%" alt="Notifications & Privacy Rules" />
+  <img src="/assets/screenshots/06_live_activities_navigation.jpg" width="24%" alt="Live Activities & Navigation" />
+  <img src="/assets/screenshots/07_app_shortcuts_launcher.jpg" width="24%" alt="App Shortcuts Launcher" />
+  <img src="/assets/screenshots/08_feature_accent_colors.jpg" width="24%" alt="Feature Accent Colors Studio" />
 </p>
 
 <p align="center">
-  <img src="/assets/screenshots/NotificationsPrivacy.jpg" width="24%" alt="Notifications & Privacy" />
-  <img src="/assets/screenshots/AppShortcuts.jpg" width="24%" alt="App Shortcuts Picker & Grid" />
-  <img src="/assets/screenshots/Gestures.jpg" width="24%" alt="Interactive Gesture Guide" />
-  <img src="/assets/screenshots/Welcome.jpg" width="24%" alt="First-Run Welcome Experience" />
+  <img src="/assets/screenshots/09_custom_rgb_picker_flashlight.jpg" width="24%" alt="Custom RGB Color Picker & Flashlight" />
+  <img src="/assets/screenshots/10_system_hub.jpg" width="24%" alt="System, Gestures & About Hub" />
+  <img src="/assets/screenshots/11_expanded_music_card.jpg" width="24%" alt="Expanded Music Player Card" />
+  <img src="/assets/screenshots/12_about_smartisland.jpg" width="24%" alt="About Smart Island v5.0.0" />
 </p>
+
+<p align="center">
+  <img src="/assets/screenshots/13_support_feedback.jpg" width="24%" alt="Support & Community Feedback" />
+  <img src="/assets/screenshots/14_gesture_guide_5gestures.jpg" width="24%" alt="5 Gestures Step-by-Step Guide" />
+  <img src="/assets/screenshots/15_permissions_setup_center.jpg" width="24%" alt="Permissions & Shizuku Setup" />
+  <img src="/assets/screenshots/16_homescreen_music_floating.jpg" width="24%" alt="Home Screen Floating Music Island" />
+</p>
+
+---
 
 ## Features
 
-| Area | What Smart Island does |
+| Feature Area | Capabilities & Details |
 | --- | --- |
-| Floating overlay | Draws a compact island above other apps using Android's overlay window APIs. |
-| Material 3 UI & Grouping | Sleek Material 3 Expressive UI with dynamic wallpaper color adaptation and minimal expandable category cards. |
-| Wi-Fi Hotspot monitor | Monitors active tethering via `HotspotUtil`, shows connected client count, hotspot SSID, data usage indicators, and quick turn-off action. |
-| Live Activity tracking | Delivery and ride tracking cards via `LiveActivityParser` with dynamic per-app brand colors and real-time status updates. |
-| Download/Upload progress | Real-time download and upload progress bars with transfer speeds (MB/s), file names, and custom transfer icons. System shade notifications hidden by default while active. |
-| Navigation guidance | Turn-by-turn navigation overlay via `NavigationParser` showing next instruction, distance, ETA, and maneuver arrow icons. |
-| Notification listener & suppression | Intercepts notifications locally, presenting them in the island while suppressing system shade duplicates. |
-| Per-app notification & sound controls | Granular per-app notification and independent sound toggles under Notifications & Privacy settings. |
-| Landscape auto-hide | Automatically detects landscape orientation and temporarily hides the overlay during gaming and media. |
-| Battery optimization guide | Includes dedicated setup cards to guide users in setting background battery optimization to 'No restrictions'. |
-| Lock screen privacy | Opt-in support for displaying island status on the lock screen with optional sensitive content hiding. |
-| Wavy music player | Renders an animated organic wavy seek bar with heart/repeat actions, active track metadata, and dynamic color pickers. |
-| Smooth animations | Morphs seamlessly between collapsed and expanded states with sweet Compose animations. |
-| Multiple notifications | Maintains an active notification stack allowing users to page horizontally between active items. |
-| Calls and media | Detects incoming calls, music/media sessions, album artwork, playback state, and seek progress. |
-| Battery charging | Displays charging percentage, pulsing indicator icon, and dynamic remaining time-until-full estimates. |
-| Quick actions | Opens, dismisses, or launches supported notification content into floating windows. |
-| App shortcuts | Lets users configure up to eight apps for instant launch from the empty expanded island. |
-| Custom controls | Provides sliders for width, height, X/Y offsets, corner radius, and preset/custom RGB color themes. |
-| Theme support | Native light and dark theme styling with Android 12+ dynamic color support. |
-| Local settings | Persists all preferences locally using AndroidX DataStore Preferences with zero internet permission. |
-| Demo modes | Includes quick-test preview triggers for notifications, call alerts, music, battery, hotspot, transfer, live activity & navigation. |
-| Gesture guide | Interactive playground and animated tutorials demonstrating swipe up, swipe down, and horizontal paging. |
+| **Material 3 Expressive UI** | Modern MD3 color tokens, dynamic wallpaper color adaptation (Android 12+), rounded shapes, and fluid physics. |
+| **Full-Color App Icons** | Extracted launcher icons with LRU caching for crisp, authentic app icons in both collapsed pill and expanded cards. |
+| **Battery Modes (Low & Saver)** | Dynamic Battery island displaying Green for Charging, Pulsing Red for Low Battery (&le; 20%), and Warm Amber for Battery Saver ON with live battery percentage badge. |
+| **5-Gesture Control Engine** | Complete intuitive gesture system: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Horizontal Swipe Left/Right. |
+| **Split Island Multi-State** | Secondary auxiliary bubble for concurrent background activities (e.g. Music + Hotspot, Call + Bluetooth). |
+| **Wavy Music Player** | Real-time audio waveform scrubber, ambient album artwork background glow, track metadata, and dynamic color customization. |
+| **Message Sync Suppression** | Automatically filters background message polling notifications (e.g. Snapchat, WhatsApp sync) to prevent download mode hijacking. |
+| **Live Activity Tracking** | Real-time delivery and rideshare tracking (Uber, Swiggy, Zomato, Blinkit, Rapido, Ola) with brand colors. |
+| **Turn-by-Turn Navigation** | Live turn navigation indicators, maneuver direction arrows, remaining distance, and ETA. |
+| **Download & Upload Progress** | Real-time transfer speed meters (MB/s), progress bars, and animated icons. |
+| **Wi-Fi Hotspot Monitor** | Live tethering client counter, SSID badge, data usage, and quick turn-off action. |
+| **Flashlight & Screen Recording** | Active torch toggle card and live screen recording timer overlay. |
+| **App Shortcuts Launcher** | Quick-launch grid with up to 8 pinned apps or auto-filled recent applications. |
+| **Custom RGB Color Studio** | Fine-grained Red, Green, Blue slider color picker with live Hex preview for all 11 dynamic modes. |
+| **Notch & Layout Presets** | Instant 1-tap calibration for Center Hole, Wide Island, Left Corner, Right Corner, and Compact Pill. |
+| **Precision Sizing Controls** | Millimeter-accurate sliders for Width, Height, X Offset, Y Offset, Corner Radius, and Drop Shadows. |
+| **Shizuku 1-Tap Auto Setup** | Automated permission grants for Restricted Settings, Usage Access, Overlay, and Battery Optimization. |
+| **Lock Screen Privacy Guard** | Opt-in lock screen display with customizable sensitive content hiding (App Icon Only vs Full Preview). |
+| **Landscape Auto-Hide** | Automatically removes the floating overlay during full-screen landscape video playback and gaming. |
+| **Zero Internet Permission** | 100% on-device processing with local DataStore persistence and no analytics or tracking. |
+
+---
+
+## Gesture Guide
+
+Smart Island features a comprehensive gesture engine to manage notifications, multitasking, and media effortlessly:
+
+| # | Gesture | Action | Instructions & Feedback |
+|---|---|---|---|
+| **1** | **Single Tap / Click** | **Expand & Collapse** | Tap once on the collapsed pill to open rich details; tap anywhere on the screen background to collapse back. *(Cutout region remains active when idle-hidden)* |
+| **2** | **Quick Swipe Up** | **Dismiss Current** | Touch the expanded card and flick upward by &ge; 48dp to dismiss the active notification from the stack. |
+| **3** | **Hold + Swipe Up** | **Clear ALL Notifications** | Press & hold the expanded card for **300ms** until a **haptic vibration pulse** occurs, then swipe up to dismiss all pending notifications simultaneously. |
+| **4** | **Swipe Down** | **Floating Window** | Drag downward by &ge; 48dp on the expanded card to launch the application into a freeform floating window overlay. *(Requires Shizuku or OEM freeform)* |
+| **5** | **Swipe Left / Right** | **Switch Notification Stack** | Swipe horizontally across expanded cards to navigate smoothly between multiple active notifications and media sessions. |
+
+---
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[Android notifications] --> B[SmartIslandNotificationListenerService]
-    B -->|Filter & Suppress| C[NotificationFilter]
-    C --> Repo[SmartIslandNotificationRepository]
-    E[DataStore settings] --> Repo
+    A[Android Notifications & Broadcasts] --> B[SmartIslandNotificationListenerService]
+    Sys[System Broadcast Receiver] -->|Battery, Power, BT, Torch| Repo[SmartIslandNotificationRepository]
+    B -->|Filter & Suppress Sync| C[NotificationFilter]
+    C --> Repo
+    E[Local DataStore Settings] --> Repo
     Repo --> D[SmartIslandOverlayService]
     Sensor[IslandOrientationListener] -->|Hide in Landscape| D
-    D --> F[WindowManager overlay]
-    F --> G[Jetpack Compose island UI]
-    G --> H[Open, dismiss, expand, or launch floating window]
+    D --> F[WindowManager Overlay]
+    F --> G[Jetpack Compose Floating Island]
+    G --> H[5-Gesture Engine: Expand, Dismiss, Clear All, Floating Window, Switch Page]
 ```
+
+---
 
 ## Tech Stack
 
-| Layer | Tools |
+| Layer | Technology |
 | --- | --- |
-| Language | Kotlin |
-| UI | Jetpack Compose, Material 3 |
-| Android services | `NotificationListenerService`, foreground service, `WindowManager` overlay |
-| State and storage | Kotlin coroutines, StateFlow, AndroidX DataStore Preferences |
-| Build | Gradle Wrapper, Android Gradle Plugin, JVM 17 |
+| **Language** | Kotlin 2.0+ (JVM Target 17) |
+| **UI Framework** | Jetpack Compose & Material 3 Expressive Design System |
+| **Architecture** | Clean Architecture, MVI/Repository Pattern |
+| **Dependency Injection** | Dagger Hilt |
+| **State & Async** | Kotlin Coroutines, StateFlow, Atomic Mutex |
+| **Local Persistence** | AndroidX DataStore Preferences |
+| **System Services** | NotificationListenerService, Accessibility Floating Service, WindowManager Overlays, Shizuku |
+| **Build & CI** | Gradle Wrapper, AGP 9.0+, GitHub Actions CI (@v4) |
+
+---
 
 ## Requirements
 
-- Android Studio with Android SDK 36 installed
-- JDK 17
-- Android device or emulator running Android 8.0+ (`minSdk 26`)
-- Overlay permission enabled on the test device
-- Notification listener access enabled for Smart Island
+- **Android Version**: Android 8.0+ (API 26 through API 36)
+- **JDK**: Java Development Kit 17
+- **Permissions**: Overlay (`SYSTEM_ALERT_WINDOW`) and Notification Listener access
+
+---
 
 ## Getting Started
 
-Clone the repository:
-
+### 1. Clone the repository
 ```bash
 git clone https://github.com/agupta07505/SmartIsland.git
 cd SmartIsland
 ```
 
-Build a debug APK on Windows:
-
+### 2. Build the debug APK
+**On Windows:**
 ```powershell
 .\gradlew.bat assembleDebug
 ```
 
-Build a debug APK on macOS or Linux:
-
+**On macOS / Linux:**
 ```bash
 ./gradlew assembleDebug
 ```
 
-Install the debug build on a connected device:
-
+### 3. Install on a connected device
 ```bash
-./gradlew installDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.agupta07505.smartisland/.MainActivity
 ```
 
-Then open Smart Island and complete the runtime setup:
-
-1. Grant overlay permission.
-2. Enable notification listener access.
-3. Turn on Smart Island from the app.
-4. Use the demo buttons or trigger real notifications to test the island.
+---
 
 ## Privacy And Permissions
 
-Smart Island needs powerful Android permissions because it is an overlay and notification experience. The project keeps that behavior visible and local.
+Smart Island requires standard Android overlay and notification access to deliver the Dynamic Island experience:
 
-| Permission | Why it is used |
+| Permission | Purpose |
 | --- | --- |
-| `SYSTEM_ALERT_WINDOW` | Draws the floating island above other apps. |
-| `BIND_NOTIFICATION_LISTENER_SERVICE` | Reads notification metadata so the island can show notification, call, and media states. |
-| `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE` | Keeps the overlay service running while the island is enabled. |
+| `SYSTEM_ALERT_WINDOW` | Draws the floating dynamic island overlay above other applications. |
+| `BIND_NOTIFICATION_LISTENER_SERVICE` | Intercepts notification metadata to display alerts, media playback, and system states. |
+| `FOREGROUND_SERVICE` & `SPECIAL_USE` | Keeps the overlay service active in the background without being killed by the OS. |
+| `ACCESS_RESTRICTED_SETTINGS` (Optional Shizuku) | Grants 1-tap automated permissions without manual menu navigation. |
 
-At the time of this README, the app does not request `INTERNET`, does not include analytics, and does not send notification content to a remote server. See [PRIVACY.md](PRIVACY.md) for the full privacy note.
+*Note: Smart Island requests **no `INTERNET` permission**, includes no analytics or telemetry SDKs, and stores 100% of data locally. See [PRIVACY.md](PRIVACY.md).*
 
-## Project Structure
-
-```text
-SmartIsland/
-|-- app/
-|   `-- src/main/
-|       |-- AndroidManifest.xml
-|       |-- java/com/agupta07505/smartisland/
-|       |   |-- data/       # Settings model and DataStore repository
-|       |   |-- model/      # Island notification and mode models
-|       |   |-- service/    # Overlay and notification listener services
-|       |   |-- ui/         # Compose screens and island components
-|       |   `-- MainActivity.kt
-|       `-- res/
-|-- gradle/
-|-- build.gradle.kts
-|-- settings.gradle.kts
-`-- README.md
-```
-
-## Development Notes
-
-- Use the Gradle Wrapper committed in this repository.
-- Keep secrets, keystores, local SDK paths, generated APKs, and personal notification screenshots out of git.
-- Test overlay behavior on a physical device when possible; OEM Android builds can handle overlay and background-service rules differently.
-- Some floating-window behavior depends on Android version and device support.
-- The pass-through touch region and freeform "open in floating window" gesture rely on best-effort platform APIs and may be unavailable on some devices/OEM Android builds.
-- For signed GitHub Actions releases, see [docs/RELEASE_SIGNING.md](docs/RELEASE_SIGNING.md).
+---
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and use the issue templates for bug reports or feature ideas.
+Contributions are warmly welcomed! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting pull requests, and use our issue templates for bug reports or feature suggestions.
 
-By contributing, you agree that your contribution will be licensed under the same GNU General Public License v3.0 terms as the project.
-
-## Security
-
-Please report suspected vulnerabilities responsibly. See [SECURITY.md](SECURITY.md) for the reporting process and what information to include.
+---
 
 ## License
 
-Smart Island is licensed under the [GNU General Public License v3.0](LICENSE).
-
-Copyright (C) 2026 Animesh Gupta.
+Smart Island is licensed under the [GNU General Public License v3.0](LICENSE).  
+Copyright (C) 2026 **Animesh Gupta**.
