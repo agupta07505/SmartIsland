@@ -172,6 +172,7 @@ class AppNotificationFilterTest {
 
         every { mockSbn.packageName } returns "com.miui.securitycenter"
         every { mockSbn.notification } returns mockNotif
+        every { mockSbn.key } returns "torch_key"
 
         assertTrue(NotificationFilter.shouldSuppressFromIsland(mockSbn, mockPm))
     }

@@ -234,12 +234,7 @@ fun IslandOverlayView(
     // Dual Pill (Multi-Tasking Split Island) Detection:
     // When 2 or more notifications exist (e.g. Music + Notification/Timer/Call), split into Main Pill + Secondary Bubble
     val secondaryNotification = if (notifications.size >= 2) {
-        val musicIndex = notifications.indexOfFirst { it.mode == IslandMode.Music }
-        if (activeNotification?.mode != IslandMode.Music && musicIndex >= 0) {
-            notifications[musicIndex]
-        } else {
-            notifications.firstOrNull { it.key != activeNotification?.key }
-        }
+        notifications.firstOrNull { it.key != activeNotification?.key }
     } else null
     val secondaryIndex = if (secondaryNotification != null) {
         notifications.indexOfFirst { it.key == secondaryNotification.key }

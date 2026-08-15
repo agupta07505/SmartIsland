@@ -46,8 +46,8 @@ fun BluetoothExpanded(
     onCollapse: () -> Unit,
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
-    val deviceName = notification?.title ?: "AirPods Pro"
-    val statusText = notification?.text ?: "Connected"
+    val deviceName = notification?.title?.ifBlank { null } ?: "Bluetooth Device"
+    val statusText = notification?.text?.ifBlank { null } ?: "Connected"
 
     Row(
         modifier = Modifier

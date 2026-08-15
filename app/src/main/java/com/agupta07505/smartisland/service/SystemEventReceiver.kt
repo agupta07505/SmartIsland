@@ -39,9 +39,15 @@ class SystemEventReceiver(
                     intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                 }
                 val deviceName = try {
-                    device?.name ?: "Bluetooth Device"
+                    device?.name?.takeIf { it.isNotBlank() } ?: "Bluetooth Device"
                 } catch (e: SecurityException) {
                     "Bluetooth Device"
+                }
+                val batteryLevel = intent.getIntExtra("android.bluetooth.device.extra.BATTERY_LEVEL", -1)
+                val statusText = if (batteryLevel in 0..100) {
+                    "Connected • $batteryLevel%"
+                } else {
+                    "Connected"
                 }
                 notificationRepository.postNotification(
                     IslandNotification(
@@ -49,7 +55,7 @@ class SystemEventReceiver(
                         packageName = "com.android.bluetooth",
                         appName = "Bluetooth",
                         title = deviceName,
-                        text = "Connected",
+                        text = statusText,
                         mode = IslandMode.Bluetooth,
                         timeMillis = System.currentTimeMillis()
                     ),
