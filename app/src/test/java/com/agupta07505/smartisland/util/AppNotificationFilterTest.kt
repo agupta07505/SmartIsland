@@ -176,4 +176,31 @@ class AppNotificationFilterTest {
 
         assertTrue(NotificationFilter.shouldSuppressFromIsland(mockSbn, mockPm))
     }
+
+    @Test
+    fun testDownloadCompleteDetection() {
+        val completedNotif = mockk<Notification>(relaxed = true)
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
+        every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 100
+        every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "file.apk"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Download complete"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { completedNotif.extras } returns extras
+
+        assertTrue(completedNotif.isDownloadComplete())
+
+        val finishedNoProgressNotif = mockk<Notification>(relaxed = true)
+        val extras2 = mockk<Bundle>(relaxed = true)
+        every { extras2.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
+        every { extras2.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
+        every { extras2.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
+        every { extras2.getCharSequence(Notification.EXTRA_TITLE) } returns "File downloaded"
+        every { extras2.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to view"
+        every { extras2.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { finishedNoProgressNotif.extras } returns extras2
+
+        assertTrue(finishedNoProgressNotif.isDownloadComplete())
+    }
 }

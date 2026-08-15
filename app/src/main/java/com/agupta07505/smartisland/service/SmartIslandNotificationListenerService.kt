@@ -416,11 +416,13 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             val progress = extras.getInt(Notification.EXTRA_PROGRESS, 0)
             val isDone = notification.isDownloadComplete() || (progressMax > 0 && progress >= progressMax)
             if (isDone) {
-                serviceScope.launch {
+                pendingRemovals.remove(sbn.key)?.cancel()
+                val job = serviceScope.launch {
                     delay(3500L)
                     clearSuppressed(sbn.key)
                     notificationRepository.removeNotification(sbn.key)
                 }
+                pendingRemovals[sbn.key] = job
             }
         }
     }

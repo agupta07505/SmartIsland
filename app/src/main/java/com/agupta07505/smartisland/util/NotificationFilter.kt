@@ -165,10 +165,11 @@ fun Notification.toIslandMode(
 
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
-    val progressCurrent = extras?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0
     val isIndeterminate = extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true
-    val isTransferKeyword = listOf("download", "upload", "downloading", "uploading", "exporting", "saving", "transferring", "fetching", "file", "apk", "pdf", "mp4", "zip").any { titleText.contains(it) }
-    val isDownloadOrUpload = isProgressCategory || progressMax > 0 || isIndeterminate || isTransferKeyword
+    val activeTransferKeywords = listOf("downloading", "uploading", "exporting", "transferring", "saving", "fetching", "sending").any { titleText.contains(it) }
+    val genericTransferKeywords = listOf("download", "upload", "export", "transfer", "file", "apk", "pdf", "mp4", "zip").any { titleText.contains(it) }
+    val isDownloadOrUpload = isProgressCategory || progressMax > 0 || isIndeterminate || activeTransferKeywords ||
+        (genericTransferKeywords && (progressMax > 0 || isIndeterminate || isProgressCategory))
 
     return when {
         // Hotspot & Tethering status
@@ -194,15 +195,23 @@ fun Notification.isDownloadComplete(): Boolean {
     val extras = extras ?: return false
     val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)
     val progressCurrent = extras.getInt(Notification.EXTRA_PROGRESS, 0)
+    val isIndeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false)
+
     if (progressMax > 0 && progressCurrent >= progressMax) return true
 
     val titleText = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
     val completionKeywords = listOf(
-        "download complete", "download completed", "download finished", "downloaded",
-        "upload complete", "upload completed", "upload finished", "uploaded",
-        "export complete", "export completed", "export finished", "exported",
-        "transfer complete", "transfer completed", "transfer finished",
-        "save complete", "saved"
+        "complete", "completed", "finished", "downloaded", "uploaded", "exported",
+        "saved", "successful", "successfully", "done", "tap to open", "tap to view",
+        "file saved", "sent successfully"
     )
-    return completionKeywords.any { titleText.contains(it) }
+    if (completionKeywords.any { titleText.contains(it) }) return true
+
+    // If progress bar is gone (progressMax == 0 && !isIndeterminate) and text does not say "downloading/uploading", it's complete
+    val isCurrentlyActiveText = listOf("downloading", "uploading", "exporting", "transferring", "saving", "fetching", "sending").any { titleText.contains(it) }
+    if (progressMax == 0 && !isIndeterminate && !isCurrentlyActiveText) {
+        return true
+    }
+
+    return false
 }
