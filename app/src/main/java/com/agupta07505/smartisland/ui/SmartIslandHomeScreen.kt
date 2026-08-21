@@ -71,6 +71,7 @@ import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material.icons.rounded.Gesture
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MusicNote
@@ -140,6 +141,7 @@ import com.agupta07505.smartisland.ui.sections.AboutSection
 import com.agupta07505.smartisland.ui.sections.AppShortcutsSection
 import com.agupta07505.smartisland.ui.sections.CustomizationsSection
 import com.agupta07505.smartisland.ui.sections.GesturesSection
+import com.agupta07505.smartisland.ui.sections.NotificationHistorySection
 import com.agupta07505.smartisland.ui.sections.NotificationsAndPrivacySection
 import com.agupta07505.smartisland.ui.sections.PermissionsSection
 import com.agupta07505.smartisland.ui.sections.PositionsSection
@@ -157,6 +159,7 @@ private enum class StudioTab {
 private enum class FeatureDetailSection {
     NotificationRules,
     AppShortcuts,
+    NotificationHistory,
     ColorStudio,
     GesturesGuide,
     PermissionsCenter,
@@ -1041,6 +1044,16 @@ private fun SettingsOverviewSection(
                 statusText = "${settings.shortcutPackages.size}/8 pinned",
                 onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
             )
+
+            FeatureStudioNavigationCard(
+                title = "Notification History & Logs",
+                subtitle = "View and search saved notifications with day/time grouping & auto-clean timer",
+                icon = Icons.Rounded.History,
+                iconColor = Color(0xFF38BDF8),
+                statusText = if (settings.enableNotificationHistory) "Logging Active" else "Disabled",
+                statusColor = if (settings.enableNotificationHistory) Color(0xFF0F9F6E) else Color(0xFF94A3B8),
+                onClick = { onNavigateTo(FeatureDetailSection.NotificationHistory) }
+            )
         }
 
         // Section 2: Appearance & Gesture Controls
@@ -1294,6 +1307,7 @@ private fun DetailScreenHost(
             val title = when (section) {
                 FeatureDetailSection.NotificationRules -> "Notifications & Privacy"
                 FeatureDetailSection.AppShortcuts -> "App Shortcuts Launcher"
+                FeatureDetailSection.NotificationHistory -> "Notification History Log"
                 FeatureDetailSection.ColorStudio -> "Feature Accent Colors"
                 FeatureDetailSection.GesturesGuide -> "Gesture Guide & Playground"
                 FeatureDetailSection.PermissionsCenter -> "Permissions & Setup Center"
@@ -1314,6 +1328,9 @@ private fun DetailScreenHost(
             }
             FeatureDetailSection.AppShortcuts -> {
                 AppShortcutsSection(settings = settings, repository = repository)
+            }
+            FeatureDetailSection.NotificationHistory -> {
+                NotificationHistorySection(settings = settings, repository = repository)
             }
             FeatureDetailSection.ColorStudio -> {
                 CustomizationsSection(settings = settings, repository = repository)
