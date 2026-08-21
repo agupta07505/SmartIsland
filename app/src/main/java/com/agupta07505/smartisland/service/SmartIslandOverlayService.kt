@@ -300,6 +300,17 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
+
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Input-active collector failed") {
+                viewModel.isInputActive.collectLatest {
+                    if (destroyed || !viewModel.settings.value.enabled) {
+                        return@collectLatest
+                    }
+                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                }
+            }
+        }
     }
 
     override fun onServiceConnected() {
@@ -426,6 +437,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
                 installOverlayViewTreeOwners()
+                isFocusable = true
+                isFocusableInTouchMode = true
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
                     OverlayIsland(
@@ -592,11 +605,13 @@ class SmartIslandOverlayService : AccessibilityService() {
             val pillWidthDp = settings.width + (if (isSplitMode) 8f + settings.height else 0f) + 24f
             (pillWidthDp * density).toInt()
         }
+        val isInput = viewModel.isInputActive.value && expanded
+        val focusFlags = if (isInput) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         val params = WindowManager.LayoutParams(
             w,
             h,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            focusFlags or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
@@ -605,6 +620,10 @@ class SmartIslandOverlayService : AccessibilityService() {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = if (expanded || isTouchableRegionSupported) 0 else (settings.xOffset * density).toInt()
             y = settings.yOffset.dpToPx()
+            if (isInput) {
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+            }
         }
         runCatchingLogged(TAG, "Failed to update view layout") { 
             windowManager.updateViewLayout(view, params) 

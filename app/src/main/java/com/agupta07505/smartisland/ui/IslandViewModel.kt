@@ -63,6 +63,7 @@ class IslandViewModel(
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
     val isLocked = MutableStateFlow(false)
+    val isInputActive = MutableStateFlow(false)
 
     val mode: StateFlow<IslandMode> = combine(visibleNotifications, selectedIndex) { list, idx ->
         list.getOrNull(idx)?.mode ?: IslandMode.Empty
@@ -107,9 +108,23 @@ class IslandViewModel(
             runSuspendCatchingLogged(TAG, "Expanded-state collector failed") {
                 expanded.collect { isExpanded ->
                     if (isExpanded) {
-                        startAutoCollapseTimer()
+                        if (!isInputActive.value) {
+                            startAutoCollapseTimer()
+                        }
                     } else {
                         stopAutoCollapseTimer()
+                        isInputActive.value = false
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
+            runSuspendCatchingLogged(TAG, "Input-active collector failed") {
+                isInputActive.collect { active ->
+                    if (active) {
+                        stopAutoCollapseTimer()
+                    } else if (expanded.value) {
+                        startAutoCollapseTimer()
                     }
                 }
             }
@@ -121,7 +136,14 @@ class IslandViewModel(
     }
 
     fun collapse() {
+        isInputActive.value = false
         expanded.value = false
+    }
+
+    fun setInputActive(active: Boolean) {
+        if (isInputActive.value != active) {
+            isInputActive.value = active
+        }
     }
 
     private var lastToggleTimeMs = 0L
@@ -135,6 +157,7 @@ class IslandViewModel(
 
     private fun startAutoCollapseTimer() {
         autoCollapseJob?.cancel()
+        if (isInputActive.value) return
         autoCollapseJob = viewModelScope.launch {
             delay(AUTO_COLLAPSE_DELAY_MS)
             collapse()

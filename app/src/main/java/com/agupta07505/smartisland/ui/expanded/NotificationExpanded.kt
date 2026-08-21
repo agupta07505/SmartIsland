@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Close
@@ -38,6 +40,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,12 +49,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -68,11 +77,29 @@ fun NotificationExpanded(
     onOpenNotification: () -> Unit,
     onCollapse: () -> Unit,
     showActions: Boolean = true,
-    settings: SmartIslandSettings = SmartIslandSettings.Default
+    settings: SmartIslandSettings = SmartIslandSettings.Default,
+    onReplyStateChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
     var isReplying by remember(notification?.key) { mutableStateOf(false) }
     var replyText by remember(notification?.key) { mutableStateOf("") }
+
+    LaunchedEffect(isReplying) {
+        onReplyStateChanged(isReplying)
+        if (isReplying) {
+            kotlinx.coroutines.delay(60)
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
+
+    DisposableEffect(notification?.key) {
+        onDispose {
+            onReplyStateChanged(false)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -163,6 +190,41 @@ fun NotificationExpanded(
             val quickReplyAction = notification.actionIntents.firstOrNull { it.isQuickReply }
                 ?: notification.actionIntents.firstOrNull { it.title.lowercase().contains("reply") }
 
+            val sendReplyAction: () -> Unit = {
+                if (replyText.isNotBlank()) {
+                    if (quickReplyAction?.pendingIntent != null) {
+                        val intent = Intent()
+                        val bundle = Bundle()
+                        val key = quickReplyAction.remoteInputKey ?: "key_text_reply"
+                        bundle.putCharSequence(key, replyText)
+                        val remoteInput = RemoteInput.Builder(key).build()
+                        RemoteInput.addResultsToIntent(arrayOf(remoteInput), intent, bundle)
+
+                        runCatching {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                val options = ActivityOptions.makeBasic()
+                                    .setPendingIntentBackgroundActivityStartMode(
+                                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                    )
+                                    .toBundle()
+                                quickReplyAction.pendingIntent.send(context, 0, intent, null, null, null, options)
+                            } else {
+                                quickReplyAction.pendingIntent.send(context, 0, intent)
+                            }
+                        }
+                    } else {
+                        Toast.makeText(context, "Reply sent: $replyText", Toast.LENGTH_SHORT).show()
+                    }
+                    val repo = SmartIslandRepositories.notificationRepository(context)
+                    repo.removeNotification(notification.key)
+                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
+                    isReplying = false
+                    onReplyStateChanged(false)
+                    keyboardController?.hide()
+                    onCollapse()
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -177,13 +239,6 @@ fun NotificationExpanded(
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (replyText.isEmpty()) {
-                        Text(
-                            text = "Reply to ${notification.title.ifBlank { notification.appName }}...",
-                            color = Color(0xFF888888),
-                            fontSize = 12.sp
-                        )
-                    }
                     BasicTextField(
                         value = replyText,
                         onValueChange = { replyText = it },
@@ -194,7 +249,26 @@ fun NotificationExpanded(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Send
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onSend = { sendReplyAction() }
+                        ),
+                        decorationBox = { innerTextField ->
+                            if (replyText.isEmpty()) {
+                                Text(
+                                    text = "Reply to ${notification.title.ifBlank { notification.appName }}...",
+                                    color = Color(0xFF888888),
+                                    fontSize = 12.sp
+                                )
+                            }
+                            innerTextField()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
                     )
                 }
 
@@ -207,35 +281,7 @@ fun NotificationExpanded(
                             if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else Color(0xFF333333)
                         )
                         .bounceClick {
-                            if (replyText.isNotBlank()) {
-                                if (quickReplyAction?.pendingIntent != null) {
-                                    val intent = Intent()
-                                    val bundle = Bundle()
-                                    val key = quickReplyAction.remoteInputKey ?: "key_text_reply"
-                                    bundle.putCharSequence(key, replyText)
-                                    val remoteInput = RemoteInput.Builder(key).build()
-                                    RemoteInput.addResultsToIntent(arrayOf(remoteInput), intent, bundle)
-
-                                    runCatching {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                            val options = ActivityOptions.makeBasic()
-                                                .setPendingIntentBackgroundActivityStartMode(
-                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                                )
-                                                .toBundle()
-                                            quickReplyAction.pendingIntent.send(context, 0, intent, null, null, null, options)
-                                        } else {
-                                            quickReplyAction.pendingIntent.send(context, 0, intent)
-                                        }
-                                    }
-                                } else {
-                                    Toast.makeText(context, "Reply sent: $replyText", Toast.LENGTH_SHORT).show()
-                                }
-                                val repo = SmartIslandRepositories.notificationRepository(context)
-                                repo.removeNotification(notification.key)
-                                repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
-                                onCollapse()
-                            }
+                            sendReplyAction()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -253,7 +299,11 @@ fun NotificationExpanded(
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF222222))
-                        .bounceClick { isReplying = false },
+                        .bounceClick {
+                            isReplying = false
+                            onReplyStateChanged(false)
+                            keyboardController?.hide()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

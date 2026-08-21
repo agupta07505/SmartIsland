@@ -59,7 +59,8 @@ fun IslandExpandedContent(
     statusBarHeight: Dp,
     onHeightMeasured: (Dp) -> Unit,
     settings: SmartIslandSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReplyStateChanged: (Boolean) -> Unit = {}
 ) {
     if (notifications.isEmpty()) {
         val density = LocalDensity.current
@@ -211,7 +212,8 @@ fun IslandExpandedContent(
                                 onOpenNotification = { onOpenNotification(notification) },
                                 onCollapse = onCollapse,
                                 showActions = settings.showNotificationActions,
-                                settings = settings
+                                settings = settings,
+                                onReplyStateChanged = onReplyStateChanged
                             )
                             IslandMode.IncomingCall -> IncomingCallExpanded(
                                 notification = notification,
