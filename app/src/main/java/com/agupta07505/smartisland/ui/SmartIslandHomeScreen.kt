@@ -1354,7 +1354,7 @@ private fun DetailScreenHost(
                 )
             }
             FeatureDetailSection.AboutApp -> {
-                AboutSection()
+                AboutSection(settings = settings, repository = repository)
             }
             FeatureDetailSection.SupportCommunity -> {
                 SupportSection()

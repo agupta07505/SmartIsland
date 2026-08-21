@@ -71,6 +71,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val EnableShadow = booleanPreferencesKey("enable_shadow")
         val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
         val DeviceType = stringPreferencesKey("device_type")
+        val AllowNetworkChecks = booleanPreferencesKey("allow_network_checks")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -169,7 +170,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification,
                 enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
                 enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
-                deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType
+                deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType,
+                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks
             )
         }
 
@@ -333,6 +335,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
         it[Keys.AutoExpandOnNotification] = value
+    }
+    suspend fun setAllowNetworkChecks(value: Boolean) = editSafely {
+        it[Keys.AllowNetworkChecks] = value
     }
 
     suspend fun resetPosition() = editSafely {

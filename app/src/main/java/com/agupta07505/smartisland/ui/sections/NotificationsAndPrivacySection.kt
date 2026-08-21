@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.TouchApp
@@ -311,6 +312,17 @@ fun NotificationsAndPrivacySection(
                         }
                     }
                 }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    title = "Network Access & Release Checks",
+                    subtitle = "Allow unauthenticated, read-only queries to GitHub for release updates and insights. Turn off to enforce 100% strict offline mode.",
+                    icon = Icons.Rounded.Public,
+                    iconColor = Color(0xFF10B981),
+                    checked = settings.allowNetworkChecks,
+                    onCheckedChange = { scope.launch { repository.setAllowNetworkChecks(it) } }
+                )
             }
         }
 

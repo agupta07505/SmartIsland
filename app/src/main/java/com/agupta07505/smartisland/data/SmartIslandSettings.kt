@@ -42,7 +42,8 @@ data class SmartIslandSettings(
     val autoExpandOnNotification: Boolean = true,
     val enableShadow: Boolean = true,
     val enableMusicArtworkBackground: Boolean = true,
-    val deviceType: String = "AUTO"
+    val deviceType: String = "AUTO",
+    val allowNetworkChecks: Boolean = true
 ) {
     companion object {
         val Default = SmartIslandSettings()

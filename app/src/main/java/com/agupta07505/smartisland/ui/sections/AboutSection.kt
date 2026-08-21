@@ -78,6 +78,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.BuildConfig
+import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
 import com.agupta07505.smartisland.util.GitHubApiService
 import com.agupta07505.smartisland.util.GitHubCommit
@@ -90,6 +92,7 @@ import kotlinx.coroutines.launch
 private sealed interface UpdateState {
     object Idle : UpdateState
     object Checking : UpdateState
+    object OfflineMode : UpdateState
     data class UpToDate(val version: String) : UpdateState
     data class UpdateAvailable(val release: GitHubRelease) : UpdateState
     data class Error(val message: String) : UpdateState
@@ -97,18 +100,29 @@ private sealed interface UpdateState {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AboutSection() {
+fun AboutSection(
+    settings: SmartIslandSettings = SmartIslandSettings.Default,
+    repository: SmartIslandSettingsRepository? = null
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val currentVersion = remember(context) { getAppVersion(context) }
 
-    var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
+    var updateState by remember {
+        mutableStateOf<UpdateState>(
+            if (!settings.allowNetworkChecks) UpdateState.OfflineMode else UpdateState.Idle
+        )
+    }
     var repoStats by remember { mutableStateOf<GitHubRepoStats?>(null) }
     var contributors by remember { mutableStateOf<List<GitHubContributor>>(emptyList()) }
     var recentCommits by remember { mutableStateOf<List<GitHubCommit>>(emptyList()) }
     var isLoadingInsights by remember { mutableStateOf(false) }
 
     fun checkUpdates() {
+        if (!settings.allowNetworkChecks) {
+            updateState = UpdateState.OfflineMode
+            return
+        }
         scope.launch {
             updateState = UpdateState.Checking
             val result = GitHubApiService.getLatestRelease(currentVersion)
@@ -124,7 +138,15 @@ fun AboutSection() {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(settings.allowNetworkChecks) {
+        if (!settings.allowNetworkChecks) {
+            updateState = UpdateState.OfflineMode
+            isLoadingInsights = false
+            return@LaunchedEffect
+        }
+        if (updateState is UpdateState.OfflineMode) {
+            updateState = UpdateState.Idle
+        }
         isLoadingInsights = true
         launch {
             GitHubApiService.getRepoStats().onSuccess { repoStats = it }
@@ -223,6 +245,48 @@ fun AboutSection() {
 
                 // Update Status Display
                 when (val state = updateState) {
+                    is UpdateState.OfflineMode -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Security,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "100% Strict Offline Mode Active",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Network release queries are turned off in Privacy Settings.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (repository != null) {
+                                    OutlinedButton(
+                                        onClick = { scope.launch { repository.setAllowNetworkChecks(true) } },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("Enable", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     is UpdateState.Idle -> {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
