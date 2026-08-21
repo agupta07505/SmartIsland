@@ -26,10 +26,8 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import androidx.core.graphics.drawable.toBitmap
-import com.agupta07505.smartisland.data.INotificationHistoryRepository
-import com.agupta07505.smartisland.data.INotificationRepository
-import com.agupta07505.smartisland.data.NotificationHistoryEntry
 import com.agupta07505.smartisland.data.SmartIslandCommand
+import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandMode
@@ -62,7 +60,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     @Inject lateinit var repository: SmartIslandSettingsRepository
     @Inject lateinit var notificationRepository: INotificationRepository
-    @Inject lateinit var historyRepository: INotificationHistoryRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -473,29 +470,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             ),
             autoExpand = shouldIslandOnly && settings.autoExpandOnNotification
         )
-
-        if (settings.enableNotificationHistory) {
-            serviceScope.launch {
-                runSuspendCatchingLogged(TAG, "Failed to record notification history") {
-                    historyRepository.saveEntry(
-                        NotificationHistoryEntry(
-                            notificationKey = sbn.key,
-                            packageName = sbn.packageName,
-                            appName = appName,
-                            title = notifTitle,
-                            text = notifText,
-                            subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(),
-                            postTimeMillis = computedTimeMillis,
-                            category = notification.category,
-                            channelId = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) notification.channelId else null,
-                            mode = mode.name,
-                            actionTitles = actions.map { it.title }
-                        )
-                    )
-                    historyRepository.cleanupOldEntries(settings.notificationHistoryRetentionHours)
-                }
-            }
-        }
 
         if (isNewNotif && (mode == IslandMode.Notification || shouldIslandOnly) && mode != IslandMode.DownloadUpload) {
             playNotificationSound(sbn.packageName)

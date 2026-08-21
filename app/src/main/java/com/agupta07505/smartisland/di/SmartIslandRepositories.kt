@@ -8,7 +8,6 @@
 package com.agupta07505.smartisland.di
 
 import android.content.Context
-import com.agupta07505.smartisland.data.INotificationHistoryRepository
 import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import dagger.hilt.EntryPoint
@@ -21,7 +20,6 @@ import dagger.hilt.components.SingletonComponent
 interface SmartIslandRepositoriesEntryPoint {
     fun settingsRepository(): SmartIslandSettingsRepository
     fun notificationRepository(): INotificationRepository
-    fun notificationHistoryRepository(): INotificationHistoryRepository
 }
 
 object SmartIslandRepositories {
@@ -30,9 +28,6 @@ object SmartIslandRepositories {
 
     fun notificationRepository(context: Context): INotificationRepository =
         entryPoint(context).notificationRepository()
-
-    fun historyRepository(context: Context): INotificationHistoryRepository =
-        entryPoint(context).notificationHistoryRepository()
 
     private fun entryPoint(context: Context): SmartIslandRepositoriesEntryPoint =
         EntryPointAccessors.fromApplication(

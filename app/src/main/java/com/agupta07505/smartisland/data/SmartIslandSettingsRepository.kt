@@ -14,7 +14,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -73,8 +72,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
         val DeviceType = stringPreferencesKey("device_type")
         val AllowNetworkChecks = booleanPreferencesKey("allow_network_checks")
-        val EnableNotificationHistory = booleanPreferencesKey("enable_notification_history")
-        val NotificationHistoryRetentionHours = intPreferencesKey("notification_history_retention_hours")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -174,9 +171,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
                 enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
                 deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType,
-                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks,
-                enableNotificationHistory = prefs[Keys.EnableNotificationHistory] ?: defaults.enableNotificationHistory,
-                notificationHistoryRetentionHours = prefs[Keys.NotificationHistoryRetentionHours] ?: defaults.notificationHistoryRetentionHours
+                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks
             )
         }
 
@@ -343,12 +338,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setAllowNetworkChecks(value: Boolean) = editSafely {
         it[Keys.AllowNetworkChecks] = value
-    }
-    suspend fun setEnableNotificationHistory(value: Boolean) = editSafely {
-        it[Keys.EnableNotificationHistory] = value
-    }
-    suspend fun setNotificationHistoryRetentionHours(value: Int) = editSafely {
-        it[Keys.NotificationHistoryRetentionHours] = value
     }
 
     suspend fun resetPosition() = editSafely {

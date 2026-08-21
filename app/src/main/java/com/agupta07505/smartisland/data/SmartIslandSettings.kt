@@ -43,9 +43,7 @@ data class SmartIslandSettings(
     val enableShadow: Boolean = true,
     val enableMusicArtworkBackground: Boolean = true,
     val deviceType: String = "AUTO",
-    val allowNetworkChecks: Boolean = true,
-    val enableNotificationHistory: Boolean = false,
-    val notificationHistoryRetentionHours: Int = 72
+    val allowNetworkChecks: Boolean = true
 ) {
     companion object {
         val Default = SmartIslandSettings()

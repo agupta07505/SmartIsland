@@ -8,9 +8,7 @@
 package com.agupta07505.smartisland.di
 
 import android.content.Context
-import com.agupta07505.smartisland.data.INotificationHistoryRepository
 import com.agupta07505.smartisland.data.INotificationRepository
-import com.agupta07505.smartisland.data.NotificationHistoryRepository
 import com.agupta07505.smartisland.data.SmartIslandNotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import dagger.Module
@@ -34,10 +32,4 @@ object AppModule {
     @Singleton
     fun provideNotificationRepository(): INotificationRepository =
         SmartIslandNotificationRepository()
-
-    @Provides
-    @Singleton
-    fun provideNotificationHistoryRepository(
-        @ApplicationContext context: Context
-    ): INotificationHistoryRepository = NotificationHistoryRepository(context)
 }

@@ -32,8 +32,6 @@ class SmartIslandSettingsTest {
         assertEquals(0xFFF59E0BL, settings.timerColor)
         assertEquals(0xFF06B6D4L, settings.stopwatchColor)
         assertEquals(true, settings.allowNetworkChecks)
-        assertEquals(false, settings.enableNotificationHistory)
-        assertEquals(72, settings.notificationHistoryRetentionHours)
     }
 
     @Test
