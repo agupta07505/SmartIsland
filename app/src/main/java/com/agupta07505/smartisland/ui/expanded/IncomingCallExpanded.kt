@@ -8,7 +8,6 @@
 package com.agupta07505.smartisland.ui.expanded
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -42,7 +41,6 @@ import com.agupta07505.smartisland.ui.bounceClick
 fun IncomingCallExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
-    onOpenNotification: () -> Unit = {},
     onCollapse: () -> Unit,
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
@@ -59,9 +57,7 @@ fun IncomingCallExpanded(
         val isRinging = notification?.isCallRinging == true
 
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier
-                .weight(1f)
-                .clickable { onOpenNotification() }
+            modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = notification?.title?.takeIf { it.isNotBlank() }

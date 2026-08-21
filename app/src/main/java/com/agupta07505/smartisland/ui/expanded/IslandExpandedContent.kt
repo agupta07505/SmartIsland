@@ -216,14 +216,12 @@ fun IslandExpandedContent(
                             IslandMode.IncomingCall -> IncomingCallExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
-                                onOpenNotification = { onOpenNotification(notification) },
                                 onCollapse = onCollapse,
                                 settings = settings
                             )
                             IslandMode.Music -> MusicExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
-                                onOpenNotification = { onOpenNotification(notification) },
                                 settings = settings
                             )
                             IslandMode.Battery -> BatteryExpanded(

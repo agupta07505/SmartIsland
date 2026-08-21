@@ -39,7 +39,6 @@ import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
-import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandViewModel
 import com.agupta07505.smartisland.ui.OverlayIsland
@@ -671,39 +670,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(launchIntent)
                 } else {
-                    when (notification.mode) {
-                        IslandMode.Battery -> {
-                            val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            startActivity(intent)
-                        }
-                        IslandMode.Bluetooth -> {
-                            val intent = Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            startActivity(intent)
-                        }
-                        IslandMode.Hotspot -> {
-                            val intent = Intent("android.settings.TETHER_SETTINGS").apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            runCatching { startActivity(intent) }.getOrElse {
-                                startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
-                            }
-                        }
-                        IslandMode.Timer, IslandMode.Stopwatch -> {
-                            val intent = Intent(android.provider.AlarmClock.ACTION_SHOW_TIMERS).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            runCatching { startActivity(intent) }.getOrElse {
-                                Toast.makeText(this, "Opening ${notification.appName} (Demo)", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        else -> {
-                            Toast.makeText(this, "Opening ${notification.appName} (Demo)", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    Toast.makeText(this, "Opening ${notification.appName} (Demo)", Toast.LENGTH_SHORT).show()
                 }
             }
         }
