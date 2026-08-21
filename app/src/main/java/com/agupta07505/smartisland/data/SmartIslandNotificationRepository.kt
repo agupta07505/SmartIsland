@@ -98,7 +98,7 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 timeMillis = System.currentTimeMillis(),
                 mode = IslandMode.Notification,
                 actionIntents = listOf(
-                    IslandNotificationAction("Reply", null),
+                    IslandNotificationAction("Reply", null, isQuickReply = true, remoteInputKey = "key_text_reply"),
                     IslandNotificationAction("Mark Read", null)
                 )
             )
@@ -274,6 +274,33 @@ class SmartIslandNotificationRepository : INotificationRepository {
                 mode = IslandMode.ScreenRecording,
                 actionIntents = listOf(
                     IslandNotificationAction("Stop", null)
+                )
+            )
+            IslandMode.Timer -> IslandNotification(
+                key = "demo_timer",
+                packageName = "com.google.android.deskclock",
+                appName = "Clock",
+                title = "Tea Timer",
+                text = "04:59",
+                timeMillis = System.currentTimeMillis() + 299000L,
+                mode = IslandMode.Timer,
+                actionIntents = listOf(
+                    IslandNotificationAction("Pause", null),
+                    IslandNotificationAction("Reset", null)
+                )
+            )
+            IslandMode.Stopwatch -> IslandNotification(
+                key = "demo_stopwatch",
+                packageName = "com.google.android.deskclock",
+                appName = "Clock",
+                title = "Stopwatch",
+                text = "00:14.28",
+                timeMillis = System.currentTimeMillis() - 14280L,
+                mode = IslandMode.Stopwatch,
+                actionIntents = listOf(
+                    IslandNotificationAction("Lap", null),
+                    IslandNotificationAction("Pause", null),
+                    IslandNotificationAction("Reset", null)
                 )
             )
             IslandMode.Empty -> null

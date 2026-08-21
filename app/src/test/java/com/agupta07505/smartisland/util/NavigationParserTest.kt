@@ -74,4 +74,36 @@ class NavigationParserTest {
         val info = NavigationParser.parse(sbn)
         assertNull(info)
     }
+
+    @Test
+    fun testScreenRecordingNotificationReturnsNullFromNavigationParser() {
+        val extras = mockk<Bundle>()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen recording"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to stop • 5 mins left"
+        every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
+
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_NAVIGATION // Even if category was navigation
+        notification.extras = extras
+
+        val sbn = mockk<StatusBarNotification>()
+        every { sbn.packageName } returns "com.sec.android.app.screenrecorder"
+        every { sbn.notification } returns notification
+
+        val info = NavigationParser.parse(sbn)
+        assertNull(info)
+    }
+
+    @Test
+    fun testTurnDirectionExcludesTimeLeftPhrase() {
+        val direction = NavigationParser.parseTurnDirection("Screen recording in progress. 5 min left")
+        assertEquals(TurnDirection.STRAIGHT, direction)
+    }
+
+    @Test
+    fun testTurnDirectionMatchesActualTurnLeft() {
+        val direction = NavigationParser.parseTurnDirection("Turn left onto Broadway")
+        assertEquals(TurnDirection.LEFT, direction)
+    }
 }

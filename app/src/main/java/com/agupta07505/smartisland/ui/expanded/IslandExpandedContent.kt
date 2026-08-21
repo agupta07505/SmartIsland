@@ -145,6 +145,8 @@ fun IslandExpandedContent(
                 IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
                 IslandMode.Flashlight -> height.coerceIn(72.dp, 130.dp)
                 IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.Timer -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.Stopwatch -> height.coerceIn(72.dp, 130.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -270,6 +272,20 @@ fun IslandExpandedContent(
                             IslandMode.ScreenRecording -> ScreenRecordingExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Timer -> TimerExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
+                                settings = settings
+                            )
+                            IslandMode.Stopwatch -> StopwatchExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onOpenNotification = { onOpenNotification(notification) },
                                 onCollapse = onCollapse,
                                 settings = settings
                             )

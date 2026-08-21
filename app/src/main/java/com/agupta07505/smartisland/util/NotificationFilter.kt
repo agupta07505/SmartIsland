@@ -30,14 +30,15 @@ object NotificationFilter {
         packageManager: PackageManager,
         liveActivitiesEnabled: Boolean = true,
         navigationEnabled: Boolean = true,
-        disabledNotificationPackages: Set<String> = emptySet()
+        disabledNotificationPackages: Set<String> = emptySet(),
+        deviceType: String? = null
     ): Boolean {
         val packageName = sbn.packageName
         val notification = sbn.notification
-        val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled)
+        val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled, deviceType)
 
-        // Hotspot notifications are allowed even if posted by system tethering (android, systemui, settings)
-        if (mode == IslandMode.Hotspot) {
+        // Hotspot, Screen Recording, Timer, Stopwatch notifications are allowed even if posted by system/OEM frameworks
+        if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
             if (packageName == "com.agupta07505.smartisland") return true
             if (packageName in disabledNotificationPackages) return true
         } else {
@@ -52,12 +53,16 @@ object NotificationFilter {
         val isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
         if (isGroupSummary) return true
 
-        // Suppress if both title and text are null or blank
+        // Suppress if both title and text are null or blank (except for dedicated hardware/clock modes)
         val extras = notification.extras
         val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+            ?: extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
         val text = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()
             ?: extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
-        if (title.isNullOrBlank() && text.isNullOrBlank()) return true
+            ?: extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+            ?: extras?.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
+            ?: notification.tickerText?.toString()
+        if (title.isNullOrBlank() && text.isNullOrBlank() && mode != IslandMode.Stopwatch && mode != IslandMode.Timer && mode != IslandMode.ScreenRecording) return true
 
         // Suppress external torch / flashlight notifications from entering Smart Island,
         // because Smart Island natively manages physical torch state via CameraManager.TorchCallback.
@@ -75,13 +80,13 @@ object NotificationFilter {
             return true
         }
 
-        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, or hotspot
+        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, hotspot, screen recording, timer, or stopwatch
         if (isOngoing) {
             val isProgressNotification = !isMessageSync && (
                 notification.category == Notification.CATEGORY_PROGRESS ||
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
             )
-            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording) {
+            if (!isProgressNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording && mode != IslandMode.Timer && mode != IslandMode.Stopwatch) {
                 return true
             }
         }
@@ -144,36 +149,67 @@ object NotificationFilter {
 fun Notification.toIslandMode(
     sbn: StatusBarNotification? = null,
     liveActivitiesEnabled: Boolean = true,
-    navigationEnabled: Boolean = true
+    navigationEnabled: Boolean = true,
+    deviceType: String? = null
 ): IslandMode {
+    val packageName = sbn?.packageName.orEmpty()
+    val effectiveDevice = OemDeviceRules.resolveEffectiveDevice(deviceType)
+
+    val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
+
+    // 0. Timer & Stopwatch (Dedicated Clock/Timer support)
+    if (TimerStopwatchParser.isStopwatch(this, packageName)) {
+        return IslandMode.Stopwatch
+    }
+    if (TimerStopwatchParser.isTimer(this, packageName)) {
+        return IslandMode.Timer
+    }
+
+    // 1. Screen & Voice Recording (High priority, OEM-aware)
+    val isRecordingPackageOrKeyword = OemDeviceRules.isScreenRecording(packageName, titleText, effectiveDevice)
+    val isScreenRecordingActive = isRecordingPackageOrKeyword && !isScreenRecordingComplete()
+    if (isScreenRecordingActive) {
+        return IslandMode.ScreenRecording
+    }
+
+    // 2. Hotspot & Tethering status (OEM-aware)
+    val isHotspot = OemDeviceRules.isHotspot(packageName, titleText)
+    if (isHotspot) {
+        return IslandMode.Hotspot
+    }
+
+    // 3. Incoming & Ongoing Phone Calls (OEM-aware)
+    val isCallStyle = extras?.getString(Notification.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
+    val actionLabels = actions.orEmpty().map { it.title?.toString()?.lowercase().orEmpty() }
+    val hasIncomingCallActionPair =
+        actionLabels.any { it.contains("answer") || it.contains("accept") || it.contains("take") } &&
+            actionLabels.any {
+                it.contains("decline") ||
+                    it.contains("reject") ||
+                    it.contains("hang up") ||
+                    it.contains("dismiss")
+            }
+    val isInCallApp = OemDeviceRules.isInCallPackage(packageName, effectiveDevice)
+    val isCallEvent = (category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair || (isInCallApp && hasIncomingCallActionPair)) && !isCallEnded()
+    if (isCallEvent) {
+        return IslandMode.IncomingCall
+    }
+
+    // 4. Turn-by-Turn Map Navigation
     if (navigationEnabled && sbn != null) {
         if (NavigationParser.parse(sbn) != null) {
             return IslandMode.Navigation
         }
     }
 
+    // 5. Live Activities (Food delivery, ride-hailing)
     if (liveActivitiesEnabled && sbn != null) {
         if (LiveActivityParser.parse(sbn) != null) {
             return IslandMode.LiveActivity
         }
     }
 
-    val isCallStyle = extras?.getString(Notification.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
-    val actionLabels = actions.orEmpty().map { it.title?.toString()?.lowercase().orEmpty() }
-    val hasIncomingCallActionPair =
-        actionLabels.any { it.contains("answer") } &&
-            actionLabels.any {
-                it.contains("decline") ||
-                    it.contains("reject") ||
-                    it.contains("hang up")
-            }
-    val hasMediaSession = extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
-
-    val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
-    val isHotspotKeyword = listOf("hotspot", "tethering", "portable hotspot", "mobile hotspot", "wifi hotspot").any { titleText.contains(it) }
-    val isScreenRecordingKeyword = listOf("screen recording", "recording screen", "screen recorder", "screen record", "recording file", "record screen").any { titleText.contains(it) }
-    val isScreenRecordingActive = isScreenRecordingKeyword && !isScreenRecordingComplete()
-
+    // 6. Downloads, Uploads & Progress Transfers
     val isMessageSync = isMessageSyncNotification(titleText)
     val isProgressCategory = category == Notification.CATEGORY_PROGRESS
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
@@ -185,28 +221,17 @@ fun Notification.toIslandMode(
         (progressMax > 0 && (genericTransferKeywords || activeTransferKeywords)) ||
         (isIndeterminate && (genericTransferKeywords || activeTransferKeywords))
     )
-
-    return when {
-        // Screen Recording
-        isScreenRecordingActive -> IslandMode.ScreenRecording
-
-        // Hotspot & Tethering status
-        isHotspotKeyword -> IslandMode.Hotspot
-
-        // Missed calls and ended calls are historical notifications, not active incoming/ongoing calls.
-        (category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair) && !isCallEnded() -> {
-            IslandMode.IncomingCall
-        }
-
-        // Progress notifications (downloads, uploads, background transfers)
-        isDownloadOrUpload -> IslandMode.DownloadUpload
-
-        // Only classify action-based media notifications when a media session exists.
-        category == Notification.CATEGORY_TRANSPORT ||
-            hasMediaSession -> IslandMode.Music
-
-        else -> IslandMode.Notification
+    if (isDownloadOrUpload) {
+        return IslandMode.DownloadUpload
     }
+
+    // 7. Media & Music Playback
+    val hasMediaSession = extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
+    if (category == Notification.CATEGORY_TRANSPORT || hasMediaSession) {
+        return IslandMode.Music
+    }
+
+    return IslandMode.Notification
 }
 
 fun Notification.isDownloadComplete(): Boolean {
@@ -237,16 +262,7 @@ fun Notification.isDownloadComplete(): Boolean {
 fun Notification.isScreenRecordingComplete(): Boolean {
     val extras = extras ?: return false
     val titleText = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
-    val isOngoing = (flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
-
-    val completionKeywords = listOf(
-        "saved", "complete", "completed", "finished", "stopped",
-        "tap to view", "tap to share", "video saved", "recording saved", "ended"
-    )
-    if (completionKeywords.any { titleText.contains(it) }) return true
-    if (!isOngoing) return true
-
-    return false
+    return OemDeviceRules.isScreenRecordingComplete(this, titleText)
 }
 
 fun Notification.isCallEnded(): Boolean {

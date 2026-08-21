@@ -46,6 +46,7 @@ fun SliderSettingItem(
     range: ClosedFloatingPointRange<Float>,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    onValueChangeFinished: (() -> Unit)? = null,
     suffix: String = "dp",
     step: Float = 1f
 ) {
@@ -78,6 +79,7 @@ fun SliderSettingItem(
                         .clickable {
                             val newVal = (value - step).coerceIn(range.start, range.endInclusive)
                             onValueChange(newVal)
+                            onValueChangeFinished?.invoke()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -115,6 +117,7 @@ fun SliderSettingItem(
                         .clickable {
                             val newVal = (value + step).coerceIn(range.start, range.endInclusive)
                             onValueChange(newVal)
+                            onValueChangeFinished?.invoke()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -131,6 +134,7 @@ fun SliderSettingItem(
         Slider(
             value = value,
             onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
             valueRange = range,
             colors = SliderDefaults.colors(
                 thumbColor = MaterialTheme.colorScheme.primary,

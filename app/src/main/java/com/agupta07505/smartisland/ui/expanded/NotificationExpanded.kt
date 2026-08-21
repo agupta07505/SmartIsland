@@ -7,6 +7,11 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import android.app.ActivityOptions
+import android.app.RemoteInput
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,20 +25,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -55,6 +71,9 @@ fun NotificationExpanded(
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
+    var isReplying by remember(notification?.key) { mutableStateOf(false) }
+    var replyText by remember(notification?.key) { mutableStateOf("") }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -139,67 +158,179 @@ fun NotificationExpanded(
             )
         }
 
-        // Bottom Section: Action buttons (left) and Down Arrow Button (right)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left part of Bottom Section: Action Buttons Row
-            if (showActions && notification != null && notification.actionIntents.isNotEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+        // Bottom Section: Inline Quick Reply OR Action Buttons
+        if (isReplying && notification != null) {
+            val quickReplyAction = notification.actionIntents.firstOrNull { it.isQuickReply }
+                ?: notification.actionIntents.firstOrNull { it.title.lowercase().contains("reply") }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF222222))
+                        .padding(horizontal = 14.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    notification.actionIntents.forEach { action ->
-                        Box(
-                            modifier = Modifier
-                                .height(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFE2E8F0)) // light grey background matching the Telegram button
-                                .bounceClick {
-                                    if (action.pendingIntent != null) {
-                                        runCatching { action.pendingIntent.send() }
-                                    } else {
-                                        Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
+                    if (replyText.isEmpty()) {
+                        Text(
+                            text = "Reply to ${notification.title.ifBlank { notification.appName }}...",
+                            color = Color(0xFF888888),
+                            fontSize = 12.sp
+                        )
+                    }
+                    BasicTextField(
+                        value = replyText,
+                        onValueChange = { replyText = it },
+                        singleLine = true,
+                        cursorBrush = SolidColor(Color.White),
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Send Button
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else Color(0xFF333333)
+                        )
+                        .bounceClick {
+                            if (replyText.isNotBlank()) {
+                                if (quickReplyAction?.pendingIntent != null) {
+                                    val intent = Intent()
+                                    val bundle = Bundle()
+                                    val key = quickReplyAction.remoteInputKey ?: "key_text_reply"
+                                    bundle.putCharSequence(key, replyText)
+                                    val remoteInput = RemoteInput.Builder(key).build()
+                                    RemoteInput.addResultsToIntent(arrayOf(remoteInput), intent, bundle)
+
+                                    runCatching {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                            val options = ActivityOptions.makeBasic()
+                                                .setPendingIntentBackgroundActivityStartMode(
+                                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                                                )
+                                                .toBundle()
+                                            quickReplyAction.pendingIntent.send(context, 0, intent, null, null, null, options)
+                                        } else {
+                                            quickReplyAction.pendingIntent.send(context, 0, intent)
+                                        }
                                     }
-                                    val repo = SmartIslandRepositories.notificationRepository(context)
-                                    repo.removeNotification(notification.key)
-                                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
-                                    onCollapse()
+                                } else {
+                                    Toast.makeText(context, "Reply sent: $replyText", Toast.LENGTH_SHORT).show()
                                 }
-                                .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = action.title,
-                                color = Color(0xFF1F2937), // dark grey text
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                                val repo = SmartIslandRepositories.notificationRepository(context)
+                                repo.removeNotification(notification.key)
+                                repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
+                                onCollapse()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Send,
+                        contentDescription = "Send Reply",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // Cancel Button
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF222222))
+                        .bounceClick { isReplying = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Cancel",
+                        tint = Color(0xFFB7C0CA),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left part of Bottom Section: Action Buttons Row
+                if (showActions && notification != null && notification.actionIntents.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        notification.actionIntents.forEach { action ->
+                            val isReplyAction = action.isQuickReply || action.title.lowercase().contains("reply")
+                            Box(
+                                modifier = Modifier
+                                    .height(28.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xFFE2E8F0)) // light grey background matching the Telegram button
+                                    .bounceClick {
+                                        if (isReplyAction) {
+                                            isReplying = true
+                                        } else {
+                                            if (action.pendingIntent != null) {
+                                                runCatching { action.pendingIntent.send() }
+                                            } else {
+                                                Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
+                                            }
+                                            val repo = SmartIslandRepositories.notificationRepository(context)
+                                            repo.removeNotification(notification.key)
+                                            repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
+                                            onCollapse()
+                                        }
+                                    }
+                                    .padding(horizontal = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = action.title,
+                                    color = Color(0xFF1F2937), // dark grey text
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
 
-            // Down Arrow Button on bottom right
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF222222))
-                    .bounceClick { onOpenNotification() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
+                // Down Arrow Button on bottom right
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF222222))
+                        .bounceClick { onOpenNotification() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = "Open App",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
     }

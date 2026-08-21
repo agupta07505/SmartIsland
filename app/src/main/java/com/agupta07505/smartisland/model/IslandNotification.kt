@@ -43,5 +43,7 @@ data class IslandNotification(
 
 data class IslandNotificationAction(
     val title: String,
-    val pendingIntent: PendingIntent?
+    val pendingIntent: PendingIntent?,
+    val isQuickReply: Boolean = false,
+    val remoteInputKey: String? = null
 )

@@ -105,6 +105,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         isSystemConnected = false
         pendingRemovals.values.forEach { it.cancel() }
         pendingRemovals.clear()
+        pendingSuppressionJobs.values.forEach { it.cancel() }
+        pendingSuppressionJobs.clear()
         suppressedKeys.clear()
         iconCache.evictAll()
         serviceScope.cancel()
@@ -113,6 +115,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     private val pendingRemovals = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
+    private val pendingSuppressionJobs = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Job>()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         runCatchingLogged(TAG, "onNotificationPosted callback failed") {
@@ -163,13 +166,15 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     packageManager,
                     currentSettings.liveActivitiesEnabled,
                     currentSettings.navigationEnabled,
-                    currentSettings.disabledNotificationPackages
+                    currentSettings.disabledNotificationPackages,
+                    currentSettings.deviceType
                 )
             ) {
                 val modeQuick = notification.toIslandMode(
                     sbn,
                     currentSettings.liveActivitiesEnabled,
-                    currentSettings.navigationEnabled
+                    currentSettings.navigationEnabled,
+                    currentSettings.deviceType
                 )
                 if (shouldBeIslandOnly(notification, modeQuick)) {
                     markSuppressed(sbn.key)
@@ -287,7 +292,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     android.util.Log.d(TAG, "ListenerConnected: ${active.size} active, overlayReady=$overlayReady")
 
                     active.forEach { sbn ->
-                        val mode = sbn.notification.toIslandMode()
+                        val mode = sbn.notification.toIslandMode(
+                            sbn,
+                            settings.liveActivitiesEnabled,
+                            settings.navigationEnabled,
+                            settings.deviceType
+                        )
                         if (settings.hideFromNotificationShade &&
                             shouldBeIslandOnly(sbn.notification, mode)
                         ) {
@@ -345,7 +355,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (shouldSuppressFromIsland(sbn)) return
 
         val extras = notification.extras
-        val mode = notification.toIslandMode(sbn, settings.liveActivitiesEnabled, settings.navigationEnabled)
+        val mode = notification.toIslandMode(
+            sbn,
+            settings.liveActivitiesEnabled,
+            settings.navigationEnabled,
+            settings.deviceType
+        )
         android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
 
         val shouldIslandOnly = shouldBeIslandOnly(notification, mode)
@@ -369,7 +384,14 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val existingNotif = notificationRepository.notifications.value.find { it.key == sbn.key || (it.mode == IslandMode.IncomingCall && it.packageName == sbn.packageName) }
         val actions = notification.actions?.mapNotNull { action ->
             action.title?.toString()?.let { title ->
-                IslandNotificationAction(title = title, pendingIntent = action.actionIntent)
+                val remoteInput = action.remoteInputs?.firstOrNull()
+                val isReply = remoteInput != null || title.lowercase().contains("reply")
+                IslandNotificationAction(
+                    title = title,
+                    pendingIntent = action.actionIntent,
+                    isQuickReply = isReply,
+                    remoteInputKey = remoteInput?.resultKey ?: "key_text_reply"
+                )
             }
         }.orEmpty()
         val isNowRinging = actions.any { it.title.lowercase().let { t -> t.contains("answer") || t.contains("accept") || t.contains("take") } }
@@ -381,18 +403,49 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             existingNotif != null && mode == IslandMode.IncomingCall && !isNowRinging && existingNotif.timeMillis > 0 -> {
                 existingNotif.timeMillis
             }
+            mode == IslandMode.Timer -> {
+                val remSec = com.agupta07505.smartisland.util.TimerStopwatchParser.parseTimerRemainingSeconds(notification)
+                if (remSec != null && remSec > 0) {
+                    System.currentTimeMillis() + remSec * 1000L
+                } else if (notification.`when` > System.currentTimeMillis()) {
+                    notification.`when`
+                } else {
+                    System.currentTimeMillis()
+                }
+            }
+            mode == IslandMode.Stopwatch -> {
+                val elSec = com.agupta07505.smartisland.util.TimerStopwatchParser.parseStopwatchElapsedSeconds(notification)
+                if (elSec != null && elSec > 0) {
+                    System.currentTimeMillis() - elSec * 1000L
+                } else if (existingNotif != null && existingNotif.mode == IslandMode.Stopwatch && existingNotif.timeMillis > 0) {
+                    existingNotif.timeMillis
+                } else if (notification.`when` in 1..System.currentTimeMillis()) {
+                    notification.`when`
+                } else {
+                    System.currentTimeMillis()
+                }
+            }
             notification.`when` != 0L -> notification.`when`
             else -> sbn.postTime
         }
+
+        val notifTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+            ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+            ?: (if (mode == IslandMode.Stopwatch) "Stopwatch" else if (mode == IslandMode.Timer) "Timer" else "")
+        val notifText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+            ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+            ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+            ?: extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
+            ?: notification.tickerText?.toString()
+            ?: (if (mode == IslandMode.Stopwatch) "Running" else if (mode == IslandMode.Timer) "Running" else "")
 
         notificationRepository.postNotification(
             IslandNotification(
                 key = sbn.key,
                 packageName = sbn.packageName,
                 appName = appName,
-                title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
-                text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
-                    ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty(),
+                title = notifTitle,
+                text = notifText,
                 timeMillis = computedTimeMillis,
                 icon = loadAppIconBitmap(sbn.packageName),
                 largeIcon = mediaInfo?.artwork ?: notification.loadLargeIconBitmap(),
@@ -464,6 +517,19 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 pendingRemovals[sbn.key] = job
             }
         }
+
+        if (mode == IslandMode.Timer) {
+            val isDone = com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerFinished(notification)
+            if (isDone) {
+                pendingRemovals.remove(sbn.key)?.cancel()
+                val job = serviceScope.launch {
+                    delay(5000L)
+                    clearSuppressed(sbn.key)
+                    notificationRepository.removeNotification(sbn.key)
+                }
+                pendingRemovals[sbn.key] = job
+            }
+        }
     }
 
     internal fun shouldSuppressFromIsland(sbn: StatusBarNotification): Boolean {
@@ -472,7 +538,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             packageManager,
             currentSettings.liveActivitiesEnabled,
             currentSettings.navigationEnabled,
-            currentSettings.disabledNotificationPackages
+            currentSettings.disabledNotificationPackages,
+            currentSettings.deviceType
         )
     }
 
@@ -480,8 +547,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (mode == IslandMode.IncomingCall) {
             if (!isIncomingCall(notification)) return false // ongoing call stays in system
         }
-        if (mode == IslandMode.Music || mode == IslandMode.Navigation) {
-            return false // Media/Music & Navigation notifications must NOT be cancelled from system shade by default
+        if (mode == IslandMode.Music || mode == IslandMode.Navigation || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
+            return false // Media/Music, Navigation, Timer & Stopwatch notifications must NOT be cancelled from system shade by default
         }
         // All others: island-only
         return true
@@ -512,13 +579,23 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             activeNotifications.find { it.key == key }
         }
         if (activeSbn != null && activeSbn.packageName in currentSettings.disabledNotificationPackages) return
+
+        val now = SystemClock.elapsedRealtime()
+        val lastSuppressedTime = suppressedKeys[key] ?: 0L
+        val isRecentlySuppressed = (now - lastSuppressedTime) < 300L
+
         markSuppressed(key)
 
-        // Synchronous attempt for fastest possible suppression
-        runCatchingLogged(TAG, "sync cancel failed") { cancelNotification(key) }
+        // Cancel any pending suppression retry job for this key
+        pendingSuppressionJobs.remove(key)?.cancel()
+
+        // Synchronous attempt for fastest possible suppression (if not throttled)
+        if (!isRecentlySuppressed) {
+            runCatchingLogged(TAG, "sync cancel failed") { cancelNotification(key) }
+        }
 
         // Asynchronous retry with delays for reliability
-        mainScope.launch {
+        val job = mainScope.launch {
             runSuspendCatchingLogged(TAG, "Notification suppression retries failed") {
                 repeat(3) { attempt ->
                     delay(100L * (attempt + 1)) // 100, 200, 300ms
@@ -540,7 +617,9 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 }
                 android.util.Log.w(TAG, "Failed to suppress after retries: $key")
             }
+            pendingSuppressionJobs.remove(key)
         }
+        pendingSuppressionJobs[key] = job
     }
 
     private fun forceCancelNotification(key: String) {
@@ -574,6 +653,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     }
 
     private fun clearSuppressed(key: String) {
+        pendingSuppressionJobs.remove(key)?.cancel()
         suppressedKeys.remove(key)
     }
 

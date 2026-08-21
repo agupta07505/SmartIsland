@@ -703,6 +703,12 @@ private fun SecondaryBubbleContent(
         IslandMode.ScreenRecording -> {
             ScreenRecordingCollapsedGlyph(settings = settings)
         }
+        IslandMode.Timer -> {
+            TimerCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.Stopwatch -> {
+            StopwatchCollapsedGlyph(notification = notification, settings = settings)
+        }
         IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
             NotificationGlyph(notification = notification, settings = settings)
         }

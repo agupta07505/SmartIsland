@@ -42,9 +42,12 @@ import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.material.icons.rounded.HourglassBottom
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -196,6 +199,12 @@ fun IslandCollapsedContent(
                 IslandMode.ScreenRecording -> {
                     ScreenRecordingCollapsedGlyph(settings = settings)
                 }
+                IslandMode.Timer -> {
+                    TimerCollapsedGlyph(notification = notification, settings = settings)
+                }
+                IslandMode.Stopwatch -> {
+                    StopwatchCollapsedGlyph(notification = notification, settings = settings)
+                }
                 IslandMode.Empty -> Unit
             }
         }
@@ -287,6 +296,12 @@ fun IslandCollapsedContent(
                 IslandMode.ScreenRecording -> {
                     val time = notification?.timeMillis ?: System.currentTimeMillis()
                     CallTimer(postTimeMillis = time, color = Color(0xFFEF4444))
+                }
+                IslandMode.Timer -> {
+                    TimerCountdown(notification = notification, color = Color(settings.timerColor))
+                }
+                IslandMode.Stopwatch -> {
+                    StopwatchTimer(notification = notification, color = Color(settings.stopwatchColor))
                 }
                 IslandMode.Empty -> Unit
             }
@@ -858,6 +873,157 @@ internal fun ScreenRecordingCollapsedGlyph(settings: SmartIslandSettings = Smart
                 .background(recordingColor)
         )
     }
+}
+
+@Composable
+internal fun TimerCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val timerColor = Color(settings.timerColor)
+    val infiniteTransition = rememberInfiniteTransition(label = "timerPulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "timerPulseScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(timerColor.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.HourglassBottom,
+            contentDescription = "Timer",
+            tint = timerColor,
+            modifier = Modifier
+                .size(13.dp)
+                .graphicsLayer {
+                    scaleX = pulseScale
+                    scaleY = pulseScale
+                }
+        )
+    }
+}
+
+@Composable
+internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    val stopwatchColor = Color(settings.stopwatchColor)
+    val infiniteTransition = rememberInfiniteTransition(label = "stopwatchRotate")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "stopwatchRot"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(stopwatchColor.copy(alpha = 0.2f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.AvTimer,
+            contentDescription = "Stopwatch",
+            tint = stopwatchColor,
+            modifier = Modifier
+                .size(14.dp)
+                .rotate(rotation)
+        )
+    }
+}
+
+@Composable
+internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
+    val isPaused = remember(notification?.key, notification?.actionIntents, notification?.text, notification?.title) {
+        val actions = notification?.actionIntents.orEmpty()
+        actions.any {
+            val t = it.title.lowercase()
+            t.contains("resume") || t.contains("start") || t.contains("play") || t.contains("continue") || t.contains("unpause")
+        } || notification?.text?.contains("pause", ignoreCase = true) == true ||
+            notification?.title?.contains("pause", ignoreCase = true) == true
+    }
+
+    val targetTime = notification?.timeMillis ?: remember { System.currentTimeMillis() + 300000L }
+
+    var remainingSec by remember(notification?.key, targetTime, isPaused) {
+        val rem = if (targetTime > System.currentTimeMillis()) {
+            ((targetTime - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        mutableStateOf(rem)
+    }
+
+    LaunchedEffect(notification?.key, targetTime, isPaused) {
+        if (!isPaused) {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val rem = if (targetTime > now) {
+                    ((targetTime - now + 500L) / 1000L).coerceAtLeast(0L)
+                } else {
+                    0L
+                }
+                remainingSec = rem
+                if (rem <= 0L) break
+                kotlinx.coroutines.delay(500L)
+            }
+        }
+    }
+
+    val text = remember(remainingSec) {
+        com.agupta07505.smartisland.util.TimerStopwatchParser.formatTime(remainingSec)
+    }
+
+    Text(
+        text = text,
+        color = color,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+
+@Composable
+internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
+    val startTime = notification?.timeMillis ?: remember { System.currentTimeMillis() }
+    val isPaused = remember(notification?.key, notification?.actionIntents) {
+        notification?.actionIntents?.any {
+            it.title.contains("resume", ignoreCase = true) || it.title.contains("start", ignoreCase = true)
+        } == true
+    }
+
+    var elapsedSeconds by remember(notification?.key, startTime) {
+        mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
+    }
+
+    LaunchedEffect(notification?.key, startTime, isPaused) {
+        if (!isPaused) {
+            while (true) {
+                elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
+                kotlinx.coroutines.delay(500L)
+            }
+        }
+    }
+
+    val text = remember(elapsedSeconds) {
+        com.agupta07505.smartisland.util.TimerStopwatchParser.formatTime(elapsedSeconds)
+    }
+
+    Text(
+        text = text,
+        color = color,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 // Collapsed content animation

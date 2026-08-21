@@ -90,6 +90,7 @@ class NotificationPriorityTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Title"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Text"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
         every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
@@ -117,6 +118,7 @@ class NotificationPriorityTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Title"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Text"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
         every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
@@ -145,6 +147,7 @@ class NotificationPriorityTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Downloading"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "42%"
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
         every { extras.getString(Notification.EXTRA_TEMPLATE) } returns null
         every { extras.containsKey(Notification.EXTRA_MEDIA_SESSION) } returns false
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 100
@@ -165,6 +168,7 @@ class NotificationPriorityTest {
         for (label in testLabels) {
             val notification = mockk<Notification>()
             notification.category = Notification.CATEGORY_MESSAGE
+            notification.flags = 0
             val action = mockk<Notification.Action>()
             action.title = label
             notification.actions = arrayOf(action)
@@ -178,6 +182,7 @@ class NotificationPriorityTest {
             every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
             every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
             every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+            every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
             notification.extras = extras
 
             val mode = notification.toIslandMode()
