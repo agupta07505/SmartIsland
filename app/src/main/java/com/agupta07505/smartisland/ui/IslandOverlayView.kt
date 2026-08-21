@@ -102,6 +102,8 @@ fun IslandOverlayView(
     val currentOnDismiss by rememberUpdatedState(onDismissNotification)
     val currentOnDismissAll by rememberUpdatedState(onDismissAllNotifications)
     val currentOnOpenFloatingWindow by rememberUpdatedState(onOpenFloatingWindow)
+    val currentOnOpenNotification by rememberUpdatedState(onOpenNotification)
+    val currentOnLaunchApp by rememberUpdatedState(onLaunchApp)
     val currentExpanded by rememberUpdatedState(expanded)
     val haptic = LocalHapticFeedback.current
 
@@ -402,6 +404,19 @@ fun IslandOverlayView(
                                     }
                                 } else {
                                     if (!isDragging || abs(dragOffset) < 10f) {
+                                        if (isHoldRegistered || totalElapsedMs >= HOLD_GESTURE_THRESHOLD_MS) {
+                                            // Long press / Hold on collapsed island -> Expand island card in-place
+                                            currentOnToggle()
+                                        } else {
+                                            // Single Tap on collapsed island: Open respective application if active, else expand shortcuts
+                                            if (activeNotification != null) {
+                                                currentOnOpenNotification(activeNotification)
+                                            } else {
+                                                currentOnToggle()
+                                            }
+                                        }
+                                    } else if (isDragging && dragOffset > swipeDownThreshold) {
+                                        // Swipe down on collapsed island -> Expand island card
                                         currentOnToggle()
                                     }
                                 }
@@ -532,11 +547,14 @@ fun IslandOverlayView(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
-                        if (secondaryIndex >= 0) {
-                            onPageSelected(secondaryIndex)
-                        }
-                        if (!currentExpanded) {
-                            currentOnToggle()
+                        if (currentExpanded) {
+                            if (secondaryIndex >= 0) {
+                                onPageSelected(secondaryIndex)
+                            }
+                        } else {
+                            if (secondaryNotification != null) {
+                                currentOnOpenNotification(secondaryNotification)
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -591,11 +609,14 @@ fun IslandOverlayView(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
-                        if (tertiaryIndex >= 0) {
-                            onPageSelected(tertiaryIndex)
-                        }
-                        if (!currentExpanded) {
-                            currentOnToggle()
+                        if (currentExpanded) {
+                            if (tertiaryIndex >= 0) {
+                                onPageSelected(tertiaryIndex)
+                            }
+                        } else {
+                            if (tertiaryNotification != null) {
+                                currentOnOpenNotification(tertiaryNotification)
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center

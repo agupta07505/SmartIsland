@@ -65,10 +65,22 @@ class SmartIslandNotificationRepository : INotificationRepository {
     }
 
     override fun removeNotificationsForPackage(packageName: String) {
-        val matching = _notifications.value.filter { it.packageName == packageName && it.mode != IslandMode.Music }
+        val matching = _notifications.value.filter {
+            it.packageName == packageName &&
+                it.mode != IslandMode.Music &&
+                it.mode != IslandMode.Timer &&
+                it.mode != IslandMode.Stopwatch &&
+                it.mode != IslandMode.Navigation &&
+                it.mode != IslandMode.IncomingCall &&
+                it.mode != IslandMode.LiveActivity &&
+                it.mode != IslandMode.ScreenRecording &&
+                it.mode != IslandMode.Hotspot &&
+                it.mode != IslandMode.Battery
+        }
         if (matching.isEmpty()) return
+        val matchingKeys = matching.map { it.key }.toSet()
         _notifications.update { list ->
-            list.filterNot { it.packageName == packageName && it.mode != IslandMode.Music }
+            list.filterNot { it.key in matchingKeys }
         }
         for (notif in matching) {
             _commands.tryEmit(SmartIslandCommand.CancelNotification(notif.key))

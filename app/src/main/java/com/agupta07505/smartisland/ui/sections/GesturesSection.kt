@@ -92,7 +92,7 @@ fun GesturesSection() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    GestureSummaryBadge(icon = Icons.Rounded.TouchApp, label = "Tap", sub = "Expand", color = Color(0xFF38BDF8), modifier = Modifier.weight(1f))
+                    GestureSummaryBadge(icon = Icons.Rounded.TouchApp, label = "Tap", sub = "Open App", color = Color(0xFF38BDF8), modifier = Modifier.weight(1f))
                     GestureSummaryBadge(icon = Icons.Rounded.ArrowUpward, label = "Swipe ↑", sub = "Dismiss", color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
                     GestureSummaryBadge(icon = Icons.Rounded.DeleteSweep, label = "Hold+↑", sub = "Clear All", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f))
                     GestureSummaryBadge(icon = Icons.Rounded.ArrowDownward, label = "Swipe ↓", sub = "Floating", color = Color(0xFF10B981), modifier = Modifier.weight(1f))
@@ -128,18 +128,18 @@ fun GesturesSection() {
         when (selectedTab) {
             0 -> GestureDetailCard(
                 gestureNumber = "Gesture 1 of 5",
-                gestureName = "Single Tap / Click",
-                actionBadge = "Expand & Collapse",
+                gestureName = "Single Tap & Hold",
+                actionBadge = "Open App / Expand",
                 badgeColor = Color(0xFF38BDF8),
                 icon = Icons.Rounded.TouchApp,
-                overview = "Quickly expand the pill to view rich notification cards, media controls, or app shortcuts, and collapse it when done.",
+                overview = "Tap the island to immediately launch the active app (Spotify, WhatsApp, Phone, Clock, Maps), or hold / swipe down to expand rich controls in place.",
                 steps = listOf(
-                    "Touch Position: Tap once anywhere on the black collapsed island pill at the top of your screen.",
-                    "Finger Motion: Tap cleanly without dragging or swiping.",
-                    "Visual Response: The pill smoothly expands into the full card showing notification details, action buttons, and media scrubber.",
-                    "To Collapse Back: Tap anywhere on the empty screen background or tap outside the expanded card to collapse it back into the pill."
+                    "Open App (Single Tap): Tap once on the collapsed pill to instantly launch the corresponding active application.",
+                    "Open Shortcuts: When no alerts are active, a single tap opens your customizable quick-launch app shortcuts.",
+                    "Expand Island (Hold / Long-Press): Press and hold for 300ms (or swipe down) to expand the full interactive card with media scrubbers, timers, and action buttons without leaving your current app.",
+                    "Collapse Back: When expanded, tap anywhere on the empty screen background to smoothly collapse the island back."
                 ),
-                proTip = "When 'Hide when idle' is enabled, tapping the camera cutout region still awakens the pill and opens your favorite app shortcuts."
+                proTip = "Tapping secondary split bubbles (like music artwork or timer circle) opens that specific app directly!"
             )
             1 -> GestureDetailCard(
                 gestureNumber = "Gesture 2 of 5",

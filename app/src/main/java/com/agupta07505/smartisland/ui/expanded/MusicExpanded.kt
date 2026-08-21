@@ -9,6 +9,7 @@ package com.agupta07505.smartisland.ui.expanded
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,7 @@ import kotlin.math.cos
 fun MusicExpanded(
     notification: IslandNotification?,
     bottomPadding: Dp,
+    onOpenNotification: () -> Unit = {},
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
@@ -346,7 +348,13 @@ fun MusicExpanded(
                 .wrapContentHeight()
                 .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenNotification() },
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 if (artwork != null) {
                 Image(
                     bitmap = artwork.asImageBitmap(),
