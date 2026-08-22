@@ -55,6 +55,9 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SliderSettingItem
@@ -70,6 +73,12 @@ fun PositionsSection(
     val context = LocalContext.current
     val windowInfo = LocalWindowInfo.current
     val density = LocalDensity.current
+
+    var localWidth by remember(settings.width) { mutableFloatStateOf(settings.width) }
+    var localHeight by remember(settings.height) { mutableFloatStateOf(settings.height) }
+    var localXOffset by remember(settings.xOffset) { mutableFloatStateOf(settings.xOffset) }
+    var localYOffset by remember(settings.yOffset) { mutableFloatStateOf(settings.yOffset) }
+    var localCornerRadius by remember(settings.cornerRadius) { mutableFloatStateOf(settings.cornerRadius) }
 
     // Dynamically calculate responsive notch coordinates for the current device screen
     val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp().value }
@@ -269,41 +278,46 @@ fun PositionsSection(
 
                 SliderSettingItem(
                     label = "Island Width",
-                    value = settings.width,
+                    value = localWidth,
                     range = SmartIslandSettings.MIN_WIDTH..SmartIslandSettings.MAX_WIDTH,
-                    onValueChange = { scope.launch { repository.setWidth(it) } }
+                    onValueChange = { localWidth = it },
+                    onValueChangeFinished = { scope.launch { repository.setWidth(localWidth) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
                     label = "Island Height",
-                    value = settings.height,
+                    value = localHeight,
                     range = SmartIslandSettings.MIN_HEIGHT..SmartIslandSettings.MAX_HEIGHT,
-                    onValueChange = { scope.launch { repository.setHeight(it) } }
+                    onValueChange = { localHeight = it },
+                    onValueChangeFinished = { scope.launch { repository.setHeight(localHeight) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
                     label = "Horizontal (X) Offset",
-                    value = settings.xOffset,
+                    value = localXOffset,
                     range = SmartIslandSettings.MIN_X_OFFSET..SmartIslandSettings.MAX_X_OFFSET,
-                    onValueChange = { scope.launch { repository.setXOffset(it) } }
+                    onValueChange = { localXOffset = it },
+                    onValueChangeFinished = { scope.launch { repository.setXOffset(localXOffset) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
                     label = "Vertical (Y) Offset",
-                    value = settings.yOffset,
+                    value = localYOffset,
                     range = SmartIslandSettings.MIN_Y_OFFSET..SmartIslandSettings.MAX_Y_OFFSET,
-                    onValueChange = { scope.launch { repository.setYOffset(it) } }
+                    onValueChange = { localYOffset = it },
+                    onValueChangeFinished = { scope.launch { repository.setYOffset(localYOffset) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
                     label = "Corner Radius",
-                    value = settings.cornerRadius,
+                    value = localCornerRadius,
                     range = SmartIslandSettings.MIN_CORNER_RADIUS..SmartIslandSettings.MAX_CORNER_RADIUS,
-                    onValueChange = { scope.launch { repository.setCornerRadius(it) } }
+                    onValueChange = { localCornerRadius = it },
+                    onValueChangeFinished = { scope.launch { repository.setCornerRadius(localCornerRadius) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 

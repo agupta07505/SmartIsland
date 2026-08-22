@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -53,6 +54,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val BluetoothColor = longPreferencesKey("bluetooth_color")
         val FlashlightColor = longPreferencesKey("flashlight_color")
         val ScreenRecordingColor = longPreferencesKey("screen_recording_color")
+        val TimerColor = longPreferencesKey("timer_color")
+        val StopwatchColor = longPreferencesKey("stopwatch_color")
         val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
         val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
         val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
@@ -68,6 +71,10 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val AutoExpandOnNotification = booleanPreferencesKey("auto_expand_on_notification")
         val EnableShadow = booleanPreferencesKey("enable_shadow")
         val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
+        val DeviceType = stringPreferencesKey("device_type")
+        val AllowNetworkChecks = booleanPreferencesKey("allow_network_checks")
+        val EnableNotificationHistory = booleanPreferencesKey("enable_notification_history")
+        val NotificationHistoryRetentionHours = intPreferencesKey("notification_history_retention_hours")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -130,6 +137,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 bluetoothColor = validColor(prefs[Keys.BluetoothColor], defaults.bluetoothColor),
                 flashlightColor = validColor(prefs[Keys.FlashlightColor], defaults.flashlightColor),
                 screenRecordingColor = validColor(prefs[Keys.ScreenRecordingColor], defaults.screenRecordingColor),
+                timerColor = validColor(prefs[Keys.TimerColor], defaults.timerColor),
+                stopwatchColor = validColor(prefs[Keys.StopwatchColor], defaults.stopwatchColor),
                 shortcutPackages = prefs[Keys.ShortcutPackages]
                     ?.asSequence()
                     ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
@@ -157,16 +166,21 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     ?: defaults.disabledNotificationPackages,
                 disabledSoundPackages = prefs[Keys.DisabledSoundPackages]
                     ?.asSequence()
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
+                    ?.filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
                     ?.toSet()
                     ?: defaults.disabledSoundPackages,
                 hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle,
                 autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification,
                 enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
-                enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground
+                enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
+                deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType,
+                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks,
+                enableNotificationHistory = prefs[Keys.EnableNotificationHistory] ?: defaults.enableNotificationHistory,
+                notificationHistoryRetentionHours = prefs[Keys.NotificationHistoryRetentionHours] ?: defaults.notificationHistoryRetentionHours
             )
         }
 
+    suspend fun setDeviceType(value: String) = editSafely { it[Keys.DeviceType] = value }
     suspend fun setEnabled(value: Boolean) = editSafely { it[Keys.Enabled] = value }
     suspend fun setEnableShadow(value: Boolean) = editSafely { it[Keys.EnableShadow] = value }
     suspend fun setEnableMusicArtworkBackground(value: Boolean) = editSafely { it[Keys.EnableMusicArtworkBackground] = value }
@@ -260,6 +274,12 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setScreenRecordingColor(value: Long) = editSafely {
         it[Keys.ScreenRecordingColor] = validColor(value, SmartIslandSettings.Default.screenRecordingColor)
     }
+    suspend fun setTimerColor(value: Long) = editSafely {
+        it[Keys.TimerColor] = validColor(value, SmartIslandSettings.Default.timerColor)
+    }
+    suspend fun setStopwatchColor(value: Long) = editSafely {
+        it[Keys.StopwatchColor] = validColor(value, SmartIslandSettings.Default.stopwatchColor)
+    }
     suspend fun setShortcutPackages(value: Set<String>) = editSafely {
         it[Keys.ShortcutPackages] = value
             .asSequence()
@@ -320,6 +340,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
         it[Keys.AutoExpandOnNotification] = value
+    }
+    suspend fun setAllowNetworkChecks(value: Boolean) = editSafely {
+        it[Keys.AllowNetworkChecks] = value
+    }
+    suspend fun setEnableNotificationHistory(value: Boolean) = editSafely {
+        it[Keys.EnableNotificationHistory] = value
+    }
+    suspend fun setNotificationHistoryRetentionHours(value: Int) = editSafely {
+        it[Keys.NotificationHistoryRetentionHours] = value
     }
 
     suspend fun resetPosition() = editSafely {

@@ -25,6 +25,8 @@ data class SmartIslandSettings(
     val bluetoothColor: Long = 0xFF2563EBL,
     val flashlightColor: Long = 0xFFF59E0BL,
     val screenRecordingColor: Long = 0xFFEF4444L,
+    val timerColor: Long = 0xFFF59E0BL,
+    val stopwatchColor: Long = 0xFF06B6D4L,
     val shortcutPackages: Set<String> = emptySet(),
     val showRecentApps: Boolean = false,
     val welcomeDialogShown: Boolean = false,
@@ -39,7 +41,11 @@ data class SmartIslandSettings(
     val hideWhenIdle: Boolean = false,
     val autoExpandOnNotification: Boolean = true,
     val enableShadow: Boolean = true,
-    val enableMusicArtworkBackground: Boolean = true
+    val enableMusicArtworkBackground: Boolean = true,
+    val deviceType: String = "AUTO",
+    val allowNetworkChecks: Boolean = true,
+    val enableNotificationHistory: Boolean = false,
+    val notificationHistoryRetentionHours: Int = 72
 ) {
     companion object {
         val Default = SmartIslandSettings()

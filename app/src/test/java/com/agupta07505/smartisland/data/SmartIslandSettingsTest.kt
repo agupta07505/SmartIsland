@@ -29,6 +29,11 @@ class SmartIslandSettingsTest {
         assertEquals(0xFF2563EBL, settings.bluetoothColor)
         assertEquals(0xFFF59E0BL, settings.flashlightColor)
         assertEquals(0xFFEF4444L, settings.screenRecordingColor)
+        assertEquals(0xFFF59E0BL, settings.timerColor)
+        assertEquals(0xFF06B6D4L, settings.stopwatchColor)
+        assertEquals(true, settings.allowNetworkChecks)
+        assertEquals(false, settings.enableNotificationHistory)
+        assertEquals(72, settings.notificationHistoryRetentionHours)
     }
 
     @Test

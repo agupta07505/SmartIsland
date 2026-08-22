@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.Call
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Notifications
@@ -108,6 +110,8 @@ fun CustomizationsSection(
                         "bluetooth" -> repository.setBluetoothColor(color)
                         "flashlight" -> repository.setFlashlightColor(color)
                         "screen_recording" -> repository.setScreenRecordingColor(color)
+                        "timer" -> repository.setTimerColor(color)
+                        "stopwatch" -> repository.setStopwatchColor(color)
                     }
                 }
             }
@@ -362,6 +366,36 @@ fun CustomizationsSection(
                         showDialog = true
                     }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                FeatureColorRow(
+                    title = "Timer & Countdown",
+                    subtitle = "Countdown ring, hourglass glyph and timer digits",
+                    icon = Icons.Rounded.HourglassBottom,
+                    selectedColor = settings.timerColor,
+                    onColorSelected = { scope.launch { repository.setTimerColor(it) } },
+                    onCustomClicked = {
+                        initialColor = settings.timerColor
+                        currentColorTarget = "timer"
+                        colorPickerTitle = "Timer Accent Color"
+                        showDialog = true
+                    }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                FeatureColorRow(
+                    title = "Stopwatch & Laps",
+                    subtitle = "Rotating stopwatch icon and elapsed time timer",
+                    icon = Icons.Rounded.AvTimer,
+                    selectedColor = settings.stopwatchColor,
+                    onColorSelected = { scope.launch { repository.setStopwatchColor(it) } },
+                    onCustomClicked = {
+                        initialColor = settings.stopwatchColor
+                        currentColorTarget = "stopwatch"
+                        colorPickerTitle = "Stopwatch Accent Color"
+                        showDialog = true
+                    }
+                )
 
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
@@ -378,6 +412,8 @@ fun CustomizationsSection(
                             repository.setBluetoothColor(0xFF38BDF8L)
                             repository.setFlashlightColor(0xFFF59E0BL)
                             repository.setScreenRecordingColor(0xFFEF4444L)
+                            repository.setTimerColor(0xFFF59E0BL)
+                            repository.setStopwatchColor(0xFF06B6D4L)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),

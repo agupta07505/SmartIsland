@@ -118,6 +118,32 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
+    fun testTimerDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Timer)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_timer", notif.key)
+        assertEquals(IslandMode.Timer, notif.mode)
+        assertEquals("Tea Timer", notif.title)
+    }
+
+    @Test
+    fun testStopwatchDemoNotification() {
+        val repository = SmartIslandNotificationRepository()
+        repository.showDemo(IslandMode.Stopwatch)
+
+        val notifications = repository.notifications.value
+        assertEquals(1, notifications.size)
+        val notif = notifications[0]
+        assertEquals("demo_stopwatch", notif.key)
+        assertEquals(IslandMode.Stopwatch, notif.mode)
+        assertEquals("Stopwatch", notif.title)
+    }
+
+    @Test
     fun testRemoveNotificationsForPackage() {
         val repository = SmartIslandNotificationRepository()
         val notif1 = IslandNotification(

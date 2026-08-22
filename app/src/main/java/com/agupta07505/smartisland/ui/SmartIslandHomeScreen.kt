@@ -59,6 +59,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.Call
@@ -70,12 +71,15 @@ import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material.icons.rounded.Gesture
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Videocam
@@ -137,6 +141,7 @@ import com.agupta07505.smartisland.ui.sections.AboutSection
 import com.agupta07505.smartisland.ui.sections.AppShortcutsSection
 import com.agupta07505.smartisland.ui.sections.CustomizationsSection
 import com.agupta07505.smartisland.ui.sections.GesturesSection
+import com.agupta07505.smartisland.ui.sections.NotificationHistorySection
 import com.agupta07505.smartisland.ui.sections.NotificationsAndPrivacySection
 import com.agupta07505.smartisland.ui.sections.PermissionsSection
 import com.agupta07505.smartisland.ui.sections.PositionsSection
@@ -148,13 +153,13 @@ import kotlinx.coroutines.launch
 private enum class StudioTab {
     Studio,
     Position,
-    Features,
-    System
+    Settings
 }
 
 private enum class FeatureDetailSection {
     NotificationRules,
     AppShortcuts,
+    NotificationHistory,
     ColorStudio,
     GesturesGuide,
     PermissionsCenter,
@@ -290,7 +295,8 @@ fun SmartIslandHomeScreen(
                         isIslandEnabled = settings.enabled,
                         canEnable = canEnable,
                         onHealthClick = {
-                            selectedTab = StudioTab.System
+                            transitionDirection = 1
+                            activeDetailSection = FeatureDetailSection.PermissionsCenter
                         }
                     )
 
@@ -312,7 +318,7 @@ fun SmartIslandHomeScreen(
                                 }
                             )
 
-                            // 3. Interactive Simulation Lab
+                            // 2. Interactive Simulation Lab
                             SimulationLabCard(
                                 activeMode = previewMode,
                                 onModeSelect = { mode ->
@@ -325,13 +331,14 @@ fun SmartIslandHomeScreen(
                                 }
                             )
 
-                            // 4. System Diagnostics Strip
+                            // 3. System Diagnostics Strip
                             DiagnosticsSummaryCard(
                                 overlayGranted = overlayGranted,
                                 notificationGranted = notificationGranted,
                                 batteryIgnored = batteryIgnored,
                                 onOpenDiagnostics = {
-                                    selectedTab = StudioTab.System
+                                    transitionDirection = 1
+                                    activeDetailSection = FeatureDetailSection.PermissionsCenter
                                 }
                             )
                         }
@@ -343,18 +350,9 @@ fun SmartIslandHomeScreen(
                             )
                         }
 
-                        StudioTab.Features -> {
-                            FeaturesOverviewSection(
+                        StudioTab.Settings -> {
+                            SettingsOverviewSection(
                                 settings = settings,
-                                onNavigateTo = { section ->
-                                    transitionDirection = 1
-                                    activeDetailSection = section
-                                }
-                            )
-                        }
-
-                        StudioTab.System -> {
-                            SystemOverviewSection(
                                 overlayGranted = overlayGranted,
                                 notificationGranted = notificationGranted,
                                 batteryIgnored = batteryIgnored,
@@ -774,17 +772,40 @@ private fun SimulationLabCard(
                     )
                 }
 
-                // Row 6: Screen Recording
+                // Row 6: Screen Recording & Timer
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Screen Recording",
+                        label = "Recording",
                         icon = Icons.Rounded.Videocam,
                         iconTint = Color(0xFFEF4444),
                         isSelected = activeMode == IslandMode.ScreenRecording,
                         onClick = { onModeSelect(IslandMode.ScreenRecording) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ModeChipButton(
+                        label = "Timer",
+                        icon = Icons.Rounded.HourglassBottom,
+                        iconTint = Color(0xFFF59E0B),
+                        isSelected = activeMode == IslandMode.Timer,
+                        onClick = { onModeSelect(IslandMode.Timer) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Row 7: Stopwatch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ModeChipButton(
+                        label = "Stopwatch",
+                        icon = Icons.Rounded.AvTimer,
+                        iconTint = Color(0xFF06B6D4),
+                        isSelected = activeMode == IslandMode.Stopwatch,
+                        onClick = { onModeSelect(IslandMode.Stopwatch) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -980,59 +1001,8 @@ private fun StatusBadgePill(
 }
 
 @Composable
-private fun FeaturesOverviewSection(
+private fun SettingsOverviewSection(
     settings: SmartIslandSettings,
-    onNavigateTo: (FeatureDetailSection) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(
-            text = "Island Features & Studio",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Text(
-            text = "Customize behavior, notifications, app shortcuts, and vibrant indicator accents",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        // Feature Item 1: Notification & Lockscreen Rules
-        FeatureStudioNavigationCard(
-            title = "Notifications & Privacy Rules",
-            subtitle = "Lock screen modes, auto-expand rules, quick actions, and app filters",
-            icon = Icons.Rounded.Notifications,
-            iconColor = Color(0xFF38BDF8),
-            statusText = if (settings.showOnLockScreen) "Lock Screen Active" else "Standard",
-            onClick = { onNavigateTo(FeatureDetailSection.NotificationRules) }
-        )
-
-        // Feature Item 2: Empty Island App Shortcuts
-        FeatureStudioNavigationCard(
-            title = "App Shortcuts Launcher",
-            subtitle = "Quick-launch up to 8 pinned apps or auto-fill with recent applications",
-            icon = Icons.Rounded.Apps,
-            iconColor = Color(0xFF22D3EE),
-            statusText = "${settings.shortcutPackages.size}/8 pinned",
-            onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
-        )
-
-        // Feature Item 3: Feature Accent Colors Studio
-        FeatureStudioNavigationCard(
-            title = "Feature Accent Colors Studio",
-            subtitle = "Customize color themes for music, battery, calls, and dynamic events",
-            icon = Icons.Rounded.ColorLens,
-            iconColor = Color(0xFFA855F7),
-            statusText = "11 Modes",
-            onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
-        )
-    }
-}
-
-@Composable
-private fun SystemOverviewSection(
     overlayGranted: Boolean,
     notificationGranted: Boolean,
     batteryIgnored: Boolean,
@@ -1040,59 +1010,122 @@ private fun SystemOverviewSection(
 ) {
     val canEnable = overlayGranted && notificationGranted && batteryIgnored
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "Settings & Preferences",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Configure island behaviors, colors, gestures, system access, and updates",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        // Section 1: Island Behaviors & App Launcher
+        SettingsCategoryGroup(title = "Island Behaviors & Launcher") {
+            FeatureStudioNavigationCard(
+                title = "Notifications & Privacy Rules",
+                subtitle = "Lock screen visibility, auto-expansion, quick actions, and app filters",
+                icon = Icons.Rounded.Notifications,
+                iconColor = Color(0xFF38BDF8),
+                statusText = if (settings.showOnLockScreen) "Lock Screen Active" else "Standard",
+                onClick = { onNavigateTo(FeatureDetailSection.NotificationRules) }
+            )
+
+            FeatureStudioNavigationCard(
+                title = "App Shortcuts Launcher",
+                subtitle = "Quick-launch pinned applications or recent apps from collapsed island",
+                icon = Icons.Rounded.Apps,
+                iconColor = Color(0xFF22D3EE),
+                statusText = "${settings.shortcutPackages.size}/8 pinned",
+                onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
+            )
+
+            FeatureStudioNavigationCard(
+                title = "Notification History & Logs",
+                subtitle = "View and search saved notifications with day/time grouping & auto-clean timer",
+                icon = Icons.Rounded.History,
+                iconColor = Color(0xFF38BDF8),
+                statusText = if (settings.enableNotificationHistory) "Logging Active" else "Disabled",
+                statusColor = if (settings.enableNotificationHistory) Color(0xFF0F9F6E) else Color(0xFF94A3B8),
+                onClick = { onNavigateTo(FeatureDetailSection.NotificationHistory) }
+            )
+        }
+
+        // Section 2: Appearance & Gesture Controls
+        SettingsCategoryGroup(title = "Appearance & Controls") {
+            FeatureStudioNavigationCard(
+                title = "Feature Accent Colors Studio",
+                subtitle = "Customize color themes for music, battery, calls, and dynamic events",
+                icon = Icons.Rounded.Palette,
+                iconColor = Color(0xFFA855F7),
+                statusText = "11 Island Modes",
+                onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
+            )
+
+            FeatureStudioNavigationCard(
+                title = "Gesture Controls & Playground",
+                subtitle = "Swipe Up to dismiss, Swipe Down for floating multi-window, and swipe pagination",
+                icon = Icons.Rounded.Gesture,
+                iconColor = Color(0xFF6366F1),
+                statusText = "Interactive Guide",
+                onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
+            )
+        }
+
+        // Section 3: System & Permissions
+        SettingsCategoryGroup(title = "System & Core Services") {
+            FeatureStudioNavigationCard(
+                title = "Permissions & System Setup",
+                subtitle = "Shizuku 1-tap auto grant, Accessibility, notification access, and OEM killers",
+                icon = Icons.Rounded.Shield,
+                iconColor = Color(0xFF10B981),
+                statusText = if (canEnable) "All Granted" else "Action Required",
+                statusColor = if (canEnable) Color(0xFF0F9F6E) else Color(0xFFE88C25),
+                onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) }
+            )
+        }
+
+        // Section 4: About & Community
+        SettingsCategoryGroup(title = "About & Community") {
+            FeatureStudioNavigationCard(
+                title = "About Smart Island",
+                subtitle = "Version v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME} • In-App GitHub Updates • Contributors & Commits",
+                icon = Icons.Rounded.Info,
+                iconColor = Color(0xFFEC4899),
+                statusText = "Open Source",
+                onClick = { onNavigateTo(FeatureDetailSection.AboutApp) }
+            )
+
+            FeatureStudioNavigationCard(
+                title = "Support & Feature Requests",
+                subtitle = "Star on GitHub, report issues, and join our active Telegram community",
+                icon = Icons.Rounded.People,
+                iconColor = Color(0xFFF59E0B),
+                onClick = { onNavigateTo(FeatureDetailSection.SupportCommunity) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsCategoryGroup(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "System, Gestures & About",
-            style = MaterialTheme.typography.headlineSmall,
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
         )
-        Text(
-            text = "Permissions center, gesture guides, battery saver fixes, and community feedback",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        // Item 1: Permissions & Setup Center
-        FeatureStudioNavigationCard(
-            title = "Permissions & System Setup",
-            subtitle = "Shizuku 1-tap auto grant, Accessibility, notification access, and OEM killers",
-            icon = Icons.Rounded.Shield,
-            iconColor = Color(0xFF10B981),
-            statusText = if (canEnable) "All Granted" else "Action Required",
-            statusColor = if (canEnable) Color(0xFF0F9F6E) else Color(0xFFE88C25),
-            onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) }
-        )
-
-        // Item 2: Gestures Interactive Guide
-        FeatureStudioNavigationCard(
-            title = "Gesture Controls & Playground",
-            subtitle = "Swipe Up to dismiss, Swipe Down for floating multi-window, and swipe pagination",
-            icon = Icons.Rounded.Gesture,
-            iconColor = Color(0xFF6366F1),
-            statusText = "3 Gestures",
-            onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
-        )
-
-        // Item 3: Support & Community
-        FeatureStudioNavigationCard(
-            title = "Support & Feature Requests",
-            subtitle = "Star on GitHub, report issues, and join our active Telegram community",
-            icon = Icons.Rounded.People,
-            iconColor = Color(0xFFF59E0B),
-            onClick = { onNavigateTo(FeatureDetailSection.SupportCommunity) }
-        )
-
-        // Item 4: About & Developer
-        FeatureStudioNavigationCard(
-            title = "About Smart Island",
-            subtitle = "Version v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME} • Open Source GNU GPL-3.0 • Developer social profiles",
-            icon = Icons.Rounded.Info,
-            iconColor = Color(0xFFEC4899),
-            onClick = { onNavigateTo(FeatureDetailSection.AboutApp) }
-        )
+        content()
     }
 }
 
@@ -1210,21 +1243,10 @@ private fun StudioBottomNavigationBar(
             )
         )
         NavigationBarItem(
-            selected = selectedTab == StudioTab.Features,
-            onClick = { onTabSelected(StudioTab.Features) },
-            icon = { Icon(Icons.Rounded.Palette, contentDescription = "Features") },
-            label = { Text("Features", fontWeight = FontWeight.SemiBold) },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        NavigationBarItem(
-            selected = selectedTab == StudioTab.System,
-            onClick = { onTabSelected(StudioTab.System) },
-            icon = { Icon(Icons.Rounded.Shield, contentDescription = "System") },
-            label = { Text("System", fontWeight = FontWeight.SemiBold) },
+            selected = selectedTab == StudioTab.Settings,
+            onClick = { onTabSelected(StudioTab.Settings) },
+            icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
+            label = { Text("Settings", fontWeight = FontWeight.SemiBold) },
             colors = NavigationBarItemDefaults.colors(
                 indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -1285,6 +1307,7 @@ private fun DetailScreenHost(
             val title = when (section) {
                 FeatureDetailSection.NotificationRules -> "Notifications & Privacy"
                 FeatureDetailSection.AppShortcuts -> "App Shortcuts Launcher"
+                FeatureDetailSection.NotificationHistory -> "Notification History Log"
                 FeatureDetailSection.ColorStudio -> "Feature Accent Colors"
                 FeatureDetailSection.GesturesGuide -> "Gesture Guide & Playground"
                 FeatureDetailSection.PermissionsCenter -> "Permissions & Setup Center"
@@ -1305,6 +1328,9 @@ private fun DetailScreenHost(
             }
             FeatureDetailSection.AppShortcuts -> {
                 AppShortcutsSection(settings = settings, repository = repository)
+            }
+            FeatureDetailSection.NotificationHistory -> {
+                NotificationHistorySection(settings = settings, repository = repository)
             }
             FeatureDetailSection.ColorStudio -> {
                 CustomizationsSection(settings = settings, repository = repository)
@@ -1345,7 +1371,7 @@ private fun DetailScreenHost(
                 )
             }
             FeatureDetailSection.AboutApp -> {
-                AboutSection()
+                AboutSection(settings = settings, repository = repository)
             }
             FeatureDetailSection.SupportCommunity -> {
                 SupportSection()

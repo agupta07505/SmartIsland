@@ -4,7 +4,7 @@
 
 SmartIsland is an Android overlay application that displays notifications,
 calls, media, charging & battery status, navigation, live activities, downloads,
-flashlight, screen recording, bluetooth devices, and system events inside a floating
+timers, stopwatches, flashlight, screen recording, bluetooth devices, and system events inside a floating
 Dynamic Island-style interface.
 
 Project details:
@@ -14,6 +14,7 @@ Project details:
 - UI: Jetpack Compose and Material 3
 - Dependency injection: Hilt
 - State: Kotlin Coroutines, StateFlow and DataStore Preferences
+- Local Database: SQLite (`NotificationHistoryDbHelper`)
 - Platform integration: NotificationListenerService, foreground services,
   WindowManager overlays, system broadcast receivers and Shizuku
 - Minimum Android version: Android 8.0 / API 26
@@ -21,11 +22,10 @@ Project details:
 - Java and Kotlin JVM target: 17
 - License: GNU GPL v3
 
-SmartIsland is privacy-first. Notification data and settings must remain on
-the device. The app currently has no INTERNET permission, remote analytics
-or remote notification processing. Do not introduce networking, analytics,
-tracking or notification-content transmission unless the pull request
-explicitly documents and justifies that product-level change.
+SmartIsland is privacy-first. All notification data, history, and user settings must remain strictly on
+the device. The `INTERNET` permission is used solely for optional, user-controlled GitHub release update
+checks (`allowNetworkChecks` setting via `GitHubApiService`). Do not introduce networking, analytics,
+tracking or notification-content transmission.
 
 ## Architecture
 
@@ -33,19 +33,24 @@ Preserve the existing event flow:
 
 1. `SmartIslandNotificationListenerService` receives notification and media events.
 2. `NotificationFilter` decides filtering, suppression, and mode classification.
-3. `SystemEventReceiver` listens to battery, power, bluetooth, and system broadcasts.
-4. `SmartIslandNotificationRepository` manages centralized notification & system island state.
-5. `SmartIslandOverlayService` manages the floating WindowManager overlay lifecycle.
-6. `WindowManager` hosts the Jetpack Compose collapsed pill and expanded cards.
+3. `TimerStopwatchParser` extracts live countdowns, elapsed tickers, and controls.
+4. `NavigationParser` parses turn-by-turn routing instructions and maneuver glyphs.
+5. `SystemEventReceiver` listens to battery, power, bluetooth, and system broadcasts.
+6. `NotificationHistoryRepository` persists past notification alerts to the local SQLite database.
+7. `SmartIslandNotificationRepository` manages centralized notification & system island state.
+8. `SmartIslandOverlayService` manages the floating WindowManager overlay lifecycle and dynamic IME focus.
+9. `WindowManager` hosts the Jetpack Compose collapsed pill and expanded cards.
 
 Use existing models, repositories, services and utilities before creating
 new abstractions. Prefer small, focused changes over broad rewrites.
 
 ## Island Modes & Event Handling
 
-SmartIsland supports the following primary modes:
+SmartIsland supports 13 primary modes:
 
-- `Notification`: Standard incoming app notifications with full-color app launcher icons.
+- `Notification`: Standard incoming app notifications with full-color app launcher icons, actions, and **Inline Reply**.
+- `Timer`: Live countdown timer, circular/linear progress indicators, and pause/resume/stop controls.
+- `Stopwatch`: Live millisecond elapsed ticker, lap counter, lap times history list, and pause/reset controls.
 - `IncomingCall`: Ringing / active phone call timer and caller badge.
 - `Music`: Media playback controls, live progress scrubber, animated visualizer, and artwork.
 - `Battery`: 
@@ -118,6 +123,7 @@ Check for:
 
 Check for:
 
+- **Inline Reply Focus**: When an inline reply is initiated, the WindowManager overlay must dynamically switch from `FLAG_NOT_FOCUSABLE` to input-capable focus (`FLAG_ALT_FOCUSABLE_IM`) and set `isInputActive` to true to prevent premature auto-collapsing while the keyboard is open.
 - **App Icon Fidelity**: `SmartIslandNotificationListenerService` must load full-color application launcher icons via `loadAppIconBitmap(packageName)`. Do not substitute monochromatic 1-bit status bar `smallIcon` for the main app launcher icon in the collapsed pill or expanded card.
 - **Message Sync Exclusion**: Background polling or message sync notifications (e.g. *"Syncing messages..."*, *"Checking for messages..."*) must be suppressed from hijacking the download/upload progress mode.
 - **Expanded Pager Snapping**: Horizontal notification pagers in `IslandExpandedContent` must synchronize against `pagerState.settledPage` and guard programmatic scrolling with `!pagerState.isScrollInProgress` to avoid mid-swipe freezing.

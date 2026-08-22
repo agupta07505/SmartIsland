@@ -94,6 +94,8 @@ fun IslandOverlayView(
     onOpenFloatingWindow: () -> Unit,
     statusBarHeight: Float,
     modifier: Modifier = Modifier,
+    isInputActive: Boolean = false,
+    onReplyStateChanged: (Boolean) -> Unit = {},
     onDismissAllNotifications: () -> Unit = {}
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
@@ -308,6 +310,9 @@ fun IslandOverlayView(
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures {
+                    if (isInputActive) {
+                        onReplyStateChanged(false)
+                    }
                     currentOnToggle()
                 }
             }
@@ -361,7 +366,8 @@ fun IslandOverlayView(
                 )
                 .clip(RoundedCornerShape(safeRadius))
                 .background(Color.Black)
-                .pointerInput(displayMetrics.density) {
+                .pointerInput(displayMetrics.density, isInputActive) {
+                    if (isInputActive) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         val pressTimeMs = System.currentTimeMillis()
@@ -491,7 +497,8 @@ fun IslandOverlayView(
                         // supplies its own loading height and must not impose that
                         // minimum on compact call or battery content.
                         onHeightMeasured = { expandedHeight = it },
-                        settings = settings
+                        settings = settings,
+                        onReplyStateChanged = onReplyStateChanged
                     )
                 }
             }
@@ -702,6 +709,12 @@ private fun SecondaryBubbleContent(
         }
         IslandMode.ScreenRecording -> {
             ScreenRecordingCollapsedGlyph(settings = settings)
+        }
+        IslandMode.Timer -> {
+            TimerCollapsedGlyph(notification = notification, settings = settings)
+        }
+        IslandMode.Stopwatch -> {
+            StopwatchCollapsedGlyph(notification = notification, settings = settings)
         }
         IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
             NotificationGlyph(notification = notification, settings = settings)

@@ -76,4 +76,58 @@ class IslandViewModelTest {
         assertEquals(1, viewModel.visibleNotifications.value.size)
         assertEquals(IslandMode.Music, viewModel.mode.value)
     }
+
+    @Test
+    fun testInputActivePausesAutoCollapseAndCollapseResetsInputActive() = runTest {
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
+        val notifRepo = SmartIslandNotificationRepository()
+        val viewModel = IslandViewModel(settingsRepo, notifRepo)
+
+        // Expand island
+        viewModel.expand()
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.expanded.value)
+
+        // Activate text input (e.g. user clicked reply)
+        viewModel.setInputActive(true)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.isInputActive.value)
+
+        // Advance time past the 5000ms auto-collapse delay
+        testDispatcher.scheduler.advanceTimeBy(6000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Island should STILL be expanded because input is active!
+        assertTrue(viewModel.expanded.value)
+
+        // Deactivate input
+        viewModel.setInputActive(false)
+        testDispatcher.scheduler.runCurrent()
+        org.junit.Assert.assertFalse(viewModel.isInputActive.value)
+
+        // Advance 5000ms now that input is inactive
+        testDispatcher.scheduler.advanceTimeBy(5500L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Island should now have auto-collapsed
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+    }
+
+    @Test
+    fun testExplicitCollapseResetsInputActive() = runTest {
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
+        val notifRepo = SmartIslandNotificationRepository()
+        val viewModel = IslandViewModel(settingsRepo, notifRepo)
+
+        viewModel.expand()
+        viewModel.setInputActive(true)
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.isInputActive.value)
+
+        viewModel.collapse()
+        testDispatcher.scheduler.runCurrent()
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+        org.junit.Assert.assertFalse(viewModel.isInputActive.value)
+    }
 }
+

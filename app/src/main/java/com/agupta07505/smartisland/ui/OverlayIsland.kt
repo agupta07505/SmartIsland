@@ -34,6 +34,7 @@ fun OverlayIsland(
     val notifications by viewModel.visibleNotifications.collectAsState()
     val selectedIndex by viewModel.selectedIndex.collectAsState()
     val isLocked by viewModel.isLocked.collectAsState()
+    val isInputActive by viewModel.isInputActive.collectAsState()
     val context = LocalContext.current
 
     val isContentRedacted = isLocked && settings.lockScreenPrivacy == "AppIconOnly"
@@ -91,6 +92,8 @@ fun OverlayIsland(
         onDismissAllNotifications = { viewModel.dismissAllNotifications() },
         onOpenFloatingWindow = onOpenFloatingWindow,
         statusBarHeight = statusBarHeight,
+        isInputActive = isInputActive,
+        onReplyStateChanged = { viewModel.setInputActive(it) },
         modifier = modifier
     )
 }

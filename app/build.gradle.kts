@@ -31,7 +31,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 5
-        versionName = "5.0.0"
+        versionName = "5.1.0"
     }
 
     buildFeatures {
@@ -69,6 +69,7 @@ android {
         warningsAsErrors = true
         checkDependencies = true
         disable += setOf(
+            "AndroidGradlePluginVersion",
             "GradleDependency",
             "ObsoleteSdkInt",
             "InternalInsetResource",

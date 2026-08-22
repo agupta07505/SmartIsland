@@ -19,5 +19,7 @@ enum class IslandMode {
     Hotspot,
     Bluetooth,
     Flashlight,
-    ScreenRecording
+    ScreenRecording,
+    Timer,
+    Stopwatch
 }

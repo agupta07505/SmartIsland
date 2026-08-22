@@ -62,16 +62,29 @@ fun triggerAction(context: Context, packageName: String, actionIntent: PendingIn
 
 fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
     android.util.Log.d("ExpandedActions", "sendIntentWithOptions: sending pendingIntent=$pendingIntent")
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        val options = ActivityOptions.makeBasic()
-            .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-            .toBundle()
-        runCatchingLogged("ExpandedActions", "pendingIntent.send failed with options") {
+    var sent = false
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && pendingIntent.isActivity) {
+        try {
+            val options = ActivityOptions.makeBasic()
+                .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                .toBundle()
             pendingIntent.send(context, 0, null, null, null, null, options)
+            sent = true
+        } catch (e: Exception) {
+            android.util.Log.w("ExpandedActions", "pendingIntent.send with ActivityOptions failed: ${e.message}, attempting direct send fallback")
         }
-    } else {
-        runCatchingLogged("ExpandedActions", "pendingIntent.send failed") {
+    }
+    if (!sent) {
+        try {
             pendingIntent.send()
+            sent = true
+        } catch (e: Exception) {
+            try {
+                pendingIntent.send(context, 0, null)
+                sent = true
+            } catch (e2: Exception) {
+                android.util.Log.e("ExpandedActions", "All attempts to send PendingIntent failed", e2)
+            }
         }
     }
 }

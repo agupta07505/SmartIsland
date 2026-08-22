@@ -68,6 +68,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var screenStateReceiverRegistered = false
     private var torchCallbackRegistered = false
     private var foregroundStarted = false
+    private var isTouchableRegionSupported = false
     @Volatile private var destroyed = false
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
@@ -299,6 +300,17 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
+
+        serviceScope.launch {
+            runSuspendCatchingLogged(TAG, "Input-active collector failed") {
+                viewModel.isInputActive.collectLatest {
+                    if (destroyed || !viewModel.settings.value.enabled) {
+                        return@collectLatest
+                    }
+                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                }
+            }
+        }
     }
 
     override fun onServiceConnected() {
@@ -425,6 +437,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
                 installOverlayViewTreeOwners()
+                isFocusable = true
+                isFocusableInTouchMode = true
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
                     OverlayIsland(
@@ -534,7 +548,11 @@ class SmartIslandOverlayService : AccessibilityService() {
                         listenerClass
                     )
                     addListenerMethod.invoke(observer, proxyListener)
+                    isTouchableRegionSupported = true
                     android.util.Log.d(TAG, "OnComputeInternalInsetsListener successfully registered on live ViewTreeObserver")
+                    if (::viewModel.isInitialized && !viewModel.expanded.value) {
+                        updateWindowLayoutParams(false, viewModel.settings.value)
+                    }
                 }
             }
             
@@ -554,6 +572,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                     }
                 })
             }
+        } ?: run {
+            isTouchableRegionSupported = false
+            android.util.Log.w(TAG, "Touchable region reflection unsupported or blocked, falling back to physical bounds")
         }
     }
 
@@ -572,24 +593,37 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         view.visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
+        val isSplitMode = viewModel.notifications.value.size >= 2
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
             ((settings.height + 16f) * density).toInt()
         }
+        val w = if (expanded || isTouchableRegionSupported) {
+            WindowManager.LayoutParams.MATCH_PARENT
+        } else {
+            val pillWidthDp = settings.width + (if (isSplitMode) 8f + settings.height else 0f) + 24f
+            (pillWidthDp * density).toInt()
+        }
+        val isInput = viewModel.isInputActive.value && expanded
+        val focusFlags = if (isInput) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            w,
             h,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            focusFlags or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
+            x = if (expanded || isTouchableRegionSupported) 0 else (settings.xOffset * density).toInt()
             y = settings.yOffset.dpToPx()
+            if (isInput) {
+                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+            }
         }
         runCatchingLogged(TAG, "Failed to update view layout") { 
             windowManager.updateViewLayout(view, params) 
@@ -611,8 +645,15 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
+        val isSplitMode = if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false
+        val w = if (isTouchableRegionSupported) {
+            WindowManager.LayoutParams.MATCH_PARENT
+        } else {
+            val pillWidthDp = settings.width + (if (isSplitMode) 8f + settings.height else 0f) + 24f
+            (pillWidthDp * density).toInt()
+        }
         return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            w,
             ((settings.height + 16f) * density).toInt(),
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -622,7 +663,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = 0
+            x = if (isTouchableRegionSupported) 0 else (settings.xOffset * density).toInt()
             y = settings.yOffset.dpToPx()
         }
     }

@@ -44,6 +44,7 @@ class IslandModeMappingTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_SUB_TEXT) } returns null
         return extras
     }
 
@@ -198,5 +199,156 @@ class IslandModeMappingTest {
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Active • 2 devices connected"
 
         assertEquals(IslandMode.Hotspot, notification.toIslandMode())
+    }
+
+    @Test
+    fun testSamsungScreenRecordingNotificationMapsToScreenRecordingAndNotMap() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_NAVIGATION // Even if category is CATEGORY_NAVIGATION or service
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = null
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.sec.android.app.screenrecorder"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Recording screen..."
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Tap to stop recording. 05:20 left"
+
+        // Must map to ScreenRecording, NEVER Navigation (Map UI)
+        assertEquals(IslandMode.ScreenRecording, notification.toIslandMode(sbn, deviceType = "SAMSUNG"))
+    }
+
+    @Test
+    fun testXiaomiScreenRecordingNotificationMapsToScreenRecording() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_SERVICE
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = null
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.miui.screenrecorder"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen Recorder"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Recording in progress"
+
+        assertEquals(IslandMode.ScreenRecording, notification.toIslandMode(sbn, deviceType = "XIAOMI_REDMI_POCO"))
+    }
+
+    @Test
+    fun testVivoScreenRecordingNotificationMapsToScreenRecording() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_SERVICE
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = null
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.vivo.screenrecorder"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "S-Capture"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Screen recording..."
+
+        assertEquals(IslandMode.ScreenRecording, notification.toIslandMode(sbn, deviceType = "VIVO_IQOO"))
+    }
+
+    @Test
+    fun testRealmeScreenRecordingNotificationMapsToScreenRecording() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_SERVICE
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = null
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.oplus.screenrecorder"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Screen Recording"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Recording screen"
+
+        assertEquals(IslandMode.ScreenRecording, notification.toIslandMode(sbn, deviceType = "REALME_OPPO_ONEPLUS"))
+    }
+
+    @Test
+    fun testSamsungInCallMapsToIncomingCall() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_CALL
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+
+        val answerAction = mockk<Notification.Action>()
+        answerAction.title = "Answer"
+        val declineAction = mockk<Notification.Action>()
+        declineAction.title = "Decline"
+        notification.actions = arrayOf(answerAction, declineAction)
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.samsung.android.incallui"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Mom"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Incoming call"
+
+        assertEquals(IslandMode.IncomingCall, notification.toIslandMode(sbn, deviceType = "SAMSUNG"))
+    }
+
+    @Test
+    fun testTimerNotificationMapsToTimer() {
+        val notification = mockk<Notification>()
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.category = Notification.CATEGORY_ALARM
+
+        val pause = mockk<Notification.Action>()
+        pause.title = "Pause"
+        val reset = mockk<Notification.Action>()
+        reset.title = "Reset"
+        notification.actions = arrayOf(pause, reset)
+        notification.`when` = 0L
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.google.android.deskclock"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Timer"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "04:59"
+
+        assertEquals(IslandMode.Timer, notification.toIslandMode(sbn))
+    }
+
+    @Test
+    fun testStopwatchNotificationMapsToStopwatch() {
+        val notification = mockk<Notification>()
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.category = Notification.CATEGORY_STOPWATCH
+
+        val lap = mockk<Notification.Action>()
+        lap.title = "Lap"
+        val pause = mockk<Notification.Action>()
+        pause.title = "Pause"
+        notification.actions = arrayOf(lap, pause)
+        notification.`when` = 0L
+
+        val sbn = mockk<StatusBarNotification>()
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { sbn.packageName } returns "com.google.android.deskclock"
+        every { sbn.notification } returns notification
+
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Stopwatch"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "00:14.28"
+
+        assertEquals(IslandMode.Stopwatch, notification.toIslandMode(sbn))
     }
 }

@@ -89,11 +89,8 @@ fun HotspotExpanded(
             .fillMaxWidth()
             .wrapContentHeight()
             .clickable {
-                if (notification.contentIntent != null) {
-                    onOpenNotification()
-                } else {
-                    onCollapse()
-                }
+                HotspotUtil.openHotspotSettings(context, notification.contentIntent)
+                onCollapse()
             }
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -231,14 +228,7 @@ fun HotspotExpanded(
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color(0xFFE2E8F0))
                     .bounceClick {
-                        runCatching {
-                            val intent = Intent(Settings.ACTION_WIRELESS_SETTINGS).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            context.startActivity(intent)
-                        }.onFailure {
-                            Toast.makeText(context, "Opening Hotspot settings...", Toast.LENGTH_SHORT).show()
-                        }
+                        HotspotUtil.openHotspotSettings(context, notification.contentIntent)
                         onCollapse()
                     }
                     .padding(horizontal = 12.dp),
