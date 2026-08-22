@@ -4,6 +4,73 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [5.1.0] - 2026-08-22
+
+### Added
+
+- **Inline-Reply Input & Soft-Keyboard WindowManager Focus Handling (`NotificationExpanded.kt`, `SmartIslandOverlayService.kt`)**:
+  - Direct inline text reply right inside the expanded Island notification card for messaging apps (WhatsApp, Telegram, Signal, SMS, Slack, etc.).
+  - **Dynamic WindowManager Focus Switching**:
+    - Switches overlay window from non-focusable (`FLAG_NOT_FOCUSABLE`) for normal touch pass-through to input-ready focusable mode (`FLAG_ALT_FOCUSABLE_IM` / input method aware) with `SOFT_INPUT_ADJUST_PAN` / `SOFT_INPUT_ADJUST_RESIZE` when typing.
+    - Added `isInputActive` state to `IslandViewModel` to automatically pause auto-collapse timers and prevent the island from vanishing while typing.
+    - Direct `RemoteInput` pending intent dispatching with quick send button, automatic text clearance, and keyboard dismiss handling.
+- **Timer & Stopwatch Dynamic Island Modes (`IslandMode.TIMER`, `IslandMode.STOPWATCH`)**:
+  - **Intelligent Clock Parsing (`TimerStopwatchParser.kt`)**:
+    - Deep-parsing of timer and stopwatch status notifications across major OEM clock apps (Google Clock, Samsung Clock, Xiaomi/MIUI/HyperOS Clock, OnePlus/ColorOS Clock, Huawei Clock).
+    - Extracts remaining countdown time, total duration, elapsed millisecond ticker, timer state (running, paused, finished), and lap sequences.
+  - **Collapsed Pill Glyphs**:
+    - Live countdown badge and animated timer glyph; active stopwatch millisecond ticker.
+  - **Expanded Timer Card (`TimerExpanded.kt`)**:
+    - Circular and linear progress indicators, remaining countdown display, original duration tag, and interactive controls (*Pause*, *Resume*, *Reset*, *Stop*).
+  - **Expanded Stopwatch Card (`StopwatchExpanded.kt`)**:
+    - High-frequency elapsed ticker, lap counter, full lap times history list, and interactive controls (*Pause*, *Lap*, *Resume*, *Reset*).
+  - Custom RGB Color Studio and preset palettes support for both Timer and Stopwatch accent colors.
+- **Persistent SQLite Notification History (`NotificationHistorySection.kt`)**:
+  - Full local SQLite database architecture via `NotificationHistoryDbHelper` and `NotificationHistoryRepository`.
+  - Automatically captures and indexes past status bar notifications locally with app metadata, timestamps, and category modes.
+  - **Studio History Management Section**:
+    - Real-time search bar filtering across notification titles, message bodies, and package names.
+    - App filter chips and mode filter chips for quick scoping.
+    - Full notification details bottom sheet.
+    - Swipe-to-delete gesture per entry and 1-tap "Clear All History" action.
+    - Automated SQLite pruning routines to keep local database lightweight.
+- **OEM Device Rules Engine & Background Keep-Alive Guide (`OemDeviceRules.kt`, `OemAutostartUtil.kt`)**:
+  - Deep vendor-specific autostart and battery optimization guidance for Xiaomi/HyperOS/MIUI, Samsung OneUI, OnePlus/Oppo/Realme (ColorOS/OxygenOS), Huawei/Honor (EMUI/MagicOS), Vivo/iQOO (FuntouchOS/OriginOS), Asus ZenUI, and Transsion (HiOS/XOS).
+  - Direct deep-links to vendor-specific battery optimization, autostart, and lock-in-recents settings menus.
+  - Specialized OEM notification handling rules (e.g. system screen recorder packages, hotspot tethering broadcasts, and incoming call heads-up overrides).
+- **In-App GitHub Release Checker & Network Privacy Controls (`GitHubApiService.kt`, `allowNetworkChecks`)**:
+  - Direct in-app GitHub Releases API integration checking for newer versions, release changelogs, and download links.
+  - **Strict Network Privacy Guard**:
+    - Added `allowNetworkChecks` setting (persisted via `allow_network_checks` key in DataStore).
+    - UI toggle under *Notifications & Privacy* section.
+    - Offline Mode fallback: When disabled, zero network calls are dispatched, and the About section displays an explicit Offline Mode badge.
+- **Hotspot Tethering Monitor & Navigation Parser Enhancements**:
+  - `HotspotUtil`: Enhanced connected client regex parser across various Android versions and OEM tethering notifications.
+  - `NavigationParser`: Improved multi-line route instruction handling, distance/ETA parsing, and turn-by-turn maneuver arrow glyph extraction.
+- **Unit Test Suite Expansion**:
+  - Added 52+ unit test cases covering new modules and critical paths:
+    - `TimerStopwatchParserTest` (268 lines): Complete validation of Google, Samsung, and Xiaomi clock parsing rules.
+    - `GitHubApiServiceTest` (52 lines): Semver version comparison and prerelease tag parsing tests.
+    - `OemDeviceRulesTest` (95 lines): OEM manufacturer rules, package overrides, and autostart intent resolution.
+    - `NavigationParserTest` (32 lines): Route instruction and ETA regex extraction tests.
+    - `NotificationHistoryEntryTest` (65 lines): SQLite entity serialization and category mapping tests.
+    - `IslandViewModelTest` (54 lines): Inline-reply active input state and auto-collapse suppression tests.
+    - `SmartIslandNotificationRepositoryTest` (26 lines): Repository flow and timer/stopwatch state tests.
+
+### Changed
+
+- **Version Bump**: Updated application version to **`5.1.0`** (`versionCode 5`).
+- **DataStore Settings Expansion**: Added preference keys for `allow_network_checks`, `timer_color`, `stopwatch_color`, and `device_type`.
+- **About Section Redesign**: Revamped `AboutSection.kt` with live update insights, system health diagnostics, and contributor credits.
+- **Build Tooling**: Updated Gradle wrapper to **`9.6.1` / `9.7.1`** with refined AGP build settings.
+
+### Fixed
+
+- **Soft-Keyboard Overlay Focus**: Dynamically adjusted WindowManager layout flags (`FLAG_NOT_FOCUSABLE` / `FLAG_ALT_FOCUSABLE_IM`) during inline reply text input, preventing touch blocking while allowing smooth keyboard entry.
+- **Notification Suppression Race Condition**: Enhanced retry handling and self-cancellation tracking in `SmartIslandNotificationListenerService` to avoid missed dismissals.
+- **Turn-by-Turn Instruction Truncation**: Fixed route text truncation and maneuver icon extraction in navigation mode.
+- **CI Lint Cleanups**: Resolved AndroidGradlePluginVersion and AGP deprecation lint warnings for 100% clean builds.
+
 ## [5.0.0] - 2026-08-15
 
 ### Added

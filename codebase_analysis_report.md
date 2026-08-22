@@ -1,12 +1,12 @@
 # Smart Island - Codebase & Architecture Analysis
 
-This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application, utilizing metadata gathered and verified via the `codebase-memory-mcp` tools.
+This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application (reflecting the **v5.1.0** baseline).
 
 ---
 
 ## 1. System Architecture
 
-The application is structured around a reactive, unidirectional data flow (UDF) that links Android system events (notifications, battery state changes) to a persistent Jetpack Compose overlay window drawn over other applications.
+The application is structured around a reactive, unidirectional data flow (UDF) that links Android system events (notifications, battery state changes, clock timers/stopwatches) to a persistent Jetpack Compose overlay window drawn over other applications.
 
 ### Architectural Diagram
 
@@ -14,23 +14,27 @@ The application is structured around a reactive, unidirectional data flow (UDF) 
 graph TD
     %% Events
     AS[Android System] -->|System Notifications| NIL[SmartIslandNotificationListenerService]
-    AS -->|Power & Battery Broadcasts| SER[SystemEventReceiver]
+    AS -->|Power, Battery, BT Broadcasts| SER[SystemEventReceiver]
 
     %% Repositories and Data State
     NIL -->|Parse, Filter & Forward| NR[SmartIslandNotificationRepository]
+    NIL -->|Parse Timers & Stopwatches| TSP[TimerStopwatchParser]
+    NIL -->|Persist Notification Alerts| NHR[NotificationHistoryRepository / SQLite DB]
+    TSP --> NR
     SER -->|Forward Charging / Battery State| NR
     
     %% Settings
     MA[MainActivity / Settings UI] -->|Update Sliders & Toggles| SR[SmartIslandSettingsRepository]
     
     %% UI State & Rendering
-    SR -->|Flow Settings Updates| OS[SmartIslandOverlayService]
-    NR -->|Flow Active Notifications| VM[IslandViewModel]
-    VM -->|Compose State| OS
+    SR -->|Flow Settings Updates| VM[IslandViewModel]
+    NR -->|Flow Active Notifications| VM
+    VM -->|Compose State| OS[SmartIslandOverlayService]
     
     %% Overlay UI
-    OS -->|Draws overlay ComposeView| OV[IslandOverlayView]
-    OV -->|Gestures: Swipe Up, Swipe Down, Tap| VM
+    OS -->|Draws overlay ComposeView| OV[IslandOverlayView / IslandExpandedContent]
+    OV -->|Gestures: 5-Gesture Engine & Inline Reply| VM
+    VM -->|Switch Focus & Soft Input| OS
     VM -->|Remove notification & cancel in system| NR
 ```
 
@@ -44,18 +48,25 @@ graph TD
   * **System Interception:** Intercepts incoming notifications by extending Android's `NotificationListenerService`.
   * **System Tray Suppression:** If an incoming notification is classified as `IMPORTANCE_HIGH` (Heads-Up notification), the service calls `cancelNotification(sbn.key)` to suppress the default OS banner. Simultaneously, it posts the notification to the Smart Island overlay with `autoExpand = true` to mimic a heads-up animation.
   * **Suppressed Keys Set:** Maintains a local `suppressedKeys` set to handle the cancellation sync so that notifications are not accidentally removed from the overlay state during the self-cancellation process.
-  * **Classification Logic:** Uses [NotificationFilter](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/util/NotificationFilter.kt) to filter out system-level package alerts, empty notifications, and ongoing foreground tasks (unless they represent calls, music playback, or progress tasks). It categorizes notifications into one of the `IslandMode` categories:
+  * **Clock Parsing (`TimerStopwatchParser`):** Automatically decodes clock alerts (Google Clock, Samsung Clock, Xiaomi/HyperOS, ColorOS, Huawei) into dedicated `IslandMode.Timer` or `IslandMode.Stopwatch` states.
+  * **Persistent SQLite Notification Storage:** Stores notification alerts into the local SQLite database via [NotificationHistoryRepository](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/data/NotificationHistoryRepository.kt) for in-app history search, category filtering, and audit.
+  * **Classification Logic:** Uses [NotificationFilter](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/util/NotificationFilter.kt) to filter out system-level package alerts, empty notifications, message sync background polling, and ongoing foreground tasks (unless they represent calls, music playback, progress tasks, or active timers). Categorizes notifications into one of the 13 `IslandMode` categories:
     * `Notification.CallStyle` / `Notification.CATEGORY_CALL` $\rightarrow$ `IslandMode.IncomingCall`
     * `Notification.CATEGORY_TRANSPORT` or notifications with media controllers/action labels $\rightarrow$ `IslandMode.Music`
-    * Ongoing progress $\rightarrow$ `IslandMode.Music` / `IslandMode.Notification` (context dependent)
-    * Charging $\rightarrow$ `IslandMode.Battery`
-    * General notifications $\rightarrow$ `IslandMode.Notification`
+    * Active timers & countdowns $\rightarrow$ `IslandMode.Timer`
+    * Active stopwatch elapsed tickers $\rightarrow$ `IslandMode.Stopwatch`
+    * Turn-by-turn navigation alerts $\rightarrow$ `IslandMode.Navigation`
+    * Delivery & ride tracking $\rightarrow$ `IslandMode.LiveActivity`
+    * Ongoing progress $\rightarrow$ `IslandMode.DownloadUpload`
+    * Charging / battery alert $\rightarrow$ `IslandMode.Battery`
+    * General notifications with Inline Reply $\rightarrow$ `IslandMode.Notification`
   * **Media Session Binding:** Inspects the notification extras for `Notification.EXTRA_MEDIA_SESSION`. If found, it establishes a `MediaController` connection to track play/pause states, position estimation, and metadata (title, artist, album artwork).
 
-### 2.2. Compose Overlay Lifecycle Management
+### 2.2. Compose Overlay Lifecycle & IME Focus Management
 * **Class:** [SmartIslandOverlayService](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/service/SmartIslandOverlayService.kt)
 * **Mechanism:**
   * **Application Overlay Window:** Inflates and manages a custom `ComposeView` drawn on the window manager using the `TYPE_APPLICATION_OVERLAY` flag.
+  * **Dynamic Soft-Keyboard Focus Switching:** Dynamically flips WindowManager flags between `FLAG_NOT_FOCUSABLE` (for standard touch pass-through to background apps) and `FLAG_ALT_FOCUSABLE_IM` (to accept direct keyboard input during **Inline Reply** without locking up the OS).
   * **Overlay View Tree Owners:** Attaches custom Lifecycle, ViewModel, and SavedStateRegistry owners defined in [OverlayViewTreeOwners](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/service/OverlayViewTreeOwners.kt) directly to the window-hosted `ComposeView`. This enables Jetpack Compose components and animations to run safely within the Service context without throwing standard runtime Activity missing context exceptions.
 
 ### 2.3. Touch Pass-Through & Reflection Workaround

@@ -1,6 +1,6 @@
 # Smart Island Product Roadmap
 
-Last updated: August 15, 2026
+Last updated: August 22, 2026
 
 ## Product direction
 
@@ -8,20 +8,22 @@ Smart Island should become the most reliable, privacy-first, and customizable gl
 
 The roadmap follows three core principles:
 
-1. **Reliability before feature count.** Overlay, notification, media, call, and battery behavior must remain rock-solid across Android versions and major OEM ROMs.
-2. **Local by default.** Notification content and preferences stay strictly on-device. Zero analytics, zero tracking, and zero internet permission.
+1. **Reliability before feature count.** Overlay, notification, media, call, timer, stopwatch, and battery behavior must remain rock-solid across Android versions and major OEM ROMs.
+2. **Local by default.** Notification content, history, and preferences stay strictly on-device. Zero analytics, zero tracking, and zero cloud lock-in.
 3. **Fast, fluid, and unobtrusive.** The island must use negligible battery, avoid blocking touches, and provide instant haptic and visual feedback.
 
 ---
 
-## Current baseline (v5.0.0)
+## Current baseline (v5.1.0)
 
 Smart Island currently provides:
 
 - A Compose-based floating overlay on Android 8+ (API 26 through API 36)
 - Complete **Material 3 Expressive** design system with Android 12+ wallpaper dynamic color adaptation
-- **11 Dynamic Island Modes**:
-  - `Notification` (with full-color app launcher icons & LRU caching)
+- **13 Dynamic Island Modes**:
+  - `Notification` (with full-color app launcher icons, LRU caching, and **Inline Reply**)
+  - `Timer` (live countdown, circular/linear progress bar, and pause/resume/stop controls)
+  - `Stopwatch` (live millisecond ticker, lap counter, lap history list, and reset controls)
   - `IncomingCall` (call timer, caller badge & waveform animations)
   - `Music` (wavy audio scrubber, heart/repeat actions, ambient album art glow)
   - `Battery` (*Charging*, *Low Battery &le; 20%*, *Battery Saver ON*)
@@ -32,15 +34,19 @@ Smart Island currently provides:
   - `Bluetooth` (device battery & connectivity)
   - `Flashlight` (torch state indicator & toggle)
   - `ScreenRecording` (live elapsed timer)
+- **Inline Reply & Soft-Keyboard WindowManager Focus**: Seamless IME typing right inside the island with auto-collapse pause
+- **SQLite Notification History Hub**: Persistent local database tracking past alerts with search, app filter chips, and swipe-to-delete
+- **OEM Device Rules Engine**: Vendor-specific autostart & battery optimization protection for Xiaomi/HyperOS, Samsung OneUI, OnePlus/Oppo/Realme, Huawei, Vivo, and Asus
+- **In-App GitHub Release Checker**: Optional version update insights and changelogs with strict `allowNetworkChecks` privacy guard and offline mode fallback
 - **Split Island Multi-State Pill** for concurrent background states
 - **5-Gesture Control Engine**: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Swipe Left/Right (Pager)
 - **Message Sync Filtering**: Background chat polling (Snapchat, WhatsApp) excluded from download mode
-- **Custom RGB Slider Color Picker**: Fine-grained color customization for all modes
-- **Grouped Settings Hub Architecture** with 4 minimal Category Hub Cards
+- **Custom RGB Slider Color Picker**: Fine-grained color customization for all 13 modes
+- **Grouped Settings Hub Architecture** with minimal Category Hub Cards
 - **Landscape orientation detection** for automatic overlay hiding during full-screen apps
 - **Shizuku 1-Tap Auto Setup** for automated system permission granting
 - **Lock screen privacy guard** with sensitive notification content protection
-- **Zero Internet Permission** and 100% local DataStore persistence
+- **100% Local Processing** and DataStore persistence
 - **Strict Lint & Stable @v4 GitHub Actions CI/CD** pipeline
 
 ---
@@ -49,13 +55,30 @@ Smart Island currently provides:
 
 | Phase | Target window | Theme | Exit outcome |
 | --- | --- | --- | --- |
-| **v4.0** | Jul 2026 | Material 3 UI & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings |
-| **v5.0.0** | Aug 2026 | Battery Saver, App Icons & 5-Gesture Engine | Low Battery/Saver modes, full-color app launcher icons, sync filtering, 5 gestures text guide, and stable CI |
-| **v5.1** | Oct-Nov 2026 | Face Unlock, Custom Sounds & Widgets | Face Unlock animation overlay, dynamic widget extensions (Calendar/Timer/Reminders), and custom sound packs |
-| **v5.2** | Dec 2026-Jan 2027 | System Profiles & Floating Window Polish | Preset environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
-| **v6.0** | Q1-Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
+| **v4.0** | Jul 2026 | Material 3 UI & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings *(Released)* |
+| **v5.0.0** | Aug 2026 | Battery Saver, App Icons & 5-Gesture Engine | Low Battery/Saver modes, full-color app launcher icons, sync filtering, 5 gestures text guide, and stable CI *(Released)* |
+| **v5.1.0** | Aug 2026 | Inline Reply, Timers, History & OEM Engine | Direct inline text replies, Timer & Stopwatch island modes, SQLite history hub, OEM background rules engine *(Released)* |
+| **v5.2** | Q4 2026 - Q1 2027 | Face Unlock, Custom Sounds & Dynamic Widgets | Face Unlock animation overlay, dynamic Calendar/Reminder glance widgets, and customizable micro-sound packs |
+| **v5.3** | Q1 2027 | System Profiles & Floating Window Polish | Contextual environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
+| **v6.0** | Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
 
 *Dates are planning targets. A phase moves forward only after its release gates and automated CI suites are fully validated.*
+
+---
+
+## Released — v5.1.0: Inline Reply, Timer & Stopwatch, Notification History & OEM Rules Engine
+
+Released August 22, 2026.
+
+- **Inline Reply & Soft-Keyboard WindowManager Focus**: Direct typing inside expanded notification cards with dynamic focus switching (`FLAG_NOT_FOCUSABLE` to `FLAG_ALT_FOCUSABLE_IM`), auto-collapse suppression while typing, and `RemoteInput` pending intent dispatch.
+- **Timer & Stopwatch Dynamic Island Modes**: Deep parsing across Google, Samsung, Xiaomi/HyperOS, ColorOS, and Huawei clock notifications. Dedicated collapsed glyphs, expanded progress views, live millisecond tickers, and pause/resume/lap/reset controls.
+- **Persistent SQLite Notification History**: On-device SQLite database storing past notifications with real-time search, app filtering chips, category filters, notification details sheet, and swipe-to-delete.
+- **OEM Device Rules Engine**: Vendor-specific autostart and background protection rules for Xiaomi/HyperOS, Samsung OneUI, OnePlus/Oppo/Realme (ColorOS/OxygenOS), Huawei/Honor, Vivo/iQOO, and Asus to eliminate aggressive background kills.
+- **In-App GitHub Release Checker & Network Privacy Guard**: In-app GitHub update checks and changelog insights with an explicit user toggle (`allowNetworkChecks`) and strict offline mode fallback.
+- **Hotspot & Navigation Parser Enhancements**: Regex parsing improvements for tethering clients and turn-by-turn navigation instructions.
+- **Expanded Test Suite**: Added 52+ unit tests covering new clock parsers, OEM device rules, API services, SQLite entities, and ViewModels.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
 ---
 
@@ -73,8 +96,6 @@ Released August 15, 2026.
 - **Split Island Architecture**: Added secondary bubble pill support for concurrent background events.
 - **GitHub Actions CI/CD Fix**: Updated all GitHub actions to stable official `@v4` and added lint suppressions for flawless builds.
 - **Refreshed Screenshots Gallery**: Added 16 high-resolution screenshots showcasing the entire v5.0.0 feature set.
-
-See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
 ---
 
@@ -95,20 +116,18 @@ Released July 27, 2026.
 
 ## Future Roadmap Details
 
-### Phase 5.1 — Face Unlock, Custom Sounds & Dynamic Widgets (Q4 2026)
+### Phase 5.2 — Face Unlock, Custom Sounds & Dynamic Widgets (Q4 2026 - Q1 2027)
 
-**Goal:** Expand glanceable indicators to hardware authentication and custom ambient widgets.
+**Goal:** Expand glanceable indicators to hardware authentication, ambient widgets, and micro-interactions.
 
 - **Face Unlock Integration**: Detect keyguard face recognition events via Shizuku/Accessibility and render smooth animated face-scan rings in the island.
-- **Dynamic Widgets**:
-  - Native Timer & Stopwatch cards with direct pause/reset controls.
-  - Calendar & Reminder glance cards for upcoming meetings and alarms.
+- **Calendar & Reminder Widgets**: Glance cards for upcoming meetings, agendas, and alarms.
 - **Custom Sound Packs**:
-  - Option to assign custom micro-sound effects (subtle pop, bubble, mechanical click) to island expand and collapse animations.
+  - Assign customizable micro-sound effects (subtle pop, bubble, mechanical click) to island expand and collapse animations.
 - **App Whitelist / Blacklist Rules**:
-  - More granular per-app rules for minimum notification importance, vibration suppression, and custom expanded card heights.
+  - Granular per-app rules for minimum notification importance, vibration suppression, and custom expanded card heights.
 
-### Phase 5.2 — System Profiles & Floating Window Polish (Q1 2027)
+### Phase 5.3 — System Profiles & Floating Window Polish (Q1 2027)
 
 **Goal:** Provide contextual island automation and desktop-class multitasking.
 
@@ -129,3 +148,4 @@ Released July 27, 2026.
 - **Local Cross-Device Status Sync**:
   - Peer-to-peer sync over Bluetooth Low Energy (BLE) or local Wi-Fi to view tablet or secondary phone battery, call, or media status on your primary device.
   - Strictly zero cloud servers or remote accounts required.
+

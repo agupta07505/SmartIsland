@@ -1,22 +1,31 @@
 # Smart Island Application Analysis
 
-This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application. It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
+This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application (reflecting the **v5.1.0** baseline). It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
 
 ---
 
 ## 1. Architectural Overview
 
-The **Smart Island** app is an Android application built using **Jetpack Compose** that mimics the iOS "Dynamic Island" feature. It intercepts incoming system notifications and displays them in a highly animated, interactive overlay pill floating at the top of the screen.
+The **Smart Island** app is an Android application built using **Jetpack Compose** that mimics the iOS "Dynamic Island" feature. It intercepts incoming system notifications, clock states (timers/stopwatches), system events, and media playback, displaying them in a highly animated, interactive overlay pill floating at the top of the screen.
 
 ```mermaid
 graph TD
     A[Android System] -->|System Notifications| B[SmartIslandNotificationListenerService]
-    B -->|Parse & Cancel System Heads-Up| C[SmartIslandOverlayService]
-    C -->|Manage Overlay Window & Insets| D[ComposeView Overlay]
-    D -->|Render UI / Interact| E[IslandOverlayView]
-    E -->|Gestures: Swipe Up/Down, Tap| C
+    A -->|Power, Battery, BT Broadcasts| SER[SystemEventReceiver]
+    B -->|Filter & Suppress Sync| NF[NotificationFilter]
+    B -->|Parse Timers & Stopwatches| TSP[TimerStopwatchParser]
+    B -->|Persist Notification Alerts| NHD[NotificationHistoryRepository / SQLite DB]
+    NF --> NR[SmartIslandNotificationRepository]
+    TSP --> NR
+    SER --> NR
     F[MainActivity / Settings Screen] -->|Save Preferences| G[SmartIslandSettingsRepository]
-    G -->|Reactive Settings Flow| C
+    NR -->|Flow Active Notifications & State| VM[IslandViewModel]
+    G -->|Reactive Settings Flow| VM
+    VM -->|Compose State| C[SmartIslandOverlayService]
+    C -->|Manage Overlay Window & IME Focus| D[ComposeView Overlay]
+    D -->|Render UI / Interact| E[IslandOverlayView / IslandExpandedContent]
+    E -->|Gestures: 5-Gesture Engine & Inline Reply| VM
+    VM -->|Dynamic WindowManager Focus Switch| C
 ```
 
 ---
@@ -29,9 +38,13 @@ graph TD
 * **Key Mechanisms:**
   * **Heads-Up Notification Interception:** Checks if the notification importance is `IMPORTANCE_HIGH` (Heads-Up). If it is, the service **cancels the notification in the system tray** (`cancelNotification(sbn.key)`) to suppress the default system heads-up banner, and forwards the event to `SmartIslandOverlayService` with `autoExpand = true`.
   * **System Notification Dismissal Sync:** Tracks suppressed keys inside `suppressedKeys` to ensure self-cancelled notifications are not removed from the overlay state during the suppression process.
+  * **Clock Notification Parsing (`TimerStopwatchParser`):** Automatically decodes clock alerts (Google Clock, Samsung Clock, MIUI/HyperOS, ColorOS, Huawei) into dedicated `IslandMode.Timer` or `IslandMode.Stopwatch` states.
+  * **SQLite Notification History Tracking:** Records incoming notifications locally in the `NotificationHistoryRepository` for post-alert search, filtering, and audit.
+  * **Full-Color App Launcher Icons:** Loads original full-color application launcher icons via `packageManager.getApplicationIcon` with LRU bitmap caching.
   * **Notification Classification (`toIslandMode`):** Determines the category to display:
     * `Notification.CATEGORY_CALL` / `Notification.CATEGORY_MISSED_CALL` &rarr; `IslandMode.IncomingCall`
     * `Notification.CATEGORY_TRANSPORT` / `Notification.CATEGORY_PROGRESS` or action labels containing media keywords &rarr; `IslandMode.Music`
+    * Clocks matching timer/stopwatch patterns &rarr; `IslandMode.Timer` / `IslandMode.Stopwatch`
     * Otherwise &rarr; `IslandMode.Notification`
   * **Media Info Extraction:** Retrieves playback info (duration, position, play/pause state, album art) via the `MediaSession.Token` attached to the notification or from active system media controllers.
 
@@ -44,7 +57,10 @@ graph TD
     * To prevent the transparent overlay window from blocking user interactions with apps behind it, the service implements a reflection-based `OnComputeInternalInsetsListener`.
     * **Collapsed State:** Insets are set to `3` (`TOUCHABLE_INSETS_REGION`). It dynamically calculates the bounding box of the small collapsed pill (centered at the top, translated by `yOffset`) and maps it to `touchableRegion`/`mTouchableRegion` inside `InternalInsetsInfo` across different OEM ROMs. Touch events outside this boundary pass directly to background apps.
     * **Expanded State:** Insets are set to `0` (`TOUCHABLE_INSETS_FRAME`), letting the overlay window capture touches across the entire screen so that taps outside the expanded card can trigger a collapse animation.
-  * **Auto-Collapse Timer:** Automatically collapses the expanded state back to a pill after 5 seconds of inactivity.
+  * **Dynamic Soft-Keyboard (IME) Focus Switching:**
+    * When typing an **Inline Reply**, dynamically switches window flags from `FLAG_NOT_FOCUSABLE` to `FLAG_ALT_FOCUSABLE_IM` with `SOFT_INPUT_ADJUST_PAN` / `RESIZE`.
+    * Restores non-focusable touch pass-through when keyboard closes or reply completes.
+  * **Auto-Collapse Timer:** Automatically collapses the expanded state back to a pill after 5 seconds of inactivity (paused while typing an inline reply via `isInputActive`).
   * **Background Activity Launch (Android 14+):** Configures `PendingIntent` execution with background activity start permissions to ensure seamless launching of target apps from overlays.
   * **Freeform Window Launching:** Enables notifications to be opened in a floating window (Freeform Mode) by setting the launch windowing mode to `5` (`WINDOWING_MODE_FREEFORM`) and calculating coordinates to position it center-screen.
 
