@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v5.1.0</strong>
+  <strong>Current release: v5.2.0</strong>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ The project is designed to be 100% transparent, hackable, and privacy-conscious:
 
 ## Downloads & Safety
 
-* **Download APK**: Obtain the pre-compiled APK directly from the [GitHub Releases (v5.1.0)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
+* **Download APK**: Obtain the pre-compiled APK directly from the [GitHub Releases (v5.2.0)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
 * **Total Downloads**: ![Total Downloads](https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github)
 * **Telegram Channel**: Join our active community at [telegram.me/SmartIslandApp](https://telegram.me/SmartIslandApp) to suggest features, get support, and discuss updates.
 * **Security Verification**: To ensure complete safety, inspect packages via [VirusTotal](https://www.virustotal.com/gui/file/c07da408e7fa3e3fdeb25ec6415af07f1d56eff099840221138e9364c6065102/details) or review automatic GitHub Actions CI builds.
@@ -87,14 +87,15 @@ The project is designed to be 100% transparent, hackable, and privacy-conscious:
 | Feature Area | Capabilities & Details |
 | --- | --- |
 | **Material 3 Expressive UI** | Modern MD3 color tokens, dynamic wallpaper color adaptation (Android 12+), rounded shapes, and fluid physics. |
+| **Island Opacity & Transparency** | Continuous background opacity slider (20% to 100%) with 4 quick 1-tap presets (Solid, Dark, Glass, Clear) and ambient drop shadow rendering. |
 | **Inline Reply & IME Focus** | Direct text reply input right inside the expanded Island notification card with dynamic WindowManager focus switching, soft keyboard integration, and `RemoteInput` dispatch. |
 | **Timer & Stopwatch Modes** | Intelligent clock notification parsing for Google Clock, Samsung Clock, MIUI/HyperOS, ColorOS, and Huawei Clock. Collapsed countdown/elapsed badges, expanded circular/linear timer progress, live millisecond stopwatch ticker, and interactive pause/resume/lap/reset controls. |
-| **SQLite Notification History** | Persistent on-device SQLite database storing past notifications with real-time search, app filter chips, category filters, full notification details sheet, and swipe-to-delete. |
+| **Virtualized Notification History** | Ultra-smooth `LazyColumn` virtualized SQLite history log with background `AppIconMemoryCache`, search bar, app filter chips, full message inspection dialog, and bulk **Delete by App** support. |
 | **OEM Device Rules Engine** | Tailored background protection and autostart management for Xiaomi/HyperOS, Samsung OneUI, OnePlus/Oppo/Realme (ColorOS/OxygenOS), Huawei/Honor, Vivo/iQOO, and Asus to prevent aggressive background kills. |
 | **In-App GitHub Release Checker** | In-app GitHub update checks and changelog insights with an explicit user toggle (`allowNetworkChecks`) and strict offline mode fallback. |
 | **Full-Color App Icons** | Extracted launcher icons with LRU caching for crisp, authentic app icons in both collapsed pill and expanded cards. |
 | **Battery Modes (Low & Saver)** | Dynamic Battery island displaying Green for Charging, Pulsing Red for Low Battery (&le; 20%), and Warm Amber for Battery Saver ON with live battery percentage badge. |
-| **5-Gesture Control Engine** | Complete intuitive gesture system: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Horizontal Swipe Left/Right. |
+| **5-Gesture Control Engine** | Complete intuitive gesture system: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Horizontal Swipe Left/Right with responsive interactive guides. |
 | **Split Island Multi-State** | Secondary auxiliary bubble for concurrent background activities (e.g. Music + Hotspot, Call + Bluetooth, Timer + Music). |
 | **Wavy Music Player** | Real-time audio waveform scrubber, ambient album artwork background glow, track metadata, and dynamic color customization. |
 | **Message Sync Suppression** | Automatically filters background message polling notifications (e.g. Snapchat, WhatsApp sync) to prevent download mode hijacking. |

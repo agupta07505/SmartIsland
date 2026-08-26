@@ -1,6 +1,6 @@
 # Smart Island Product Roadmap
 
-Last updated: August 22, 2026
+Last updated: August 26, 2026
 
 ## Product direction
 
@@ -14,12 +14,14 @@ The roadmap follows three core principles:
 
 ---
 
-## Current baseline (v5.1.0)
+## Current baseline (v5.2.0)
 
 Smart Island currently provides:
 
 - A Compose-based floating overlay on Android 8+ (API 26 through API 36)
 - Complete **Material 3 Expressive** design system with Android 12+ wallpaper dynamic color adaptation
+- **Island Background Opacity & Transparency Controls**: Continuous opacity adjustment (20% to 100%) with 4 quick presets (Solid, Dark, Glass, Clear)
+- **High-Performance Virtualized Notification History**: Ultra-fast `LazyColumn` log with `AppIconMemoryCache`, search bar, date grouping, and **Delete by App** bulk management
 - **13 Dynamic Island Modes**:
   - `Notification` (with full-color app launcher icons, LRU caching, and **Inline Reply**)
   - `Timer` (live countdown, circular/linear progress bar, and pause/resume/stop controls)
@@ -35,11 +37,10 @@ Smart Island currently provides:
   - `Flashlight` (torch state indicator & toggle)
   - `ScreenRecording` (live elapsed timer)
 - **Inline Reply & Soft-Keyboard WindowManager Focus**: Seamless IME typing right inside the island with auto-collapse pause
-- **SQLite Notification History Hub**: Persistent local database tracking past alerts with search, app filter chips, and swipe-to-delete
 - **OEM Device Rules Engine**: Vendor-specific autostart & battery optimization protection for Xiaomi/HyperOS, Samsung OneUI, OnePlus/Oppo/Realme, Huawei, Vivo, and Asus
 - **In-App GitHub Release Checker**: Optional version update insights and changelogs with strict `allowNetworkChecks` privacy guard and offline mode fallback
 - **Split Island Multi-State Pill** for concurrent background states
-- **5-Gesture Control Engine**: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Swipe Left/Right (Pager)
+- **5-Gesture Control Engine with Responsive Interactive Guide**: Single Tap, Quick Swipe Up, Hold + Swipe Up (300ms haptic), Swipe Down (Floating window), and Swipe Left/Right (Pager)
 - **Message Sync Filtering**: Background chat polling (Snapchat, WhatsApp) excluded from download mode
 - **Custom RGB Slider Color Picker**: Fine-grained color customization for all 13 modes
 - **Grouped Settings Hub Architecture** with minimal Category Hub Cards
@@ -58,11 +59,23 @@ Smart Island currently provides:
 | **v4.0** | Jul 2026 | Material 3 UI & Grouped Settings | Modern MD3 theme engine, wallpaper dynamic colors, minimal clean UI, and Category Hub settings *(Released)* |
 | **v5.0.0** | Aug 2026 | Battery Saver, App Icons & 5-Gesture Engine | Low Battery/Saver modes, full-color app launcher icons, sync filtering, 5 gestures text guide, and stable CI *(Released)* |
 | **v5.1.0** | Aug 2026 | Inline Reply, Timers, History & OEM Engine | Direct inline text replies, Timer & Stopwatch island modes, SQLite history hub, OEM background rules engine *(Released)* |
-| **v5.2** | Q4 2026 - Q1 2027 | Face Unlock, Custom Sounds & Dynamic Widgets | Face Unlock animation overlay, dynamic Calendar/Reminder glance widgets, and customizable micro-sound packs |
-| **v5.3** | Q1 2027 | System Profiles & Floating Window Polish | Contextual environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
+| **v5.2.0** | Aug 2026 | Opacity Customization, History Virtualization & Stability | Island opacity controls (20-100%), Delete-by-App history, virtualized LazyColumn, interactive gesture guide, and multi-device crash fixes *(Released)* |
+| **v5.3** | Q4 2026 - Q1 2027 | Face Unlock, Custom Sounds & Dynamic Widgets | Face Unlock animation overlay, dynamic Calendar/Reminder glance widgets, and customizable micro-sound packs |
+| **v5.4** | Q1 2027 | System Profiles & Floating Window Polish | Contextual environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
 | **v6.0** | Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
 
 *Dates are planning targets. A phase moves forward only after its release gates and automated CI suites are fully validated.*
+
+---
+
+## Released — v5.2.0: Opacity Controls, History Virtualization & Multi-Device Crash Fixes
+
+Released August 26, 2026.
+
+- **Island Opacity & Transparency Setting**: Added continuous opacity slider (20% to 100%) with 4 quick 1-tap presets (Solid, Dark, Glass, Clear) and live percentage indicators across Appearance Studio and Position settings.
+- **Virtualized Notification History & Delete by App**: Overhauled history screen to use top-level `LazyColumn` virtualization with background `AppIconMemoryCache` and single-tap bulk deletion by application.
+- **Interactive Gesture Guide Overhaul**: Replaced cramped single-row badge layout with responsive 2-column clickable cards that immediately switch to the selected gesture instructions.
+- **Multi-Device Crash Hardening**: Null-safe system service lookups (KeyguardManager, NotificationManager, PowerManager), battery receiver export flag fixes for Android 14+, and regex state validation in LiveActivityParser.
 
 ---
 

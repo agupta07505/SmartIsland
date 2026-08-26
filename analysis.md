@@ -1,6 +1,6 @@
 # Smart Island Application Analysis
 
-This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application (reflecting the **v5.1.0** baseline). It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
+This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application (reflecting the **v5.2.0** baseline). It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
 
 ---
 
@@ -18,11 +18,11 @@ graph TD
     NF --> NR[SmartIslandNotificationRepository]
     TSP --> NR
     SER --> NR
-    F[MainActivity / Settings Screen] -->|Save Preferences| G[SmartIslandSettingsRepository]
+    F[MainActivity / Settings Screen] -->|Save Preferences & Opacity| G[SmartIslandSettingsRepository]
     NR -->|Flow Active Notifications & State| VM[IslandViewModel]
     G -->|Reactive Settings Flow| VM
     VM -->|Compose State| C[SmartIslandOverlayService]
-    C -->|Manage Overlay Window & IME Focus| D[ComposeView Overlay]
+    C -->|Manage Overlay Window, Opacity & IME Focus| D[ComposeView Overlay]
     D -->|Render UI / Interact| E[IslandOverlayView / IslandExpandedContent]
     E -->|Gestures: 5-Gesture Engine & Inline Reply| VM
     VM -->|Dynamic WindowManager Focus Switch| C
@@ -39,7 +39,7 @@ graph TD
   * **Heads-Up Notification Interception:** Checks if the notification importance is `IMPORTANCE_HIGH` (Heads-Up). If it is, the service **cancels the notification in the system tray** (`cancelNotification(sbn.key)`) to suppress the default system heads-up banner, and forwards the event to `SmartIslandOverlayService` with `autoExpand = true`.
   * **System Notification Dismissal Sync:** Tracks suppressed keys inside `suppressedKeys` to ensure self-cancelled notifications are not removed from the overlay state during the suppression process.
   * **Clock Notification Parsing (`TimerStopwatchParser`):** Automatically decodes clock alerts (Google Clock, Samsung Clock, MIUI/HyperOS, ColorOS, Huawei) into dedicated `IslandMode.Timer` or `IslandMode.Stopwatch` states.
-  * **SQLite Notification History Tracking:** Records incoming notifications locally in the `NotificationHistoryRepository` for post-alert search, filtering, and audit.
+  * **Virtualized SQLite Notification History Tracking:** Records incoming notifications locally in the `NotificationHistoryRepository` with background LRU icon caching and throttled pruning for post-alert search, filtering, and bulk app deletion.
   * **Full-Color App Launcher Icons:** Loads original full-color application launcher icons via `packageManager.getApplicationIcon` with LRU bitmap caching.
   * **Notification Classification (`toIslandMode`):** Determines the category to display:
     * `Notification.CATEGORY_CALL` / `Notification.CATEGORY_MISSED_CALL` &rarr; `IslandMode.IncomingCall`

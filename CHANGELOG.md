@@ -4,6 +4,43 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [5.2.0] - 2026-08-26
+
+### Added
+
+- **Island Background Opacity & Translucency Controls (`CustomizationsSection.kt`, `PositionsSection.kt`, `SmartIslandSettingsRepository.kt`)**:
+  - Added continuous opacity adjustment (`SmartIslandSettings.MIN_OPACITY` = 0.20f to `MAX_OPACITY` = 1.00f) with live percentage readouts.
+  - Dedicated **"Island Opacity & Transparency"** cards integrated in both **Appearance & Colors Studio** and **Position & Geometry** tabs.
+  - 4 quick 1-tap presets: **100% Solid**, **85% Dark**, **70% Glass**, and **50% Clear**.
+  - Micro-increment buttons (`+/- 5%`) for fine precision adjustments.
+  - Full overlay background rendering support with dynamic alpha blending and drop shadow calibration.
+- **High-Performance Notification History Virtualization & "Delete by App" (`NotificationHistorySection.kt`, `NotificationHistoryRepository.kt`)**:
+  - **Virtualized `LazyColumn` Architecture**: Replaced full-tree column composition with a top-level virtualized list using stable item keys (`it.id`), eliminating UI lag spikes on datasets with 500–1000+ notifications.
+  - **Asynchronous `AppIconMemoryCache`**: Built an in-memory LRU icon cache backed by `Dispatchers.IO` loading to prevent main-thread binder stalls during rapid scrolling.
+  - **"Delete by App" Support**: Added `deleteByPackage` in SQLite helper and repository, accompanied by an interactive modal displaying per-app notification counts, 1-tap filtering, and bulk deletion with confirmation.
+  - **In-Memory State Management**: Optimized repository updates to directly maintain the in-memory history state without executing heavy full-table SQLite re-queries on every incoming notification or deletion.
+  - **Throttled Pruning Routine**: Throttled automated history database cleanup in `SmartIslandNotificationListenerService` to run at most once every 15 minutes.
+- **Gesture Guide Interactive Layout Overhaul (`GesturesSection.kt`)**:
+  - Replaced cramped 5-badge single row with a responsive 2-column clickable badge grid with generous tap targets.
+  - 1-tap quick navigation: Tapping any gesture summary badge immediately switches to that gesture's step-by-step interactive guide.
+  - Added clean 12.dp edge padding to `ScrollableTabRow`.
+
+### Fixed & Improved
+
+- **Multi-Device Crash Prevention & System Service Guards**:
+  - `SmartIslandOverlayService`: Converted `KeyguardManager` and `NotificationManager` casts to safe `as?` lookups with guarded null checks to prevent crashes on specialized OEM builds.
+  - `SmartIslandNotificationListenerService`: Wrapped `activeNotifications` iteration and nullable `mediaSessionManager` queries with safe calls and `runCatchingLogged` blocks.
+  - `LaunchableApp`: Guarded `AppOpsManager` and `UsageStatsManager` usage access resolution in `runCatching`.
+  - `SystemEventReceiver`: Fixed `ACTION_BATTERY_CHANGED` sticky broadcast probe registration on Android 14+ (API 34+) using `Context.RECEIVER_EXPORTED`.
+  - `LiveActivityParser`: Fixed regex state evaluation bug by caching extracted duration minutes in local variable to prevent `IllegalStateException: No match found`.
+  - `NotificationHistoryRepository`: Added `CoroutineExceptionHandler` to the IO coroutine scope to prevent uncaught SQLite exceptions.
+- **UI Responsiveness & Layout Stability**:
+  - Fixed parent height measurement in `DetailScreenHost` for `NotificationHistorySection` by providing `.weight(1f)` constraint.
+  - Added internal scrolling (`verticalScroll`) and responsive max-height constraints to `NotificationDetailDialog` and `DeleteByAppDialog` to prevent button clipping on long notification messages.
+  - Fixed setting toggle subtitle text wrapping by applying `.weight(1f)` to title/subtitle columns in `NotificationsAndPrivacySection.kt`.
+  - Corrected split-pill window coordinate positioning logic to keep the right/left circle bounds from clipping on edge notches.
+- **Version Bump**: Updated application version to **`5.2.0`** (`versionCode 6`).
+
 ## [5.1.0] - 2026-08-22
 
 ### Added
