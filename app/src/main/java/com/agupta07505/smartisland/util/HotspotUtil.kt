@@ -53,7 +53,11 @@ object HotspotUtil {
                         .toBundle()
                     contentIntent.send(context, 0, null, null, null, null, options)
                 } else {
-                    contentIntent.send()
+                    try {
+                        contentIntent.send(context, 0, null)
+                    } catch (e: Exception) {
+                        contentIntent.send()
+                    }
                 }
                 true
             }.getOrDefault(false)

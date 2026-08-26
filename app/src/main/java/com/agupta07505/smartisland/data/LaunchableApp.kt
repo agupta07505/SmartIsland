@@ -46,13 +46,15 @@ object AppShortcutProvider {
     }
 
     fun hasUsageAccess(context: Context): Boolean {
-        val appOps = context.getSystemService(AppOpsManager::class.java)
-        val mode = appOps.checkOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            context.packageName
-        )
-        return mode == AppOpsManager.MODE_ALLOWED
+        return runCatching {
+            val appOps = context.getSystemService(AppOpsManager::class.java) ?: return false
+            val mode = appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                context.packageName
+            )
+            mode == AppOpsManager.MODE_ALLOWED
+        }.getOrDefault(false)
     }
 
     fun shortcuts(
@@ -68,9 +70,10 @@ object AppShortcutProvider {
 
         val end = System.currentTimeMillis()
         val start = end - RECENT_WINDOW_MS
-        val usage = context.getSystemService(UsageStatsManager::class.java)
-            .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-            .orEmpty()
+        val usage = runCatching {
+            val usageManager = context.getSystemService(UsageStatsManager::class.java)
+            usageManager?.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end).orEmpty()
+        }.getOrDefault(emptyList())
             .sortedByDescending { it.lastTimeUsed }
             .mapNotNull { byPackage[it.packageName] }
             .distinctBy { it.packageName }

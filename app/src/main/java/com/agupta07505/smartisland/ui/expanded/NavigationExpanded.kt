@@ -249,7 +249,7 @@ fun NavigationExpanded(
                                 .background(Color(0xFFE2E8F0))
                                 .bounceClick {
                                     if (action.pendingIntent != null) {
-                                        runCatching { action.pendingIntent.send() }
+                                        triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
                                     } else {
                                         Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                     }

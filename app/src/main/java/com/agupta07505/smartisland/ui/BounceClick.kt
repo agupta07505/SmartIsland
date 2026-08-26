@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -20,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 
 fun Modifier.bounceClick(onClick: () -> Unit) = composed {
     var isPressed by remember { mutableStateOf(false) }
+    val currentOnClick by rememberUpdatedState(onClick)
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.94f else 1f,
         label = "bounceScale"
@@ -38,7 +40,7 @@ fun Modifier.bounceClick(onClick: () -> Unit) = composed {
                     isPressed = false
                 },
                 onTap = {
-                    onClick()
+                    currentOnClick()
                 }
             )
         }

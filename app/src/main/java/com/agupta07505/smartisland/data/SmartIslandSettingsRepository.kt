@@ -43,6 +43,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val XOffset = floatPreferencesKey("x_offset")
         val YOffset = floatPreferencesKey("y_offset")
         val CornerRadius = floatPreferencesKey("corner_radius")
+        val Opacity = floatPreferencesKey("opacity")
         val BatteryColor = longPreferencesKey("battery_color")
         val NotificationDotColor = longPreferencesKey("notification_dot_color")
         val MusicVisualizerColor = longPreferencesKey("music_visualizer_color")
@@ -119,6 +120,12 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     defaults.cornerRadius,
                     SmartIslandSettings.MIN_CORNER_RADIUS,
                     SmartIslandSettings.MAX_CORNER_RADIUS
+                ),
+                opacity = validDimension(
+                    prefs[Keys.Opacity],
+                    defaults.opacity,
+                    SmartIslandSettings.MIN_OPACITY,
+                    SmartIslandSettings.MAX_OPACITY
                 ),
                 batteryColor = validColor(prefs[Keys.BatteryColor], defaults.batteryColor),
                 notificationDotColor = validColor(
@@ -233,6 +240,14 @@ class SmartIslandSettingsRepository(private val context: Context) {
             SmartIslandSettings.Default.cornerRadius,
             SmartIslandSettings.MIN_CORNER_RADIUS,
             SmartIslandSettings.MAX_CORNER_RADIUS
+        )
+    }
+    suspend fun setOpacity(value: Float) = editSafely {
+        it[Keys.Opacity] = validDimension(
+            value,
+            SmartIslandSettings.Default.opacity,
+            SmartIslandSettings.MIN_OPACITY,
+            SmartIslandSettings.MAX_OPACITY
         )
     }
     suspend fun setBatteryColor(value: Long) = editSafely {
@@ -357,6 +372,7 @@ class SmartIslandSettingsRepository(private val context: Context) {
         it[Keys.XOffset] = SmartIslandSettings.Default.xOffset
         it[Keys.YOffset] = SmartIslandSettings.Default.yOffset
         it[Keys.CornerRadius] = SmartIslandSettings.Default.cornerRadius
+        it[Keys.Opacity] = SmartIslandSettings.Default.opacity
     }
 
     private suspend fun editSafely(transform: suspend (MutablePreferences) -> Unit) {

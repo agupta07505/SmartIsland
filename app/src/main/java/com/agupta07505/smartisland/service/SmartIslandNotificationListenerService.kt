@@ -63,6 +63,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     @Inject lateinit var repository: SmartIslandSettingsRepository
     @Inject lateinit var notificationRepository: INotificationRepository
     @Inject lateinit var historyRepository: INotificationHistoryRepository
+    private var lastHistoryCleanupTime = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -288,9 +289,11 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     if (!settings.enabled) return@runSuspendCatchingLogged
 
                     val overlayReady = ensureOverlayServiceRunning()
-                    val active = activeNotifications
-                        .filter { it.packageName != packageName }
-                        .filterNot { shouldSuppressFromIsland(it) }
+                    val active = runCatchingLogged(TAG, "Failed to get active notifications") {
+                        activeNotifications?.toList()
+                    }?.filter { it.packageName != packageName }
+                        ?.filterNot { shouldSuppressFromIsland(it) }
+                        .orEmpty()
 
                     android.util.Log.d(TAG, "ListenerConnected: ${active.size} active, overlayReady=$overlayReady")
 
@@ -474,7 +477,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             autoExpand = shouldIslandOnly && settings.autoExpandOnNotification
         )
 
-        if (settings.enableNotificationHistory) {
+        if (settings.enableNotificationHistory && mode != IslandMode.Music) {
             serviceScope.launch {
                 runSuspendCatchingLogged(TAG, "Failed to record notification history") {
                     historyRepository.saveEntry(
@@ -492,7 +495,11 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                             actionTitles = actions.map { it.title }
                         )
                     )
-                    historyRepository.cleanupOldEntries(settings.notificationHistoryRetentionHours)
+                    val now = System.currentTimeMillis()
+                    if (now - lastHistoryCleanupTime > 15 * 60 * 1000L) {
+                        lastHistoryCleanupTime = now
+                        historyRepository.cleanupOldEntries(settings.notificationHistoryRetentionHours)
+                    }
                 }
             }
         }
@@ -631,7 +638,9 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                         clearSuppressed(key)
                         return@runSuspendCatchingLogged
                     }
-                    val stillActive = activeNotifications.any { it.key == key }
+                    val stillActive = runCatchingLogged(TAG, "Failed checking stillActive") {
+                        activeNotifications?.any { it.key == key }
+                    } ?: false
                     if (!stillActive) {
                         android.util.Log.d(TAG, "Successfully suppressed after ${attempt + 1} attempts: $key")
                         return@runSuspendCatchingLogged
@@ -789,12 +798,13 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     private val activeMediaControllers: List<MediaController>
         get() = runCatchingLogged(TAG, "GetActiveSessions failed") {
+            val mgr = mediaSessionManager ?: return emptyList()
             val componentName = android.content.ComponentName(this, SmartIslandNotificationListenerService::class.java)
-            mediaSessionManager.getActiveSessions(componentName)
+            mgr.getActiveSessions(componentName)
         } ?: emptyList()
 
-    private val mediaSessionManager by lazy {
-        getSystemService(MEDIA_SESSION_SERVICE) as android.media.session.MediaSessionManager
+    private val mediaSessionManager: android.media.session.MediaSessionManager? by lazy {
+        runCatching { getSystemService(MEDIA_SESSION_SERVICE) as? android.media.session.MediaSessionManager }.getOrNull()
     }
 
     private fun PlaybackState.estimatedPosition(): Long? {

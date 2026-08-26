@@ -17,6 +17,7 @@ interface INotificationHistoryRepository {
     suspend fun saveEntry(entry: NotificationHistoryEntry)
     suspend fun markAsOpened(notificationKey: String)
     suspend fun deleteEntry(id: Long)
+    suspend fun deleteByPackage(packageName: String): Int
     suspend fun clearAll()
     suspend fun search(query: String): List<NotificationHistoryEntry>
     suspend fun cleanupOldEntries(retentionHours: Int)

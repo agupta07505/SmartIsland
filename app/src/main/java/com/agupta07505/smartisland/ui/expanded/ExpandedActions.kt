@@ -63,7 +63,7 @@ fun triggerAction(context: Context, packageName: String, actionIntent: PendingIn
 fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
     android.util.Log.d("ExpandedActions", "sendIntentWithOptions: sending pendingIntent=$pendingIntent")
     var sent = false
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && pendingIntent.isActivity) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
         try {
             val options = ActivityOptions.makeBasic()
                 .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
@@ -76,11 +76,11 @@ fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
     }
     if (!sent) {
         try {
-            pendingIntent.send()
+            pendingIntent.send(context, 0, null)
             sent = true
         } catch (e: Exception) {
             try {
-                pendingIntent.send(context, 0, null)
+                pendingIntent.send()
                 sent = true
             } catch (e2: Exception) {
                 android.util.Log.e("ExpandedActions", "All attempts to send PendingIntent failed", e2)
