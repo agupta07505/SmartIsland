@@ -147,6 +147,12 @@ class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
         } ?: 0
     }
 
+    fun deleteByPackage(packageName: String): Int {
+        return runCatchingLogged(TAG, "Failed to delete entries for package $packageName") {
+            writableDatabase.delete(TABLE_HISTORY, "$COL_PACKAGE = ?", arrayOf(packageName))
+        } ?: 0
+    }
+
     fun deleteAll(): Int {
         return runCatchingLogged(TAG, "Failed to clear all history") {
             writableDatabase.delete(TABLE_HISTORY, null, null)

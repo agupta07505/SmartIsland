@@ -9,6 +9,7 @@ package com.agupta07505.smartisland.data
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,7 +30,10 @@ class NotificationHistoryRepository @Inject constructor(
 ) : INotificationHistoryRepository {
 
     private val dbHelper = NotificationHistoryDbHelper(context.applicationContext)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        android.util.Log.e("NotificationHistoryRepo", "Unhandled repository coroutine failure", throwable)
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private val _history = MutableStateFlow<List<NotificationHistoryEntry>>(emptyList())
     override val history: StateFlow<List<NotificationHistoryEntry>> = _history.asStateFlow()
 
@@ -45,21 +49,31 @@ class NotificationHistoryRepository @Inject constructor(
     }
 
     override suspend fun saveEntry(entry: NotificationHistoryEntry) = withContext(Dispatchers.IO) {
-        dbHelper.insertEntry(entry)
-        val entries = dbHelper.getAllEntries()
-        _history.value = entries
+        val id = dbHelper.insertEntry(entry)
+        val savedEntry = if (id > 0) entry.copy(id = id) else entry
+        val current = _history.value
+        // Prepend new entry and cap at 1000 items in memory without doing a full table scan
+        _history.value = (listOf(savedEntry) + current).take(1000)
     }
 
     override suspend fun markAsOpened(notificationKey: String) = withContext(Dispatchers.IO) {
         dbHelper.markAsOpened(notificationKey)
-        val entries = dbHelper.getAllEntries()
-        _history.value = entries
+        _history.value = _history.value.map {
+            if (it.notificationKey == notificationKey) it.copy(wasOpened = true) else it
+        }
     }
 
     override suspend fun deleteEntry(id: Long) = withContext(Dispatchers.IO) {
         dbHelper.deleteById(id)
-        val entries = dbHelper.getAllEntries()
-        _history.value = entries
+        _history.value = _history.value.filter { it.id != id }
+    }
+
+    override suspend fun deleteByPackage(packageName: String): Int = withContext(Dispatchers.IO) {
+        val count = dbHelper.deleteByPackage(packageName)
+        if (count > 0) {
+            _history.value = _history.value.filter { it.packageName != packageName }
+        }
+        count
     }
 
     override suspend fun clearAll() = withContext(Dispatchers.IO) {
@@ -80,8 +94,7 @@ class NotificationHistoryRepository @Inject constructor(
         val cutoff = System.currentTimeMillis() - (retentionHours.toLong() * 3600L * 1000L)
         val deleted = dbHelper.deleteOlderThan(cutoff)
         if (deleted > 0) {
-            val entries = dbHelper.getAllEntries()
-            _history.value = entries
+            _history.value = _history.value.filter { it.postTimeMillis >= cutoff }
         }
     }
 }

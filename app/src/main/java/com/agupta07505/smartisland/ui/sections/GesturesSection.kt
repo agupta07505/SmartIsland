@@ -25,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.style.TextOverflow
+
 @Composable
 fun GesturesSection() {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -87,16 +90,63 @@ fun GesturesSection() {
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Summary Row Chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    GestureSummaryBadge(icon = Icons.Rounded.TouchApp, label = "Tap", sub = "Expand", color = Color(0xFF38BDF8), modifier = Modifier.weight(1f))
-                    GestureSummaryBadge(icon = Icons.Rounded.ArrowUpward, label = "Swipe ↑", sub = "Dismiss", color = Color(0xFFEF4444), modifier = Modifier.weight(1f))
-                    GestureSummaryBadge(icon = Icons.Rounded.DeleteSweep, label = "Hold+↑", sub = "Clear All", color = Color(0xFFF59E0B), modifier = Modifier.weight(1f))
-                    GestureSummaryBadge(icon = Icons.Rounded.ArrowDownward, label = "Swipe ↓", sub = "Floating", color = Color(0xFF10B981), modifier = Modifier.weight(1f))
-                    GestureSummaryBadge(icon = Icons.Rounded.Swipe, label = "Swipe ↔", sub = "Switch", color = Color(0xFFA855F7), modifier = Modifier.weight(1f))
+                // Summary Clickable Gesture Badges
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GestureSummaryBadge(
+                            icon = Icons.Rounded.TouchApp,
+                            label = "1. Tap",
+                            sub = "Expand / Collapse",
+                            color = Color(0xFF38BDF8),
+                            isSelected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        GestureSummaryBadge(
+                            icon = Icons.Rounded.ArrowUpward,
+                            label = "2. Swipe Up",
+                            sub = "Dismiss Single",
+                            color = Color(0xFFEF4444),
+                            isSelected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GestureSummaryBadge(
+                            icon = Icons.Rounded.DeleteSweep,
+                            label = "3. Hold + Up",
+                            sub = "Clear All Cards",
+                            color = Color(0xFFF59E0B),
+                            isSelected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            modifier = Modifier.weight(1f)
+                        )
+                        GestureSummaryBadge(
+                            icon = Icons.Rounded.ArrowDownward,
+                            label = "4. Swipe Down",
+                            sub = "Floating Window",
+                            color = Color(0xFF10B981),
+                            isSelected = selectedTab == 3,
+                            onClick = { selectedTab = 3 },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    GestureSummaryBadge(
+                        icon = Icons.Rounded.Swipe,
+                        label = "5. Swipe Horizontal (Left / Right)",
+                        sub = "Switch Between Multiple Notifications",
+                        color = Color(0xFFA855F7),
+                        isSelected = selectedTab == 4,
+                        onClick = { selectedTab = 4 },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -104,7 +154,7 @@ fun GesturesSection() {
         // Scrollable Tabs for Selecting Each Gesture Guide
         ScrollableTabRow(
             selectedTabIndex = selectedTab,
-            edgePadding = 0.dp,
+            edgePadding = 12.dp,
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.primary,
             modifier = Modifier.fillMaxWidth()
@@ -211,22 +261,34 @@ private fun GestureSummaryBadge(
     label: String,
     sub: String,
     color: Color,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        color = color.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
+        color = if (isSelected) color.copy(alpha = 0.2f) else color.copy(alpha = 0.08f),
+        border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, if (isSelected) color else color.copy(alpha = 0.25f))
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+        Row(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = color)
-            Text(sub, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
+                Text(sub, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

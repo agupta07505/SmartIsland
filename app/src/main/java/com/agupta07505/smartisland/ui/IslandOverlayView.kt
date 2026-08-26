@@ -96,7 +96,8 @@ fun IslandOverlayView(
     modifier: Modifier = Modifier,
     isInputActive: Boolean = false,
     onReplyStateChanged: (Boolean) -> Unit = {},
-    onDismissAllNotifications: () -> Unit = {}
+    onDismissAllNotifications: () -> Unit = {},
+    isFullWidth: Boolean = true
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
     // even though pointerInput(Unit) never restarts its coroutine
@@ -158,7 +159,11 @@ fun IslandOverlayView(
             compactGap,
             (screenWidth - collapsedGroupWidth - compactGap).coerceAtLeast(compactGap)
         )
-    val collapsedMainOffset = collapsedMainLeft + settings.width.dp / 2f - screenCenter
+    val collapsedMainOffset = if (isFullWidth) {
+        collapsedMainLeft + settings.width.dp / 2f - screenCenter
+    } else {
+        if (hasCompanion) -(compactGap + circleSize) / 2f else 0.dp
+    }
     val expandedTopOffset = if (hasCompanion) {
         statusBarHeight.dp.coerceAtLeast(circleSize + compactGap)
     } else {
@@ -293,15 +298,19 @@ fun IslandOverlayView(
     )
 
     val expandedCompactX = collapsedMainLeft
-    val collapsedSecondaryX = collapsedMainLeft + settings.width.dp + compactGap
-    val secondaryX by animateDpAsState(
+    val collapsedSecondaryOffset = if (isFullWidth) {
+        collapsedMainLeft + settings.width.dp + compactGap - screenCenter + circleSize / 2f
+    } else {
+        (settings.width.dp + compactGap) / 2f
+    }
+    val secondaryOffset by animateDpAsState(
         targetValue = when {
-            !expanded -> collapsedSecondaryX
-            secondaryIsPill -> expandedCompactX
-            else -> expandedCompactX + miniPillWidth + compactGap
+            !expanded -> collapsedSecondaryOffset
+            secondaryIsPill -> if (isFullWidth) (expandedCompactX - screenCenter + miniPillWidth / 2f) else 0.dp
+            else -> if (isFullWidth) (expandedCompactX + miniPillWidth + compactGap - screenCenter + circleSize / 2f) else ((miniPillWidth + compactGap) / 2f)
         },
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
-        label = "secondaryX"
+        label = "secondaryOffset"
     )
 
     // Outer Box: Fills the entire WindowManager window bounds (which are padded for easy touch)
@@ -365,7 +374,7 @@ fun IslandOverlayView(
                     } else Modifier
                 )
                 .clip(RoundedCornerShape(safeRadius))
-                .background(Color.Black)
+                .background(Color.Black.copy(alpha = settings.opacity))
                 .pointerInput(displayMetrics.density, isInputActive) {
                     if (isInputActive) return@pointerInput
                     awaitEachGesture {
@@ -511,7 +520,7 @@ fun IslandOverlayView(
                 modifier = Modifier
                     .absoluteOffset {
                         IntOffset(
-                            (secondaryX - screenCenter + secondaryBubbleWidth / 2f).roundToPx(),
+                            secondaryOffset.roundToPx(),
                             0
                         )
                     }
@@ -534,7 +543,7 @@ fun IslandOverlayView(
                         } else Modifier
                     )
                     .clip(RoundedCornerShape(secondaryBubbleCorner))
-                    .background(Color.Black)
+                    .background(Color.Black.copy(alpha = settings.opacity))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -593,7 +602,7 @@ fun IslandOverlayView(
                         scaleY = tertiaryScale * switchScaleAnim.value
                     }
                     .clip(RoundedCornerShape(settings.cornerRadius.dp))
-                    .background(Color.Black)
+                    .background(Color.Black.copy(alpha = settings.opacity))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null

@@ -79,9 +79,11 @@ object LiveActivityParser {
 
         // 1. Extract ETA
         val etaMatcher = ETA_PATTERN.matcher("$title $text")
+        var extractedMins: Float? = null
         val etaText = if (etaMatcher.find()) {
-            val mins = etaMatcher.group(1)
-            "$mins min"
+            val minsStr = etaMatcher.group(1)
+            extractedMins = minsStr?.toFloatOrNull()
+            "$minsStr min"
         } else if (combinedContent.contains("arrived") || combinedContent.contains("reaching")) {
             "Arriving"
         } else if (progressMax > 0) {
@@ -113,9 +115,8 @@ object LiveActivityParser {
         // 3. Calculate Progress Ratio (0.0f to 1.0f)
         val progressRatio = when {
             progressMax > 0 -> (progress.toFloat() / progressMax.toFloat()).coerceIn(0f, 1f)
-            etaText != null && etaText.contains("min") -> {
-                val mins = etaMatcher.group(1)?.toFloatOrNull() ?: 15f
-                (1f - (mins / 30f)).coerceIn(0.15f, 0.95f)
+            extractedMins != null -> {
+                (1f - (extractedMins / 30f)).coerceIn(0.15f, 0.95f)
             }
             stage == 1 -> 0.30f
             stage == 3 -> 0.90f

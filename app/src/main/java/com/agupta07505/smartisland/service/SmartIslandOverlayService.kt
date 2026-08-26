@@ -42,6 +42,7 @@ import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandViewModel
 import com.agupta07505.smartisland.ui.OverlayIsland
+import com.agupta07505.smartisland.ui.expanded.sendIntentWithOptions
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import dagger.hilt.android.AndroidEntryPoint
@@ -109,11 +110,11 @@ class SmartIslandOverlayService : AccessibilityService() {
         override fun onReceive(context: Context, intent: Intent) {
             runCatchingLogged(TAG, "Screen-state callback failed") {
                 if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
-                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
                 when (intent.action) {
                     Intent.ACTION_SCREEN_ON -> {
                         overlayOwners.resume()
-                        isLockScreenActive = keyguardManager.isKeyguardLocked
+                        isLockScreenActive = keyguardManager?.isKeyguardLocked == true
                         updateWindowLayoutParams(
                             viewModel.expanded.value,
                             viewModel.settings.value
@@ -145,8 +146,8 @@ class SmartIslandOverlayService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         runCatchingLogged(TAG, "onAccessibilityEvent failed") {
             if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            val locked = keyguardManager.isKeyguardLocked
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            val locked = keyguardManager?.isKeyguardLocked == true
             if (isLockScreenActive != locked) {
                 isLockScreenActive = locked
                 updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
@@ -237,8 +238,8 @@ class SmartIslandOverlayService : AccessibilityService() {
             systemEventReceiverRegistered = true
         }
 
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        isLockScreenActive = keyguardManager.isKeyguardLocked
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        isLockScreenActive = keyguardManager?.isKeyguardLocked == true
 
         val screenFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
@@ -429,8 +430,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         ) return
         try {
             islandView = ComposeView(this).apply {
-                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                val isLocked = keyguardManager.isKeyguardLocked
+                val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                val isLocked = keyguardManager?.isKeyguardLocked == true
                 isLockScreenActive = isLocked
                 val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
                 val isHidden = (!viewModel.settings.value.showOnLockScreen && isLocked) || isLandscape
@@ -446,7 +447,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                         statusBarHeight = statusBarHeight,
                         onOpenNotification = { notification -> openNotification(notification) },
                         onLaunchApp = { packageName -> launchApp(packageName) },
-                        onOpenFloatingWindow = { openCurrentNotificationInFloatingWindow() }
+                        onOpenFloatingWindow = { openCurrentNotificationInFloatingWindow() },
+                        isFullWidth = isTouchableRegionSupported
                     )
                 }
 
@@ -582,9 +584,10 @@ class SmartIslandOverlayService : AccessibilityService() {
         if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         val view = islandView ?: return
         val density = resources.displayMetrics.density
+        val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
         
-        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-        val isLocked = keyguardManager.isKeyguardLocked
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        val isLocked = keyguardManager?.isKeyguardLocked == true
         isLockScreenActive = isLocked
         viewModel.isLocked.value = isLocked
         
@@ -594,6 +597,18 @@ class SmartIslandOverlayService : AccessibilityService() {
         view.visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
         val isSplitMode = viewModel.notifications.value.size >= 2
+        val mainWidthPx = settings.width * density
+        val circleSizePx = settings.height * density
+        val compactGapPx = 8f * density
+        val edgePaddingPx = 8f * density
+        val groupWidthPx = mainWidthPx + if (isSplitMode) compactGapPx + circleSizePx else 0f
+        
+        val desiredMainLeftPx = screenWidthPx / 2f + settings.xOffset * density - mainWidthPx / 2f
+        val maxMainLeftPx = (screenWidthPx - groupWidthPx - edgePaddingPx).coerceAtLeast(edgePaddingPx)
+        val mainLeftPx = desiredMainLeftPx.coerceIn(edgePaddingPx, maxMainLeftPx)
+        val groupCenterPx = mainLeftPx + groupWidthPx / 2f
+        val windowXPx = (groupCenterPx - screenWidthPx / 2f).toInt()
+
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
@@ -602,8 +617,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         val w = if (expanded || isTouchableRegionSupported) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
-            val pillWidthDp = settings.width + (if (isSplitMode) 8f + settings.height else 0f) + 24f
-            (pillWidthDp * density).toInt()
+            (groupWidthPx + 32f * density).toInt()
         }
         val isInput = viewModel.isInputActive.value && expanded
         val focusFlags = if (isInput) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -618,7 +632,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = if (expanded || isTouchableRegionSupported) 0 else (settings.xOffset * density).toInt()
+            x = if (expanded || isTouchableRegionSupported) 0 else windowXPx
             y = settings.yOffset.dpToPx()
             if (isInput) {
                 softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
@@ -645,12 +659,24 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
+        val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
         val isSplitMode = if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false
+        val mainWidthPx = settings.width * density
+        val circleSizePx = settings.height * density
+        val compactGapPx = 8f * density
+        val edgePaddingPx = 8f * density
+        val groupWidthPx = mainWidthPx + if (isSplitMode) compactGapPx + circleSizePx else 0f
+        
+        val desiredMainLeftPx = screenWidthPx / 2f + settings.xOffset * density - mainWidthPx / 2f
+        val maxMainLeftPx = (screenWidthPx - groupWidthPx - edgePaddingPx).coerceAtLeast(edgePaddingPx)
+        val mainLeftPx = desiredMainLeftPx.coerceIn(edgePaddingPx, maxMainLeftPx)
+        val groupCenterPx = mainLeftPx + groupWidthPx / 2f
+        val windowXPx = (groupCenterPx - screenWidthPx / 2f).toInt()
+        
         val w = if (isTouchableRegionSupported) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
-            val pillWidthDp = settings.width + (if (isSplitMode) 8f + settings.height else 0f) + 24f
-            (pillWidthDp * density).toInt()
+            (groupWidthPx + 32f * density).toInt()
         }
         return WindowManager.LayoutParams(
             w,
@@ -663,25 +689,14 @@ class SmartIslandOverlayService : AccessibilityService() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = if (isTouchableRegionSupported) 0 else (settings.xOffset * density).toInt()
+            x = if (isTouchableRegionSupported) 0 else windowXPx
             y = settings.yOffset.dpToPx()
         }
     }
 
     private fun openNotification(notification: IslandNotification) {
         if (notification.contentIntent != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                val options = ActivityOptions.makeBasic()
-                    .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-                    .toBundle()
-                runCatchingLogged(TAG, "Failed to send content intent with options") {
-                    notification.contentIntent.send(this, 0, null, null, null, null, options)
-                }
-            } else {
-                runCatchingLogged(TAG, "Failed to send content intent") {
-                    notification.contentIntent.send()
-                }
-            }
+            sendIntentWithOptions(this, notification.contentIntent)
         } else {
             runCatchingLogged(TAG, "Failed to launch package activity") {
                 val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
@@ -783,8 +798,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 description = "Keeps the Smart Island overlay running"
                 setShowBadge(false)
             }
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            nm?.createNotificationChannel(channel)
         }
     }
 

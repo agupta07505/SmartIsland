@@ -69,6 +69,11 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import kotlinx.coroutines.launch
 
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableFloatStateOf
+import com.agupta07505.smartisland.ui.SliderSettingItem
+import kotlin.math.abs
+
 private val PRESET_COLORS = listOf(
     0xFF10B981L to "Emerald",
     0xFF38BDF8L to "Sky",
@@ -85,6 +90,7 @@ fun CustomizationsSection(
     repository: SmartIslandSettingsRepository
 ) {
     val scope = rememberCoroutineScope()
+    var localOpacity by remember(settings.opacity) { mutableFloatStateOf(settings.opacity) }
     var showDialog by remember { mutableStateOf(false) }
     var currentColorTarget by remember { mutableStateOf("") }
     var colorPickerTitle by remember { mutableStateOf("") }
@@ -122,6 +128,99 @@ fun CustomizationsSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Card 1: Island Opacity & Transparency
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Island Opacity & Transparency",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Adjust background translucency for a sleek glassmorphic look",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "${(localOpacity * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Preset Chips Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        1.0f to "100% Solid",
+                        0.85f to "85% Dark",
+                        0.70f to "70% Glass",
+                        0.50f to "50% Clear"
+                    ).forEach { (targetVal, label) ->
+                        val isSelected = abs(localOpacity - targetVal) < 0.04f
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    localOpacity = targetVal
+                                    scope.launch { repository.setOpacity(targetVal) }
+                                }
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(vertical = 8.dp)
+                                    .fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                // Slider
+                SliderSettingItem(
+                    label = "Precision Opacity",
+                    value = (localOpacity * 100f),
+                    range = (SmartIslandSettings.MIN_OPACITY * 100f)..(SmartIslandSettings.MAX_OPACITY * 100f),
+                    suffix = "%",
+                    step = 5f,
+                    onValueChange = { localOpacity = (it / 100f).coerceIn(SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY) },
+                    onValueChangeFinished = { scope.launch { repository.setOpacity(localOpacity) } }
+                )
+            }
+        }
         // Card 1: Music Player Experience
         Card(
             modifier = Modifier.fillMaxWidth(),

@@ -39,6 +39,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,6 +80,7 @@ fun PositionsSection(
     var localXOffset by remember(settings.xOffset) { mutableFloatStateOf(settings.xOffset) }
     var localYOffset by remember(settings.yOffset) { mutableFloatStateOf(settings.yOffset) }
     var localCornerRadius by remember(settings.cornerRadius) { mutableFloatStateOf(settings.cornerRadius) }
+    var localOpacity by remember(settings.opacity) { mutableFloatStateOf(settings.opacity) }
 
     // Dynamically calculate responsive notch coordinates for the current device screen
     val screenWidthDp = with(density) { windowInfo.containerSize.width.toDp().value }
@@ -319,6 +321,61 @@ fun PositionsSection(
                     onValueChange = { localCornerRadius = it },
                     onValueChangeFinished = { scope.launch { repository.setCornerRadius(localCornerRadius) } }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SliderSettingItem(
+                        label = "Island Opacity & Transparency",
+                        value = (localOpacity * 100f),
+                        range = (SmartIslandSettings.MIN_OPACITY * 100f)..(SmartIslandSettings.MAX_OPACITY * 100f),
+                        suffix = "%",
+                        step = 5f,
+                        onValueChange = { localOpacity = (it / 100f).coerceIn(SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY) },
+                        onValueChangeFinished = { scope.launch { repository.setOpacity(localOpacity) } }
+                    )
+
+                    // Quick Opacity Preset Chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            1.0f to "100%",
+                            0.85f to "85%",
+                            0.70f to "70%",
+                            0.50f to "50%"
+                        ).forEach { (targetVal, label) ->
+                            val isSelected = abs(localOpacity - targetVal) < 0.04f
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        localOpacity = targetVal
+                                        scope.launch { repository.setOpacity(targetVal) }
+                                    }
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .padding(vertical = 6.dp)
+                                        .fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 Row(

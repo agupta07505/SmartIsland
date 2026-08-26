@@ -1059,11 +1059,11 @@ private fun SettingsOverviewSection(
         // Section 2: Appearance & Gesture Controls
         SettingsCategoryGroup(title = "Appearance & Controls") {
             FeatureStudioNavigationCard(
-                title = "Feature Accent Colors Studio",
-                subtitle = "Customize color themes for music, battery, calls, and dynamic events",
+                title = "Appearance, Opacity & Colors Studio",
+                subtitle = "Adjust island background opacity/transparency, album backdrop, and vibrant color themes",
                 icon = Icons.Rounded.Palette,
                 iconColor = Color(0xFFA855F7),
-                statusText = "11 Island Modes",
+                statusText = "${(settings.opacity * 100).toInt()}% Opacity",
                 onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
             )
 
@@ -1271,16 +1271,19 @@ private fun DetailScreenHost(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    val isScrollableParent = section != FeatureDetailSection.NotificationHistory
+    val scrollModifier = if (isScrollableParent) Modifier.verticalScroll(rememberScrollState()) else Modifier
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
+            .then(scrollModifier)
             .padding(
                 start = 20.dp,
                 end = 20.dp,
                 top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
-                bottom = 28.dp
+                bottom = if (isScrollableParent) 28.dp else 12.dp
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1308,7 +1311,7 @@ private fun DetailScreenHost(
                 FeatureDetailSection.NotificationRules -> "Notifications & Privacy"
                 FeatureDetailSection.AppShortcuts -> "App Shortcuts Launcher"
                 FeatureDetailSection.NotificationHistory -> "Notification History Log"
-                FeatureDetailSection.ColorStudio -> "Feature Accent Colors"
+                FeatureDetailSection.ColorStudio -> "Appearance, Opacity & Colors"
                 FeatureDetailSection.GesturesGuide -> "Gesture Guide & Playground"
                 FeatureDetailSection.PermissionsCenter -> "Permissions & Setup Center"
                 FeatureDetailSection.AboutApp -> "About Smart Island"
@@ -1330,7 +1333,13 @@ private fun DetailScreenHost(
                 AppShortcutsSection(settings = settings, repository = repository)
             }
             FeatureDetailSection.NotificationHistory -> {
-                NotificationHistorySection(settings = settings, repository = repository)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    NotificationHistorySection(settings = settings, repository = repository)
+                }
             }
             FeatureDetailSection.ColorStudio -> {
                 CustomizationsSection(settings = settings, repository = repository)
@@ -1410,8 +1419,8 @@ private fun isAccessibilityServiceEnabled(context: Context): Boolean {
 
 private fun isBatteryOptimizationIgnored(context: Context): Boolean {
     if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) return true
-    val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-    return pm.isIgnoringBatteryOptimizations(context.packageName)
+    val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+    return pm?.isIgnoringBatteryOptimizations(context.packageName) ?: true
 }
 
 @Composable

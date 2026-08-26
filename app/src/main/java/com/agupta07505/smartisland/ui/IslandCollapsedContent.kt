@@ -312,7 +312,7 @@ fun IslandCollapsedContent(
                 .align(Alignment.Center)
                 .size(CENTER_DOT_SIZE_DP.dp)
                 .clip(CircleShape)
-                .background(Color.Black)
+                .background(Color.Black.copy(alpha = settings.opacity))
         )
     }
 }

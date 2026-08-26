@@ -1,6 +1,6 @@
 # Smart Island - Codebase & Architecture Analysis
 
-This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application (reflecting the **v5.1.0** baseline).
+This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application (reflecting the **v5.2.0** baseline).
 
 ---
 

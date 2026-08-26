@@ -617,7 +617,7 @@ private fun ToggleRowItem(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,

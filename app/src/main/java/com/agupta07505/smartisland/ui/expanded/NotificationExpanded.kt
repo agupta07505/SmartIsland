@@ -339,7 +339,7 @@ fun NotificationExpanded(
                                             isReplying = true
                                         } else {
                                             if (action.pendingIntent != null) {
-                                                runCatching { action.pendingIntent.send() }
+                                                triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
                                             } else {
                                                 Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                             }
