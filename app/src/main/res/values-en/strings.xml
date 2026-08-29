@@ -272,6 +272,8 @@
     <string name="toggle_auto_hide_pill_title">Auto-Hide Pill After Inactivity</string>
     <string name="toggle_auto_hide_pill_desc">Automatically hide pill and circle after a set time, even when notifications are active. Tap the area to reveal again.</string>
     <string name="auto_hide_timeout_label">Hide Inactivity Timeout</string>
+    <string name="toggle_show_in_landscape_title">Show in Landscape Mode</string>
+    <string name="toggle_show_in_landscape_desc">Keep Smart Island visible when rotating device to landscape orientation</string>
     <string name="live_nav_services_title">Live Activities &amp; Navigation</string>
     <string name="live_nav_services_desc">Real-time delivery progress, rideshare tracking, and map direction arrows</string>
     <string name="toggle_live_activities_title">Live Delivery &amp; Ride Tracking</string>

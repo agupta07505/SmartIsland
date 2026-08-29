@@ -42,6 +42,7 @@ data class SmartIslandSettings(
     val hideWhenIdle: Boolean = false,
     val autoHidePill: Boolean = false,
     val autoHideTimeoutSeconds: Int = 5,
+    val showInLandscape: Boolean = false,
     val autoExpandOnNotification: Boolean = true,
     val enableShadow: Boolean = true,
     val enableMusicArtworkBackground: Boolean = true,

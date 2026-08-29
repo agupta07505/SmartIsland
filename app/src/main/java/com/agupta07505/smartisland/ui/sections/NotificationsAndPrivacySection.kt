@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -394,6 +395,16 @@ fun NotificationsAndPrivacySection(
                     iconColor = Color(0xFFA855F7),
                     checked = settings.hideFromNotificationShade,
                     onCheckedChange = { scope.launch { repository.setHideFromNotificationShade(it) } }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    title = stringResource(R.string.toggle_show_in_landscape_title),
+                    subtitle = stringResource(R.string.toggle_show_in_landscape_desc),
+                    icon = Icons.Rounded.ScreenRotation,
+                    iconColor = Color(0xFFF97316),
+                    checked = settings.showInLandscape,
+                    onCheckedChange = { scope.launch { repository.setShowInLandscape(it) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 

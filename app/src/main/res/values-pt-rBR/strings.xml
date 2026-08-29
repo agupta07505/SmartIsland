@@ -272,6 +272,8 @@
     <string name="toggle_auto_hide_pill_title">Ocultar Pílula Automaticamente Após Inatividade</string>
     <string name="toggle_auto_hide_pill_desc">Ocultar automaticamente a pílula e o círculo após um tempo determinado, mesmo com notificações ativas. Toque na área para exibir novamente.</string>
     <string name="auto_hide_timeout_label">Tempo Limite para Ocultar</string>
+    <string name="toggle_show_in_landscape_title">Exibir no Modo Paisagem</string>
+    <string name="toggle_show_in_landscape_desc">Manter o Smart Island visível ao girar o dispositivo para o modo paisagem</string>
     <string name="live_nav_services_title">Atividades ao Vivo e Navegação GPS</string>
     <string name="live_nav_services_desc">Rastreamento de entregas, viagens e setas de direção de mapas em tempo real</string>
     <string name="toggle_live_activities_title">Rastreamento de Entregas e Viagens ao Vivo</string>
