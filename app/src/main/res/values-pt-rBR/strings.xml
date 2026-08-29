@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Smart Island (2026)
+  © Animesh Gupta — github.com/agupta07505
+  Licensed under the GNU GPL v3 License
+  Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+-->
+<resources>
+    <!-- Application Info -->
+    <string name="app_name">Smart Island</string>
+    <string name="app_subtitle">Sobreposição Dinâmica Flutuante</string>
+    <string name="app_description">O Smart Island reinventa as notificações do Android com uma linda experiência flutuante, controles interativos e animações fluidas — mantendo tudo o que importa a um simples toque.</string>
+    <string name="accessibility_service_label">Serviço do Smart Island</string>
+    <string name="accessibility_service_description">Permite que a sobreposição do Smart Island fique sobre a barra de status para que você possa tocar na pílula ao redor do recorte da câmera sem interferência de toque.</string>
+    <string name="grant_accessibility">Conceder permissão de Acessibilidade para iniciar a sobreposição sobre a barra de status</string>
+    <string name="made_by">Feito com ❤️ por Animesh Gupta</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_studio">Estúdio</string>
+    <string name="tab_position">Entalhe e Layout</string>
+    <string name="tab_settings">Configurações</string>
+    <string name="tab_features">Recursos</string>
+    <string name="tab_system">Sistema e Sobre</string>
+
+    <!-- Master Switch & Status -->
+    <string name="master_switch_title">Interruptor Principal do Smart Island</string>
+    <string name="master_switch_active_desc">Sobreposição ativa e flutuando sobre a barra de status</string>
+    <string name="master_switch_ready_desc">Pronto para executar. Ative o interruptor para iniciar.</string>
+    <string name="master_switch_missing_desc">Permissões necessárias ausentes antes de iniciar</string>
+    <string name="status_active">Ativo</string>
+    <string name="status_ready">Pronto</string>
+    <string name="status_setup_needed">Configuração Necessária</string>
+    <string name="status_action_required">Ação Necessária</string>
+    <string name="btn_grant_required_permissions">Conceder permissões necessárias para ativar →</string>
+    <string name="enable_smart_island">Ativar Smart Island</string>
+    <string name="overlay_ready">O serviço de sobreposição está pronto</string>
+    <string name="grant_overlay">Conceder permissão de sobreposição para iniciar</string>
+
+    <!-- Simulation Lab & Test Controls -->
+    <string name="simulation_lab_title">Laboratório de Simulação Dinâmica</string>
+    <string name="simulation_lab_desc">Teste e simule qualquer modo do Smart Island com 1 toque</string>
+    <string name="mode_music_player">Player de Música</string>
+    <string name="mode_incoming_call">Chamada Recebida</string>
+    <string name="mode_notification">Notificação</string>
+    <string name="mode_battery_charge">Carga da Bateria</string>
+    <string name="mode_live_activity">Atividade ao Vivo</string>
+    <string name="mode_turn_navigation">Navegação GPS</string>
+    <string name="mode_file_transfer">Transferência de Arquivos</string>
+    <string name="mode_hotspot_share">Ponto de Acesso</string>
+    <string name="mode_bluetooth">Bluetooth</string>
+    <string name="mode_flashlight">Lanterna</string>
+    <string name="mode_screen_recording">Gravação de Tela</string>
+    <string name="mode_timer">Temporizador</string>
+    <string name="mode_stopwatch">Cronômetro</string>
+    <string name="btn_clear_all_test_notifications">Limpar Todas as Notificações de Teste</string>
+    <string name="toast_cleared_test_notifications">Alertas de demonstração ativos limpos</string>
+    <string name="quick_test_controls">Controles de Teste Rápido</string>
+    <string name="btn_notify">Notificar</string>
+    <string name="btn_call">Chamada</string>
+    <string name="btn_music">Música</string>
+    <string name="btn_battery">Bateria</string>
+    <string name="btn_clear_test">Limpar Notificações de Teste</string>
+
+    <!-- System Diagnostics -->
+    <string name="system_diagnostics_title">Diagnóstico do Sistema</string>
+    <string name="system_diagnostics_desc">Permissões de hardware e integridade em segundo plano</string>
+    <string name="diag_accessibility">Acessibilidade</string>
+    <string name="diag_notifications">Notificações</string>
+    <string name="diag_battery_saver">Economia de Bateria</string>
+
+    <!-- Settings Overview -->
+    <string name="settings_overview_title">Configurações e Preferências</string>
+    <string name="settings_overview_desc">Configure comportamentos da ilha, cores, gestos, acesso ao sistema e atualizações</string>
+    <string name="category_behaviors_launcher">Comportamentos da Ilha e Inicializador</string>
+    <string name="category_appearance_controls">Aparência e Controles</string>
+    <string name="category_system_core">Sistema e Serviços Principais</string>
+    <string name="category_about_community">Sobre e Comunidade</string>
+    <string name="configure_features">Configurar Recursos</string>
+    <string name="sec_permissions">Permissões</string>
+    <string name="sec_permissions_desc">Sobreposição, acesso a notificações e status do sistema</string>
+    <string name="sec_positions">Posições</string>
+    <string name="sec_positions_desc">Ajustar largura, altura, raio do canto e deslocamentos</string>
+    <string name="sec_support">Suporte e Feedback</string>
+    <string name="sec_support_desc">Sugerir recursos, estrela no GitHub e relatório de erros</string>
+    <string name="sec_about">Sobre</string>
+    <string name="sec_about_desc">Versão do app, política de privacidade, termos e contato</string>
+
+    <string name="card_notifications_privacy_title">Regras de Notificações e Privacidade</string>
+    <string name="card_notifications_privacy_desc">Visibilidade na tela de bloqueio, autoexpansão, ações rápidas e filtros</string>
+    <string name="card_notifications_privacy_status_lock">Tela de Bloqueio Ativa</string>
+    <string name="card_notifications_privacy_status_standard">Padrão</string>
+    <string name="card_app_shortcuts_title">Inicializador de Atalhos de Apps</string>
+    <string name="card_app_shortcuts_desc">Inicie rapidamente apps fixados ou recentes a partir da ilha recolhida</string>
+    <string name="card_app_shortcuts_status">%1$d/8 fixados</string>
+    <string name="card_notification_history_title">Histórico e Registros de Notificações</string>
+    <string name="card_notification_history_desc">Visualize e pesquise notificações salvas com agrupamento por data e limpeza automática</string>
+    <string name="card_notification_history_status_active">Registro Ativo</string>
+    <string name="card_notification_history_status_disabled">Desativado</string>
+    <string name="card_color_studio_title">Estúdio de Aparência, Opacidade e Cores</string>
+    <string name="card_color_studio_desc">Ajuste a opacidade do fundo da ilha, capa de álbum e temas de cores vibrantes</string>
+    <string name="card_color_studio_status">%1$d%% de Opacidade</string>
+    <string name="card_gestures_guide_title">Controles de Gestos e Guia</string>
+    <string name="card_gestures_guide_desc">Deslize para cima para dispensar, para baixo para janela flutuante e paginação horizontal</string>
+    <string name="card_gestures_guide_status">Guia Interativo</string>
+    <string name="card_permissions_setup_title">Permissões e Configuração do Sistema</string>
+    <string name="card_permissions_setup_desc">Concessão automática com Shizuku, Acessibilidade, acesso a notificações e otimização de bateria</string>
+    <string name="card_permissions_setup_status_all">Todas Concedidas</string>
+    <string name="card_about_app_title">Sobre o Smart Island</string>
+    <string name="card_about_app_desc">Versão v%1$s • Atualizações do GitHub no App • Contribuidores e Commits</string>
+    <string name="card_about_app_status">Código Aberto</string>
+    <string name="card_support_requests_title">Suporte e Pedidos de Recursos</string>
+    <string name="card_support_requests_desc">Dê uma estrela no GitHub, relate problemas e participe da nossa comunidade no Telegram</string>
+
+    <!-- Detail Screen Titles -->
+    <string name="detail_title_notifications_privacy">Notificações e Privacidade</string>
+    <string name="detail_title_app_shortcuts">Inicializador de Atalhos de Apps</string>
+    <string name="detail_title_notification_history">Histórico de Notificações</string>
+    <string name="detail_title_color_studio">Aparência, Opacidade e Cores</string>
+    <string name="detail_title_gestures_guide">Guia de Gestos e Prática</string>
+    <string name="detail_title_permissions_center">Centro de Permissões e Configuração</string>
+    <string name="detail_title_about_app">Sobre o Smart Island</string>
+    <string name="detail_title_support_community">Suporte e Feedback</string>
+
+    <!-- Permissions Section -->
+    <string name="shizuku_card_title">Configuração Automática em 1 Toque com Shizuku</string>
+    <string name="shizuku_card_desc">Conceda todas as permissões necessárias automaticamente via Shizuku sem abrir as configurações do sistema manualmente</string>
+    <string name="shizuku_btn_run">Executar Configuração Automática</string>
+    <string name="shizuku_btn_running">Executando...</string>
+    <string name="shizuku_not_running">O Shizuku não está em execução ou a permissão não foi concedida</string>
+    <string name="shizuku_success">Permissões concedidas com sucesso via Shizuku</string>
+    <string name="shizuku_failed">Falha na configuração do Shizuku: %1$s</string>
+    <string name="perm_accessibility_title">Sobreposição de Acessibilidade</string>
+    <string name="perm_accessibility_desc">Permite que o Smart Island flutue dinamicamente sobre a barra de status e a área do entalhe</string>
+    <string name="perm_notification_title">Acesso a Notificações</string>
+    <string name="perm_notification_desc">Lê mensagens recebidas, chamadas, metadados de mídia e alertas em tempo real</string>
+    <string name="perm_battery_title">Ignorar Otimização de Bateria</string>
+    <string name="perm_battery_desc">Impede que o Android e os gerenciadores agressivos do fabricante encerrem serviços em segundo plano</string>
+    <string name="perm_status_granted">Concedido</string>
+    <string name="perm_status_action_required">Ação necessária</string>
+    <string name="btn_open">Abrir</string>
+    <string name="btn_grant">Conceder</string>
+
+    <!-- Positions, Notch & Layout -->
+    <string name="presets_title">Predefinições Rápidas de Layout</string>
+    <string name="presets_desc">Posicionamento instantâneo em 1 toque calibrado para a largura da tela do seu dispositivo (%1$d dp)</string>
+    <string name="preset_center_hole">Furo Central</string>
+    <string name="preset_center_hole_desc">Câmera frontal centralizada no furo</string>
+    <string name="preset_wide_island">Ilha Ampla</string>
+    <string name="preset_wide_island_desc">Layout expandido mais espaçoso</string>
+    <string name="preset_left_corner">Canto Esquerdo</string>
+    <string name="preset_left_corner_desc">Câmera frontal alinhada à esquerda</string>
+    <string name="preset_right_corner">Canto Direito</string>
+    <string name="preset_right_corner_desc">Câmera frontal alinhada à direita</string>
+    <string name="preset_compact_pill">Pílula Compacta</string>
+    <string name="preset_compact_pill_desc">Dimensão discreta ideal para barras de status pequenas</string>
+    <string name="precision_tuning_title">Dimensionamento Preciso e Ajuste Fino</string>
+    <string name="precision_tuning_desc">Ajuste fino de dimensões em milímetros e deslocamentos com controles de precisão</string>
+    <string name="slider_island_width">Largura da Ilha</string>
+    <string name="slider_island_height">Altura da Ilha</string>
+    <string name="slider_horizontal_offset">Deslocamento Horizontal (X)</string>
+    <string name="slider_vertical_offset">Deslocamento Vertical (Y)</string>
+    <string name="slider_corner_radius">Raio do Canto</string>
+    <string name="slider_island_opacity">Opacidade e Transparência da Ilha</string>
+    <string name="toggle_drop_shadow_title">Sombra Projetada da Ilha</string>
+    <string name="toggle_drop_shadow_desc">Adiciona uma sombra ambiente suave para criar um efeito de profundidade flutuante</string>
+    <string name="btn_reset_position">Redefinir para Posição de Fábrica</string>
+    <string name="toast_applied_center_preset">Predefinição Furo Central aplicada</string>
+    <string name="toast_applied_wide_preset">Predefinição Ilha Ampla aplicada</string>
+    <string name="toast_applied_left_preset">Predefinição Canto Esquerdo aplicada (%1$d dp)</string>
+    <string name="toast_applied_right_preset">Predefinição Canto Direito aplicada (+%1$d dp)</string>
+    <string name="toast_applied_compact_preset">Predefinição Pílula Compacta aplicada</string>
+    <string name="toast_reset_position">Posição redefinida para os padrões de fábrica</string>
+
+    <!-- Customizations / Studio -->
+    <string name="opacity_card_title">Opacidade e Transparência da Ilha</string>
+    <string name="opacity_card_desc">Ajuste a translucidez do fundo para um visual moderno em vidro fosco</string>
+    <string name="opacity_solid">100% Sólido</string>
+    <string name="opacity_dark">85% Escuro</string>
+    <string name="opacity_glass">70% Vidro</string>
+    <string name="opacity_clear">50% Claro</string>
+    <string name="slider_precision_opacity">Opacidade de Precisão</string>
+    <string name="media_player_title">Player de Música e Mídia</string>
+    <string name="media_player_desc">Configure a arte de fundo ambiente e animações do visualizador</string>
+    <string name="toggle_artwork_backdrop_title">Fundo com Arte do Álbum em Brilho Ambiente</string>
+    <string name="toggle_artwork_backdrop_desc">Renderize a arte do álbum suavemente desfocada como brilho de fundo na ilha de música expandida</string>
+    <string name="color_studio_title">Estúdio de Cores de Destaque</string>
+    <string name="color_studio_desc">Personalize as cores vibrantes dos indicadores para todos os 11 modos dinâmicos</string>
+    <string name="color_battery_charging">Carregamento da Bateria</string>
+    <string name="color_battery_charging_desc">Porcentagem de carga, raio e anel de progresso</string>
+    <string name="color_notification_dot">Ponto de Alerta de Notificação</string>
+    <string name="color_notification_dot_desc">Ícone indicador de não lido no modo recolhido</string>
+    <string name="color_music_visualizer">Visualizador de Frequência Musical</string>
+    <string name="color_music_visualizer_desc">Barras de equalizador de áudio animadas e barra de progresso</string>
+    <string name="color_phone_calls">Telefone e Chamadas Recebidas</string>
+    <string name="color_phone_calls_desc">Temporizador de chamada, animação de onda e ícone de telefone</string>
+    <string name="color_live_activities">Atividades ao Vivo e Temporizadores</string>
+    <string name="color_live_activities_desc">Entrega de comida, rastreamento de viagens e anel de contagem regressiva</string>
+    <string name="color_file_downloads">Downloads e Transferências de Arquivos</string>
+    <string name="color_file_downloads_desc">Anel de progresso e indicador de velocidade de download</string>
+    <string name="color_maps_navigation">Mapas e Navegação GPS</string>
+    <string name="color_maps_navigation_desc">Seta de curva e indicador de distância</string>
+    <string name="color_hotspot_tethering">Ponto de Acesso Móvel (Roteador)</string>
+    <string name="color_hotspot_tethering_desc">Ícone de dispositivos conectados e ondas de transmissão</string>
+    <string name="color_bluetooth_device">Dispositivo Bluetooth</string>
+    <string name="color_bluetooth_device_desc">Ícone de fone de ouvido e indicador de bateria</string>
+    <string name="color_flashlight_torch">Lanterna</string>
+    <string name="color_flashlight_torch_desc">Brilho indicador da lanterna e estado ativado/desativado</string>
+    <string name="color_screen_recording">Gravação de Tela</string>
+    <string name="color_screen_recording_desc">Ponto de pulso de gravação ativa e cronômetro</string>
+    <string name="color_timer_countdown">Temporizador e Contagem Regressiva</string>
+    <string name="color_timer_countdown_desc">Anel de contagem, ampulheta e dígitos do temporizador</string>
+    <string name="color_stopwatch_laps">Cronômetro e Voltas</string>
+    <string name="color_stopwatch_laps_desc">Ícone giratório do cronômetro e tempo decorrido</string>
+    <string name="btn_reset_colors">Redefinir Todas as Cores para os Padrões</string>
+    <string name="dialog_color_picker_title">Selecionar Cor Personalizada</string>
+    <string name="color_red">Vermelho (R)</string>
+    <string name="color_green">Verde (G)</string>
+    <string name="color_blue">Azul (B)</string>
+    <string name="btn_save_color">Salvar Cor</string>
+    <string name="btn_cancel">Cancelar</string>
+
+    <!-- Gestures Guide -->
+    <string name="gestures_guide_title">Guia de Gestos do Smart Island</string>
+    <string name="gestures_guide_desc">5 gestos intuitivos para controlar notificações, chamadas e multitarefa</string>
+    <string name="gesture_1_tap_tab">1. Toque</string>
+    <string name="gesture_2_swipe_up_tab">2. Deslizar para Cima</string>
+    <string name="gesture_3_hold_swipe_up_tab">3. Segurar + Cima</string>
+    <string name="gesture_4_swipe_down_tab">4. Deslizar para Baixo</string>
+    <string name="gesture_5_swipe_horizontal_tab">5. Deslizar Esquerda/Direita</string>
+    <string name="gesture_1_tap_title">Toque Único</string>
+    <string name="gesture_1_tap_sub">Expandir / Recolher</string>
+    <string name="gesture_1_tap_desc">Toque na pílula flutuante para expandi-la em cartões de widgets interativos. Toque em um cartão expandido para abrir o aplicativo correspondente diretamente.</string>
+    <string name="gesture_2_swipe_up_title">Deslizar Rápido para Cima</string>
+    <string name="gesture_2_swipe_up_sub">Dispensar Notificação Atual</string>
+    <string name="gesture_2_swipe_up_desc">Deslize rapidamente para cima no cartão da ilha expandida para dispensar o alerta de notificação visível e retornar à pílula recolhida.</string>
+    <string name="gesture_3_hold_swipe_up_title">Segurar + Deslizar para Cima</string>
+    <string name="gesture_3_hold_swipe_up_sub">Limpar Todos os Cartões</string>
+    <string name="gesture_3_hold_swipe_up_desc">Pressione e segure a ilha por 300 ms até sentir a vibração tátil e, em seguida, deslize para cima para limpar todos os cartões de notificação de uma só vez.</string>
+    <string name="gesture_4_swipe_down_title">Deslizar para Baixo</string>
+    <string name="gesture_4_swipe_down_sub">Janela Flutuante</string>
+    <string name="gesture_4_swipe_down_desc">Arraste para baixo a partir do cartão da ilha para iniciar o aplicativo ativo no modo multitarefa de Janela Flutuante Livre do Android.</string>
+    <string name="gesture_5_swipe_horizontal_title">Deslizar Horizontalmente (Esquerda / Direita)</string>
+    <string name="gesture_5_swipe_horizontal_sub">Alternar Entre Várias Notificações</string>
+    <string name="gesture_5_swipe_horizontal_desc">Quando várias notificações estiverem enfileiradas no Smart Island, deslize horizontalmente para a esquerda ou direita no cartão expandido para navegar entre os alertas ativos.</string>
+
+    <!-- Notifications & Privacy Rules -->
+    <string name="oem_rules_title">Perfil do Dispositivo e Regras do Fabricante</string>
+    <string name="oem_rules_desc">Regras personalizadas para Xiaomi/HyperOS, Samsung, Vivo, Realme, OnePlus e outros</string>
+    <string name="select_device_oem">Selecionar Fabricante do Dispositivo / ROM</string>
+    <string name="auto_detect_device">Detecção Automática: %1$s</string>
+    <string name="active_rules_title">Regras Ativas: %1$s</string>
+    <string name="active_rules_desc">• Pacotes de gravação de tela e gravador de voz calibrados\n• Discador e chamada ativa vinculados\n• Navegação de mapas protegida contra falsos positivos\n• Status de ponto de acesso e tethering reconhecido\n• Inicialização automática em segundo plano mapeada</string>
+    <string name="lock_screen_title">Tela de Bloqueio e Proteção de Privacidade</string>
+    <string name="lock_screen_desc">Controle o comportamento da ilha quando o dispositivo estiver bloqueado e proteja o conteúdo de notificações confidenciais</string>
+    <string name="toggle_show_lock_screen_title">Mostrar Ilha na Tela de Bloqueio</string>
+    <string name="toggle_show_lock_screen_desc">Manter o Smart Island flutuando quando o dispositivo estiver bloqueado</string>
+    <string name="privacy_level_title">Nível de Privacidade do Conteúdo na Tela de Bloqueio</string>
+    <string name="privacy_app_icon_only">Apenas Ícone do App (Privado)</string>
+    <string name="privacy_full_content">Prévia Completa do Conteúdo</string>
+    <string name="toggle_network_access_title">Acesso à Rede e Verificação de Atualizações</string>
+    <string name="toggle_network_access_desc">Permitir consultas não autenticadas de somente leitura ao GitHub para atualizações de versão e notas de lançamento. Desative para aplicar o modo 100% estritamente offline.</string>
+    <string name="display_rules_title">Regras de Exibição e Interação</string>
+    <string name="display_rules_desc">Personalize a expansão automática, botões de ação rápida e ocultação na barra do sistema</string>
+    <string name="toggle_auto_expand_title">Autoexpandir em Nova Notificação</string>
+    <string name="toggle_auto_expand_desc">Abrir o cartão da ilha quando novos alertas chegarem ou manter minimizado na pílula</string>
+    <string name="toggle_quick_actions_title">Ações Rápidas de Notificação</string>
+    <string name="toggle_quick_actions_desc">Mostrar botões de ação como Responder, Marcar como lida e Dispensar no cartão expandido</string>
+    <string name="toggle_mirror_only_title">Apenas Espelhar (Ocultar da Barra de Notificações)</string>
+    <string name="toggle_mirror_only_desc">Exibir a notificação apenas no Smart Island e ocultar da barra de notificações padrão do sistema</string>
+    <string name="toggle_auto_hide_idle_title">Ocultar Pílula Automaticamente Quando Ocioso</string>
+    <string name="toggle_auto_hide_idle_desc">Ocultar a pílula completamente quando não houver alertas ativos, música ou eventos dinâmicos</string>
+    <string name="live_nav_services_title">Atividades ao Vivo e Navegação GPS</string>
+    <string name="live_nav_services_desc">Rastreamento de entregas, viagens e setas de direção de mapas em tempo real</string>
+    <string name="toggle_live_activities_title">Rastreamento de Entregas e Viagens ao Vivo</string>
+    <string name="toggle_live_activities_desc">Alertas em tempo real para Uber, iFood, 99, Rappi, etc.</string>
+    <string name="toggle_navigation_title">Navegação GPS Passo a Passo</string>
+    <string name="toggle_navigation_desc">Setas de direção e distância em tempo real para Google Maps e Waze</string>
+    <string name="app_alerts_manager_title">Gerenciador de Alertas e Sons por App</string>
+    <string name="app_alerts_manager_desc">Gerencie a exibição de notificações e reprodução de som individualmente para cada app</string>
+    <string name="search_installed_apps">Pesquisar aplicativos instalados...</string>
+    <string name="btn_select_all">Selecionar todos</string>
+    <string name="btn_deselect_all">Desmarcar todos</string>
+    <string name="apps_enabled_count">%1$d de %2$d ativados</string>
+    <string name="no_installed_apps_found">Nenhum aplicativo instalado encontrado</string>
+    <string name="no_apps_matching_query">Nenhum aplicativo corresponde a \"%1$s\"</string>
+
+    <!-- Notification History -->
+    <string name="history_title">Histórico de Notificações</string>
+    <string name="history_desc">Banco de dados no dispositivo para notificações anteriores com pesquisa e limpeza automática</string>
+    <string name="toggle_enable_history_title">Ativar Registro do Histórico de Notificações</string>
+    <string name="toggle_enable_history_desc">Armazene com segurança as notificações recebidas em um banco de dados SQLite local no dispositivo para pesquisar e revisar a qualquer momento</string>
+    <string name="retention_title">Período de Retenção para Limpeza Automática</string>
+    <string name="search_history_placeholder">Pesquisar histórico por título, texto ou nome do app...</string>
+    <string name="btn_clear_history">Limpar Todo o Histórico</string>
+    <string name="btn_delete_app_history">Excluir por App</string>
+    <string name="empty_history_title">Nenhuma Notificação Registrada</string>
+    <string name="empty_history_desc">As notificações capturadas aparecerão aqui em ordem cronológica assim que o histórico for ativado</string>
+    <string name="confirm_clear_history_title">Limpar Histórico de Notificações?</string>
+    <string name="confirm_clear_history_msg">Isso excluirá permanentemente todos os registros de notificações armazenados no banco de dados do seu dispositivo.</string>
+    <string name="confirm_delete_app_history_title">Excluir Histórico de %1$s?</string>
+    <string name="confirm_delete_app_history_msg">Isso removerá permanentemente todas as %1$d notificações registradas de %2$s.</string>
+    <string name="retention_24h">24 Horas (1 Dia)</string>
+    <string name="retention_72h">3 Dias (Recomendado)</string>
+    <string name="retention_7d">7 Dias (1 Semana)</string>
+    <string name="retention_30d">30 Dias (1 Mês)</string>
+    <string name="retention_forever">Manter para Sempre</string>
+
+    <!-- App Shortcuts -->
+    <string name="shortcuts_title">Inicializador Rápido com Ilha Vazia</string>
+    <string name="shortcuts_desc">Quando não houver alertas ativos, tocar na ilha revela sua grade de aplicativos rápidos (até 8 apps).</string>
+    <string name="toggle_recent_apps_title">Preencher Automaticamente com Apps Recentes</string>
+    <string name="toggle_recent_apps_desc_granted">Preenche os espaços livres com seus aplicativos usados mais recentemente</string>
+    <string name="toggle_recent_apps_desc_needed">Permissão de acesso ao uso necessária para apps recentes</string>
+    <string name="pinned_apps_title">Aplicativos Fixados (%1$d/8 fixados)</string>
+
+    <!-- Support & Community -->
+    <string name="support_title">Suporte e Comunidade</string>
+    <string name="star_on_github">Dê uma Estrela no GitHub</string>
+    <string name="star_on_github_desc">Apoie o desenvolvimento de código aberto</string>
+    <string name="join_telegram">Entrar na Comunidade do Telegram</string>
+    <string name="join_telegram_desc">Converse com o desenvolvedor e testadores beta</string>
+    <string name="request_feature">Sugerir um Recurso</string>
+    <string name="request_feature_desc">Proponha novos widgets ou ideias de animação para a ilha</string>
+    <string name="report_bug">Relatar um Erro</string>
+    <string name="report_bug_desc">Abra um relatório com detalhes do dispositivo no GitHub</string>
+    <string name="license_title">Licença (GNU GPL v3)</string>
+    <string name="license_desc">Software Livre e de Código Aberto</string>
+
+    <!-- About & GitHub Updates -->
+    <string name="about_title">Sobre o Smart Island</string>
+    <string name="github_update_center_title">Central de Atualizações do GitHub</string>
+    <string name="current_version_label">Versão Atual: v%1$s</string>
+    <string name="btn_check_updates">Verificar</string>
+    <string name="btn_checking_updates">Verificando...</string>
+    <string name="update_available_title">Atualização Disponível: %1$s</string>
+    <string name="update_up_to_date_title">O Smart Island está atualizado</string>
+    <string name="offline_mode_title">Modo Offline Ativo</string>
+    <string name="offline_mode_desc">As verificações de rede estão desativadas nas Configurações. Ative o acesso à rede para verificar atualizações.</string>
+    <string name="repo_insights_title">Estatísticas do Repositório</string>
+    <string name="contributors_title">Principais Contribuidores</string>
+    <string name="recent_commits_title">Commits Recentes</string>
+
+    <!-- Welcome Dialog -->
+    <string name="welcome_title">Bem-vindo ao Smart Island Studio</string>
+    <string name="welcome_desc">Uma experiência de sobreposição flutuante privada e personalizável para Android. Sem anúncios, zero rastreamento e totalmente de código aberto.</string>
+    <string name="btn_get_started">Começar</string>
+
+    <!-- Expanded Cards & Widgets -->
+    <string name="expanded_battery_saver">Economia de Bateria ATIVADA</string>
+    <string name="expanded_battery_low">Bateria Fraca</string>
+    <string name="expanded_battery_charging">Carregando</string>
+    <string name="expanded_power_saver_active">Economia de bateria ativa</string>
+    <string name="expanded_connect_charger">Conecte o carregador</string>
+    <string name="expanded_until_full">%1$s até carga completa</string>
+    <string name="expanded_hotspot_title">Ponto de Acesso Móvel</string>
+    <string name="expanded_hotspot_active">Roteador Wi-Fi Ativo</string>
+    <string name="expanded_hotspot_device">1 Dispositivo Conectado</string>
+    <string name="expanded_hotspot_devices">%1$d Dispositivos Conectados</string>
+    <string name="expanded_hotspot_turn_off">Desativar Ponto de Acesso</string>
+    <string name="expanded_flashlight_title">Lanterna</string>
+    <string name="expanded_torch_on">Lanterna LIGADA</string>
+    <string name="expanded_torch_off">Lanterna DESLIGADA</string>
+    <string name="expanded_tap_turn_off">Toque para desligar</string>
+    <string name="expanded_recording_title">Gravação de Tela</string>
+    <string name="expanded_recording_active">Gravação em Andamento</string>
+    <string name="expanded_tap_stop">Toque para parar</string>
+    <string name="expanded_stopwatch_title">Cronômetro</string>
+    <string name="expanded_timer_title">Temporizador</string>
+    <string name="expanded_bluetooth_connected">Conectado</string>
+    <string name="expanded_bluetooth_device">Dispositivo Bluetooth</string>
+    <string name="expanded_action_reply">Responder</string>
+    <string name="expanded_action_mark_read">Marcar como lida</string>
+    <string name="expanded_action_dismiss">Dispensar</string>
+</resources>

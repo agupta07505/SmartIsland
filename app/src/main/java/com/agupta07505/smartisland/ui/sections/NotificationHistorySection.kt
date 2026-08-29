@@ -97,6 +97,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.INotificationHistoryRepository
 import com.agupta07505.smartisland.data.NotificationHistoryEntry
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -223,8 +225,8 @@ fun NotificationHistorySection(
     if (showClearAllConfirm) {
         AlertDialog(
             onDismissRequest = { showClearAllConfirm = false },
-            title = { Text("Clear All Notification History?") },
-            text = { Text("This will permanently delete all ${historyEntries.size} saved notification logs from this device. This action cannot be undone.") },
+            title = { Text(stringResource(R.string.confirm_clear_history_title)) },
+            text = { Text(stringResource(R.string.confirm_clear_history_msg, historyEntries.size)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -236,12 +238,12 @@ fun NotificationHistorySection(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Clear All")
+                    Text(stringResource(R.string.btn_clear_history))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearAllConfirm = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -251,8 +253,8 @@ fun NotificationHistorySection(
     packageToDeleteConfirm?.let { targetApp ->
         AlertDialog(
             onDismissRequest = { packageToDeleteConfirm = null },
-            title = { Text("Delete All from ${targetApp.appName}?") },
-            text = { Text("This will permanently delete all ${targetApp.count} notifications from ${targetApp.appName} (${targetApp.packageName}).") },
+            title = { Text(stringResource(R.string.confirm_delete_app_history_title, targetApp.appName)) },
+            text = { Text(stringResource(R.string.confirm_delete_app_history_msg, targetApp.count, targetApp.appName)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -267,12 +269,12 @@ fun NotificationHistorySection(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete All from App")
+                    Text(stringResource(R.string.btn_delete_app_history))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { packageToDeleteConfirm = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -357,17 +359,17 @@ fun NotificationHistorySection(
                                 )
                             }
                             Column {
-                                Text(
-                                    text = "Notification History Log",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (settings.enableNotificationHistory) "Logging active • On-device private" else "Disabled",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (settings.enableNotificationHistory) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                 Text(
+                                     text = stringResource(R.string.history_title),
+                                     style = MaterialTheme.typography.titleMedium,
+                                     fontWeight = FontWeight.Bold,
+                                     color = MaterialTheme.colorScheme.onSurface
+                                 )
+                                 Text(
+                                     text = if (settings.enableNotificationHistory) "Logging active • On-device private" else "Disabled",
+                                     style = MaterialTheme.typography.bodySmall,
+                                     color = if (settings.enableNotificationHistory) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
+                                 )
                             }
                         }
 
@@ -400,7 +402,7 @@ fun NotificationHistorySection(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "100% on-device private SQLite storage. Never uploaded, synced, or shared.",
+                                text = stringResource(R.string.history_desc),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -430,13 +432,13 @@ fun NotificationHistorySection(
                             modifier = Modifier.size(40.dp)
                         )
                         Text(
-                            text = "Never Miss a Notification",
+                            text = stringResource(R.string.toggle_enable_history_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Turn on Notification History to record notifications from all apps. Search past alerts and review full message details at any time.",
+                            text = stringResource(R.string.toggle_enable_history_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp,
@@ -447,7 +449,7 @@ fun NotificationHistorySection(
                                 onClick = { scope.launch { repository.setEnableNotificationHistory(true) } },
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text("Turn On History")
+                                Text(stringResource(R.string.toggle_enable_history_title))
                             }
                         }
                     }
@@ -483,7 +485,7 @@ fun NotificationHistorySection(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Auto-Clean Retention:",
+                                    text = stringResource(R.string.retention_title),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.onSurface
@@ -491,15 +493,21 @@ fun NotificationHistorySection(
                             }
 
                             Box {
-                                val currentRetention = RETENTION_OPTIONS.find { it.hours == settings.notificationHistoryRetentionHours }
-                                    ?: RETENTION_OPTIONS[1]
+                                val retentionResMap = mapOf(
+                                    24 to R.string.retention_24h,
+                                    72 to R.string.retention_72h,
+                                    168 to R.string.retention_7d,
+                                    720 to R.string.retention_30d,
+                                    -1 to R.string.retention_forever
+                                )
+                                val currentRetentionRes = retentionResMap[settings.notificationHistoryRetentionHours] ?: R.string.retention_72h
 
                                 OutlinedButton(
                                     onClick = { retentionMenuExpanded = true },
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
-                                    Text(currentRetention.label, style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(currentRetentionRes), style = MaterialTheme.typography.labelSmall)
                                     Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
 
@@ -507,15 +515,15 @@ fun NotificationHistorySection(
                                     expanded = retentionMenuExpanded,
                                     onDismissRequest = { retentionMenuExpanded = false }
                                 ) {
-                                    RETENTION_OPTIONS.forEach { option ->
+                                    retentionResMap.forEach { (hours, resId) ->
                                         DropdownMenuItem(
-                                            text = { Text(option.label) },
+                                            text = { Text(stringResource(resId)) },
                                             onClick = {
                                                 retentionMenuExpanded = false
                                                 if (repository != null) {
                                                     scope.launch {
-                                                        repository.setNotificationHistoryRetentionHours(option.hours)
-                                                        resolvedHistoryRepo.cleanupOldEntries(option.hours)
+                                                        repository.setNotificationHistoryRetentionHours(hours)
+                                                        resolvedHistoryRepo.cleanupOldEntries(hours)
                                                     }
                                                 }
                                             }
@@ -531,7 +539,7 @@ fun NotificationHistorySection(
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search by app, sender, or content...", fontSize = 13.sp) },
+                            placeholder = { Text(stringResource(R.string.search_history_placeholder), fontSize = 13.sp) },
                             leadingIcon = {
                                 Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -602,7 +610,7 @@ fun NotificationHistorySection(
                                     ) {
                                         Icon(Icons.Rounded.Apps, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("Delete by App", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        Text(stringResource(R.string.btn_delete_app_history), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
 
@@ -615,7 +623,7 @@ fun NotificationHistorySection(
                                     ) {
                                         Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(Modifier.width(4.dp))
-                                        Text("Clear All", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Text(stringResource(R.string.btn_clear_history), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -645,13 +653,13 @@ fun NotificationHistorySection(
                                 modifier = Modifier.size(48.dp)
                             )
                             Text(
-                                text = if (searchQuery.isNotBlank() || selectedFilterPackage != null) "No matching notifications found" else "No notifications recorded yet",
+                                text = stringResource(R.string.empty_history_title),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (searchQuery.isNotBlank() || selectedFilterPackage != null) "Try changing your search term or clearing the active app filter." else "Incoming notifications will automatically appear here grouped by date.",
+                                text = stringResource(R.string.empty_history_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center

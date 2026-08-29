@@ -53,12 +53,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SliderSettingItem
@@ -118,13 +120,13 @@ fun PositionsSection(
                 ) {
                     Column {
                         Text(
-                            text = "Quick Layout Presets",
+                            text = stringResource(R.string.presets_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Instant 1-tap positioning calibrated to your device screen width (${screenWidthDp.toInt()} dp)",
+                            text = stringResource(R.string.presets_desc, screenWidthDp.toInt()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -142,8 +144,8 @@ fun PositionsSection(
                     ) {
                         val isCenterSelected = abs(settings.xOffset) < 5f && abs(settings.width - 112f) < 8f
                         PresetCardItem(
-                            title = "Center Hole",
-                            subtitle = "Centered punch hole camera",
+                            title = stringResource(R.string.preset_center_hole),
+                            subtitle = stringResource(R.string.preset_center_hole_desc),
                             icon = Icons.Rounded.CenterFocusStrong,
                             isSelected = isCenterSelected,
                             onClick = {
@@ -156,15 +158,15 @@ fun PositionsSection(
                                     )
                                     repository.setCornerRadius(20f)
                                 }
-                                Toast.makeText(context, "Applied Center Hole preset", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_applied_center_preset), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f)
                         )
 
                         val isWideSelected = abs(settings.xOffset) < 5f && abs(settings.width - 150f) < 8f
                         PresetCardItem(
-                            title = "Wide Island",
-                            subtitle = "Spacious expanded layout",
+                            title = stringResource(R.string.preset_wide_island),
+                            subtitle = stringResource(R.string.preset_wide_island_desc),
                             icon = Icons.Rounded.FitScreen,
                             isSelected = isWideSelected,
                             onClick = {
@@ -177,7 +179,7 @@ fun PositionsSection(
                                     )
                                     repository.setCornerRadius(22f)
                                 }
-                                Toast.makeText(context, "Applied Wide Island preset", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_applied_wide_preset), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -190,8 +192,8 @@ fun PositionsSection(
                     ) {
                         val isLeftSelected = settings.xOffset < -30f
                         PresetCardItem(
-                            title = "Left Corner",
-                            subtitle = "Left-aligned punch hole",
+                            title = stringResource(R.string.preset_left_corner),
+                            subtitle = stringResource(R.string.preset_left_corner_desc),
                             icon = Icons.AutoMirrored.Rounded.AlignHorizontalLeft,
                             isSelected = isLeftSelected,
                             onClick = {
@@ -204,15 +206,15 @@ fun PositionsSection(
                                     )
                                     repository.setCornerRadius(20f)
                                 }
-                                Toast.makeText(context, "Applied Left Corner preset (${calculatedLeftX.toInt()}dp)", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_applied_left_preset, calculatedLeftX.toInt()), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f)
                         )
 
                         val isRightSelected = settings.xOffset > 30f
                         PresetCardItem(
-                            title = "Right Corner",
-                            subtitle = "Right-aligned camera hole",
+                            title = stringResource(R.string.preset_right_corner),
+                            subtitle = stringResource(R.string.preset_right_corner_desc),
                             icon = Icons.AutoMirrored.Rounded.AlignHorizontalRight,
                             isSelected = isRightSelected,
                             onClick = {
@@ -225,7 +227,7 @@ fun PositionsSection(
                                     )
                                     repository.setCornerRadius(20f)
                                 }
-                                Toast.makeText(context, "Applied Right Corner preset (+${calculatedRightX.toInt()}dp)", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_applied_right_preset, calculatedRightX.toInt()), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f)
                         )
@@ -234,8 +236,8 @@ fun PositionsSection(
                     // Row 3: Compact Pill
                     val isCompactSelected = abs(settings.xOffset) < 5f && abs(settings.width - 92f) < 6f
                     PresetCardItem(
-                        title = "Compact Pill",
-                        subtitle = "Minimal discreet footprint for small status bars",
+                        title = stringResource(R.string.preset_compact_pill),
+                        subtitle = stringResource(R.string.preset_compact_pill_desc),
                         icon = Icons.Rounded.Smartphone,
                         isSelected = isCompactSelected,
                         onClick = {
@@ -248,7 +250,7 @@ fun PositionsSection(
                                 )
                                 repository.setCornerRadius(18f)
                             }
-                            Toast.makeText(context, "Applied Compact Pill preset", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_applied_compact_preset), Toast.LENGTH_SHORT).show()
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -266,20 +268,20 @@ fun PositionsSection(
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text(
-                    text = "Precision Sizing & Fine Tuning",
+                    text = stringResource(R.string.precision_tuning_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Fine-tune dimension millimeters and offsets with precision controls",
+                    text = stringResource(R.string.precision_tuning_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
                 )
 
                 SliderSettingItem(
-                    label = "Island Width",
+                    label = stringResource(R.string.slider_island_width),
                     value = localWidth,
                     range = SmartIslandSettings.MIN_WIDTH..SmartIslandSettings.MAX_WIDTH,
                     onValueChange = { localWidth = it },
@@ -288,7 +290,7 @@ fun PositionsSection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
-                    label = "Island Height",
+                    label = stringResource(R.string.slider_island_height),
                     value = localHeight,
                     range = SmartIslandSettings.MIN_HEIGHT..SmartIslandSettings.MAX_HEIGHT,
                     onValueChange = { localHeight = it },
@@ -297,7 +299,7 @@ fun PositionsSection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
-                    label = "Horizontal (X) Offset",
+                    label = stringResource(R.string.slider_horizontal_offset),
                     value = localXOffset,
                     range = SmartIslandSettings.MIN_X_OFFSET..SmartIslandSettings.MAX_X_OFFSET,
                     onValueChange = { localXOffset = it },
@@ -306,7 +308,7 @@ fun PositionsSection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
-                    label = "Vertical (Y) Offset",
+                    label = stringResource(R.string.slider_vertical_offset),
                     value = localYOffset,
                     range = SmartIslandSettings.MIN_Y_OFFSET..SmartIslandSettings.MAX_Y_OFFSET,
                     onValueChange = { localYOffset = it },
@@ -315,7 +317,7 @@ fun PositionsSection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 SliderSettingItem(
-                    label = "Corner Radius",
+                    label = stringResource(R.string.slider_corner_radius),
                     value = localCornerRadius,
                     range = SmartIslandSettings.MIN_CORNER_RADIUS..SmartIslandSettings.MAX_CORNER_RADIUS,
                     onValueChange = { localCornerRadius = it },
@@ -330,7 +332,7 @@ fun PositionsSection(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SliderSettingItem(
-                        label = "Island Opacity & Transparency",
+                        label = stringResource(R.string.slider_island_opacity),
                         value = (localOpacity * 100f),
                         range = (SmartIslandSettings.MIN_OPACITY * 100f)..(SmartIslandSettings.MAX_OPACITY * 100f),
                         suffix = "%",
@@ -387,14 +389,14 @@ fun PositionsSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Island Drop Shadow",
+                            text = stringResource(R.string.toggle_drop_shadow_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "Add a soft ambient drop shadow for a floating depth effect",
+                            text = stringResource(R.string.toggle_drop_shadow_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -412,14 +414,14 @@ fun PositionsSection(
                 OutlinedButton(
                     onClick = {
                         scope.launch { repository.resetPosition() }
-                        Toast.makeText(context, "Position reset to factory defaults", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_reset_position), Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Reset to Factory Position", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.btn_reset_position), fontWeight = FontWeight.SemiBold)
                 }
             }
         }

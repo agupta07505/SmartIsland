@@ -14,12 +14,19 @@ import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import com.agupta07505.smartisland.util.toIslandMode
 import android.app.Notification
+import android.app.NotificationManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Icon
+import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaMetadata
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.net.Uri
+import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
@@ -505,7 +512,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
 
         if (isNewNotif && (mode == IslandMode.Notification || shouldIslandOnly) && mode != IslandMode.DownloadUpload) {
-            playNotificationSound(sbn.packageName)
+            playNotificationSound(sbn)
         }
 
         if (mode == IslandMode.Music) {
@@ -664,14 +671,76 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         notificationRepository.removeNotification(key)
     }
 
-    private fun playNotificationSound(packageName: String) {
-        if (currentSettings.disabledSoundPackages.contains(packageName)) return
-        runCatchingLogged(TAG, "Failed to play notification sound") {
-            val audioManager = getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-            if (audioManager?.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL) {
-                val soundUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
-                val ringtone = android.media.RingtoneManager.getRingtone(applicationContext, soundUri)
-                ringtone?.play()
+    private fun playNotificationSound(sbn: StatusBarNotification) {
+        if (currentSettings.disabledSoundPackages.contains(sbn.packageName)) return
+        runCatchingLogged(TAG, "Failed to play notification sound for ${sbn.packageName}") {
+            val audioManager = getSystemService(android.content.Context.AUDIO_SERVICE) as? AudioManager
+            if (audioManager == null || audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+
+            val notification = sbn.notification
+            var soundUri: Uri? = null
+            var audioAttributes: AudioAttributes? = null
+
+            // 1. Check Notification Channel (Android 8.0+, API 26+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val ranking = Ranking()
+                val hasRanking = currentRanking?.getRanking(sbn.key, ranking) == true
+                val channel = if (hasRanking) ranking.channel else null
+
+                if (channel != null) {
+                    // Silent channels (IMPORTANCE_NONE, IMPORTANCE_MIN, IMPORTANCE_LOW) must not play sound
+                    if (channel.importance < NotificationManager.IMPORTANCE_DEFAULT) {
+                        return
+                    }
+                    val chSound = channel.sound
+                    if (chSound == null || chSound == Uri.EMPTY || chSound.toString().isEmpty()) {
+                        // Channel is explicitly configured without sound (Silent)
+                        return
+                    }
+                    soundUri = chSound
+                    audioAttributes = channel.audioAttributes
+                }
+            }
+
+            // 2. Fallback to notification payload if channel was not present
+            if (soundUri == null) {
+                @Suppress("DEPRECATION")
+                val notifSound = notification.sound
+                @Suppress("DEPRECATION")
+                val defaults = notification.defaults
+
+                if (notifSound != null && notifSound != Uri.EMPTY && notifSound.toString().isNotEmpty()) {
+                    soundUri = notifSound
+                } else if ((defaults and Notification.DEFAULT_SOUND) != 0) {
+                    soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                }
+                audioAttributes = notification.audioAttributes
+            }
+
+            if (soundUri == null) {
+                return
+            }
+
+            // 3. Resolve and play the exact notification sound
+            var ringtone: Ringtone? = runCatching {
+                RingtoneManager.getRingtone(applicationContext, soundUri)
+            }.getOrNull()
+
+            // Fallback to default tone if custom URI failed to load
+            if (ringtone == null) {
+                val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                ringtone = runCatching {
+                    RingtoneManager.getRingtone(applicationContext, fallbackUri)
+                }.getOrNull()
+            }
+
+            if (ringtone != null) {
+                val attrs = audioAttributes ?: AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .build()
+                ringtone.audioAttributes = attrs
+                ringtone.play()
             }
         }
     }

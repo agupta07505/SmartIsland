@@ -77,7 +77,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.BuildConfig
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
@@ -198,13 +200,13 @@ fun AboutSection(
                         }
                         Column {
                             Text(
-                                text = "GitHub Update Center",
+                                text = stringResource(R.string.github_update_center_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Current Version: v$currentVersion",
+                                text = stringResource(R.string.current_version_label, currentVersion),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -236,7 +238,7 @@ fun AboutSection(
                             Spacer(Modifier.width(6.dp))
                         }
                         Text(
-                            text = if (updateState is UpdateState.Checking) "Checking..." else "Check",
+                            text = if (updateState is UpdateState.Checking) stringResource(R.string.btn_checking_updates) else stringResource(R.string.btn_check_updates),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -264,13 +266,13 @@ fun AboutSection(
                                 )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "100% Strict Offline Mode Active",
+                                        text = stringResource(R.string.offline_mode_title),
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Network release queries are turned off in Privacy Settings.",
+                                        text = stringResource(R.string.offline_mode_desc),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -352,7 +354,7 @@ fun AboutSection(
                                 )
                                 Column {
                                     Text(
-                                        text = "You are on the latest version (${state.version})",
+                                        text = stringResource(R.string.update_up_to_date_title),
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF10B981)
@@ -385,7 +387,7 @@ fun AboutSection(
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Text(
-                                        text = "New Update Available: ${state.release.name.ifBlank { state.release.tagName }}",
+                                        text = stringResource(R.string.update_available_title),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF38BDF8)
@@ -454,7 +456,7 @@ fun AboutSection(
 
                 // Repository Stats & Quick Links
                 Text(
-                    text = "Repository Insights",
+                    text = stringResource(R.string.repo_insights_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -543,7 +545,7 @@ fun AboutSection(
                         }
                         Column {
                             Text(
-                                text = "Project Contributors",
+                                text = stringResource(R.string.contributors_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -627,7 +629,7 @@ fun AboutSection(
                         }
                         Column {
                             Text(
-                                text = "Recent Commits",
+                                text = stringResource(R.string.recent_commits_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -706,7 +708,7 @@ fun AboutSection(
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Application Information",
+                    text = stringResource(R.string.about_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,

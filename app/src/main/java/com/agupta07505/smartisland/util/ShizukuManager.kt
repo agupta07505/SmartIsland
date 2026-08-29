@@ -9,6 +9,7 @@ package com.agupta07505.smartisland.util
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.provider.Settings
 import com.agupta07505.smartisland.service.SmartIslandNotificationListenerService
 import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import kotlinx.coroutines.Dispatchers
@@ -95,18 +96,42 @@ object ShizukuManager {
         }
     }
 
+    internal fun mergeColonSeparated(currentList: String, newEntry: String): String {
+        val list = currentList.split(':').filter { it.isNotBlank() }.toMutableList()
+        if (!list.contains(newEntry)) {
+            list.add(newEntry)
+        }
+        return list.joinToString(":")
+    }
+
+    internal fun getMergedAccessibilityServices(context: Context, serviceComponent: String): String {
+        val current = runCatching {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        }.getOrNull().orEmpty()
+        return mergeColonSeparated(current, serviceComponent)
+    }
+
+    internal fun getMergedNotificationListeners(context: Context, listenerComponent: String): String {
+        val current = runCatching {
+            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+        }.getOrNull().orEmpty()
+        return mergeColonSeparated(current, listenerComponent)
+    }
+
     /**
      * Executes ADB shell commands via Shizuku process on IO dispatcher to auto-grant:
      * - Allow restricted settings (Android 13+)
      * - Usage Access / Usage Stats (GET_USAGE_STATS)
-     * - Accessibility Service & System Alert Window
-     * - Notification Listener Access
+     * - Accessibility Service & System Alert Window (preserving existing accessibility services)
+     * - Notification Listener Access (preserving existing notification listeners)
      * - Battery Optimization whitelist
      */
     suspend fun autoGrantAllPermissions(context: Context): Result<String> = withContext(Dispatchers.IO) {
         val pkg = context.packageName
         val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
         val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
+        val mergedAccessibilityServices = getMergedAccessibilityServices(context, accessibilityClass)
+        val mergedNotificationListeners = getMergedNotificationListeners(context, notificationClass)
 
         val commands = listOf(
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
@@ -117,10 +142,10 @@ object ShizukuManager {
             "appops set $pkg AUTO_START allow",
             "appops set $pkg RUN_IN_BACKGROUND allow",
             "appops set $pkg RUN_ANY_IN_BACKGROUND allow",
-            "settings put secure enabled_accessibility_services $accessibilityClass",
+            "settings put secure enabled_accessibility_services $mergedAccessibilityServices",
             "settings put secure accessibility_enabled 1",
             "cmd notification allow_listener $notificationClass",
-            "settings put secure enabled_notification_listeners $notificationClass",
+            "settings put secure enabled_notification_listeners $mergedNotificationListeners",
             "am set-standby-bucket $pkg active",
             "dumpsys deviceidle whitelist +$pkg"
         )
@@ -143,29 +168,31 @@ object ShizukuManager {
     }
 
     /**
-     * Grants Notification Listener permission via Shizuku.
+     * Grants Notification Listener permission via Shizuku without overwriting other active listeners.
      */
     suspend fun grantNotificationListener(context: Context): Result<String> = withContext(Dispatchers.IO) {
         val pkg = context.packageName
         val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
+        val mergedNotificationListeners = getMergedNotificationListeners(context, notificationClass)
         val commands = listOf(
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
             "cmd notification allow_listener $notificationClass",
-            "settings put secure enabled_notification_listeners $notificationClass"
+            "settings put secure enabled_notification_listeners $mergedNotificationListeners"
         )
         runShizukuCommands(commands)
     }
 
     /**
-     * Grants Accessibility service permission via Shizuku.
+     * Grants Accessibility service permission via Shizuku without overwriting other active accessibility services.
      */
     suspend fun grantAccessibility(context: Context): Result<String> = withContext(Dispatchers.IO) {
         val pkg = context.packageName
         val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
+        val mergedAccessibilityServices = getMergedAccessibilityServices(context, accessibilityClass)
         val commands = listOf(
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
             "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
-            "settings put secure enabled_accessibility_services $accessibilityClass",
+            "settings put secure enabled_accessibility_services $mergedAccessibilityServices",
             "settings put secure accessibility_enabled 1"
         )
         runShizukuCommands(commands)

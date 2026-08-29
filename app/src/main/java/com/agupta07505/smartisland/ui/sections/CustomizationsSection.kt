@@ -62,9 +62,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import kotlinx.coroutines.launch
@@ -144,13 +146,13 @@ fun CustomizationsSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Island Opacity & Transparency",
+                            text = stringResource(R.string.opacity_card_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Adjust background translucency for a sleek glassmorphic look",
+                            text = stringResource(R.string.opacity_card_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -178,10 +180,10 @@ fun CustomizationsSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     listOf(
-                        1.0f to "100% Solid",
-                        0.85f to "85% Dark",
-                        0.70f to "70% Glass",
-                        0.50f to "50% Clear"
+                        1.0f to stringResource(R.string.opacity_solid),
+                        0.85f to stringResource(R.string.opacity_dark),
+                        0.70f to stringResource(R.string.opacity_glass),
+                        0.50f to stringResource(R.string.opacity_clear)
                     ).forEach { (targetVal, label) ->
                         val isSelected = abs(localOpacity - targetVal) < 0.04f
                         Surface(
@@ -211,7 +213,7 @@ fun CustomizationsSection(
 
                 // Slider
                 SliderSettingItem(
-                    label = "Precision Opacity",
+                    label = stringResource(R.string.slider_precision_opacity),
                     value = (localOpacity * 100f),
                     range = (SmartIslandSettings.MIN_OPACITY * 100f)..(SmartIslandSettings.MAX_OPACITY * 100f),
                     suffix = "%",
@@ -231,13 +233,13 @@ fun CustomizationsSection(
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Music & Media Player",
+                    text = stringResource(R.string.media_player_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Configure ambient backdrop artwork and visualizer animations",
+                    text = stringResource(R.string.media_player_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -251,13 +253,13 @@ fun CustomizationsSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Ambient Album Artwork Backdrop",
+                            text = stringResource(R.string.toggle_artwork_backdrop_title),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Render soft blurred album art as background glow in expanded music island",
+                            text = stringResource(R.string.toggle_artwork_backdrop_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -288,13 +290,13 @@ fun CustomizationsSection(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Feature Accent Colors Studio",
+                    text = stringResource(R.string.color_studio_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Customize the vibrant indicator colors for all 11 dynamic island modes",
+                    text = stringResource(R.string.color_studio_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -303,195 +305,195 @@ fun CustomizationsSection(
 
                 // Feature Color Rows
                 FeatureColorRow(
-                    title = "Battery Charging",
-                    subtitle = "Charge percentage, lightning bolt & progress ring",
+                    title = stringResource(R.string.color_battery_charging),
+                    subtitle = stringResource(R.string.color_battery_charging_desc),
                     icon = Icons.Rounded.BatteryChargingFull,
                     selectedColor = settings.batteryColor,
                     onColorSelected = { scope.launch { repository.setBatteryColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.batteryColor
                         currentColorTarget = "battery"
-                        colorPickerTitle = "Battery Charging Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Notification Alert Dot",
-                    subtitle = "Collapsed mode unread indicator badge",
+                    title = stringResource(R.string.color_notification_dot),
+                    subtitle = stringResource(R.string.color_notification_dot_desc),
                     icon = Icons.Rounded.Notifications,
                     selectedColor = settings.notificationDotColor,
                     onColorSelected = { scope.launch { repository.setNotificationDotColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.notificationDotColor
                         currentColorTarget = "notification"
-                        colorPickerTitle = "Notification Dot Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Music Frequency Visualizer",
-                    subtitle = "Jumping live audio equalizer bars and seekbar",
+                    title = stringResource(R.string.color_music_visualizer),
+                    subtitle = stringResource(R.string.color_music_visualizer_desc),
                     icon = Icons.Rounded.MusicNote,
                     selectedColor = settings.musicVisualizerColor,
                     onColorSelected = { scope.launch { repository.setMusicVisualizerColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.musicVisualizerColor
                         currentColorTarget = "music"
-                        colorPickerTitle = "Music Visualizer Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Phone & Incoming Calls",
-                    subtitle = "Call timer, wave animation and phone glyph",
+                    title = stringResource(R.string.color_phone_calls),
+                    subtitle = stringResource(R.string.color_phone_calls_desc),
                     icon = Icons.Rounded.Call,
                     selectedColor = settings.callColor,
                     onColorSelected = { scope.launch { repository.setCallColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.callColor
                         currentColorTarget = "call"
-                        colorPickerTitle = "Call Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Live Activities & Timers",
-                    subtitle = "Food delivery, ride tracking & countdown ring",
+                    title = stringResource(R.string.color_live_activities),
+                    subtitle = stringResource(R.string.color_live_activities_desc),
                     icon = Icons.Rounded.Navigation,
                     selectedColor = settings.liveActivityColor,
                     onColorSelected = { scope.launch { repository.setLiveActivityColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.liveActivityColor
                         currentColorTarget = "live_activity"
-                        colorPickerTitle = "Live Activity Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "File Downloads & Transfers",
-                    subtitle = "Progress ring and download speed indicator",
+                    title = stringResource(R.string.color_file_downloads),
+                    subtitle = stringResource(R.string.color_file_downloads_desc),
                     icon = Icons.Rounded.FileDownload,
                     selectedColor = settings.transferColor,
                     onColorSelected = { scope.launch { repository.setTransferColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.transferColor
                         currentColorTarget = "transfer"
-                        colorPickerTitle = "Transfer Progress Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Maps & Turn Navigation",
-                    subtitle = "Direction turn arrow and distance indicator",
+                    title = stringResource(R.string.color_maps_navigation),
+                    subtitle = stringResource(R.string.color_maps_navigation_desc),
                     icon = Icons.Rounded.Explore,
                     selectedColor = settings.navigationColor,
                     onColorSelected = { scope.launch { repository.setNavigationColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.navigationColor
                         currentColorTarget = "navigation"
-                        colorPickerTitle = "Navigation Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Mobile Hotspot & Tethering",
-                    subtitle = "Connected device badge and broadcast wave",
+                    title = stringResource(R.string.color_hotspot_tethering),
+                    subtitle = stringResource(R.string.color_hotspot_tethering_desc),
                     icon = Icons.Rounded.WifiTethering,
                     selectedColor = settings.hotspotColor,
                     onColorSelected = { scope.launch { repository.setHotspotColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.hotspotColor
                         currentColorTarget = "hotspot"
-                        colorPickerTitle = "Hotspot Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Bluetooth Device",
-                    subtitle = "Headset icon and battery status indicator",
+                    title = stringResource(R.string.color_bluetooth_device),
+                    subtitle = stringResource(R.string.color_bluetooth_device_desc),
                     icon = Icons.Rounded.BluetoothConnected,
                     selectedColor = settings.bluetoothColor,
                     onColorSelected = { scope.launch { repository.setBluetoothColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.bluetoothColor
                         currentColorTarget = "bluetooth"
-                        colorPickerTitle = "Bluetooth Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Flashlight & Torch",
-                    subtitle = "Torch indicator glow and toggle status",
+                    title = stringResource(R.string.color_flashlight_torch),
+                    subtitle = stringResource(R.string.color_flashlight_torch_desc),
                     icon = Icons.Rounded.FlashlightOn,
                     selectedColor = settings.flashlightColor,
                     onColorSelected = { scope.launch { repository.setFlashlightColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.flashlightColor
                         currentColorTarget = "flashlight"
-                        colorPickerTitle = "Flashlight Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Screen Recording",
-                    subtitle = "Active recording pulse dot and timer",
+                    title = stringResource(R.string.color_screen_recording),
+                    subtitle = stringResource(R.string.color_screen_recording_desc),
                     icon = Icons.Rounded.Videocam,
                     selectedColor = settings.screenRecordingColor,
                     onColorSelected = { scope.launch { repository.setScreenRecordingColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.screenRecordingColor
                         currentColorTarget = "screen_recording"
-                        colorPickerTitle = "Screen Recording Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Timer & Countdown",
-                    subtitle = "Countdown ring, hourglass glyph and timer digits",
+                    title = stringResource(R.string.color_timer_countdown),
+                    subtitle = stringResource(R.string.color_timer_countdown_desc),
                     icon = Icons.Rounded.HourglassBottom,
                     selectedColor = settings.timerColor,
                     onColorSelected = { scope.launch { repository.setTimerColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.timerColor
                         currentColorTarget = "timer"
-                        colorPickerTitle = "Timer Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 FeatureColorRow(
-                    title = "Stopwatch & Laps",
-                    subtitle = "Rotating stopwatch icon and elapsed time timer",
+                    title = stringResource(R.string.color_stopwatch_laps),
+                    subtitle = stringResource(R.string.color_stopwatch_laps_desc),
                     icon = Icons.Rounded.AvTimer,
                     selectedColor = settings.stopwatchColor,
                     onColorSelected = { scope.launch { repository.setStopwatchColor(it) } },
                     onCustomClicked = {
                         initialColor = settings.stopwatchColor
                         currentColorTarget = "stopwatch"
-                        colorPickerTitle = "Stopwatch Accent Color"
+                        colorPickerTitle = ""
                         showDialog = true
                     }
                 )
@@ -520,7 +522,7 @@ fun CustomizationsSection(
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Reset All Colors to Studio Defaults", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.btn_reset_colors), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -656,7 +658,7 @@ private fun RgbColorPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = title.ifEmpty { "Select Custom Color" },
+                text = title.ifEmpty { stringResource(R.string.dialog_color_picker_title) },
                 fontWeight = FontWeight.Bold
             )
         },
@@ -694,7 +696,7 @@ private fun RgbColorPickerDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Red", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.color_red), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         Text("$red", style = MaterialTheme.typography.bodyMedium)
                     }
                     Slider(
@@ -711,7 +713,7 @@ private fun RgbColorPickerDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Green", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.color_green), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         Text("$green", style = MaterialTheme.typography.bodyMedium)
                     }
                     Slider(
@@ -728,7 +730,7 @@ private fun RgbColorPickerDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Blue", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.color_blue), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         Text("$blue", style = MaterialTheme.typography.bodyMedium)
                     }
                     Slider(
@@ -747,12 +749,12 @@ private fun RgbColorPickerDialog(
                     onSave(finalColor)
                 }
             ) {
-                Text("Save Color", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.btn_save_color), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )

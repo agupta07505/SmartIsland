@@ -36,6 +36,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,7 +102,7 @@ fun PermissionCard(
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
                             Text(
-                                text = if (granted) "Granted" else "Action required",
+                                text = if (granted) stringResource(R.string.perm_status_granted) else stringResource(R.string.perm_status_action_required),
                                 color = statusColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -118,7 +120,7 @@ fun PermissionCard(
                             contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text("Open", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.btn_open), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
                 } else {
                     Button(
