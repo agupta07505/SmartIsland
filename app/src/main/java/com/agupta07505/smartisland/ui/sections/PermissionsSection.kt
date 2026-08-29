@@ -56,6 +56,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.ui.PermissionCard
 import com.agupta07505.smartisland.util.OemAutostartUtil
 import com.agupta07505.smartisland.util.ShizukuManager
@@ -126,7 +128,7 @@ fun PermissionsSection(
                         }
                         Column {
                             Text(
-                                text = "Shizuku 1-Tap Auto Setup",
+                                text = stringResource(R.string.shizuku_card_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -151,14 +153,13 @@ fun PermissionsSection(
                         onClick = {
                             when {
                                 !ShizukuManager.isInstalled(context) -> {
-                                    Toast.makeText(context, "Shizuku app is not installed on your device", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, context.getString(R.string.shizuku_not_running), Toast.LENGTH_LONG).show()
                                 }
                                 !ShizukuManager.isBinderAvailable() -> {
-                                    Toast.makeText(context, "Shizuku service is not running. Please start Shizuku first.", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, context.getString(R.string.shizuku_not_running), Toast.LENGTH_LONG).show()
                                 }
                                 !ShizukuManager.hasPermission() -> {
                                     ShizukuManager.requestPermission()
-                                    Toast.makeText(context, "Requesting Shizuku permission...", Toast.LENGTH_SHORT).show()
                                 }
                                 else -> {
                                     isExecutingShizuku = true
@@ -166,12 +167,12 @@ fun PermissionsSection(
                                         val result = ShizukuManager.autoGrantAllPermissions(context)
                                         isExecutingShizuku = false
                                         result.onSuccess { msg ->
-                                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, context.getString(R.string.shizuku_success), Toast.LENGTH_LONG).show()
                                             isOemAutostartEnabled = true
                                             isOverlayWarningDisabled = true
                                             onRefreshPermissions()
                                         }.onFailure { err ->
-                                            Toast.makeText(context, "Error: ${err.localizedMessage}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, context.getString(R.string.shizuku_failed, err.localizedMessage ?: ""), Toast.LENGTH_LONG).show()
                                         }
                                     }
                                 }
@@ -181,14 +182,14 @@ fun PermissionsSection(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = if (isExecutingShizuku) "Granting..." else if (ShizukuManager.hasPermission()) "1-Tap Grant" else "Grant Access",
+                            text = if (isExecutingShizuku) stringResource(R.string.shizuku_btn_running) else stringResource(R.string.shizuku_btn_run),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
                 Text(
-                    text = "Automatically grant Accessibility, Notification Access, Battery Optimization, and OEM Autostart in 1 tap without visiting multiple system menus.",
+                    text = stringResource(R.string.shizuku_card_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
@@ -198,28 +199,28 @@ fun PermissionsSection(
 
         // Required Permission 1: Accessibility
         PermissionCard(
-            title = "Accessibility Floating Service",
-            description = "Draws the floating island over the status bar and receives touch gestures without blocking other apps.",
+            title = stringResource(R.string.perm_accessibility_title),
+            description = stringResource(R.string.perm_accessibility_desc),
             granted = overlayGranted,
-            buttonText = "Grant Permission",
+            buttonText = stringResource(R.string.btn_grant),
             onClick = onOverlayClick
         )
 
         // Required Permission 2: Notification Listener
         PermissionCard(
-            title = "Notification Access Listener",
-            description = "Reads incoming notifications to display alerts, media playback, calls, and dynamic island events.",
+            title = stringResource(R.string.perm_notification_title),
+            description = stringResource(R.string.perm_notification_desc),
             granted = notificationGranted,
-            buttonText = "Grant Permission",
+            buttonText = stringResource(R.string.btn_grant),
             onClick = onNotificationClick
         )
 
         // Recommended Permission 3: Battery Optimization
         PermissionCard(
-            title = "Battery Optimization (No Restrictions)",
-            description = "Prevents Android from killing the Smart Island background process when memory gets tight.",
+            title = stringResource(R.string.perm_battery_title),
+            description = stringResource(R.string.perm_battery_desc),
             granted = batteryIgnored,
-            buttonText = "Disable Restrictions",
+            buttonText = stringResource(R.string.btn_grant),
             onClick = onBatteryClick
         )
 

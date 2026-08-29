@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,17 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.ScreenRotation
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.agupta07505.smartisland.ui.SliderSettingItem
+import kotlin.math.roundToInt
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -67,8 +79,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -134,13 +148,13 @@ fun NotificationsAndPrivacySection(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Device Profile & OEM Rules",
+                            text = stringResource(R.string.oem_rules_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Tailored rules for Xiaomi, Samsung, Vivo, Realme, OnePlus & more",
+                            text = stringResource(R.string.oem_rules_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -156,7 +170,7 @@ fun NotificationsAndPrivacySection(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val currentSelectionText = if (settings.deviceType == "AUTO") {
-                        "Auto-Detect: ${detectedDevice.displayName}"
+                        stringResource(R.string.auto_detect_device, detectedDevice.displayName)
                     } else {
                         effectiveDevice.displayName
                     }
@@ -165,7 +179,7 @@ fun NotificationsAndPrivacySection(
                         value = currentSelectionText,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Select Device Manufacturer / ROM") },
+                        label = { Text(stringResource(R.string.select_device_oem)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isDeviceMenuExpanded) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -192,7 +206,7 @@ fun NotificationsAndPrivacySection(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = if (deviceTypeOption == OemDeviceType.AUTO) "Auto-Detect (${detectedDevice.displayName})" else deviceTypeOption.displayName,
+                                            text = if (deviceTypeOption == OemDeviceType.AUTO) stringResource(R.string.auto_detect_device, detectedDevice.displayName) else deviceTypeOption.displayName,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                         )
@@ -227,13 +241,13 @@ fun NotificationsAndPrivacySection(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "Active Rules: ${effectiveDevice.displayName}",
+                            text = stringResource(R.string.active_rules_title, effectiveDevice.displayName),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "• Screen recording & audio recorder packages calibrated\n• In-call dialer & active call state hooked\n• Map navigation protected against false positives\n• Hotspot & tethering status recognized\n• Background autostart intents mapped",
+                            text = stringResource(R.string.active_rules_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
@@ -258,13 +272,13 @@ fun NotificationsAndPrivacySection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Lock Screen & Privacy Guard",
+                    text = stringResource(R.string.lock_screen_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Control island behavior when device is locked and protect sensitive notification contents",
+                    text = stringResource(R.string.lock_screen_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -272,8 +286,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 ToggleRowItem(
-                    title = "Show Island on Lock Screen",
-                    subtitle = "Keep Smart Island floating when device is locked",
+                    title = stringResource(R.string.toggle_show_lock_screen_title),
+                    subtitle = stringResource(R.string.toggle_show_lock_screen_desc),
                     icon = Icons.Rounded.Lock,
                     iconColor = Color(0xFFF59E0B),
                     checked = settings.showOnLockScreen,
@@ -288,7 +302,7 @@ fun NotificationsAndPrivacySection(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Lock Screen Content Privacy Level",
+                            text = stringResource(R.string.privacy_level_title),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -298,13 +312,13 @@ fun NotificationsAndPrivacySection(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             PrivacySegmentButton(
-                                label = "App Icon Only (Private)",
+                                label = stringResource(R.string.privacy_app_icon_only),
                                 selected = settings.lockScreenPrivacy == "AppIconOnly",
                                 onClick = { scope.launch { repository.setLockScreenPrivacy("AppIconOnly") } },
                                 modifier = Modifier.weight(1f)
                             )
                             PrivacySegmentButton(
-                                label = "Full Content Preview",
+                                label = stringResource(R.string.privacy_full_content),
                                 selected = settings.lockScreenPrivacy == "FullContent",
                                 onClick = { scope.launch { repository.setLockScreenPrivacy("FullContent") } },
                                 modifier = Modifier.weight(1f)
@@ -316,8 +330,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = "Network Access & Release Checks",
-                    subtitle = "Allow unauthenticated, read-only queries to GitHub for release updates and insights. Turn off to enforce 100% strict offline mode.",
+                    title = stringResource(R.string.toggle_network_access_title),
+                    subtitle = stringResource(R.string.toggle_network_access_desc),
                     icon = Icons.Rounded.Public,
                     iconColor = Color(0xFF10B981),
                     checked = settings.allowNetworkChecks,
@@ -341,13 +355,13 @@ fun NotificationsAndPrivacySection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Display & Interaction Rules",
+                    text = stringResource(R.string.display_rules_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Customize automatic expansion, quick action buttons, and shade mirroring",
+                    text = stringResource(R.string.display_rules_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -355,8 +369,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 ToggleRowItem(
-                    title = "Auto-Expand on New Notification",
-                    subtitle = "Pop open island card when new alerts arrive, or keep minimized in pill",
+                    title = stringResource(R.string.toggle_auto_expand_title),
+                    subtitle = stringResource(R.string.toggle_auto_expand_desc),
                     icon = Icons.Rounded.NotificationsActive,
                     iconColor = Color(0xFF38BDF8),
                     checked = settings.autoExpandOnNotification,
@@ -365,8 +379,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = "Notification Quick Actions",
-                    subtitle = "Show actionable buttons like Reply, Mark Read, and Dismiss in expanded card",
+                    title = stringResource(R.string.toggle_quick_actions_title),
+                    subtitle = stringResource(R.string.toggle_quick_actions_desc),
                     icon = Icons.Rounded.TouchApp,
                     iconColor = Color(0xFF6366F1),
                     checked = settings.showNotificationActions,
@@ -375,8 +389,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = "Mirror Only (Hide from System Shade)",
-                    subtitle = "Show notification only in Smart Island and hide from default notification shade",
+                    title = stringResource(R.string.toggle_mirror_only_title),
+                    subtitle = stringResource(R.string.toggle_mirror_only_desc),
                     icon = Icons.Rounded.VisibilityOff,
                     iconColor = Color(0xFFA855F7),
                     checked = settings.hideFromNotificationShade,
@@ -385,13 +399,77 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = "Auto-Hide Pill When Idle",
-                    subtitle = "Hide the pill completely when there are no active alerts, music, or dynamic events",
+                    title = stringResource(R.string.toggle_show_in_landscape_title),
+                    subtitle = stringResource(R.string.toggle_show_in_landscape_desc),
+                    icon = Icons.Rounded.ScreenRotation,
+                    iconColor = Color(0xFFF97316),
+                    checked = settings.showInLandscape,
+                    onCheckedChange = { scope.launch { repository.setShowInLandscape(it) } }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    title = stringResource(R.string.toggle_auto_hide_idle_title),
+                    subtitle = stringResource(R.string.toggle_auto_hide_idle_desc),
                     icon = Icons.Rounded.Visibility,
                     iconColor = Color(0xFF06B6D4),
                     checked = settings.hideWhenIdle,
                     onCheckedChange = { scope.launch { repository.setHideWhenIdle(it) } }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    title = stringResource(R.string.toggle_auto_hide_pill_title),
+                    subtitle = stringResource(R.string.toggle_auto_hide_pill_desc),
+                    icon = Icons.Rounded.Timer,
+                    iconColor = Color(0xFF8B5CF6),
+                    checked = settings.autoHidePill,
+                    onCheckedChange = { scope.launch { repository.setAutoHidePill(it) } }
+                )
+
+                AnimatedVisibility(
+                    visible = settings.autoHidePill,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(3, 5, 10, 15, 30).forEach { sec ->
+                                val isSelected = settings.autoHideTimeoutSeconds == sec
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        scope.launch { repository.setAutoHideTimeoutSeconds(sec) }
+                                    },
+                                    label = { Text("${sec}s", fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+
+                        SliderSettingItem(
+                            label = stringResource(R.string.auto_hide_timeout_label),
+                            value = settings.autoHideTimeoutSeconds.toFloat(),
+                            range = 1f..60f,
+                            step = 1f,
+                            suffix = "s",
+                            onValueChange = { newVal ->
+                                scope.launch { repository.setAutoHideTimeoutSeconds(newVal.roundToInt()) }
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -410,13 +488,13 @@ fun NotificationsAndPrivacySection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Live Activities & Navigation",
+                    text = stringResource(R.string.live_nav_services_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Real-time delivery progress, rideshare tracking, and map direction arrows",
+                    text = stringResource(R.string.live_nav_services_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -424,8 +502,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 ToggleRowItem(
-                    title = "Live Delivery & Ride Tracking",
-                    subtitle = "Real-time live badges for Uber, Swiggy, Zomato, Blinkit, Rapido, Ola, etc.",
+                    title = stringResource(R.string.toggle_live_activities_title),
+                    subtitle = stringResource(R.string.toggle_live_activities_desc),
                     icon = Icons.Rounded.DirectionsCar,
                     iconColor = Color(0xFF10B981),
                     checked = settings.liveActivitiesEnabled,
@@ -434,8 +512,8 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = "Turn-by-Turn Map Navigation",
-                    subtitle = "Real-time direction arrows and distance for Google Maps & Waze",
+                    title = stringResource(R.string.toggle_navigation_title),
+                    subtitle = stringResource(R.string.toggle_navigation_desc),
                     icon = Icons.Rounded.Map,
                     iconColor = Color(0xFFF97316),
                     checked = settings.navigationEnabled,
@@ -474,13 +552,13 @@ fun NotificationsAndPrivacySection(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "App Alerts & Sound Manager",
+                    text = stringResource(R.string.app_alerts_manager_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Manage notification display and sound playback on a per-app basis",
+                    text = stringResource(R.string.app_alerts_manager_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -488,7 +566,7 @@ fun NotificationsAndPrivacySection(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search installed applications...") },
+                    placeholder = { Text(stringResource(R.string.search_installed_apps)) },
                     leadingIcon = {
                         Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
@@ -505,12 +583,84 @@ fun NotificationsAndPrivacySection(
 
                 if (filteredApps.isEmpty()) {
                     Text(
-                        text = if (query.isBlank()) "No installed apps found" else "No apps matching \"$query\"",
+                        text = if (query.isBlank()) stringResource(R.string.no_installed_apps_found) else stringResource(R.string.no_apps_matching_query, query),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 12.dp)
                     )
                 } else {
+                    val enabledCount = filteredApps.count { it.packageName !in settings.disabledNotificationPackages }
+                    val allSoundsMuted = filteredApps.all { it.packageName in settings.disabledSoundPackages }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.apps_enabled_count, enabledCount, filteredApps.size),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val targets = filteredApps.map { it.packageName }.toSet()
+                                    val updated = if (allSoundsMuted) {
+                                        settings.disabledSoundPackages - targets
+                                    } else {
+                                        settings.disabledSoundPackages + targets
+                                    }
+                                    scope.launch { repository.setDisabledSoundPackages(updated) }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (allSoundsMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+                                    contentDescription = if (allSoundsMuted) "Unmute all sounds" else "Mute all sounds",
+                                    tint = if (allSoundsMuted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val targets = filteredApps.map { it.packageName }.toSet()
+                                    scope.launch {
+                                        repository.setDisabledNotificationPackages(settings.disabledNotificationPackages - targets)
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text(stringResource(R.string.btn_select_all), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val targets = filteredApps.map { it.packageName }.toSet()
+                                    scope.launch {
+                                        repository.setDisabledNotificationPackages(settings.disabledNotificationPackages + targets)
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text(stringResource(R.string.btn_deselect_all), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f))
                     filteredApps.forEach { app ->
                         val isNotificationEnabled = app.packageName !in settings.disabledNotificationPackages
                         val isSoundEnabled = app.packageName !in settings.disabledSoundPackages

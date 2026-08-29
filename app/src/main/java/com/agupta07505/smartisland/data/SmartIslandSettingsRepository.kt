@@ -69,6 +69,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
         val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
         val HideWhenIdle = booleanPreferencesKey("hide_when_idle")
+        val AutoHidePill = booleanPreferencesKey("auto_hide_pill")
+        val AutoHideTimeoutSeconds = intPreferencesKey("auto_hide_timeout_seconds")
+        val ShowInLandscape = booleanPreferencesKey("show_in_landscape")
         val AutoExpandOnNotification = booleanPreferencesKey("auto_expand_on_notification")
         val EnableShadow = booleanPreferencesKey("enable_shadow")
         val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
@@ -177,6 +180,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
                     ?.toSet()
                     ?: defaults.disabledSoundPackages,
                 hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle,
+                autoHidePill = prefs[Keys.AutoHidePill] ?: defaults.autoHidePill,
+                autoHideTimeoutSeconds = prefs[Keys.AutoHideTimeoutSeconds] ?: defaults.autoHideTimeoutSeconds,
+                showInLandscape = prefs[Keys.ShowInLandscape] ?: defaults.showInLandscape,
                 autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification,
                 enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
                 enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
@@ -352,6 +358,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
     suspend fun setHideWhenIdle(value: Boolean) = editSafely {
         it[Keys.HideWhenIdle] = value
+    }
+    suspend fun setAutoHidePill(value: Boolean) = editSafely {
+        it[Keys.AutoHidePill] = value
+    }
+    suspend fun setAutoHideTimeoutSeconds(value: Int) = editSafely {
+        it[Keys.AutoHideTimeoutSeconds] = value.coerceIn(1, 120)
+    }
+    suspend fun setShowInLandscape(value: Boolean) = editSafely {
+        it[Keys.ShowInLandscape] = value
     }
     suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
         it[Keys.AutoExpandOnNotification] = value

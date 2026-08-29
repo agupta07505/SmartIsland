@@ -7,18 +7,20 @@ name: Automated PR & Issue Review
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
+    branches:
+      - '**'
   issues:
     types: [opened, edited]
 
 permissions:
+  contents: read
   pull-requests: write
   issues: write
-  contents: read
 
 jobs:
   review_pr:
     name: Automated PR Review
-    if: github.event_name == 'pull_request_target' && !github.event.pull_request.draft
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -27,7 +29,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Review PR Content & Guidelines
+      - name: Review PR & Post Review Comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -35,68 +37,186 @@ jobs:
             const pr = context.payload.pull_request;
             const body = pr.body || '';
             const title = pr.title || '';
+            const isDraft = pr.draft === true;
             
-            const comments = [];
             const labelsToAdd = [];
+            const checksPassed = [];
+            const checksWarning = [];
 
-            // Check PR title conventions
-            const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?: .+/;
-            if (!conventionalCommitRegex.test(title)) {
-              comments.push('⚠️ **PR Title Format**: Consider using conventional commits (e.g., `feat(ui): ...`, `fix(overlay): ...`, `docs: ...`) for clear changelog generation.');
+            // 1. Check PR title conventions
+            const conventionalCommitRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|i18n)(\([a-zA-Z0-9_-]+\))?: .+/i;
+            if (conventionalCommitRegex.test(title)) {
+              checksPassed.push('**PR Title**: Follows conventional commit format (`' + title + '`).');
+            } else {
+              checksWarning.push('**PR Title Format**: Consider using conventional commits (e.g. `feat(ui): ...`, `fix(overlay): ...`, `i18n(zh): ...`, `docs: ...`) for clean changelogs.');
             }
 
-            // Check PR Checklist completeness
+            // 2. Check PR Checklist completeness
             const hasChecklist = body.includes('- [x]') || body.includes('- [X]');
             const hasUnchecked = body.includes('- [ ]');
-            if (!hasChecklist && hasUnchecked) {
-              comments.push('📋 **Checklist Incomplete**: Please review and check the relevant items in the PR checklist.');
+            if (hasChecklist && !hasUnchecked) {
+              checksPassed.push('**Checklist**: All checklist items are completed.');
+            } else if (hasUnchecked) {
+              checksWarning.push('**Checklist**: Some checklist items are unchecked. Please review and check applicable items.');
+            } else if (body.trim().length < 20) {
+              checksWarning.push('**Description**: PR description is very brief. Please provide context and details on what was changed.');
+            } else {
+              checksPassed.push('**Description**: Context and description provided.');
             }
 
-            // Detect modified areas by files
+            // 3. Inspect modified files
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number
             });
 
+            const touchedAreas = [];
             let touchesOverlay = false;
             let touchesListener = false;
             let touchesManifest = false;
             let touchesDocs = false;
             let touchesTests = false;
+            let touchesLocalization = false;
+            let touchesUI = false;
+            let touchesPermissions = false;
 
             for (const file of files) {
-              if (file.filename.includes('Overlay')) touchesOverlay = true;
-              if (file.filename.includes('Listener') || file.filename.includes('Notification')) touchesListener = true;
-              if (file.filename.includes('AndroidManifest.xml')) touchesManifest = true;
-              if (file.filename.endsWith('.md') || file.filename.startsWith('docs/')) touchesDocs = true;
-              if (file.filename.includes('src/test/')) touchesTests = true;
+              const name = file.filename;
+              if (name.includes('Overlay') || name.includes('expanded') || name.includes('IslandView')) {
+                touchesOverlay = true;
+              }
+              if (name.includes('Listener') || name.includes('Notification') || name.includes('service/')) {
+                touchesListener = true;
+              }
+              if (name.includes('ui/')) {
+                touchesUI = true;
+              }
+              if (name.includes('Shizuku') || name.includes('Permission')) {
+                touchesPermissions = true;
+              }
+              if (name.includes('res/values') || name.includes('strings.xml') || name.includes('locales_config.xml')) {
+                touchesLocalization = true;
+              }
+              if (name.includes('AndroidManifest.xml')) {
+                touchesManifest = true;
+              }
+              if (name.endsWith('.md') || name.startsWith('docs/')) {
+                touchesDocs = true;
+              }
+              if (name.includes('src/test/')) {
+                touchesTests = true;
+              }
             }
 
-            if (touchesOverlay) labelsToAdd.push('overlay');
-            if (touchesListener) labelsToAdd.push('notifications');
-            if (touchesDocs) labelsToAdd.push('documentation');
+            if (touchesOverlay) { labelsToAdd.push('overlay'); touchedAreas.push('Floating Island & Overlay'); }
+            if (touchesListener) { labelsToAdd.push('notifications'); touchedAreas.push('Notification Listener Service'); }
+            if (touchesUI) { labelsToAdd.push('ui'); touchedAreas.push('Jetpack Compose UI'); }
+            if (touchesPermissions) { labelsToAdd.push('permissions'); touchedAreas.push('Permissions & Shizuku'); }
+            if (touchesLocalization) { labelsToAdd.push('localization'); touchedAreas.push('Translations & Localization'); }
+            if (touchesDocs) { labelsToAdd.push('documentation'); touchedAreas.push('Documentation'); }
+            if (touchesTests) { labelsToAdd.push('tests'); touchedAreas.push('Unit Tests'); }
+
+            // 4. Security & Privacy checks
             if (touchesManifest) {
-              comments.push('🔒 **Manifest Change**: `AndroidManifest.xml` was modified. Please ensure zero unauthorized permissions or exposed services are added without documentation.');
+              checksWarning.push('**Manifest Check**: `AndroidManifest.xml` modified. Verify no unauthorized Internet/tracking permissions or exported components are introduced.');
+            } else {
+              checksPassed.push('**Privacy & Security**: Zero unauthorized manifest changes detected (100% on-device compliance).');
             }
 
-            // Add labels if any
+            if (touchesTests) {
+              checksPassed.push('**Unit Tests**: PR includes test coverage updates (`src/test/`).');
+            } else if (!touchesDocs && !touchesLocalization && (touchesOverlay || touchesListener || touchesPermissions)) {
+              checksWarning.push('**Test Coverage**: Core logic was modified without updated unit tests (`src/test/`). Consider adding regression tests if applicable.');
+            }
+
+            // 5. Add labels
             if (labelsToAdd.length > 0) {
               try {
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: pr.number,
-                  labels: labelsToAdd
+                  labels: [...new Set(labelsToAdd)]
                 });
               } catch (e) {
                 console.log('Error adding labels: ' + e.message);
               }
             }
 
+            // 6. Construct Review Comment Markdown
+            const marker = '<!-- smart-island-pr-review -->';
+            const statusEmoji = checksWarning.length === 0 ? '✅' : '⚠️';
+            const statusTitle = checksWarning.length === 0 ? 'All PR Checks Passed' : 'PR Review Summary & Feedback';
+
+            let commentBody = `${marker}\n## 🤖 Smart Island Automated Code & PR Review\n\n`;
+            commentBody += `### ${statusEmoji} ${statusTitle}\n\n`;
+            commentBody += `Thank you for contributing to **Smart Island**! Here is the automated review summary for PR #${pr.number} (targeting \`${pr.base.ref}\` from \`${pr.head.ref}\`):\n\n`;
+
+            if (isDraft) {
+              commentBody += `> 📝 **Note**: This pull request is currently marked as a **Draft**. Ready it for review when you are ready for final merge checks.\n\n`;
+            }
+
+            if (touchedAreas.length > 0) {
+              commentBody += `#### 🔍 Detected Affected Components:\n`;
+              touchedAreas.forEach(area => {
+                commentBody += `- \`${area}\`\n`;
+              });
+              commentBody += `\n`;
+            }
+
+            if (checksPassed.length > 0) {
+              commentBody += `#### ✅ Passed Checks:\n`;
+              checksPassed.forEach(item => {
+                commentBody += `- ${item}\n`;
+              });
+              commentBody += `\n`;
+            }
+
+            if (checksWarning.length > 0) {
+              commentBody += `#### ⚠️ Action Items & Recommendations:\n`;
+              checksWarning.forEach(item => {
+                commentBody += `- ${item}\n`;
+              });
+              commentBody += `\n`;
+            }
+
+            commentBody += `\n---\n*Smart Island CI: Automated Review & Triage Bot* 🏝️`;
+
+            // 7. Find existing bot comment or create a new one
+            try {
+              const { data: existingComments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number
+              });
+
+              const botComment = existingComments.find(c => c.body && c.body.includes(marker));
+
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: commentBody
+                });
+                console.log('Updated existing PR review comment.');
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: commentBody
+                });
+                console.log('Posted new PR review comment.');
+              }
+            } catch (err) {
+              console.error('Failed to post/update PR review comment: ', err);
+            }
+
   triage_issue:
     name: Automated Issue Triage & Review
-    if: github.event_name == 'issues' && github.event.action == 'opened'
+    if: github.event_name == 'issues' && (github.event.action == 'opened' || github.event.action == 'edited')
     runs-on: ubuntu-latest
     steps:
       - name: Review & Triage Issue
@@ -108,18 +228,40 @@ jobs:
             const body = issue.body || '';
             const title = issue.title || '';
             const labelsToAdd = [];
+            const marker = '<!-- smart-island-issue-triage -->';
 
             // Detect category
-            if (title.toLowerCase().startsWith('[bug]') || body.toLowerCase().includes('steps to reproduce')) {
+            let isBug = title.toLowerCase().startsWith('[bug]') || body.toLowerCase().includes('steps to reproduce') || body.toLowerCase().includes('actual behavior');
+            let isFeature = title.toLowerCase().startsWith('[feat]') || title.toLowerCase().startsWith('[feature]') || body.toLowerCase().includes('feature request') || body.toLowerCase().includes('expected behavior');
+            let isQuestion = title.toLowerCase().startsWith('[question]') || body.toLowerCase().includes('how do i') || body.toLowerCase().includes('help');
+
+            if (isBug) {
               labelsToAdd.push('bug');
-            } else if (title.toLowerCase().startsWith('[feat]') || title.toLowerCase().startsWith('[feature]') || body.toLowerCase().includes('expected behavior')) {
+            } else if (isFeature) {
               labelsToAdd.push('enhancement');
+            } else if (isQuestion) {
+              labelsToAdd.push('question');
             }
 
             // Check for OEM mentions
-            const oemKeywords = ['samsung', 'oneui', 'xiaomi', 'miui', 'hyperos', 'oneplus', 'oxygenos', 'oppo', 'coloros', 'realme', 'vivo', 'iqoo', 'funtouch', 'huawei', 'honor'];
-            const mentionsOem = oemKeywords.some(kw => body.toLowerCase().includes(kw) || title.toLowerCase().includes(kw));
-            if (mentionsOem) {
+            const oemKeywords = [
+              { name: 'Samsung (One UI)', keys: ['samsung', 'oneui', 'one ui', 'galaxy'] },
+              { name: 'Xiaomi / Poco / Redmi (HyperOS / MIUI)', keys: ['xiaomi', 'miui', 'hyperos', 'poco', 'redmi'] },
+              { name: 'OnePlus / Oppo / Realme (OxygenOS / ColorOS / RealmeUI)', keys: ['oneplus', 'oxygenos', 'oppo', 'coloros', 'realme', 'realmeui'] },
+              { name: 'Vivo / iQOO (FuntouchOS / OriginOS)', keys: ['vivo', 'iqoo', 'funtouch', 'originos'] },
+              { name: 'Huawei / Honor (EMUI / MagicOS)', keys: ['huawei', 'honor', 'emui', 'magicos'] },
+              { name: 'Motorola (MyUX / Hello UI)', keys: ['motorola', 'moto', 'myux', 'hello ui'] },
+              { name: 'Transsion (Tecno / Infinix / Itel)', keys: ['tecno', 'infinix', 'itel', 'hios', 'xos'] }
+            ];
+
+            const detectedOems = [];
+            for (const oem of oemKeywords) {
+              if (oem.keys.some(k => title.toLowerCase().includes(k) || body.toLowerCase().includes(k))) {
+                detectedOems.push(oem.name);
+              }
+            }
+
+            if (detectedOems.length > 0) {
               labelsToAdd.push('oem-specific');
             }
 
@@ -130,9 +272,67 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issue.number,
-                  labels: labelsToAdd
+                  labels: [...new Set(labelsToAdd)]
                 });
               } catch (e) {
                 console.log('Error adding labels: ' + e.message);
               }
+            }
+
+            // Construct Triage Comment
+            let triageComment = `${marker}\n## 🏝️ Smart Island Issue Triage\n\n`;
+            triageComment += `Thank you for reaching out and opening this issue! @${issue.user.login}\n\n`;
+
+            if (isBug) {
+              triageComment += `### 🐛 Bug Report Triaged\n`;
+              triageComment += `To help us diagnose and resolve this quickly, please verify:\n`;
+              triageComment += `- [ ] **Device Model & Android Version** provided\n`;
+              triageComment += `- [ ] **OEM Skin / ROM** specified (e.g. OneUI 6, HyperOS 1.0, OxygenOS 14)\n`;
+              triageComment += `- [ ] **Permissions Status**: Verified Accessibility, Notification Access, and OEM Autostart / Battery optimization whitelist\n`;
+              triageComment += `- [ ] **Steps to reproduce** clearly outlined\n\n`;
+              triageComment += `> 🔒 **Privacy Reminder**: Please do not paste logs or screenshots containing personal notification messages or sensitive tokens.\n\n`;
+            } else if (isFeature) {
+              triageComment += `### 💡 Feature Request Received\n`;
+              triageComment += `We appreciate ideas that expand Smart Island while keeping it lightweight, privacy-focused (100% on-device), and battery-friendly!\n`;
+              triageComment += `Feel free to join our [Telegram Community](https://telegram.me/SmartIslandApp) to discuss design prototypes and animation ideas.\n\n`;
+            } else {
+              triageComment += `### 💬 Issue Registered\n`;
+              triageComment += `A maintainer will review your issue shortly. For real-time community chat and support, you can also join the [Telegram Group](https://telegram.me/SmartIslandApp).\n\n`;
+            }
+
+            if (detectedOems.length > 0) {
+              triageComment += `**Detected OEM Platform(s)**: ${detectedOems.join(', ')}\n\n`;
+            }
+
+            triageComment += `---\n*Smart Island Automated Issue Triage Bot*`;
+
+            // Post or update comment
+            try {
+              const { data: existingComments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number
+              });
+
+              const botComment = existingComments.find(c => c.body && c.body.includes(marker));
+
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: triageComment
+                });
+                console.log('Updated existing issue triage comment.');
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: triageComment
+                });
+                console.log('Posted new issue triage comment.');
+              }
+            } catch (err) {
+              console.error('Failed to post/update issue triage comment: ', err);
             }

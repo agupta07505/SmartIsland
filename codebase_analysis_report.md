@@ -1,6 +1,6 @@
 # Smart Island - Codebase & Architecture Analysis
 
-This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application (reflecting the **v5.2.0** baseline).
+This document presents a comprehensive, technical deep-dive into the architecture, design, and implementation of the **Smart Island** Android application (reflecting the **v6.0.0** baseline).
 
 ---
 
@@ -24,7 +24,7 @@ graph TD
     SER -->|Forward Charging / Battery State| NR
     
     %% Settings
-    MA[MainActivity / Settings UI] -->|Update Sliders & Toggles| SR[SmartIslandSettingsRepository]
+    MA[MainActivity / Settings UI] -->|Update Sliders, Inactivity & Toggles| SR[SmartIslandSettingsRepository]
     
     %% UI State & Rendering
     SR -->|Flow Settings Updates| VM[IslandViewModel]
@@ -33,7 +33,7 @@ graph TD
     
     %% Overlay UI
     OS -->|Draws overlay ComposeView| OV[IslandOverlayView / IslandExpandedContent]
-    OV -->|Gestures: 5-Gesture Engine & Inline Reply| VM
+    OV -->|Gestures: 5-Gesture Engine, Tap-to-Open & Inline Reply| VM
     VM -->|Switch Focus & Soft Input| OS
     VM -->|Remove notification & cancel in system| NR
 ```
@@ -67,6 +67,7 @@ graph TD
 * **Mechanism:**
   * **Application Overlay Window:** Inflates and manages a custom `ComposeView` drawn on the window manager using the `TYPE_APPLICATION_OVERLAY` flag.
   * **Dynamic Soft-Keyboard Focus Switching:** Dynamically flips WindowManager flags between `FLAG_NOT_FOCUSABLE` (for standard touch pass-through to background apps) and `FLAG_ALT_FOCUSABLE_IM` (to accept direct keyboard input during **Inline Reply** without locking up the OS).
+  * **Landscape Mode Handling:** Dynamically adapts overlay positioning during screen rotation or auto-hides based on `showInLandscape` setting.
   * **Overlay View Tree Owners:** Attaches custom Lifecycle, ViewModel, and SavedStateRegistry owners defined in [OverlayViewTreeOwners](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/service/OverlayViewTreeOwners.kt) directly to the window-hosted `ComposeView`. This enables Jetpack Compose components and animations to run safely within the Service context without throwing standard runtime Activity missing context exceptions.
 
 ### 2.3. Touch Pass-Through & Reflection Workaround
@@ -97,7 +98,7 @@ Swiping down on an expanded notification opens its origin app in a floating wind
 
 State is persisted and exposed reactively using a repository pattern:
 
-* **[SmartIslandSettingsRepository](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/data/SmartIslandSettingsRepository.kt):** Uses Android Jetpack `DataStore` (Preferences) to persist user configurations (X/Y offsets, sizes, colors, enabled status). Exposes a reactive `Flow<SmartIslandSettings>`.
+* **[SmartIslandSettingsRepository](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/data/SmartIslandSettingsRepository.kt):** Uses Android Jetpack `DataStore` (Preferences) to persist user configurations (X/Y offsets, sizes, colors, enabled status, auto-hide duration, landscape visibility). Exposes a reactive `Flow<SmartIslandSettings>`.
 * **[SmartIslandNotificationRepository](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/data/SmartIslandNotificationRepository.kt):** Holds active notifications in a thread-safe `MutableStateFlow<List<IslandNotification>>`. It receives posting/removal commands from services, synchronizing state with the UI.
 
 ---
@@ -108,28 +109,31 @@ The UI is built with custom-themed Jetpack Compose components. It implements hig
 
 ### 4.1. Gestural Interactions & Animation Flow
 The [IslandOverlayView](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandOverlayView.kt) implements custom touch interceptors:
+* **Tap Collapsed Pill:** Expands into the full interactive Smart Island card.
+* **Tap Neutral Expanded Background:** Opens the target application directly and collapses the card.
 * **Tap Outside:** Triggers the collapse animation of the expanded island.
+* **Auto-Hide Inactivity Timer & Tap-to-Awaken:** Shrinks pill to 0 size when left inactive for `autoHideTimeoutSeconds`, presenting an invisible touch area that awakens the pill on first tap.
 * **Vertical Swiping:** Uses `detectVerticalDragGestures`:
     * **Swipe Up (Drag $< -35\text{dp}$):** Dismisses and clears the active notification.
+    * **Hold + Swipe Up (300ms haptic):** Dismisses all notifications simultaneously.
     * **Swipe Down (Drag $> 35\text{dp}$):** Closes the island and launches the target application in freeform/floating window mode.
     * **Release Bounce:** On release, any drag offset is animated back to `0f` using Compose's bouncy spring animation specs.
-  * **Horizontal Swiping:** Uses `detectHorizontalDragGestures` to swipe between pages of active stacked notifications, updating the active index and interpolating heights.
+* **Horizontal Swiping:** Uses `detectHorizontalDragGestures` to swipe between pages of active stacked notifications, updating the active index and interpolating heights.
 * **Stack Indicator:** When more than 1 notification is active, the collapsed island draws concentric black arcs (`drawArc`) behind the left and right sides of the pill, visually indicating a stack of items.
 
 ### 4.2. Collapsed Visual Indicators
 The [IslandCollapsedContent](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandCollapsedContent.kt) contains slots tailored to the active mode:
 * **Left Slot:** Displays the app icon, caller contact picture, or media album art.
-* **Center Slot:** A solid black circle that aligns with the physical front camera hole cutout.
 * **Right Slot:** Contains dynamic indicators:
   * **Notification Mode:** A customizable blue notification dot.
   * **Call Mode:** An active timer (`CallTimer`) that updates elapsed time in `MM:SS` format.
-  * **Music Mode:** A live 3-bar Audio Visualizer animation powered by infinite repeating scale animations.
+  * **Music Mode:** A live 3-bar Audio Visualizer animation powered by GPU-accelerated Compose `graphicsLayer` scaling.
   * **Battery Mode:** A custom battery percent text displaying next to the charging glyph.
 
 ### 4.3. Custom Graphics
 * **Dotted Battery Ring:** ([DottedRing](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/components/DottedRing.kt)) A custom-drawn circular charging indicator. It uses infinite rotation and scale animations on the central bolt icon inside a custom dotted progress path.
 * **Wavy Seek Bar:** ([WavyMusicSeekBar](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/WavyMusicSeekBar.kt)) A custom music progress bar displaying a sine wave pattern that animates dynamically when music is playing.
-* **Click Bounce:** ([BounceClick](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/BounceClick.kt)) A custom modifier that runs callbacks after scaling the button down to `0.94f` on click.
+* **Click Bounce:** ([BounceClick](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/BounceClick.kt)) A custom modifier that scales buttons down to `0.90f` on press and rebounds with high-frequency tactile spring physics (`dampingRatio = MediumBouncy`, `stiffness = StiffnessMedium`).
 
 ---
 

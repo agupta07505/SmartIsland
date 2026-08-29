@@ -105,6 +105,7 @@ fun IslandOverlayView(
     val currentOnDismiss by rememberUpdatedState(onDismissNotification)
     val currentOnDismissAll by rememberUpdatedState(onDismissAllNotifications)
     val currentOnOpenFloatingWindow by rememberUpdatedState(onOpenFloatingWindow)
+    val currentOnOpenNotification by rememberUpdatedState(onOpenNotification)
     val currentExpanded by rememberUpdatedState(expanded)
     val haptic = LocalHapticFeedback.current
 
@@ -120,32 +121,35 @@ fun IslandOverlayView(
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
     val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.6f,
-        stiffness = 300f
+        dampingRatio = 0.72f,
+        stiffness = 520f
     )
     val sizeSpecFloat = spring<Float>(
-        dampingRatio = 0.6f,
-        stiffness = 300f
+        dampingRatio = 0.72f,
+        stiffness = 520f
     )
     val heightSpec = spring<androidx.compose.ui.unit.Dp>(
-        // Height must never overshoot its measured content. Overshoot is
-        // especially visible on the compact battery card as empty black space.
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
+        dampingRatio = 0.76f,
+        stiffness = 520f
     )
     val alphaSpec = tween<Float>(
-        durationMillis = 280,
+        durationMillis = 190,
         easing = FastOutSlowInEasing
     )
 
-    // FIX: Start from collapsed height so the transition target never jumps
-    // to a hardcoded 160dp. Content measurement updates this within 1-2 frames,
-    // and the spring animation smoothly interpolates to the real height.
-    //
-    // Keyed on `expanded` so it resets to collapsed height on every expand/collapse
-    // cycle, avoiding stale measurements from a previous expansion.
-    var expandedHeight by remember(expanded) {
-        mutableStateOf(if (notifications.isEmpty()) 135.dp else settings.height.dp)
+    val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
+    val activeNotification = notifications.getOrNull(safeIndex)
+    val activeMode = activeNotification?.mode ?: IslandMode.Empty
+
+    val initialEstimatedHeight = remember(activeMode, notifications.isEmpty()) {
+        if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
+    }
+    var expandedHeight by remember { mutableStateOf(initialEstimatedHeight) }
+
+    LaunchedEffect(activeMode, notifications.isEmpty()) {
+        if (!expanded) {
+            expandedHeight = if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
+        }
     }
 
     val compactGap = COMPACT_INDICATOR_GAP_DP.dp
@@ -171,17 +175,39 @@ fun IslandOverlayView(
     }
     val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
 
+    var isAutoHidden by remember { mutableStateOf(false) }
+    var userInteractionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    // Reset auto-hide whenever active notifications change or selection changes
+    LaunchedEffect(notifications.map { it.key }, selectedIndex) {
+        isAutoHidden = false
+        userInteractionTimestamp = System.currentTimeMillis()
+    }
+
+    // Auto-hide countdown timer when pill is collapsed and autoHidePill is enabled
+    LaunchedEffect(expanded, settings.autoHidePill, settings.autoHideTimeoutSeconds, userInteractionTimestamp) {
+        if (expanded || !settings.autoHidePill) {
+            isAutoHidden = false
+            return@LaunchedEffect
+        }
+        val timeoutMs = (settings.autoHideTimeoutSeconds.coerceAtLeast(1) * 1000L)
+        kotlinx.coroutines.delay(timeoutMs)
+        isAutoHidden = true
+    }
+
+    val isHiding = isIdleHiding || (settings.autoHidePill && isAutoHidden)
+
     val width by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandWidth") {
-        if (it) expandedWidth else if (isIdleHiding) 0.dp else settings.width.dp
+        if (it) expandedWidth else if (isHiding) 0.dp else settings.width.dp
     }
     val height by transition.animateDp(transitionSpec = { heightSpec }, label = "islandHeight") {
-        if (it) expandedHeight else if (isIdleHiding) 0.dp else settings.height.dp
+        if (it) expandedHeight else if (isHiding) 0.dp else settings.height.dp
     }
     val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
         if (it) expandedTopOffset else 0.dp
     }
     val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
-        if (it) 34.dp else if (isIdleHiding) 0.dp else settings.cornerRadius.dp
+        if (it) 34.dp else if (isHiding) 0.dp else settings.cornerRadius.dp
     }
     val animatedXOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandXOffset") {
         if (it) 0.dp else collapsedMainOffset
@@ -191,7 +217,7 @@ fun IslandOverlayView(
         transitionSpec = { alphaSpec },
         label = "collapsedAlpha"
     ) {
-        if (it || isIdleHiding) 0f else 1f
+        if (it || isHiding) 0f else 1f
     }
 
     val expandedAlpha by transition.animateFloat(
@@ -205,38 +231,44 @@ fun IslandOverlayView(
         transitionSpec = { sizeSpecFloat },
         label = "contentScale"
     ) {
-        if (it) 1f else 0.92f
+        if (it) 1f else 0.95f
     }
 
     val contentSlideY by transition.animateDp(
         transitionSpec = { sizeSpec },
         label = "contentSlideY"
     ) {
-        if (it) 0.dp else (-12).dp
+        if (it) 0.dp else (-6).dp
     }
 
     val safeWidth = width.coerceAtLeast(0.dp)
     val safeHeight = height.coerceAtLeast(0.dp)
     val safeRadius = radius.coerceAtLeast(0.dp)
 
-    val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
-    val activeNotification = notifications.getOrNull(safeIndex)
-    val activeMode = activeNotification?.mode ?: IslandMode.Empty
-
-    // Tactile spring scale bounce animation when switching active items between pill and circle
+    // Tactile spring scale bounce animation only when user switches between active notifications
     val switchScaleAnim = remember { androidx.compose.animation.core.Animatable(1f) }
+    var isInitialComposition by remember { mutableStateOf(true) }
+    var lastSelectedIndex by remember { mutableStateOf(selectedIndex) }
     LaunchedEffect(selectedIndex) {
-        switchScaleAnim.animateTo(
-            targetValue = 0.88f,
-            animationSpec = tween(60, easing = FastOutSlowInEasing)
-        )
-        switchScaleAnim.animateTo(
-            targetValue = 1f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMedium
+        if (isInitialComposition) {
+            isInitialComposition = false
+            lastSelectedIndex = selectedIndex
+            return@LaunchedEffect
+        }
+        if (lastSelectedIndex != selectedIndex) {
+            lastSelectedIndex = selectedIndex
+            switchScaleAnim.animateTo(
+                targetValue = 0.92f,
+                animationSpec = tween(40, easing = FastOutSlowInEasing)
             )
-        )
+            switchScaleAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = 650f
+                )
+            )
+        }
     }
 
     // Dual Pill (Multi-Tasking Split Island) Detection:
@@ -260,18 +292,18 @@ fun IslandOverlayView(
     val showTertiaryPill = compactShapes.size == 2 && tertiaryNotification != null
 
     val secondaryAlpha by animateFloatAsState(
-        targetValue = if (isSplitMode) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        targetValue = if (isSplitMode && !isHiding) 1f else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "secondaryAlpha"
     )
     val secondaryScale by animateFloatAsState(
-        targetValue = if (isSplitMode) 1f else 0.4f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (isSplitMode && !isHiding) 1f else 0.3f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
         label = "secondaryScale"
     )
     val secondaryBubbleWidth by animateDpAsState(
         targetValue = if (secondaryIsPill) miniPillWidth else circleSize,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryBubbleWidth"
     )
     val secondaryPillProgress = (miniPillWidth - circleSize).value.let { widthDelta ->
@@ -283,17 +315,17 @@ fun IslandOverlayView(
     }
     val secondaryBubbleCorner by animateDpAsState(
         targetValue = if (secondaryIsPill) settings.cornerRadius.dp else circleSize / 2f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryBubbleCorner"
     )
     val tertiaryAlpha by animateFloatAsState(
-        targetValue = if (showTertiaryPill) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        targetValue = if (showTertiaryPill && !isHiding) 1f else 0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "tertiaryAlpha"
     )
     val tertiaryScale by animateFloatAsState(
-        targetValue = if (showTertiaryPill) 1f else 0.4f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (showTertiaryPill && !isHiding) 1f else 0.3f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
         label = "tertiaryScale"
     )
 
@@ -309,7 +341,7 @@ fun IslandOverlayView(
             secondaryIsPill -> if (isFullWidth) (expandedCompactX - screenCenter + miniPillWidth / 2f) else 0.dp
             else -> if (isFullWidth) (expandedCompactX + miniPillWidth + compactGap - screenCenter + circleSize / 2f) else ((miniPillWidth + compactGap) / 2f)
         },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryOffset"
     )
 
@@ -334,8 +366,8 @@ fun IslandOverlayView(
         contentAlignment = Alignment.TopCenter
     ) {
 
-        // Invisible touch target over the pill location when idle-hiding, so tapping the camera cutout opens shortcuts
-        if (isIdleHiding && !currentExpanded) {
+        // Invisible touch target over the pill location when hiding, so tapping the area reveals the pill or opens shortcuts
+        if (isHiding && !currentExpanded) {
             Box(
                 modifier = Modifier
                     .width(settings.width.dp)
@@ -345,7 +377,14 @@ fun IslandOverlayView(
                     }
                     .pointerInput(Unit) {
                         detectTapGestures {
-                            currentOnToggle()
+                            if (settings.autoHidePill && isAutoHidden) {
+                                // First tap on auto-hidden pill: awaken and reveal the pill
+                                isAutoHidden = false
+                                userInteractionTimestamp = System.currentTimeMillis()
+                            } else {
+                                // Empty notifications idle hiding: expand favorite shortcuts
+                                currentOnToggle()
+                            }
                         }
                     }
             )
@@ -363,7 +402,7 @@ fun IslandOverlayView(
                     scaleY = switchScaleAnim.value
                 }
                 .then(
-                    if (settings.enableShadow && !isIdleHiding) {
+                    if (settings.enableShadow && !isHiding) {
                         Modifier.shadow(
                             elevation = if (currentExpanded) 22.dp else 14.dp,
                             shape = RoundedCornerShape(safeRadius),
@@ -379,6 +418,7 @@ fun IslandOverlayView(
                     if (isInputActive) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        userInteractionTimestamp = System.currentTimeMillis()
                         val pressTimeMs = System.currentTimeMillis()
                         var isHoldRegistered = false
                         var dragAccumulator = 0f
@@ -413,7 +453,14 @@ fun IslandOverlayView(
                                     } else if (isDragging && dragOffset > swipeDownThreshold) {
                                         currentOnOpenFloatingWindow()
                                     } else if (!isDragging || abs(dragOffset) < 10f) {
-                                        SmartIslandRepositories.notificationRepository(context).resetTimer()
+                                        if (!isHoldRegistered) {
+                                            val currentNotification = notifications.getOrNull(safeIndex)
+                                            if (currentNotification != null) {
+                                                currentOnOpenNotification(currentNotification)
+                                            } else {
+                                                SmartIslandRepositories.notificationRepository(context).resetTimer()
+                                            }
+                                        }
                                     }
                                 } else {
                                     if (!isDragging || abs(dragOffset) < 10f) {
@@ -478,10 +525,8 @@ fun IslandOverlayView(
                 }
             }
 
-            // Expanded content layer — only compose when truly expanded (not during collapse)
-            // Fix #3: This prevents expanded IconButtons/clickables from stealing taps
-            // during the collapse animation
-            if (expanded) {
+            // Expanded content layer — smoothly fade out while collapsing
+            if (expanded || expandedAlpha > 0.01f) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -762,6 +807,19 @@ private fun triggerHapticVibration(context: android.content.Context) {
 }
 
 internal enum class CompactNotificationShape { MiniPill, Circle }
+
+internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
+    return when (mode) {
+        IslandMode.Music -> 175.dp
+        IslandMode.Notification -> 135.dp
+        IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
+        IslandMode.LiveActivity, IslandMode.Navigation -> 180.dp
+        IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
+        IslandMode.Bluetooth, IslandMode.Flashlight, IslandMode.ScreenRecording,
+        IslandMode.Timer, IslandMode.Stopwatch -> 115.dp
+        IslandMode.Empty, null -> 135.dp
+    }
+}
 
 internal fun compactNotificationShapes(
     notificationCount: Int,

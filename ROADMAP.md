@@ -1,6 +1,6 @@
 # Smart Island Product Roadmap
 
-Last updated: August 26, 2026
+Last updated: August 29, 2026
 
 ## Product direction
 
@@ -14,11 +14,15 @@ The roadmap follows three core principles:
 
 ---
 
-## Current baseline (v5.2.0)
+## Current baseline (v6.0.0)
 
 Smart Island currently provides:
 
 - A Compose-based floating overlay on Android 8+ (API 26 through API 36)
+- **Ultra-Fluid Spring Physics Engine**: Unified 520f spring morphing, instant 190ms cross-fades, and 220ms overlay window resize
+- **Tap Anywhere to Open Target App**: Neutral taps on expanded cards open source apps with ongoing music protection
+- **Auto-Hide Pill Inactivity Timer**: Configurable timeout (1s–60s) with 1-tap presets and tap-to-reveal gesture
+- **Landscape Mode Visibility Control**: Opt-in toggle to keep island active and repositioned in landscape orientation
 - Complete **Material 3 Expressive** design system with Android 12+ wallpaper dynamic color adaptation
 - **Island Background Opacity & Transparency Controls**: Continuous opacity adjustment (20% to 100%) with 4 quick presets (Solid, Dark, Glass, Clear)
 - **High-Performance Virtualized Notification History**: Ultra-fast `LazyColumn` log with `AppIconMemoryCache`, search bar, date grouping, and **Delete by App** bulk management
@@ -44,7 +48,6 @@ Smart Island currently provides:
 - **Message Sync Filtering**: Background chat polling (Snapchat, WhatsApp) excluded from download mode
 - **Custom RGB Slider Color Picker**: Fine-grained color customization for all 13 modes
 - **Grouped Settings Hub Architecture** with minimal Category Hub Cards
-- **Landscape orientation detection** for automatic overlay hiding during full-screen apps
 - **Shizuku 1-Tap Auto Setup** for automated system permission granting
 - **Lock screen privacy guard** with sensitive notification content protection
 - **100% Local Processing** and DataStore persistence
@@ -60,11 +63,25 @@ Smart Island currently provides:
 | **v5.0.0** | Aug 2026 | Battery Saver, App Icons & 5-Gesture Engine | Low Battery/Saver modes, full-color app launcher icons, sync filtering, 5 gestures text guide, and stable CI *(Released)* |
 | **v5.1.0** | Aug 2026 | Inline Reply, Timers, History & OEM Engine | Direct inline text replies, Timer & Stopwatch island modes, SQLite history hub, OEM background rules engine *(Released)* |
 | **v5.2.0** | Aug 2026 | Opacity Customization, History Virtualization & Stability | Island opacity controls (20-100%), Delete-by-App history, virtualized LazyColumn, interactive gesture guide, and multi-device crash fixes *(Released)* |
-| **v5.3** | Q4 2026 - Q1 2027 | Face Unlock, Custom Sounds & Dynamic Widgets | Face Unlock animation overlay, dynamic Calendar/Reminder glance widgets, and customizable micro-sound packs |
-| **v5.4** | Q1 2027 | System Profiles & Floating Window Polish | Contextual environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
-| **v6.0** | Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
+| **v6.0.0** | Aug 2026 | Ultra-Fluid Spring Physics, Tap-to-Open & Auto-Hide | Synchronized 520f spring physics, tap-to-open apps, inactivity auto-hide timer, landscape mode visibility, and flicker elimination *(Released)* |
+| **v6.1** | Q4 2026 - Q1 2027 | Face Unlock, Custom Sounds & Dynamic Widgets | Face Unlock animation overlay, dynamic Calendar/Reminder glance widgets, and customizable micro-sound packs |
+| **v6.2** | Q1 2027 | System Profiles & Floating Window Polish | Contextual environment profiles (Gaming, Work, Theater, Sleep), advanced Shizuku automation, and freeform docking presets |
+| **v7.0** | Q2 2027 | Ecosystem & Local Cross-Device Sync | Plugin extension architecture and local cross-device status sharing (Bluetooth LE / LAN) with zero cloud dependencies |
 
 *Dates are planning targets. A phase moves forward only after its release gates and automated CI suites are fully validated.*
+
+---
+
+## Released — v6.0.0: Ultra-Fluid Spring Physics, Tap-to-Open, Auto-Hide & Landscape Mode
+
+Released August 29, 2026.
+
+- **Ultra-Fluid Spring Animation Engine**: Synchronized width and height morphing to high-fluidity spring curves (`stiffness = 520f`, `dampingRatio = 0.72f`), reduced cross-fade durations to 190ms, and tuned window collapse cleanup to 220ms.
+- **Tap Anywhere on Expanded Cards to Open App**: Direct application launch from background/text/artwork on all expanded cards with ongoing music state preservation.
+- **Auto-Hide Pill Inactivity Timer with Tap-to-Reveal**: Customizable timeout (1s to 60s) with 1-tap presets and invisible touch target to awaken the pill on tap.
+- **Landscape Mode Visibility Toggle**: Option to keep Smart Island active and dynamically repositioned during device rotation.
+- **Animation Flicker & Cutout Artifact Fixes**: Eliminated height jumps, window clipping, redundant updateLayout churn, and cutout double alpha blending.
+- **Complete Chinese & Portuguese Localization**: 100% translation parity across all new settings and dialogs.
 
 ---
 

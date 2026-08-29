@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Smart Island (2026)
+  © Animesh Gupta — github.com/agupta07505
+  Licensed under the GNU GPL v3 License
+  Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+-->
+<resources>
+    <!-- Application Info -->
+    <string name="app_name">Smart Island</string>
+    <string name="app_subtitle">悬浮动态灵动岛</string>
+    <string name="app_description">Smart Island 为 Android 重塑通知体验，带来精美的悬浮交互、实时动态控制与丝滑动画，让重要信息尽收眼底。</string>
+    <string name="accessibility_service_label">Smart Island 服务</string>
+    <string name="accessibility_service_description">允许 Smart Island 悬浮在状态栏之上，让您可以轻触摄像头挖孔周围的药丸区域，且不受触摸干扰。</string>
+    <string name="grant_accessibility">授予无障碍权限以在状态栏上方启动悬浮窗</string>
+    <string name="made_by">由 Animesh Gupta 用 ❤️ 制作</string>
+
+    <!-- Navigation Tabs -->
+    <string name="tab_studio">工作室</string>
+    <string name="tab_position">挖孔与布局</string>
+    <string name="tab_settings">设置</string>
+    <string name="tab_features">功能</string>
+    <string name="tab_system">系统与关于</string>
+
+    <!-- Master Switch & Status -->
+    <string name="master_switch_title">Smart Island 总开关</string>
+    <string name="master_switch_active_desc">悬浮窗已激活并浮动在状态栏上方</string>
+    <string name="master_switch_ready_desc">准备就绪。开启开关即可启动。</string>
+    <string name="master_switch_missing_desc">启动前缺少必要权限</string>
+    <string name="status_active">运行中</string>
+    <string name="status_ready">就绪</string>
+    <string name="status_setup_needed">需要配置</string>
+    <string name="status_action_required">需要操作</string>
+    <string name="btn_grant_required_permissions">授予必要权限以启用 →</string>
+    <string name="enable_smart_island">启用 Smart Island</string>
+    <string name="overlay_ready">悬浮窗服务已就绪</string>
+    <string name="grant_overlay">授予悬浮窗权限以启动</string>
+
+    <!-- Simulation Lab & Test Controls -->
+    <string name="simulation_lab_title">动态模拟实验室</string>
+    <string name="simulation_lab_desc">一键测试并模拟各类灵动岛模式</string>
+    <string name="mode_music_player">音乐播放器</string>
+    <string name="mode_incoming_call">来电呼入</string>
+    <string name="mode_notification">应用通知</string>
+    <string name="mode_battery_charge">电池充电</string>
+    <string name="mode_live_activity">实时活动</string>
+    <string name="mode_turn_navigation">路线导航</string>
+    <string name="mode_file_transfer">文件传输</string>
+    <string name="mode_hotspot_share">热点共享</string>
+    <string name="mode_bluetooth">蓝牙设备</string>
+    <string name="mode_flashlight">手电筒</string>
+    <string name="mode_screen_recording">屏幕录制</string>
+    <string name="mode_timer">计时器</string>
+    <string name="mode_stopwatch">秒表</string>
+    <string name="btn_clear_all_test_notifications">清除所有测试通知</string>
+    <string name="toast_cleared_test_notifications">已清除活跃的演示提示</string>
+    <string name="quick_test_controls">快捷测试控制</string>
+    <string name="btn_notify">通知</string>
+    <string name="btn_call">电话</string>
+    <string name="btn_music">音乐</string>
+    <string name="btn_battery">电池</string>
+    <string name="btn_clear_test">清除测试通知</string>
+
+    <!-- System Diagnostics -->
+    <string name="system_diagnostics_title">系统诊断</string>
+    <string name="system_diagnostics_desc">硬件权限与后台运行状态</string>
+    <string name="diag_accessibility">无障碍服务</string>
+    <string name="diag_notifications">通知读取</string>
+    <string name="diag_battery_saver">电池优化</string>
+
+    <!-- Settings Overview -->
+    <string name="settings_overview_title">设置与偏好</string>
+    <string name="settings_overview_desc">配置灵动岛行为、颜色、手势、系统权限与更新</string>
+    <string name="category_behaviors_launcher">灵动岛行为与启动器</string>
+    <string name="category_appearance_controls">外观与控制</string>
+    <string name="category_system_core">系统与核心服务</string>
+    <string name="category_about_community">关于与社区</string>
+    <string name="configure_features">功能配置</string>
+    <string name="sec_permissions">权限</string>
+    <string name="sec_permissions_desc">悬浮窗、通知访问与系统保活状态</string>
+    <string name="sec_positions">位置</string>
+    <string name="sec_positions_desc">调整灵动岛宽度、高度、圆角及偏移量</string>
+    <string name="sec_support">支持与反馈</string>
+    <string name="sec_support_desc">提出功能建议、GitHub Star、评分与错误反馈</string>
+    <string name="sec_about">关于</string>
+    <string name="sec_about_desc">应用版本、隐私政策、条款与联系开发者</string>
+
+    <string name="card_notifications_privacy_title">通知与隐私规则</string>
+    <string name="card_notifications_privacy_desc">锁屏显示、自动展开、快捷操作与应用过滤</string>
+    <string name="card_notifications_privacy_status_lock">锁屏已激活</string>
+    <string name="card_notifications_privacy_status_standard">标准模式</string>
+    <string name="card_app_shortcuts_title">快捷应用启动器</string>
+    <string name="card_app_shortcuts_desc">在无通知时轻触灵动岛快速启动常用应用</string>
+    <string name="card_app_shortcuts_status">%1$d/8 已固定</string>
+    <string name="card_notification_history_title">通知历史与日志</string>
+    <string name="card_notification_history_desc">按日期分组查看并搜索已保存的通知，支持自动清理</string>
+    <string name="card_notification_history_status_active">记录中</string>
+    <string name="card_notification_history_status_disabled">已关闭</string>
+    <string name="card_color_studio_title">外观、透明度与色彩工作室</string>
+    <string name="card_color_studio_desc">调整灵动岛背景透明度、专辑发光背景与色彩主题</string>
+    <string name="card_color_studio_status">%1$d%% 透明度</string>
+    <string name="card_gestures_guide_title">手势控制与指南</string>
+    <string name="card_gestures_guide_desc">上滑忽略、下滑开启悬浮窗、左右滑动切换通知</string>
+    <string name="card_gestures_guide_status">交互式指南</string>
+    <string name="card_permissions_setup_title">权限与系统配置</string>
+    <string name="card_permissions_setup_desc">Shizuku 一键授权、无障碍服务、通知权限与保活设置</string>
+    <string name="card_permissions_setup_status_all">已全部授予</string>
+    <string name="card_about_app_title">关于 Smart Island</string>
+    <string name="card_about_app_desc">版本 v%1$s • 应用内 GitHub 更新 • 贡献者与提交</string>
+    <string name="card_about_app_status">开源软件</string>
+    <string name="card_support_requests_title">支持与功能建议</string>
+    <string name="card_support_requests_desc">在 GitHub 点赞 Star、反馈问题并加入 Telegram 社区</string>
+
+    <!-- Detail Screen Titles -->
+    <string name="detail_title_notifications_privacy">通知与隐私</string>
+    <string name="detail_title_app_shortcuts">快捷应用启动器</string>
+    <string name="detail_title_notification_history">通知历史记录</string>
+    <string name="detail_title_color_studio">外观、透明度与色彩</string>
+    <string name="detail_title_gestures_guide">手势指南与练习</string>
+    <string name="detail_title_permissions_center">权限与配置中心</string>
+    <string name="detail_title_about_app">关于 Smart Island</string>
+    <string name="detail_title_support_community">支持与反馈</string>
+
+    <!-- Permissions Section -->
+    <string name="shizuku_card_title">Shizuku 一键自动配置</string>
+    <string name="shizuku_card_desc">通过 Shizuku 自动授予所有必要权限，无需手动打开系统设置</string>
+    <string name="shizuku_btn_run">运行自动配置</string>
+    <string name="shizuku_btn_running">正在配置…</string>
+    <string name="shizuku_not_running">Shizuku 未运行或未获得授权</string>
+    <string name="shizuku_success">已通过 Shizuku 成功授予权限</string>
+    <string name="shizuku_failed">Shizuku 配置失败：%1$s</string>
+    <string name="perm_accessibility_title">无障碍悬浮窗</string>
+    <string name="perm_accessibility_desc">允许 Smart Island 动态悬浮在状态栏与挖孔区域上方</string>
+    <string name="perm_notification_title">通知访问权限</string>
+    <string name="perm_notification_desc">读取收到的消息、来电、媒体元数据与实时动态提示</string>
+    <string name="perm_battery_title">忽略电池优化</string>
+    <string name="perm_battery_desc">防止 Android 系统与厂商激进的后台机制关闭服务</string>
+    <string name="perm_status_granted">已授予</string>
+    <string name="perm_status_action_required">需要操作</string>
+    <string name="btn_open">打开</string>
+    <string name="btn_grant">授予</string>
+
+    <!-- Positions, Notch & Layout -->
+    <string name="presets_title">快捷布局预设</string>
+    <string name="presets_desc">根据当前屏幕宽度（%1$d dp）一键智能适配位置</string>
+    <string name="preset_center_hole">居中挖孔</string>
+    <string name="preset_center_hole_desc">居中前置摄像头挖孔</string>
+    <string name="preset_wide_island">宽岛布局</string>
+    <string name="preset_wide_island_desc">更宽敞的展开布局</string>
+    <string name="preset_left_corner">左侧挖孔</string>
+    <string name="preset_left_corner_desc">左上角前置摄像头挖孔</string>
+    <string name="preset_right_corner">右侧挖孔</string>
+    <string name="preset_right_corner_desc">右上角前置摄像头挖孔</string>
+    <string name="preset_compact_pill">紧凑药丸</string>
+    <string name="preset_compact_pill_desc">适合较小状态栏的精致微型尺寸</string>
+    <string name="precision_tuning_title">精细尺寸与微调</string>
+    <string name="precision_tuning_desc">以毫米级精度微调岛屿宽高与偏移量</string>
+    <string name="slider_island_width">灵动岛宽度</string>
+    <string name="slider_island_height">灵动岛高度</string>
+    <string name="slider_horizontal_offset">水平 (X) 偏移</string>
+    <string name="slider_vertical_offset">垂直 (Y) 偏移</string>
+    <string name="slider_corner_radius">圆角半径</string>
+    <string name="slider_island_opacity">灵动岛透明度</string>
+    <string name="toggle_drop_shadow_title">岛屿环境阴影</string>
+    <string name="toggle_drop_shadow_desc">添加柔和的环境投影，营造立体的悬浮层级感</string>
+    <string name="btn_reset_position">恢复默认位置</string>
+    <string name="toast_applied_center_preset">已应用居中挖孔预设</string>
+    <string name="toast_applied_wide_preset">已应用宽岛预设</string>
+    <string name="toast_applied_left_preset">已应用左侧挖孔预设（%1$d dp）</string>
+    <string name="toast_applied_right_preset">已应用右侧挖孔预设（+%1$d dp）</string>
+    <string name="toast_applied_compact_preset">已应用紧凑药丸预设</string>
+    <string name="toast_reset_position">位置已恢复为出厂默认值</string>
+
+    <!-- Customizations / Studio -->
+    <string name="opacity_card_title">灵动岛透明度</string>
+    <string name="opacity_card_desc">调整背景半透明度以获得高级毛玻璃视觉效果</string>
+    <string name="opacity_solid">100%% 不透明</string>
+    <string name="opacity_dark">85%% 磨砂</string>
+    <string name="opacity_glass">70%% 毛玻璃</string>
+    <string name="opacity_clear">50%% 通透</string>
+    <string name="slider_precision_opacity">精准透明度</string>
+    <string name="media_player_title">音乐与媒体播放器</string>
+    <string name="media_player_desc">配置音乐展开界面的动态发光背景与音频可视化动画</string>
+    <string name="toggle_artwork_backdrop_title">氛围专辑封面发光背景</string>
+    <string name="toggle_artwork_backdrop_desc">在音乐展开卡片中将专辑封面渲染为柔和的模糊发光背景</string>
+    <string name="color_studio_title">功能色彩工作室</string>
+    <string name="color_studio_desc">为全部 11 种动态灵动岛模式自定义个性化指示灯颜色</string>
+    <string name="color_battery_charging">电池充电</string>
+    <string name="color_battery_charging_desc">充电百分比、闪电图标与电量进度环</string>
+    <string name="color_notification_dot">通知提醒红点</string>
+    <string name="color_notification_dot_desc">收缩模式下的未读指示徽标</string>
+    <string name="color_music_visualizer">音乐频谱跳动</string>
+    <string name="color_music_visualizer_desc">实时跳动的均衡器柱状图与进度条</string>
+    <string name="color_phone_calls">电话与来电呼入</string>
+    <string name="color_phone_calls_desc">通话计时器、波形动画与电话图标</string>
+    <string name="color_live_activities">实时活动与倒计时</string>
+    <string name="color_live_activities_desc">外卖进度、网约车行程与倒计时圆环</string>
+    <string name="color_file_downloads">文件下载与传输</string>
+    <string name="color_file_downloads_desc">进度环与实时下载速度指示</string>
+    <string name="color_maps_navigation">地图与路线导航</string>
+    <string name="color_maps_navigation_desc">转向箭头与距离提示指示</string>
+    <string name="color_hotspot_tethering">便携式热点与网络共享</string>
+    <string name="color_hotspot_tethering_desc">已连接设备数徽标与广播波形</string>
+    <string name="color_bluetooth_device">蓝牙设备</string>
+    <string name="color_bluetooth_device_desc">耳机图标与电量状态指示</string>
+    <string name="color_flashlight_torch">手电筒</string>
+    <string name="color_flashlight_torch_desc">手电筒发光指示与开关状态</string>
+    <string name="color_screen_recording">屏幕录制</string>
+    <string name="color_screen_recording_desc">录屏动态脉冲圆点与计时器</string>
+    <string name="color_timer_countdown">计时器与倒计时</string>
+    <string name="color_timer_countdown_desc">倒计时环、沙漏图标与计时数字</string>
+    <string name="color_stopwatch_laps">秒表与计圈</string>
+    <string name="color_stopwatch_laps_desc">旋转秒表图标与已用时间计时器</string>
+    <string name="btn_reset_colors">重置所有颜色为默认值</string>
+    <string name="dialog_color_picker_title">选择自定义颜色</string>
+    <string name="color_red">红 (R)</string>
+    <string name="color_green">绿 (G)</string>
+    <string name="color_blue">蓝 (B)</string>
+    <string name="btn_save_color">保存颜色</string>
+    <string name="btn_cancel">取消</string>
+
+    <!-- Gestures Guide -->
+    <string name="gestures_guide_title">Smart Island 手势操作指南</string>
+    <string name="gestures_guide_desc">5 种直观手势，轻松掌控通知、通话与多任务</string>
+    <string name="gesture_1_tap_tab">1. 轻触</string>
+    <string name="gesture_2_swipe_up_tab">2. 上滑</string>
+    <string name="gesture_3_hold_swipe_up_tab">3. 长按 + 上滑</string>
+    <string name="gesture_4_swipe_down_tab">4. 下滑</string>
+    <string name="gesture_5_swipe_horizontal_tab">5. 左右滑动</string>
+    <string name="gesture_1_tap_title">单次轻触</string>
+    <string name="gesture_1_tap_sub">展开 / 收起</string>
+    <string name="gesture_1_tap_desc">轻触悬浮药丸可将其展开为交互式卡片；轻触展开的卡片可直接打开对应的应用。</string>
+    <string name="gesture_2_swipe_up_title">快速上滑</string>
+    <string name="gesture_2_swipe_up_sub">清除当前通知</string>
+    <string name="gesture_2_swipe_up_desc">在展开卡片上快速向上滑动，即可清除当前显示的通知并收回药丸。</string>
+    <string name="gesture_3_hold_swipe_up_title">长按 + 上滑</string>
+    <string name="gesture_3_hold_swipe_up_sub">一键清除所有通知</string>
+    <string name="gesture_3_hold_swipe_up_desc">按住灵动岛 300 毫秒直到触发震动反馈，然后向上滑动即可一次性清除全部通知卡片。</string>
+    <string name="gesture_4_swipe_down_title">向下滑动</string>
+    <string name="gesture_4_swipe_down_sub">自由小窗打开</string>
+    <string name="gesture_4_swipe_down_desc">在灵动岛卡片上向下滑动，即可在 Android 自由小窗多任务模式下打开当前应用。</string>
+    <string name="gesture_5_swipe_horizontal_title">左右水平滑动</string>
+    <string name="gesture_5_swipe_horizontal_sub">切换多条活动通知</string>
+    <string name="gesture_5_swipe_horizontal_desc">当 Smart Island 中有多条通知排队时，在展开卡片上左右滑动即可翻页浏览。</string>
+
+    <!-- Notifications & Privacy Rules -->
+    <string name="oem_rules_title">设备配置文件与厂商规则</string>
+    <string name="oem_rules_desc">针对小米/HyperOS、三星、vivo、OPPO/Realme、一加等厂商的专属优化</string>
+    <string name="select_device_oem">选择设备品牌 / 系统</string>
+    <string name="auto_detect_device">自动检测：%1$s</string>
+    <string name="active_rules_title">当前生效规则：%1$s</string>
+    <string name="active_rules_desc">• 已校准屏幕录制与录音应用包名\n• 已接入通话拨号器与活跃通话状态\n• 地图导航防误触发机制已开启\n• 热点与网络共享状态识别已就绪\n• 后台自启动意图已映射</string>
+    <string name="lock_screen_title">锁屏与隐私守护</string>
+    <string name="lock_screen_desc">控制设备锁定时灵动岛的行为，并保护敏感通知内容</string>
+    <string name="toggle_show_lock_screen_title">在锁屏界面显示灵动岛</string>
+    <string name="toggle_show_lock_screen_desc">手机锁屏时保持 Smart Island 悬浮显示</string>
+    <string name="privacy_level_title">锁屏通知内容隐私级别</string>
+    <string name="privacy_app_icon_only">仅显示应用图标（私密）</string>
+    <string name="privacy_full_content">显示完整通知预览</string>
+    <string name="toggle_network_access_title">网络访问与版本更新检查</string>
+    <string name="toggle_network_access_desc">允许向 GitHub 发起匿名的只读请求以获取更新与发版日志。关闭此项以开启 100%% 严格离线模式。</string>
+    <string name="display_rules_title">显示与交互规则</string>
+    <string name="display_rules_desc">自定义新通知自动展开、快捷操作按钮与通知栏同步</string>
+    <string name="toggle_auto_expand_title">收到新通知时自动展开</string>
+    <string name="toggle_auto_expand_desc">新通知到达时弹出大卡片，或保持收缩药丸状态</string>
+    <string name="toggle_quick_actions_title">通知快捷操作按钮</string>
+    <string name="toggle_quick_actions_desc">在展开卡片中显示回复、标为已读和忽略等快捷按钮</string>
+    <string name="toggle_mirror_only_title">仅灵动岛显示（从系统通知栏隐藏）</string>
+    <string name="toggle_mirror_only_desc">仅在 Smart Island 中呈现通知，并在系统默认下拉通知栏中隐藏</string>
+    <string name="toggle_auto_hide_idle_title">空闲时自动隐藏药丸</string>
+    <string name="toggle_auto_hide_idle_desc">没有活跃通知、音乐或动态事件时完全隐藏药丸</string>
+    <string name="toggle_auto_hide_pill_title">无操作后自动隐藏药丸</string>
+    <string name="toggle_auto_hide_pill_desc">即使存在通知，在设定时间后也自动隐藏药丸和圆圈。轻触该区域可再次显示。</string>
+    <string name="auto_hide_timeout_label">隐藏超时时间</string>
+    <string name="toggle_show_in_landscape_title">横屏模式下保持显示</string>
+    <string name="toggle_show_in_landscape_desc">设备旋转至横屏时继续显示灵动岛</string>
+    <string name="live_nav_services_title">实时活动与地图导航</string>
+    <string name="live_nav_services_desc">实时外卖进度、网约车行程与地图转向箭头</string>
+    <string name="toggle_live_activities_title">实时外卖与打车行程</string>
+    <string name="toggle_live_activities_desc">为外卖配送与网约车提供实时进度徽标与状态</string>
+    <string name="toggle_navigation_title">转弯路线地图导航</string>
+    <string name="toggle_navigation_desc">实时显示地图转向箭头与距离提示</string>
+    <string name="app_alerts_manager_title">应用通知与声音管理</string>
+    <string name="app_alerts_manager_desc">针对每个应用单独控制通知显示与提示音播放</string>
+    <string name="search_installed_apps">搜索已安装的应用…</string>
+    <string name="btn_select_all">全选</string>
+    <string name="btn_deselect_all">取消全选</string>
+    <string name="apps_enabled_count">已启用 %1$d / %2$d 个应用</string>
+    <string name="no_installed_apps_found">未找到已安装的应用</string>
+    <string name="no_apps_matching_query">未找到匹配“%1$s”的应用</string>
+
+    <!-- Notification History -->
+    <string name="history_title">通知历史记录</string>
+    <string name="history_desc">本地数据库保存历史通知，支持搜索与定时清理</string>
+    <string name="toggle_enable_history_title">启用通知历史记录</string>
+    <string name="toggle_enable_history_desc">将收到的通知安全保存在设备本地 SQLite 数据库中，方便随时搜索和查看</string>
+    <string name="retention_title">历史记录自动清理周期</string>
+    <string name="search_history_placeholder">按标题、内容或应用名称搜索通知历史…</string>
+    <string name="btn_clear_history">清空所有历史</string>
+    <string name="btn_delete_app_history">按应用删除</string>
+    <string name="empty_history_title">暂无历史通知</string>
+    <string name="empty_history_desc">启用通知历史记录后，接收到的通知将在此按时间顺序归档</string>
+    <string name="confirm_clear_history_title">清空通知历史记录？</string>
+    <string name="confirm_clear_history_msg">此操作将从本地数据库中永久删除所有已保存的通知日志。</string>
+    <string name="confirm_delete_app_history_title">删除 %1$s 的历史记录？</string>
+    <string name="confirm_delete_app_history_msg">此操作将永久删除来自 %2$s 的所有 %1$d 条历史通知。</string>
+    <string name="retention_24h">24 小时（1 天）</string>
+    <string name="retention_72h">3 天（推荐）</string>
+    <string name="retention_7d">7 天（1 周）</string>
+    <string name="retention_30d">30 天（1 个月）</string>
+    <string name="retention_forever">永久保存</string>
+
+    <!-- App Shortcuts -->
+    <string name="shortcuts_title">空闲灵动岛快捷启动器</string>
+    <string name="shortcuts_desc">当没有活跃通知时，轻触灵动岛即可呼出快捷应用网格（最多 8 个应用）。</string>
+    <string name="toggle_recent_apps_title">自动填充最近使用的应用</string>
+    <string name="toggle_recent_apps_desc_granted">用最近打开的应用自动填满空白卡槽</string>
+    <string name="toggle_recent_apps_desc_needed">最近应用功能需要授予“使用情况访问权限”</string>
+    <string name="pinned_apps_title">已固定的应用</string>
+
+    <!-- Support & Community -->
+    <string name="support_title">支持与社区</string>
+    <string name="star_on_github">在 GitHub 上点亮 Star</string>
+    <string name="star_on_github_desc">支持独立开源项目的发展</string>
+    <string name="join_telegram">加入 Telegram 官方交流群</string>
+    <string name="join_telegram_desc">与开发者及内测用户交流探讨</string>
+    <string name="request_feature">提出功能建议</string>
+    <string name="request_feature_desc">提交新的灵动岛小组件或动画创意</string>
+    <string name="report_bug">提交问题反馈</string>
+    <string name="report_bug_desc">在 GitHub 上提交包含机型信息的 Bug</string>
+    <string name="license_title">开源协议 (GNU GPL v3)</string>
+    <string name="license_desc">自由且开放源代码软件</string>
+
+    <!-- About & GitHub Updates -->
+    <string name="about_title">关于 Smart Island</string>
+    <string name="github_update_center_title">GitHub 更新中心</string>
+    <string name="current_version_label">当前版本：v%1$s</string>
+    <string name="btn_check_updates">检查更新</string>
+    <string name="btn_checking_updates">正在检查…</string>
+    <string name="update_available_title">发现新版本：%1$s</string>
+    <string name="update_up_to_date_title">Smart Island 已是最新版本</string>
+    <string name="offline_mode_title">当前为离线模式</string>
+    <string name="offline_mode_desc">设置中已关闭网络检查。如需检查更新，请开启网络访问权限。</string>
+    <string name="repo_insights_title">开源仓库概览</string>
+    <string name="contributors_title">主要贡献者</string>
+    <string name="recent_commits_title">近期提交记录</string>
+
+    <!-- Welcome Dialog -->
+    <string name="welcome_title">欢迎使用 Smart Island 工作室</string>
+    <string name="welcome_desc">专为 Android 打造的私密、高自由度悬浮灵动岛。无广告、零数据追踪，且完全开源。</string>
+    <string name="btn_get_started">开始使用</string>
+
+    <!-- Expanded Cards & Widgets -->
+    <string name="expanded_battery_saver">省电模式已开启</string>
+    <string name="expanded_battery_low">低电量提示</string>
+    <string name="expanded_battery_charging">正在充电</string>
+    <string name="expanded_power_saver_active">省电模式运行中</string>
+    <string name="expanded_connect_charger">请连接充电器</string>
+    <string name="expanded_until_full">距离充满还需 %1$s</string>
+    <string name="expanded_hotspot_title">便携式热点</string>
+    <string name="expanded_hotspot_active">网络共享运行中</string>
+    <string name="expanded_hotspot_device">1 台设备已连接</string>
+    <string name="expanded_hotspot_devices">%1$d 台设备已连接</string>
+    <string name="expanded_hotspot_turn_off">关闭热点</string>
+    <string name="expanded_flashlight_title">手电筒</string>
+    <string name="expanded_torch_on">手电筒已开启</string>
+    <string name="expanded_torch_off">手电筒已关闭</string>
+    <string name="expanded_tap_turn_off">轻触关闭</string>
+    <string name="expanded_recording_title">屏幕录制</string>
+    <string name="expanded_recording_active">正在录屏</string>
+    <string name="expanded_tap_stop">轻触停止</string>
+    <string name="expanded_stopwatch_title">秒表</string>
+    <string name="expanded_timer_title">计时器</string>
+    <string name="expanded_bluetooth_connected">已连接</string>
+    <string name="expanded_bluetooth_device">蓝牙设备</string>
+    <string name="expanded_action_reply">回复</string>
+    <string name="expanded_action_mark_read">标为已读</string>
+    <string name="expanded_action_dismiss">忽略</string>
+</resources>

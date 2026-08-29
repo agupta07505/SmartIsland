@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
 import com.agupta07505.smartisland.util.runCatchingLogged
 
@@ -54,7 +56,7 @@ fun SupportSection() {
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Support & Community",
+                    text = stringResource(R.string.support_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -62,8 +64,8 @@ fun SupportSection() {
                 )
 
                 ClickableRowItem(
-                    label = "Star on GitHub",
-                    subtitle = "Support open-source development",
+                    label = stringResource(R.string.star_on_github),
+                    subtitle = stringResource(R.string.star_on_github_desc),
                     icon = Icons.Rounded.Star,
                     iconTint = Color(0xFFF59E0B),
                     onClick = {
@@ -76,8 +78,8 @@ fun SupportSection() {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 ClickableRowItem(
-                    label = "Join Telegram Community",
-                    subtitle = "Chat with the developer & beta testers",
+                    label = stringResource(R.string.join_telegram),
+                    subtitle = stringResource(R.string.join_telegram_desc),
                     icon = Icons.Rounded.People,
                     iconTint = Color(0xFF0284C7),
                     onClick = {
@@ -90,8 +92,8 @@ fun SupportSection() {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 ClickableRowItem(
-                    label = "Request a Feature",
-                    subtitle = "Propose new island widgets or animation ideas",
+                    label = stringResource(R.string.request_feature),
+                    subtitle = stringResource(R.string.request_feature_desc),
                     icon = Icons.Rounded.Feedback,
                     iconTint = Color(0xFF10B981),
                     onClick = {
@@ -104,8 +106,8 @@ fun SupportSection() {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 ClickableRowItem(
-                    label = "Report a Bug",
-                    subtitle = "File an issue with device details on GitHub",
+                    label = stringResource(R.string.report_bug),
+                    subtitle = stringResource(R.string.report_bug_desc),
                     icon = Icons.Rounded.BugReport,
                     iconTint = Color(0xFFEF4444),
                     onClick = {
@@ -118,8 +120,8 @@ fun SupportSection() {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                 ClickableRowItem(
-                    label = "License (GNU GPL v3)",
-                    subtitle = "Free & Open Source Software",
+                    label = stringResource(R.string.license_title),
+                    subtitle = stringResource(R.string.license_desc),
                     icon = Icons.Rounded.Gavel,
                     iconTint = Color(0xFFA855F7),
                     onClick = {

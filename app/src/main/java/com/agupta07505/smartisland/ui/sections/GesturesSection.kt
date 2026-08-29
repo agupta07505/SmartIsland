@@ -25,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
+
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.style.TextOverflow
 
@@ -32,11 +35,11 @@ import androidx.compose.ui.text.style.TextOverflow
 fun GesturesSection() {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
-        "1. Tap",
-        "2. Swipe Up",
-        "3. Hold + Swipe Up",
-        "4. Swipe Down",
-        "5. Swipe Left/Right"
+        stringResource(R.string.gesture_1_tap_tab),
+        stringResource(R.string.gesture_2_swipe_up_tab),
+        stringResource(R.string.gesture_3_hold_swipe_up_tab),
+        stringResource(R.string.gesture_4_swipe_down_tab),
+        stringResource(R.string.gesture_5_swipe_horizontal_tab)
     )
 
     Column(
@@ -75,13 +78,13 @@ fun GesturesSection() {
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Smart Island Gesture Guide",
+                            text = stringResource(R.string.gestures_guide_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "5 intuitive gestures to control notifications, calls & multitasking",
+                            text = stringResource(R.string.gestures_guide_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -98,8 +101,8 @@ fun GesturesSection() {
                     ) {
                         GestureSummaryBadge(
                             icon = Icons.Rounded.TouchApp,
-                            label = "1. Tap",
-                            sub = "Expand / Collapse",
+                            label = stringResource(R.string.gesture_1_tap_title),
+                            sub = stringResource(R.string.gesture_1_tap_sub),
                             color = Color(0xFF38BDF8),
                             isSelected = selectedTab == 0,
                             onClick = { selectedTab = 0 },
@@ -107,8 +110,8 @@ fun GesturesSection() {
                         )
                         GestureSummaryBadge(
                             icon = Icons.Rounded.ArrowUpward,
-                            label = "2. Swipe Up",
-                            sub = "Dismiss Single",
+                            label = stringResource(R.string.gesture_2_swipe_up_title),
+                            sub = stringResource(R.string.gesture_2_swipe_up_sub),
                             color = Color(0xFFEF4444),
                             isSelected = selectedTab == 1,
                             onClick = { selectedTab = 1 },
@@ -121,8 +124,8 @@ fun GesturesSection() {
                     ) {
                         GestureSummaryBadge(
                             icon = Icons.Rounded.DeleteSweep,
-                            label = "3. Hold + Up",
-                            sub = "Clear All Cards",
+                            label = stringResource(R.string.gesture_3_hold_swipe_up_title),
+                            sub = stringResource(R.string.gesture_3_hold_swipe_up_sub),
                             color = Color(0xFFF59E0B),
                             isSelected = selectedTab == 2,
                             onClick = { selectedTab = 2 },
@@ -130,8 +133,8 @@ fun GesturesSection() {
                         )
                         GestureSummaryBadge(
                             icon = Icons.Rounded.ArrowDownward,
-                            label = "4. Swipe Down",
-                            sub = "Floating Window",
+                            label = stringResource(R.string.gesture_4_swipe_down_title),
+                            sub = stringResource(R.string.gesture_4_swipe_down_sub),
                             color = Color(0xFF10B981),
                             isSelected = selectedTab == 3,
                             onClick = { selectedTab = 3 },
@@ -140,8 +143,8 @@ fun GesturesSection() {
                     }
                     GestureSummaryBadge(
                         icon = Icons.Rounded.Swipe,
-                        label = "5. Swipe Horizontal (Left / Right)",
-                        sub = "Switch Between Multiple Notifications",
+                        label = stringResource(R.string.gesture_5_swipe_horizontal_title),
+                        sub = stringResource(R.string.gesture_5_swipe_horizontal_sub),
                         color = Color(0xFFA855F7),
                         isSelected = selectedTab == 4,
                         onClick = { selectedTab = 4 },
@@ -177,12 +180,12 @@ fun GesturesSection() {
         // Detailed Text Step-by-Step Instructions for Selected Gesture
         when (selectedTab) {
             0 -> GestureDetailCard(
-                gestureNumber = "Gesture 1 of 5",
-                gestureName = "Single Tap / Click",
-                actionBadge = "Expand & Collapse",
+                gestureNumber = "1 / 5",
+                gestureName = stringResource(R.string.gesture_1_tap_title),
+                actionBadge = stringResource(R.string.gesture_1_tap_sub),
                 badgeColor = Color(0xFF38BDF8),
                 icon = Icons.Rounded.TouchApp,
-                overview = "Quickly expand the pill to view rich notification cards, media controls, or app shortcuts, and collapse it when done.",
+                overview = stringResource(R.string.gesture_1_tap_desc),
                 steps = listOf(
                     "Touch Position: Tap once anywhere on the black collapsed island pill at the top of your screen.",
                     "Finger Motion: Tap cleanly without dragging or swiping.",
@@ -192,12 +195,12 @@ fun GesturesSection() {
                 proTip = "When 'Hide when idle' is enabled, tapping the camera cutout region still awakens the pill and opens your favorite app shortcuts."
             )
             1 -> GestureDetailCard(
-                gestureNumber = "Gesture 2 of 5",
-                gestureName = "Quick Swipe Up",
-                actionBadge = "Dismiss Current Notification",
+                gestureNumber = "2 / 5",
+                gestureName = stringResource(R.string.gesture_2_swipe_up_title),
+                actionBadge = stringResource(R.string.gesture_2_swipe_up_sub),
                 badgeColor = Color(0xFFEF4444),
                 icon = Icons.Rounded.ArrowUpward,
-                overview = "Dismiss the currently active notification card from the island stack without clearing other pending notifications.",
+                overview = stringResource(R.string.gesture_2_swipe_up_desc),
                 steps = listOf(
                     "Touch Position: Touch anywhere on the expanded notification card.",
                     "Finger Motion: Quickly flick or swipe your finger upward toward the top bezel of your device.",
@@ -207,12 +210,12 @@ fun GesturesSection() {
                 proTip = "If you release your finger before reaching the swipe threshold, spring physics smoothly restores the card back to center."
             )
             2 -> GestureDetailCard(
-                gestureNumber = "Gesture 3 of 5",
-                gestureName = "Hold + Swipe Up",
-                actionBadge = "Clear ALL Notifications",
+                gestureNumber = "3 / 5",
+                gestureName = stringResource(R.string.gesture_3_hold_swipe_up_title),
+                actionBadge = stringResource(R.string.gesture_3_hold_swipe_up_sub),
                 badgeColor = Color(0xFFF59E0B),
                 icon = Icons.Rounded.DeleteSweep,
-                overview = "Clear all active notifications from Smart Island at once in a single fast motion without dismissing cards one by one.",
+                overview = stringResource(R.string.gesture_3_hold_swipe_up_desc),
                 steps = listOf(
                     "Touch Position: Touch and hold your finger on the expanded island card.",
                     "Hold Duration: Keep your finger down for 300ms until you feel a distinct haptic vibration pulse.",
@@ -222,12 +225,12 @@ fun GesturesSection() {
                 proTip = "The haptic vibration confirms that 'Clear All' mode is engaged. Swiping up before the vibration only dismisses the single active notification."
             )
             3 -> GestureDetailCard(
-                gestureNumber = "Gesture 4 of 5",
-                gestureName = "Swipe Down",
-                actionBadge = "Open in Floating Window",
+                gestureNumber = "4 / 5",
+                gestureName = stringResource(R.string.gesture_4_swipe_down_title),
+                actionBadge = stringResource(R.string.gesture_4_swipe_down_sub),
                 badgeColor = Color(0xFF10B981),
                 icon = Icons.Rounded.ArrowDownward,
-                overview = "Launch the notification's app directly into a freeform floating window overlay for seamless multitasking.",
+                overview = stringResource(R.string.gesture_4_swipe_down_desc),
                 steps = listOf(
                     "Touch Position: Touch the expanded notification card.",
                     "Finger Motion: Drag or swipe downward toward the center of your screen by at least 48dp.",
@@ -237,12 +240,12 @@ fun GesturesSection() {
                 proTip = "Freeform floating window mode works best when Shizuku service is running or on Android ROMs with native freeform multi-window enabled."
             )
             4 -> GestureDetailCard(
-                gestureNumber = "Gesture 5 of 5",
-                gestureName = "Swipe Left / Right",
-                actionBadge = "Switch Between Notifications",
+                gestureNumber = "5 / 5",
+                gestureName = stringResource(R.string.gesture_5_swipe_horizontal_title),
+                actionBadge = stringResource(R.string.gesture_5_swipe_horizontal_sub),
                 badgeColor = Color(0xFFA855F7),
                 icon = Icons.Rounded.Swipe,
-                overview = "Browse through multiple active notifications or toggle between media playback and notifications in your stack.",
+                overview = stringResource(R.string.gesture_5_swipe_horizontal_desc),
                 steps = listOf(
                     "Prerequisite: 2 or more notifications or an active media session are present in Smart Island.",
                     "Touch Position: Place your finger on the expanded card.",

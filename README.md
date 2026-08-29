@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Current release: v5.2.0</strong>
+  <strong>Current release: v6.0.0</strong>
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ The project is designed to be 100% transparent, hackable, and privacy-conscious:
 
 ## Downloads & Safety
 
-* **Download APK**: Obtain the pre-compiled APK directly from the [GitHub Releases (v5.2.0)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
+* **Download APK**: Obtain the pre-compiled APK directly from the [GitHub Releases (v6.0.0)](https://github.com/agupta07505/SmartIsland/releases/latest) page.
 * **Total Downloads**: ![Total Downloads](https://img.shields.io/github/downloads/agupta07505/SmartIsland/total?color=2ea44f&logo=github)
 * **Telegram Channel**: Join our active community at [telegram.me/SmartIslandApp](https://telegram.me/SmartIslandApp) to suggest features, get support, and discuss updates.
 * **Security Verification**: To ensure complete safety, inspect packages via [VirusTotal](https://www.virustotal.com/gui/file/c07da408e7fa3e3fdeb25ec6415af07f1d56eff099840221138e9364c6065102/details) or review automatic GitHub Actions CI builds.
@@ -87,6 +87,10 @@ The project is designed to be 100% transparent, hackable, and privacy-conscious:
 | Feature Area | Capabilities & Details |
 | --- | --- |
 | **Material 3 Expressive UI** | Modern MD3 color tokens, dynamic wallpaper color adaptation (Android 12+), rounded shapes, and fluid physics. |
+| **Ultra-Fluid Spring Physics** | iOS-grade synchronized spring curves (`stiffness = 520f`, `dampingRatio = 0.72f`), snappy 190ms cross-fades, organic companion bubble pops, and tactile button bounce. |
+| **Tap Anywhere to Open App** | Tapping anywhere on expanded notification and music cards outside interactive buttons launches the source app and collapses the island. |
+| **Auto-Hide Pill Inactivity Timer** | Automatically hides the pill and companion bubble after a customizable inactivity timeout (1s to 60s with 1-tap presets), with tap-to-awaken gesture. |
+| **Landscape Mode Control** | User toggle to keep Smart Island visible in landscape orientation with automated screen width repositioning, or auto-hide for distraction-free gaming and video. |
 | **Island Opacity & Transparency** | Continuous background opacity slider (20% to 100%) with 4 quick 1-tap presets (Solid, Dark, Glass, Clear) and ambient drop shadow rendering. |
 | **Inline Reply & IME Focus** | Direct text reply input right inside the expanded Island notification card with dynamic WindowManager focus switching, soft keyboard integration, and `RemoteInput` dispatch. |
 | **Timer & Stopwatch Modes** | Intelligent clock notification parsing for Google Clock, Samsung Clock, MIUI/HyperOS, ColorOS, and Huawei Clock. Collapsed countdown/elapsed badges, expanded circular/linear timer progress, live millisecond stopwatch ticker, and interactive pause/resume/lap/reset controls. |
@@ -110,7 +114,6 @@ The project is designed to be 100% transparent, hackable, and privacy-conscious:
 | **Precision Sizing Controls** | Millimeter-accurate sliders for Width, Height, X Offset, Y Offset, Corner Radius, and Drop Shadows. |
 | **Shizuku 1-Tap Auto Setup** | Automated permission grants for Restricted Settings, Usage Access, Overlay, and Battery Optimization. |
 | **Lock Screen Privacy Guard** | Opt-in lock screen display with customizable sensitive content hiding (App Icon Only vs Full Preview). |
-| **Landscape Auto-Hide** | Automatically removes the floating overlay during full-screen landscape video playback and gaming. |
 
 ---
 

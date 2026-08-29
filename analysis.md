@@ -1,6 +1,6 @@
 # Smart Island Application Analysis
 
-This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application (reflecting the **v5.2.0** baseline). It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
+This document provides a comprehensive, deep-dive analysis of the **Smart Island** Android application (reflecting the **v6.0.0** baseline). It acts as the ultimate reference point for the application's architecture, components, features, and implementation details.
 
 ---
 
@@ -18,13 +18,13 @@ graph TD
     NF --> NR[SmartIslandNotificationRepository]
     TSP --> NR
     SER --> NR
-    F[MainActivity / Settings Screen] -->|Save Preferences & Opacity| G[SmartIslandSettingsRepository]
+    F[MainActivity / Settings Screen] -->|Save Preferences, Opacity & AutoHide| G[SmartIslandSettingsRepository]
     NR -->|Flow Active Notifications & State| VM[IslandViewModel]
     G -->|Reactive Settings Flow| VM
     VM -->|Compose State| C[SmartIslandOverlayService]
-    C -->|Manage Overlay Window, Opacity & IME Focus| D[ComposeView Overlay]
+    C -->|Manage Overlay Window, Opacity, Inactivity & IME Focus| D[ComposeView Overlay]
     D -->|Render UI / Interact| E[IslandOverlayView / IslandExpandedContent]
-    E -->|Gestures: 5-Gesture Engine & Inline Reply| VM
+    E -->|Gestures: 5-Gesture Engine, Tap-to-Open & Inline Reply| VM
     VM -->|Dynamic WindowManager Focus Switch| C
 ```
 
@@ -61,6 +61,8 @@ graph TD
     * When typing an **Inline Reply**, dynamically switches window flags from `FLAG_NOT_FOCUSABLE` to `FLAG_ALT_FOCUSABLE_IM` with `SOFT_INPUT_ADJUST_PAN` / `RESIZE`.
     * Restores non-focusable touch pass-through when keyboard closes or reply completes.
   * **Auto-Collapse Timer:** Automatically collapses the expanded state back to a pill after 5 seconds of inactivity (paused while typing an inline reply via `isInputActive`).
+  * **Landscape Mode Control:** Automatically respects `showInLandscape` preference to either hide the island or dynamically adjust metrics and coordinates when rotated.
+  * **Instant Collapse Window Debouncing:** Truncated collapse delay from 500ms to 220ms for instant touch restoration to underlying applications.
   * **Background Activity Launch (Android 14+):** Configures `PendingIntent` execution with background activity start permissions to ensure seamless launching of target apps from overlays.
   * **Freeform Window Launching:** Enables notifications to be opened in a floating window (Freeform Mode) by setting the launch windowing mode to `5` (`WINDOWING_MODE_FREEFORM`) and calculating coordinates to position it center-screen.
 
@@ -89,6 +91,9 @@ graph TD
   * `xOffset` (Float): Horizontal adjustment (Default: `0f`).
   * `yOffset` (Float): Vertical adjustment relative to status bar (Default: `12f`).
   * `cornerRadius` (Float): Corner rounding (Default: `22f`).
+  * `autoHidePill` (Boolean): Automatic hiding after inactivity (Default: `false`).
+  * `autoHideTimeoutSeconds` (Int): Inactivity duration (Default: `5s`).
+  * `showInLandscape` (Boolean): Overlay visibility in landscape orientation (Default: `false`).
 
 ### 3.2. `SmartIslandSettingsRepository`
 * **File:** [SmartIslandSettingsRepository.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/data/SmartIslandSettingsRepository.kt)
@@ -106,7 +111,7 @@ graph TD
     1. **System Alert Window** (`Settings.ACTION_MANAGE_OVERLAY_PERMISSION`) - Required to draw above apps.
     2. **Notification Listener** (`Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS`) - Required to intercept notifications.
     3. **Hide Overlay System Warning** (`Settings.ACTION_APP_NOTIFICATION_SETTINGS`) - Shortcut to disable the persistent system overlay alert.
-  * **Sliders:** Adjusts pill size, location (X/Y offsets), and corner radius.
+  * **Sliders:** Adjusts pill size, location (X/Y offsets), corner radius, and auto-hide inactivity timeout.
   * **Demo Buttons:** Triggers simulated alerts (`Notify`, `Call`, `Music`) inside the overlay.
   * **Gesture Guide:** Displays a dedicated tabbed tutorial screen (`GesturesSection.kt`) with looping finger path overlays and Try-It-Yourself gesture play sandboxes.
 
@@ -114,11 +119,15 @@ graph TD
 * **File:** [IslandOverlayView.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandOverlayView.kt)
 * **Purpose:** The core Compose layout container for the Dynamic Island.
 * **Key Features:**
-  * **Transition Animations:** Controls size, position, and alpha animations using Compose's `updateTransition` with customized spring behaviors (damping ratio `0.6f`, stiffness `300f`).
+  * **Ultra-Fluid Spring Physics:** Synchronized width and height transitions using Compose's `updateTransition` with calibrated spring physics (`dampingRatio = 0.72f`, `stiffness = 520f`) and 190ms alpha cross-fades.
   * **Notification Stack Indicator:** If `notifications.size > 1` when collapsed, it draws elegant concentric black arcs (`drawArc`) behind the left/right sides of the pill, visually signifying a stack of items.
+  * **Auto-Hide & Tap-to-Awaken:** Shrinks pill to 0 size when inactive for `autoHideTimeoutSeconds`; displays an invisible touch target allowing 1-tap awaken and 2-tap expand.
   * **Gesture Controls:**
+    * **Tap Collapsed Pill:** Expands into the full interactive Smart Island card.
+    * **Tap Neutral Expanded Background:** Opens the target application directly and collapses the card.
     * **Tap Outside:** Collapses the expanded island.
     * **Swipe Up (Vertical Drag < -35dp):** Dismisses and clears the active notification.
+    * **Hold + Swipe Up (300ms haptic):** Dismisses all active notifications simultaneously.
     * **Swipe Down (Vertical Drag > 35dp):** Dismisses the overlay and opens the notification app in Freeform/Floating window mode.
     * **Swipe Left/Right (Horizontal Drag):** Swipes pages between multiple active notifications in the stack.
 
@@ -127,27 +136,27 @@ graph TD
 * **Purpose:** Manages the visual elements when the pill is collapsed.
 * **Structure:**
   * **Left Slot:** App Icon / Contact Icon / Music album art.
-  * **Center Slot:** Solid black circle to match/hide the physical front camera hole cutout.
   * **Right Slot:** Contextual indicators:
     * Notification: Blue dot.
     * Call: Active call timer displaying elapsed duration in `MM:SS` format (green text).
-    * Music: Live 3-bar Audio Visualizer animation powered by Compose `infiniteRepeatable` states.
+    * Music: Live 3-bar Audio Visualizer animation powered by GPU-accelerated Compose `graphicsLayer` scaling.
     * Battery: Pulsing charging battery icon (infinite scale transition) next to the charging percentage text.
 
 ### 4.4. `IslandExpandedContent`
-* **File:** [IslandExpandedContent.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/IslandExpandedContent.kt)
+* **File:** [IslandExpandedContent.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/expanded/IslandExpandedContent.kt)
 * **Purpose:** Displays the full interactive dialog when expanded.
 * **Key Features:**
   * **HorizontalPager:** Allows user to swipe left/right to browse multiple incoming notifications.
+  * **Tap-to-Open Target App:** Neutral taps on expanded cards trigger application launch.
   * **Dynamic Height Measurement:** Measures each pager page using `onSizeChanged` and interpolates heights dynamically during scroll/swipe gestures to ensure smooth size transitions. Height cache (`pageHeights`) is keyed on unique notification keys rather than page indices, preventing height-jumping bugs when notifications update or change categories.
   * **State Layouts:**
-    1. **Notification:** Shows title, description, time, custom actions (e.g. Telegram "Reply" button which opens chat due to focus constraints), and a button to open the full app.
+    1. **Notification:** Shows title, description, time, custom actions, **Inline Reply** input field, and a button to open the full app.
     2. **Incoming Call:** Large caller name and green/red answer/reject circular buttons.
     3. **Music:** Large album art, song/artist text, media control buttons (Previous, Play/Pause, Next), and a progress slider that estimates track position locally in a coroutine loop to avoid lag.
     4. **Battery:** A custom battery charging visual progress layout featuring a circular status indicator with flowing multicolor gradients, dynamic charging time remaining estimates, and large charging percentage display.
 
 ### 4.5. Custom Modifiers
-* **`bounceClick`:** ([BounceClick.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/BounceClick.kt)) Anicates button scale down to `0.94f` on press and runs callbacks upon release for premium haptic simulation.
+* **`bounceClick`:** ([BounceClick.kt](file:///a:/SmartIsland/app/src/main/java/com/agupta07505/smartisland/ui/BounceClick.kt)) Animates button scale down to `0.90f` on press and rebounds with high-frequency tactile spring physics (`dampingRatio = MediumBouncy`, `stiffness = StiffnessMedium`) upon release.
 
 ---
 

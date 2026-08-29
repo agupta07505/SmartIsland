@@ -327,7 +327,7 @@ fun SmartIslandHomeScreen(
                                 },
                                 onClearAll = {
                                     resolvedNotificationRepository?.clearTestNotifications()
-                                    Toast.makeText(context, "Cleared active demo alerts", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.toast_cleared_test_notifications), Toast.LENGTH_SHORT).show()
                                 }
                             )
 
@@ -455,13 +455,13 @@ private fun StudioTopHeader(
             }
             Column {
                 Text(
-                    text = "Smart Island",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Floating Dynamic Overlay",
+                    text = stringResource(R.string.app_subtitle),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -475,9 +475,9 @@ private fun StudioTopHeader(
             else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // Ready/Off
         }
         val statusText = when {
-            !canEnable -> "Setup Needed"
-            isIslandEnabled -> "Active"
-            else -> "Ready"
+            !canEnable -> stringResource(R.string.status_setup_needed)
+            isIslandEnabled -> stringResource(R.string.status_active)
+            else -> stringResource(R.string.status_ready)
         }
 
         Box(
@@ -554,7 +554,7 @@ private fun MasterPowerCard(
                     }
                     Column {
                         Text(
-                            text = "Smart Island Master Switch",
+                            text = stringResource(R.string.master_switch_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -562,9 +562,9 @@ private fun MasterPowerCard(
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = if (canEnable) {
-                                if (enabled) "Overlay active and floating above status bar"
-                                else "Ready to run. Toggle switch on to start."
-                            } else "Required permissions missing before start",
+                                if (enabled) stringResource(R.string.master_switch_active_desc)
+                                else stringResource(R.string.master_switch_ready_desc)
+                            } else stringResource(R.string.master_switch_missing_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -602,7 +602,7 @@ private fun MasterPowerCard(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "Grant required permissions to enable →",
+                            text = stringResource(R.string.btn_grant_required_permissions),
                             color = Color(0xFFE88C25),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
@@ -640,13 +640,13 @@ private fun SimulationLabCard(
             ) {
                 Column {
                     Text(
-                        text = "Dynamic Simulation Lab",
+                        text = stringResource(R.string.simulation_lab_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "1-Tap test and simulate any dynamic island mode",
+                        text = stringResource(R.string.simulation_lab_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -663,7 +663,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Music Player",
+                        label = stringResource(R.string.mode_music_player),
                         icon = Icons.Rounded.MusicNote,
                         iconTint = Color(0xFFFF6B9A),
                         isSelected = activeMode == IslandMode.Music,
@@ -671,7 +671,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Incoming Call",
+                        label = stringResource(R.string.mode_incoming_call),
                         icon = Icons.Rounded.Call,
                         iconTint = Color(0xFF22C55E),
                         isSelected = activeMode == IslandMode.IncomingCall,
@@ -686,7 +686,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Notification",
+                        label = stringResource(R.string.mode_notification),
                         icon = Icons.Rounded.Notifications,
                         iconTint = Color(0xFF38BDF8),
                         isSelected = activeMode == IslandMode.Notification,
@@ -694,7 +694,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Battery Charge",
+                        label = stringResource(R.string.mode_battery_charge),
                         icon = Icons.Rounded.BatteryChargingFull,
                         iconTint = Color(0xFF10B981),
                         isSelected = activeMode == IslandMode.Battery,
@@ -709,7 +709,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Live Activity",
+                        label = stringResource(R.string.mode_live_activity),
                         icon = Icons.Rounded.Navigation,
                         iconTint = Color(0xFF8B5CF6),
                         isSelected = activeMode == IslandMode.LiveActivity,
@@ -717,7 +717,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Turn Navigation",
+                        label = stringResource(R.string.mode_turn_navigation),
                         icon = Icons.Rounded.Explore,
                         iconTint = Color(0xFF10B981),
                         isSelected = activeMode == IslandMode.Navigation,
@@ -732,7 +732,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "File Transfer",
+                        label = stringResource(R.string.mode_file_transfer),
                         icon = Icons.Rounded.FileDownload,
                         iconTint = Color(0xFF06B6D4),
                         isSelected = activeMode == IslandMode.DownloadUpload,
@@ -740,7 +740,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Hotspot Share",
+                        label = stringResource(R.string.mode_hotspot_share),
                         icon = Icons.Rounded.WifiTethering,
                         iconTint = Color(0xFFF59E0B),
                         isSelected = activeMode == IslandMode.Hotspot,
@@ -755,7 +755,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Bluetooth",
+                        label = stringResource(R.string.mode_bluetooth),
                         icon = Icons.Rounded.BluetoothConnected,
                         iconTint = Color(0xFF38BDF8),
                         isSelected = activeMode == IslandMode.Bluetooth,
@@ -763,7 +763,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Flashlight",
+                        label = stringResource(R.string.mode_flashlight),
                         icon = Icons.Rounded.FlashlightOn,
                         iconTint = Color(0xFFF59E0B),
                         isSelected = activeMode == IslandMode.Flashlight,
@@ -778,7 +778,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Recording",
+                        label = stringResource(R.string.mode_screen_recording),
                         icon = Icons.Rounded.Videocam,
                         iconTint = Color(0xFFEF4444),
                         isSelected = activeMode == IslandMode.ScreenRecording,
@@ -786,7 +786,7 @@ private fun SimulationLabCard(
                         modifier = Modifier.weight(1f)
                     )
                     ModeChipButton(
-                        label = "Timer",
+                        label = stringResource(R.string.mode_timer),
                         icon = Icons.Rounded.HourglassBottom,
                         iconTint = Color(0xFFF59E0B),
                         isSelected = activeMode == IslandMode.Timer,
@@ -801,7 +801,7 @@ private fun SimulationLabCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ModeChipButton(
-                        label = "Stopwatch",
+                        label = stringResource(R.string.mode_stopwatch),
                         icon = Icons.Rounded.AvTimer,
                         iconTint = Color(0xFF06B6D4),
                         isSelected = activeMode == IslandMode.Stopwatch,
@@ -824,7 +824,7 @@ private fun SimulationLabCard(
             ) {
                 Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Clear All Test Notifications", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.btn_clear_all_test_notifications), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -925,13 +925,13 @@ private fun DiagnosticsSummaryCard(
                     }
                     Column {
                         Text(
-                            text = "System Diagnostics",
+                            text = stringResource(R.string.system_diagnostics_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Hardware permissions & background health",
+                            text = stringResource(R.string.system_diagnostics_desc),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -951,17 +951,17 @@ private fun DiagnosticsSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatusBadgePill(
-                    label = "Accessibility",
+                    label = stringResource(R.string.diag_accessibility),
                     isGranted = overlayGranted,
                     modifier = Modifier.weight(1f)
                 )
                 StatusBadgePill(
-                    label = "Notifications",
+                    label = stringResource(R.string.diag_notifications),
                     isGranted = notificationGranted,
                     modifier = Modifier.weight(1f)
                 )
                 StatusBadgePill(
-                    label = "Battery Saver",
+                    label = stringResource(R.string.diag_battery_saver),
                     isGranted = batteryIgnored,
                     modifier = Modifier.weight(1f)
                 )
@@ -1013,97 +1013,97 @@ private fun SettingsOverviewSection(
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "Settings & Preferences",
+                text = stringResource(R.string.settings_overview_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Configure island behaviors, colors, gestures, system access, and updates",
+                text = stringResource(R.string.settings_overview_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         // Section 1: Island Behaviors & App Launcher
-        SettingsCategoryGroup(title = "Island Behaviors & Launcher") {
+        SettingsCategoryGroup(title = stringResource(R.string.category_behaviors_launcher)) {
             FeatureStudioNavigationCard(
-                title = "Notifications & Privacy Rules",
-                subtitle = "Lock screen visibility, auto-expansion, quick actions, and app filters",
+                title = stringResource(R.string.card_notifications_privacy_title),
+                subtitle = stringResource(R.string.card_notifications_privacy_desc),
                 icon = Icons.Rounded.Notifications,
                 iconColor = Color(0xFF38BDF8),
-                statusText = if (settings.showOnLockScreen) "Lock Screen Active" else "Standard",
+                statusText = if (settings.showOnLockScreen) stringResource(R.string.card_notifications_privacy_status_lock) else stringResource(R.string.card_notifications_privacy_status_standard),
                 onClick = { onNavigateTo(FeatureDetailSection.NotificationRules) }
             )
 
             FeatureStudioNavigationCard(
-                title = "App Shortcuts Launcher",
-                subtitle = "Quick-launch pinned applications or recent apps from collapsed island",
+                title = stringResource(R.string.card_app_shortcuts_title),
+                subtitle = stringResource(R.string.card_app_shortcuts_desc),
                 icon = Icons.Rounded.Apps,
                 iconColor = Color(0xFF22D3EE),
-                statusText = "${settings.shortcutPackages.size}/8 pinned",
+                statusText = stringResource(R.string.card_app_shortcuts_status, settings.shortcutPackages.size),
                 onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
             )
 
             FeatureStudioNavigationCard(
-                title = "Notification History & Logs",
-                subtitle = "View and search saved notifications with day/time grouping & auto-clean timer",
+                title = stringResource(R.string.card_notification_history_title),
+                subtitle = stringResource(R.string.card_notification_history_desc),
                 icon = Icons.Rounded.History,
                 iconColor = Color(0xFF38BDF8),
-                statusText = if (settings.enableNotificationHistory) "Logging Active" else "Disabled",
+                statusText = if (settings.enableNotificationHistory) stringResource(R.string.card_notification_history_status_active) else stringResource(R.string.card_notification_history_status_disabled),
                 statusColor = if (settings.enableNotificationHistory) Color(0xFF0F9F6E) else Color(0xFF94A3B8),
                 onClick = { onNavigateTo(FeatureDetailSection.NotificationHistory) }
             )
         }
 
         // Section 2: Appearance & Gesture Controls
-        SettingsCategoryGroup(title = "Appearance & Controls") {
+        SettingsCategoryGroup(title = stringResource(R.string.category_appearance_controls)) {
             FeatureStudioNavigationCard(
-                title = "Appearance, Opacity & Colors Studio",
-                subtitle = "Adjust island background opacity/transparency, album backdrop, and vibrant color themes",
+                title = stringResource(R.string.card_color_studio_title),
+                subtitle = stringResource(R.string.card_color_studio_desc),
                 icon = Icons.Rounded.Palette,
                 iconColor = Color(0xFFA855F7),
-                statusText = "${(settings.opacity * 100).toInt()}% Opacity",
+                statusText = stringResource(R.string.card_color_studio_status, (settings.opacity * 100).toInt()),
                 onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
             )
 
             FeatureStudioNavigationCard(
-                title = "Gesture Controls & Playground",
-                subtitle = "Swipe Up to dismiss, Swipe Down for floating multi-window, and swipe pagination",
+                title = stringResource(R.string.card_gestures_guide_title),
+                subtitle = stringResource(R.string.card_gestures_guide_desc),
                 icon = Icons.Rounded.Gesture,
                 iconColor = Color(0xFF6366F1),
-                statusText = "Interactive Guide",
+                statusText = stringResource(R.string.card_gestures_guide_status),
                 onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
             )
         }
 
         // Section 3: System & Permissions
-        SettingsCategoryGroup(title = "System & Core Services") {
+        SettingsCategoryGroup(title = stringResource(R.string.category_system_core)) {
             FeatureStudioNavigationCard(
-                title = "Permissions & System Setup",
-                subtitle = "Shizuku 1-tap auto grant, Accessibility, notification access, and OEM killers",
+                title = stringResource(R.string.card_permissions_setup_title),
+                subtitle = stringResource(R.string.card_permissions_setup_desc),
                 icon = Icons.Rounded.Shield,
                 iconColor = Color(0xFF10B981),
-                statusText = if (canEnable) "All Granted" else "Action Required",
+                statusText = if (canEnable) stringResource(R.string.card_permissions_setup_status_all) else stringResource(R.string.status_action_required),
                 statusColor = if (canEnable) Color(0xFF0F9F6E) else Color(0xFFE88C25),
                 onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) }
             )
         }
 
         // Section 4: About & Community
-        SettingsCategoryGroup(title = "About & Community") {
+        SettingsCategoryGroup(title = stringResource(R.string.category_about_community)) {
             FeatureStudioNavigationCard(
-                title = "About Smart Island",
-                subtitle = "Version v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME} • In-App GitHub Updates • Contributors & Commits",
+                title = stringResource(R.string.card_about_app_title),
+                subtitle = stringResource(R.string.card_about_app_desc, com.agupta07505.smartisland.BuildConfig.VERSION_NAME),
                 icon = Icons.Rounded.Info,
                 iconColor = Color(0xFFEC4899),
-                statusText = "Open Source",
+                statusText = stringResource(R.string.card_about_app_status),
                 onClick = { onNavigateTo(FeatureDetailSection.AboutApp) }
             )
 
             FeatureStudioNavigationCard(
-                title = "Support & Feature Requests",
-                subtitle = "Star on GitHub, report issues, and join our active Telegram community",
+                title = stringResource(R.string.card_support_requests_title),
+                subtitle = stringResource(R.string.card_support_requests_desc),
                 icon = Icons.Rounded.People,
                 iconColor = Color(0xFFF59E0B),
                 onClick = { onNavigateTo(FeatureDetailSection.SupportCommunity) }
@@ -1223,8 +1223,8 @@ private fun StudioBottomNavigationBar(
         NavigationBarItem(
             selected = selectedTab == StudioTab.Studio,
             onClick = { onTabSelected(StudioTab.Studio) },
-            icon = { Icon(Icons.Rounded.FlashOn, contentDescription = "Studio") },
-            label = { Text("Studio", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Rounded.FlashOn, contentDescription = stringResource(R.string.tab_studio)) },
+            label = { Text(stringResource(R.string.tab_studio), fontWeight = FontWeight.SemiBold) },
             colors = NavigationBarItemDefaults.colors(
                 indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -1234,8 +1234,8 @@ private fun StudioBottomNavigationBar(
         NavigationBarItem(
             selected = selectedTab == StudioTab.Position,
             onClick = { onTabSelected(StudioTab.Position) },
-            icon = { Icon(Icons.Rounded.Tune, contentDescription = "Notch & Layout") },
-            label = { Text("Notch & Layout", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.tab_position)) },
+            label = { Text(stringResource(R.string.tab_position), fontWeight = FontWeight.SemiBold) },
             colors = NavigationBarItemDefaults.colors(
                 indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -1245,8 +1245,8 @@ private fun StudioBottomNavigationBar(
         NavigationBarItem(
             selected = selectedTab == StudioTab.Settings,
             onClick = { onTabSelected(StudioTab.Settings) },
-            icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
-            label = { Text("Settings", fontWeight = FontWeight.SemiBold) },
+            icon = { Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.tab_settings)) },
+            label = { Text(stringResource(R.string.tab_settings), fontWeight = FontWeight.SemiBold) },
             colors = NavigationBarItemDefaults.colors(
                 indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                 selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -1308,14 +1308,14 @@ private fun DetailScreenHost(
             }
             Spacer(modifier = Modifier.width(12.dp))
             val title = when (section) {
-                FeatureDetailSection.NotificationRules -> "Notifications & Privacy"
-                FeatureDetailSection.AppShortcuts -> "App Shortcuts Launcher"
-                FeatureDetailSection.NotificationHistory -> "Notification History Log"
-                FeatureDetailSection.ColorStudio -> "Appearance, Opacity & Colors"
-                FeatureDetailSection.GesturesGuide -> "Gesture Guide & Playground"
-                FeatureDetailSection.PermissionsCenter -> "Permissions & Setup Center"
-                FeatureDetailSection.AboutApp -> "About Smart Island"
-                FeatureDetailSection.SupportCommunity -> "Support & Feedback"
+                FeatureDetailSection.NotificationRules -> stringResource(R.string.detail_title_notifications_privacy)
+                FeatureDetailSection.AppShortcuts -> stringResource(R.string.detail_title_app_shortcuts)
+                FeatureDetailSection.NotificationHistory -> stringResource(R.string.detail_title_notification_history)
+                FeatureDetailSection.ColorStudio -> stringResource(R.string.detail_title_color_studio)
+                FeatureDetailSection.GesturesGuide -> stringResource(R.string.detail_title_gestures_guide)
+                FeatureDetailSection.PermissionsCenter -> stringResource(R.string.detail_title_permissions_center)
+                FeatureDetailSection.AboutApp -> stringResource(R.string.detail_title_about_app)
+                FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
             }
             Text(
                 text = title,
@@ -1485,7 +1485,7 @@ private fun WelcomeDialog(
                 }
 
                 Text(
-                    text = "Welcome to Smart Island Studio",
+                    text = stringResource(R.string.welcome_title),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
@@ -1493,7 +1493,7 @@ private fun WelcomeDialog(
                 )
 
                 Text(
-                    text = "A private, customizable floating overlay experience for Android. No advertisements, zero tracking, and completely open source.",
+                    text = stringResource(R.string.welcome_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -1516,7 +1516,7 @@ private fun WelcomeDialog(
                     ) {
                         GithubIcon(tint = MaterialTheme.colorScheme.onSecondary)
                         Text(
-                            "Star on GitHub",
+                            stringResource(R.string.star_on_github),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondary
                         )
@@ -1538,7 +1538,7 @@ private fun WelcomeDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            "Join Telegram Community",
+                            stringResource(R.string.join_telegram),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -1553,7 +1553,7 @@ private fun WelcomeDialog(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text("Get Started", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.btn_get_started), fontWeight = FontWeight.Bold)
                 }
             }
         }

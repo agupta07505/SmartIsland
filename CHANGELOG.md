@@ -4,6 +4,47 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [6.0.0] - 2026-08-29
+
+### Added
+
+- **Ultra-Fluid, High-Speed Spring Animation Engine (`IslandOverlayView.kt`, `BounceClick.kt`, `SmartIslandOverlayService.kt`)**:
+  - **Unified High-Fluidity Spring Physics**: Synchronized width and height morphing to calibrated spring curves (`stiffness = 520f`, `dampingRatio = 0.72f` / `0.76f`), completely eliminating the asymmetric height snap.
+  - **Snappy 190ms Cross-Fades**: Reduced alpha transition duration to a responsive 190ms with smooth cubic bezier easing for instant tactile feedback.
+  - **Cohesive Content Morphing**: Refined entry scaling (`0.95f → 1f`) and slide (`-6.dp → 0.dp`) for natural, seamless card expansion and collapsing.
+  - **Instant Overlay Window Cleanup**: Reduced overlay collapse debounce from 500ms to 220ms in `SmartIslandOverlayService.kt` so touches behind the collapsed island resume without delay.
+  - **Organic Multi-Notification Split Bubble Pop**: Secondary and tertiary companion bubbles spring out with a natural pop (`stiffness = 480f`, `dampingRatio = 0.68f`) and synchronized offset morphing (`520f`).
+  - **Tactile Notification Cycling Rebound**: Upgraded `switchScaleAnim` on cycling notifications with fast 40ms compression (`0.92f`) and immediate spring rebound (`stiffness = 650f`, `dampingRatio = 0.62f`).
+  - **Tactile Spring Bounce Controls**: Enhanced `.bounceClick` with spring scale physics across all buttons, playback controls, reply buttons, quick action chips, and cards.
+- **Tap Anywhere on Expanded Cards to Open Target App (`IslandExpandedContent.kt`, `IslandOverlayView.kt`, `SmartIslandOverlayService.kt`)**:
+  - Tapping anywhere on neutral areas of any expanded card (e.g. background, artwork, song/artist title, notification body, message text, header, padding) outside interactive buttons opens that notification's application (or system settings for Bluetooth/Battery/Hotspot/Alarms) and smoothly collapses the island.
+  - Interactive child elements (Play/Pause, Skip, Seekbar, Reply input, Action chips) retain isolated click handling.
+  - Preserves ongoing music notifications when launching music apps (Spotify, YouTube Music, etc.).
+- **Auto-Hide Pill Inactivity Timer with Custom Seconds & Tap-to-Reveal (`NotificationsAndPrivacySection.kt`, `SmartIslandSettingsRepository.kt`, `IslandOverlayView.kt`)**:
+  - New setting **"Auto-Hide Pill After Inactivity"** in the Notifications & Privacy section.
+  - User-configurable timeout (1s to 60s) with 1-tap quick presets (3s, 5s, 10s, 15s, 30s) and a custom duration slider with micro `+`/`-` buttons.
+  - When collapsed, if left inactive for the configured duration, the pill and companion circle smoothly shrink to 0 size / 0 alpha even if notifications or music are active.
+  - **First Tap (Awaken)**: Tapping the invisible touch target over the cutout/island location awakens and smoothly restores the pill (and companion circle).
+  - **Second Tap (Expand)**: Tapping the visible pill expands into the full SmartIsland card.
+  - Any new incoming notification or user interaction immediately awakens the pill and resets the timer.
+- **Landscape Mode Visibility Toggle (`NotificationsAndPrivacySection.kt`, `SmartIslandSettingsRepository.kt`, `SmartIslandOverlayService.kt`)**:
+  - New setting **"Show in Landscape Mode"** in the Display & Expansion section.
+  - Allows the island to remain active, visible, and dynamically repositioned when rotating the device to landscape orientation.
+- **Full Chinese & Portuguese Localization Parity (`values-zh`, `values-zh-rCN`, `values-pt`, `values-pt-rBR`)**:
+  - Added complete 100% translation coverage for all new settings, toggles, labels, and descriptions.
+
+### Fixed & Improved
+
+- **Animation Flicker & Stutter Elimination**:
+  - Resolved height jumping during expand/collapse by introducing `defaultEstimatedHeightForMode()` in `IslandOverlayView.kt` and `IslandExpandedContent.kt`.
+  - Prevented sudden card disappearance on collapse by changing condition to `if (expanded || expandedAlpha > 0.01f)`.
+  - Fixed premature window cropping during collapse with `isWindowExpanded` lifecycle state and debounced `collapseJob`.
+  - Added `FLAG_HARDWARE_ACCELERATED` and `lastParams` caching to prevent redundant `windowManager.updateViewLayout` calls and layout churn.
+  - Switched `AudioVisualizer` in `IslandCollapsedContent.kt` to GPU-accelerated `graphicsLayer { scaleY = ... }` and `WavyMusicSeekBar.kt` to vsync-synchronized `rememberInfiniteTransition`.
+- **Camera Cutout Opacity Uniformity Fix (`IslandCollapsedContent.kt`)**:
+  - Eliminated redundant center dot `Box` that was causing double alpha blending and a darker circle in the center when opacity was reduced.
+- **Version Bump**: Updated application version to **`6.0.0`** (`versionCode 7`).
+
 ## [5.2.0] - 2026-08-26
 
 ### Added

@@ -40,4 +40,32 @@ class ShizukuManagerTest {
         val hasPerm = ShizukuManager.hasPermission()
         assertFalse(hasPerm)
     }
+
+    @Test
+    fun testMergeColonSeparatedWhenEmpty() {
+        val merged = ShizukuManager.mergeColonSeparated("", "com.agupta07505.smartisland/service")
+        org.junit.Assert.assertEquals("com.agupta07505.smartisland/service", merged)
+    }
+
+    @Test
+    fun testMergeColonSeparatedPreservesExistingServices() {
+        val existing = "com.bitwarden.authenticator/service:com.lastpass.lpandroid/service"
+        val newEntry = "com.agupta07505.smartisland/service"
+        val merged = ShizukuManager.mergeColonSeparated(existing, newEntry)
+        org.junit.Assert.assertEquals(
+            "com.bitwarden.authenticator/service:com.lastpass.lpandroid/service:com.agupta07505.smartisland/service",
+            merged
+        )
+    }
+
+    @Test
+    fun testMergeColonSeparatedDoesNotDuplicateIfAlreadyPresent() {
+        val existing = "com.bitwarden.authenticator/service:com.agupta07505.smartisland/service"
+        val newEntry = "com.agupta07505.smartisland/service"
+        val merged = ShizukuManager.mergeColonSeparated(existing, newEntry)
+        org.junit.Assert.assertEquals(
+            "com.bitwarden.authenticator/service:com.agupta07505.smartisland/service",
+            merged
+        )
+    }
 }

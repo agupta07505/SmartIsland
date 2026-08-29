@@ -51,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -94,13 +96,13 @@ fun AppShortcutsSection(
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Empty Island Quick Launcher",
+                    text = stringResource(R.string.shortcuts_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "When there are no active alerts, tapping the island reveals your quick-launch apps grid (up to 8 apps).",
+                    text = stringResource(R.string.shortcuts_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -133,13 +135,13 @@ fun AppShortcutsSection(
                         }
                         Column {
                             Text(
-                                text = "Auto-fill with Recent Apps",
+                                text = stringResource(R.string.toggle_recent_apps_title),
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (usageAccess) "Fills open slots with your most recently used apps"
-                                else "Usage stats permission required for recent apps",
+                                text = if (usageAccess) stringResource(R.string.toggle_recent_apps_desc_granted)
+                                else stringResource(R.string.toggle_recent_apps_desc_needed),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -192,7 +194,7 @@ fun AppShortcutsSection(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Select Pin Apps",
+                        text = stringResource(R.string.pinned_apps_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -203,7 +205,7 @@ fun AppShortcutsSection(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${settings.shortcutPackages.size}/8 pinned",
+                            text = stringResource(R.string.card_app_shortcuts_status, settings.shortcutPackages.size),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -214,7 +216,7 @@ fun AppShortcutsSection(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search apps to pin...") },
+                    placeholder = { Text(stringResource(R.string.search_installed_apps)) },
                     leadingIcon = {
                         Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
@@ -231,7 +233,7 @@ fun AppShortcutsSection(
 
                 if (filteredApps.isEmpty()) {
                     Text(
-                        text = if (query.isBlank()) "No installed apps found" else "No apps matching \"$query\"",
+                        text = if (query.isBlank()) stringResource(R.string.no_installed_apps_found) else stringResource(R.string.no_apps_matching_query, query),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 12.dp)
