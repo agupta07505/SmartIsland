@@ -269,6 +269,9 @@
     <string name="toggle_mirror_only_desc">Show notification only in Smart Island and hide from default notification shade</string>
     <string name="toggle_auto_hide_idle_title">Auto-Hide Pill When Idle</string>
     <string name="toggle_auto_hide_idle_desc">Hide the pill completely when there are no active alerts, music, or dynamic events</string>
+    <string name="toggle_auto_hide_pill_title">Auto-Hide Pill After Inactivity</string>
+    <string name="toggle_auto_hide_pill_desc">Automatically hide pill and circle after a set time, even when notifications are active. Tap the area to reveal again.</string>
+    <string name="auto_hide_timeout_label">Hide Inactivity Timeout</string>
     <string name="live_nav_services_title">Live Activities &amp; Navigation</string>
     <string name="live_nav_services_desc">Real-time delivery progress, rideshare tracking, and map direction arrows</string>
     <string name="toggle_live_activities_title">Live Delivery &amp; Ride Tracking</string>

@@ -269,6 +269,9 @@
     <string name="toggle_mirror_only_desc">仅在 Smart Island 中呈现通知，并在系统默认下拉通知栏中隐藏</string>
     <string name="toggle_auto_hide_idle_title">空闲时自动隐藏药丸</string>
     <string name="toggle_auto_hide_idle_desc">没有活跃通知、音乐或动态事件时完全隐藏药丸</string>
+    <string name="toggle_auto_hide_pill_title">无操作后自动隐藏药丸</string>
+    <string name="toggle_auto_hide_pill_desc">即使存在通知，在设定时间后也自动隐藏药丸和圆圈。轻触该区域可再次显示。</string>
+    <string name="auto_hide_timeout_label">隐藏超时时间</string>
     <string name="live_nav_services_title">实时活动与地图导航</string>
     <string name="live_nav_services_desc">实时外卖进度、网约车行程与地图转向箭头</string>
     <string name="toggle_live_activities_title">实时外卖与打车行程</string>

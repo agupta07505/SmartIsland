@@ -27,6 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,24 +52,16 @@ fun WavyMusicSeekBar(
     trackThickness: Dp = 4.dp,
     thumbRadius: Dp = 8.dp
 ) {
-    var phase by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(isPlaying) {
-        if (!isPlaying) return@LaunchedEffect
-        val startTime = android.os.SystemClock.elapsedRealtime()
-        var lastTime = startTime
-        while (true) {
-            val now = android.os.SystemClock.elapsedRealtime()
-            val delta = now - lastTime
-            lastTime = now
-            // Progress the phase: 1.5 cycles per second
-            phase += (delta / 1000f) * 1.5f * 2f * Math.PI.toFloat()
-            if (phase > 2f * Math.PI.toFloat()) {
-                phase -= 2f * Math.PI.toFloat()
-            }
-            kotlinx.coroutines.delay(16)
-        }
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "wavySeekBarPhase")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (isPlaying) 6.2831855f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 667, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase"
+    )
 
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableStateOf(0f) }

@@ -269,6 +269,9 @@
     <string name="toggle_mirror_only_desc">Exibir a notificação apenas no Smart Island e ocultar da barra de notificações padrão do sistema</string>
     <string name="toggle_auto_hide_idle_title">Ocultar Pílula Automaticamente Quando Ocioso</string>
     <string name="toggle_auto_hide_idle_desc">Ocultar a pílula completamente quando não houver alertas ativos, música ou eventos dinâmicos</string>
+    <string name="toggle_auto_hide_pill_title">Ocultar Pílula Automaticamente Após Inatividade</string>
+    <string name="toggle_auto_hide_pill_desc">Ocultar automaticamente a pílula e o círculo após um tempo determinado, mesmo com notificações ativas. Toque na área para exibir novamente.</string>
+    <string name="auto_hide_timeout_label">Tempo Limite para Ocultar</string>
     <string name="live_nav_services_title">Atividades ao Vivo e Navegação GPS</string>
     <string name="live_nav_services_desc">Rastreamento de entregas, viagens e setas de direção de mapas em tempo real</string>
     <string name="toggle_live_activities_title">Rastreamento de Entregas e Viagens ao Vivo</string>

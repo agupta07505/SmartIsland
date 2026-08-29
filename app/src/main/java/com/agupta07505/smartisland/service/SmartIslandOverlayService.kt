@@ -71,6 +71,9 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var foregroundStarted = false
     private var isTouchableRegionSupported = false
     @Volatile private var destroyed = false
+    private var isWindowExpanded: Boolean = false
+    private var collapseJob: kotlinx.coroutines.Job? = null
+    private var lastParams: WindowManager.LayoutParams? = null
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
@@ -116,7 +119,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                         overlayOwners.resume()
                         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
                         updateWindowLayoutParams(
-                            viewModel.expanded.value,
+                            isWindowExpanded,
                             viewModel.settings.value
                         )
                     }
@@ -124,14 +127,14 @@ class SmartIslandOverlayService : AccessibilityService() {
                         overlayOwners.pause()
                         isLockScreenActive = true
                         updateWindowLayoutParams(
-                            viewModel.expanded.value,
+                            isWindowExpanded,
                             viewModel.settings.value
                         )
                     }
                     Intent.ACTION_USER_PRESENT -> {
                         isLockScreenActive = false
                         updateWindowLayoutParams(
-                            viewModel.expanded.value,
+                            isWindowExpanded,
                             viewModel.settings.value
                         )
                     }
@@ -150,7 +153,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             val locked = keyguardManager?.isKeyguardLocked == true
             if (isLockScreenActive != locked) {
                 isLockScreenActive = locked
-                updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
             }
 
             if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -180,7 +183,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         // Wrapped: a throw here would make Android disable the service automatically.
         runCatchingLogged(TAG, "onConfigurationChanged failed") {
             if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
-            updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+            updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
         }
     }
 
@@ -281,11 +284,16 @@ class SmartIslandOverlayService : AccessibilityService() {
                     if (destroyed || !viewModel.settings.value.enabled) {
                         return@collectLatest
                     }
+                    collapseJob?.cancel()
                     if (expanded) {
+                        isWindowExpanded = true
                         updateWindowLayoutParams(true, viewModel.settings.value)
                     } else {
-                        kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
-                        updateWindowLayoutParams(false, viewModel.settings.value)
+                        collapseJob = serviceScope.launch {
+                            kotlinx.coroutines.delay(AUTO_COLLAPSE_DELAY_MS)
+                            isWindowExpanded = false
+                            updateWindowLayoutParams(false, viewModel.settings.value)
+                        }
                     }
                 }
             }
@@ -297,7 +305,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     if (destroyed || !viewModel.settings.value.enabled) {
                         return@collectLatest
                     }
-                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                    updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
                 }
             }
         }
@@ -308,7 +316,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     if (destroyed || !viewModel.settings.value.enabled) {
                         return@collectLatest
                     }
-                    updateWindowLayoutParams(viewModel.expanded.value, viewModel.settings.value)
+                    updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
                 }
             }
         }
@@ -387,7 +395,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         ensureForegroundStarted()
         ensureCollapsedWindow()
-        updateWindowLayoutParams(viewModel.expanded.value, settings)
+        updateWindowLayoutParams(isWindowExpanded, settings)
     }
 
     private fun stopOverlaySession() {
@@ -552,7 +560,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     addListenerMethod.invoke(observer, proxyListener)
                     isTouchableRegionSupported = true
                     android.util.Log.d(TAG, "OnComputeInternalInsetsListener successfully registered on live ViewTreeObserver")
-                    if (::viewModel.isInitialized && !viewModel.expanded.value) {
+                    if (::viewModel.isInitialized && !isWindowExpanded) {
                         updateWindowLayoutParams(false, viewModel.settings.value)
                     }
                 }
@@ -594,7 +602,10 @@ class SmartIslandOverlayService : AccessibilityService() {
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val isHidden = (!settings.showOnLockScreen && isLocked) || isLandscape
 
-        view.visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
+        val targetVisibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
+        if (view.visibility != targetVisibility) {
+            view.visibility = targetVisibility
+        }
 
         val isSplitMode = viewModel.notifications.value.size >= 2
         val mainWidthPx = settings.width * density
@@ -621,24 +632,46 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         val isInput = viewModel.isInputActive.value && expanded
         val focusFlags = if (isInput) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        val currentFlags = focusFlags or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+
+        val currentX = if (expanded || isTouchableRegionSupported) 0 else windowXPx
+        val currentY = settings.yOffset.dpToPx()
+        val currentSoftInputMode = if (isInput) {
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+        } else {
+            0
+        }
+
+        val lp = lastParams
+        if (lp != null &&
+            lp.width == w &&
+            lp.height == h &&
+            lp.flags == currentFlags &&
+            lp.x == currentX &&
+            lp.y == currentY &&
+            lp.softInputMode == currentSoftInputMode
+        ) {
+            return
+        }
+
         val params = WindowManager.LayoutParams(
             w,
             h,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            focusFlags or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            currentFlags,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            x = if (expanded || isTouchableRegionSupported) 0 else windowXPx
-            y = settings.yOffset.dpToPx()
-            if (isInput) {
-                softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
-            }
+            x = currentX
+            y = currentY
+            softInputMode = currentSoftInputMode
         }
+        lastParams = params
         runCatchingLogged(TAG, "Failed to update view layout") { 
             windowManager.updateViewLayout(view, params) 
         }
@@ -649,6 +682,10 @@ class SmartIslandOverlayService : AccessibilityService() {
         // Clear the reference before removal so repeated teardown calls are harmless,
         // even when an OEM WindowManager throws while detaching an already-removed view.
         islandView = null
+        lastParams = null
+        isWindowExpanded = false
+        collapseJob?.cancel()
+        collapseJob = null
         if (!::windowManager.isInitialized) return
         runCatchingLogged(TAG, "Failed to remove view") {
             if (view.isAttachedToWindow) {
@@ -678,19 +715,24 @@ class SmartIslandOverlayService : AccessibilityService() {
         } else {
             (groupWidthPx + 32f * density).toInt()
         }
+        val currentFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
+
         return WindowManager.LayoutParams(
             w,
             ((settings.height + 16f) * density).toInt(),
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            currentFlags,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             x = if (isTouchableRegionSupported) 0 else windowXPx
             y = settings.yOffset.dpToPx()
+        }.also {
+            lastParams = it
         }
     }
 
@@ -699,16 +741,62 @@ class SmartIslandOverlayService : AccessibilityService() {
             sendIntentWithOptions(this, notification.contentIntent)
         } else {
             runCatchingLogged(TAG, "Failed to launch package activity") {
-                val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
-                if (launchIntent != null) {
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(launchIntent)
-                } else {
-                    Toast.makeText(this, "Opening ${notification.appName} (Demo)", Toast.LENGTH_SHORT).show()
+                when (notification.mode) {
+                    com.agupta07505.smartisland.model.IslandMode.Bluetooth -> {
+                        val intent = Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                    }
+                    com.agupta07505.smartisland.model.IslandMode.Battery -> {
+                        val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        if (intent.resolveActivity(packageManager) != null) {
+                            startActivity(intent)
+                        } else {
+                            val altIntent = Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(altIntent)
+                        }
+                    }
+                    com.agupta07505.smartisland.model.IslandMode.Hotspot -> {
+                        val intent = Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                    }
+                    com.agupta07505.smartisland.model.IslandMode.Timer,
+                    com.agupta07505.smartisland.model.IslandMode.Stopwatch -> {
+                        val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
+                            ?: Intent(android.provider.AlarmClock.ACTION_SHOW_TIMERS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                        if (launchIntent.resolveActivity(packageManager) != null) {
+                            startActivity(launchIntent)
+                        } else {
+                            val clockIntent = Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(clockIntent)
+                        }
+                    }
+                    else -> {
+                        val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(launchIntent)
+                        } else {
+                            Toast.makeText(this, "Opening ${notification.appName} (Demo)", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
         }
-        notificationRepository.removeNotificationsForPackage(notification.packageName)
+        if (notification.mode != com.agupta07505.smartisland.model.IslandMode.Music) {
+            notificationRepository.removeNotificationsForPackage(notification.packageName)
+        }
         viewModel.collapse()
     }
 

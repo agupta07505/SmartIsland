@@ -306,14 +306,6 @@ fun IslandCollapsedContent(
                 IslandMode.Empty -> Unit
             }
         }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(CENTER_DOT_SIZE_DP.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = settings.opacity))
-        )
     }
 }
 
@@ -497,27 +489,26 @@ private fun AudioVisualizer(
         verticalAlignment = Alignment.CenterVertically
     ) {
         val infiniteTransition = rememberInfiniteTransition(label = "audio_visualizer")
-        
         val heights = listOf(0.3f to 0.9f, 0.5f to 1.0f, 0.2f to 0.7f)
-        
+
         heights.forEachIndexed { index, (min, max) ->
-            val heightFraction by if (isPlaying) {
-                infiniteTransition.animateFloat(
-                    initialValue = min,
-                    targetValue = max,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(durationMillis = 350 + index * 80, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "bar_$index"
-                )
-            } else {
-                remember { mutableStateOf(min) }
-            }
-            
+            val heightFraction by infiniteTransition.animateFloat(
+                initialValue = min,
+                targetValue = if (isPlaying) max else min,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 350 + index * 80, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "bar_$index"
+            )
+
             Box(
                 modifier = Modifier
-                    .size(width = 3.dp, height = (14.dp.value * heightFraction).dp)
+                    .size(width = 3.dp, height = 14.dp)
+                    .graphicsLayer {
+                        scaleY = if (isPlaying) heightFraction else min
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
+                    }
                     .clip(RoundedCornerShape(1.dp))
                     .background(color)
             )
@@ -937,7 +928,7 @@ internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings
             tint = stopwatchColor,
             modifier = Modifier
                 .size(14.dp)
-                .rotate(rotation)
+                .graphicsLayer { rotationZ = rotation }
         )
     }
 }
@@ -1030,4 +1021,3 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
 private val COLLAPSED_TRANSLATION_MAX_DP = 32.dp
 private const val LEFT_SLOT_PADDING_START_DP = 8
 private const val RIGHT_SLOT_PADDING_END_DP = 12
-private const val CENTER_DOT_SIZE_DP = 20

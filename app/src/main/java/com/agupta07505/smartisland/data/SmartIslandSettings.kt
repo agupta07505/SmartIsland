@@ -40,6 +40,8 @@ data class SmartIslandSettings(
     val disabledNotificationPackages: Set<String> = emptySet(),
     val disabledSoundPackages: Set<String> = emptySet(),
     val hideWhenIdle: Boolean = false,
+    val autoHidePill: Boolean = false,
+    val autoHideTimeoutSeconds: Int = 5,
     val autoExpandOnNotification: Boolean = true,
     val enableShadow: Boolean = true,
     val enableMusicArtworkBackground: Boolean = true,

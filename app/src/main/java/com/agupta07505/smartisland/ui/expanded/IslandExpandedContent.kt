@@ -17,8 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -154,8 +155,9 @@ fun IslandExpandedContent(
 
         val currentPageHeightRaw = currentNotification?.let { pageHeights[it.key] }
         val currentPageHeight = currentPageHeightRaw?.let { clampHeightForMode(currentNotification, it) }
+            ?: com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(currentNotification?.mode)
 
-        val targetHeight = if (currentPageHeight != null) {
+        val targetHeight = run {
             val nextPage = if (offsetFraction > 0f) {
                 (currentPage + 1).coerceAtMost(notifications.lastIndex)
             } else if (offsetFraction < 0f) {
@@ -165,25 +167,20 @@ fun IslandExpandedContent(
             }
             val nextNotification = notifications.getOrNull(nextPage)
             val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
-            val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) } ?: currentPageHeight)
+            val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) }
+                ?: com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(nextNotification?.mode))
             val fraction = kotlin.math.abs(offsetFraction)
             (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 205.dp)
-        } else {
-            null
         }
 
         LaunchedEffect(targetHeight) {
-            if (targetHeight != null) {
-                onHeightMeasured(targetHeight)
-            }
+            onHeightMeasured(targetHeight)
         }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (targetHeight != null) Modifier.height(targetHeight) else Modifier.wrapContentHeight()
-                )
+                .height(targetHeight)
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -203,6 +200,12 @@ fun IslandExpandedContent(
                                 if (pageHeights[notification.key] != heightDp) {
                                     pageHeights = pageHeights.toMutableMap().apply { put(notification.key, heightDp) }
                                 }
+                            }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                onOpenNotification(notification)
                             }
                     ) {
                         when (notification.mode) {

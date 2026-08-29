@@ -37,6 +37,16 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.agupta07505.smartisland.ui.SliderSettingItem
+import kotlin.math.roundToInt
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -395,6 +405,60 @@ fun NotificationsAndPrivacySection(
                     checked = settings.hideWhenIdle,
                     onCheckedChange = { scope.launch { repository.setHideWhenIdle(it) } }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    title = stringResource(R.string.toggle_auto_hide_pill_title),
+                    subtitle = stringResource(R.string.toggle_auto_hide_pill_desc),
+                    icon = Icons.Rounded.Timer,
+                    iconColor = Color(0xFF8B5CF6),
+                    checked = settings.autoHidePill,
+                    onCheckedChange = { scope.launch { repository.setAutoHidePill(it) } }
+                )
+
+                AnimatedVisibility(
+                    visible = settings.autoHidePill,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(3, 5, 10, 15, 30).forEach { sec ->
+                                val isSelected = settings.autoHideTimeoutSeconds == sec
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        scope.launch { repository.setAutoHideTimeoutSeconds(sec) }
+                                    },
+                                    label = { Text("${sec}s", fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+
+                        SliderSettingItem(
+                            label = stringResource(R.string.auto_hide_timeout_label),
+                            value = settings.autoHideTimeoutSeconds.toFloat(),
+                            range = 1f..60f,
+                            step = 1f,
+                            suffix = "s",
+                            onValueChange = { newVal ->
+                                scope.launch { repository.setAutoHideTimeoutSeconds(newVal.roundToInt()) }
+                            }
+                        )
+                    }
+                }
             }
         }
 
