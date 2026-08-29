@@ -125,7 +125,7 @@
     <string name="shizuku_card_title">Configuração Automática em 1 Toque com Shizuku</string>
     <string name="shizuku_card_desc">Conceda todas as permissões necessárias automaticamente via Shizuku sem abrir as configurações do sistema manualmente</string>
     <string name="shizuku_btn_run">Executar Configuração Automática</string>
-    <string name="shizuku_btn_running">Executando...</string>
+    <string name="shizuku_btn_running">Executando…</string>
     <string name="shizuku_not_running">O Shizuku não está em execução ou a permissão não foi concedida</string>
     <string name="shizuku_success">Permissões concedidas com sucesso via Shizuku</string>
     <string name="shizuku_failed">Falha na configuração do Shizuku: %1$s</string>
@@ -174,10 +174,10 @@
     <!-- Customizations / Studio -->
     <string name="opacity_card_title">Opacidade e Transparência da Ilha</string>
     <string name="opacity_card_desc">Ajuste a translucidez do fundo para um visual moderno em vidro fosco</string>
-    <string name="opacity_solid">100% Sólido</string>
-    <string name="opacity_dark">85% Escuro</string>
-    <string name="opacity_glass">70% Vidro</string>
-    <string name="opacity_clear">50% Claro</string>
+    <string name="opacity_solid">100%% Sólido</string>
+    <string name="opacity_dark">85%% Escuro</string>
+    <string name="opacity_glass">70%% Vidro</string>
+    <string name="opacity_clear">50%% Claro</string>
     <string name="slider_precision_opacity">Opacidade de Precisão</string>
     <string name="media_player_title">Player de Música e Mídia</string>
     <string name="media_player_desc">Configure a arte de fundo ambiente e animações do visualizador</string>
@@ -258,7 +258,7 @@
     <string name="privacy_app_icon_only">Apenas Ícone do App (Privado)</string>
     <string name="privacy_full_content">Prévia Completa do Conteúdo</string>
     <string name="toggle_network_access_title">Acesso à Rede e Verificação de Atualizações</string>
-    <string name="toggle_network_access_desc">Permitir consultas não autenticadas de somente leitura ao GitHub para atualizações de versão e notas de lançamento. Desative para aplicar o modo 100% estritamente offline.</string>
+    <string name="toggle_network_access_desc">Permitir consultas não autenticadas de somente leitura ao GitHub para atualizações de versão e notas de lançamento. Desative para aplicar o modo 100%% estritamente offline.</string>
     <string name="display_rules_title">Regras de Exibição e Interação</string>
     <string name="display_rules_desc">Personalize a expansão automática, botões de ação rápida e ocultação na barra do sistema</string>
     <string name="toggle_auto_expand_title">Autoexpandir em Nova Notificação</string>
@@ -277,7 +277,7 @@
     <string name="toggle_navigation_desc">Setas de direção e distância em tempo real para Google Maps e Waze</string>
     <string name="app_alerts_manager_title">Gerenciador de Alertas e Sons por App</string>
     <string name="app_alerts_manager_desc">Gerencie a exibição de notificações e reprodução de som individualmente para cada app</string>
-    <string name="search_installed_apps">Pesquisar aplicativos instalados...</string>
+    <string name="search_installed_apps">Pesquisar aplicativos instalados…</string>
     <string name="btn_select_all">Selecionar todos</string>
     <string name="btn_deselect_all">Desmarcar todos</string>
     <string name="apps_enabled_count">%1$d de %2$d ativados</string>
@@ -290,7 +290,7 @@
     <string name="toggle_enable_history_title">Ativar Registro do Histórico de Notificações</string>
     <string name="toggle_enable_history_desc">Armazene com segurança as notificações recebidas em um banco de dados SQLite local no dispositivo para pesquisar e revisar a qualquer momento</string>
     <string name="retention_title">Período de Retenção para Limpeza Automática</string>
-    <string name="search_history_placeholder">Pesquisar histórico por título, texto ou nome do app...</string>
+    <string name="search_history_placeholder">Pesquisar histórico por título, texto ou nome do app…</string>
     <string name="btn_clear_history">Limpar Todo o Histórico</string>
     <string name="btn_delete_app_history">Excluir por App</string>
     <string name="empty_history_title">Nenhuma Notificação Registrada</string>
@@ -331,7 +331,7 @@
     <string name="github_update_center_title">Central de Atualizações do GitHub</string>
     <string name="current_version_label">Versão Atual: v%1$s</string>
     <string name="btn_check_updates">Verificar</string>
-    <string name="btn_checking_updates">Verificando...</string>
+    <string name="btn_checking_updates">Verificando…</string>
     <string name="update_available_title">Atualização Disponível: %1$s</string>
     <string name="update_up_to_date_title">O Smart Island está atualizado</string>
     <string name="offline_mode_title">Modo Offline Ativo</string>

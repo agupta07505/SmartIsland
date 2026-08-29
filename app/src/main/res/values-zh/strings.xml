@@ -125,7 +125,7 @@
     <string name="shizuku_card_title">Shizuku 一键自动配置</string>
     <string name="shizuku_card_desc">通过 Shizuku 自动授予所有必要权限，无需手动打开系统设置</string>
     <string name="shizuku_btn_run">运行自动配置</string>
-    <string name="shizuku_btn_running">正在配置...</string>
+    <string name="shizuku_btn_running">正在配置…</string>
     <string name="shizuku_not_running">Shizuku 未运行或未获得授权</string>
     <string name="shizuku_success">已通过 Shizuku 成功授予权限</string>
     <string name="shizuku_failed">Shizuku 配置失败：%1$s</string>
@@ -174,10 +174,10 @@
     <!-- Customizations / Studio -->
     <string name="opacity_card_title">灵动岛透明度</string>
     <string name="opacity_card_desc">调整背景半透明度以获得高级毛玻璃视觉效果</string>
-    <string name="opacity_solid">100% 不透明</string>
-    <string name="opacity_dark">85% 磨砂</string>
-    <string name="opacity_glass">70% 毛玻璃</string>
-    <string name="opacity_clear">50% 通透</string>
+    <string name="opacity_solid">100%% 不透明</string>
+    <string name="opacity_dark">85%% 磨砂</string>
+    <string name="opacity_glass">70%% 毛玻璃</string>
+    <string name="opacity_clear">50%% 通透</string>
     <string name="slider_precision_opacity">精准透明度</string>
     <string name="media_player_title">音乐与媒体播放器</string>
     <string name="media_player_desc">配置音乐展开界面的动态发光背景与音频可视化动画</string>
@@ -258,7 +258,7 @@
     <string name="privacy_app_icon_only">仅显示应用图标（私密）</string>
     <string name="privacy_full_content">显示完整通知预览</string>
     <string name="toggle_network_access_title">网络访问与版本更新检查</string>
-    <string name="toggle_network_access_desc">允许向 GitHub 发起匿名的只读请求以获取更新与发版日志。关闭此项以开启 100% 严格离线模式。</string>
+    <string name="toggle_network_access_desc">允许向 GitHub 发起匿名的只读请求以获取更新与发版日志。关闭此项以开启 100%% 严格离线模式。</string>
     <string name="display_rules_title">显示与交互规则</string>
     <string name="display_rules_desc">自定义新通知自动展开、快捷操作按钮与通知栏同步</string>
     <string name="toggle_auto_expand_title">收到新通知时自动展开</string>
@@ -277,7 +277,7 @@
     <string name="toggle_navigation_desc">实时显示地图转向箭头与距离提示</string>
     <string name="app_alerts_manager_title">应用通知与声音管理</string>
     <string name="app_alerts_manager_desc">针对每个应用单独控制通知显示与提示音播放</string>
-    <string name="search_installed_apps">搜索已安装的应用...</string>
+    <string name="search_installed_apps">搜索已安装的应用…</string>
     <string name="btn_select_all">全选</string>
     <string name="btn_deselect_all">取消全选</string>
     <string name="apps_enabled_count">已启用 %1$d / %2$d 个应用</string>
@@ -290,7 +290,7 @@
     <string name="toggle_enable_history_title">启用通知历史记录</string>
     <string name="toggle_enable_history_desc">将收到的通知安全保存在设备本地 SQLite 数据库中，方便随时搜索和查看</string>
     <string name="retention_title">历史记录自动清理周期</string>
-    <string name="search_history_placeholder">按标题、内容或应用名称搜索通知历史...</string>
+    <string name="search_history_placeholder">按标题、内容或应用名称搜索通知历史…</string>
     <string name="btn_clear_history">清空所有历史</string>
     <string name="btn_delete_app_history">按应用删除</string>
     <string name="empty_history_title">暂无历史通知</string>
@@ -331,7 +331,7 @@
     <string name="github_update_center_title">GitHub 更新中心</string>
     <string name="current_version_label">当前版本：v%1$s</string>
     <string name="btn_check_updates">检查更新</string>
-    <string name="btn_checking_updates">正在检查...</string>
+    <string name="btn_checking_updates">正在检查…</string>
     <string name="update_available_title">发现新版本：%1$s</string>
     <string name="update_up_to_date_title">Smart Island 已是最新版本</string>
     <string name="offline_mode_title">当前为离线模式</string>

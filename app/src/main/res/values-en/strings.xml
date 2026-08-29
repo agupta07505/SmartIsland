@@ -125,7 +125,7 @@
     <string name="shizuku_card_title">Shizuku 1-Tap Auto Setup</string>
     <string name="shizuku_card_desc">Automatically grant all required permissions via Shizuku without manually opening system settings</string>
     <string name="shizuku_btn_run">Run Auto Setup</string>
-    <string name="shizuku_btn_running">Running...</string>
+    <string name="shizuku_btn_running">Running…</string>
     <string name="shizuku_not_running">Shizuku is not running or permission not granted</string>
     <string name="shizuku_success">Permissions granted via Shizuku</string>
     <string name="shizuku_failed">Shizuku setup failed: %1$s</string>
@@ -174,10 +174,10 @@
     <!-- Customizations / Studio -->
     <string name="opacity_card_title">Island Opacity &amp; Transparency</string>
     <string name="opacity_card_desc">Adjust background translucency for a sleek glassmorphic look</string>
-    <string name="opacity_solid">100% Solid</string>
-    <string name="opacity_dark">85% Dark</string>
-    <string name="opacity_glass">70% Glass</string>
-    <string name="opacity_clear">50% Clear</string>
+    <string name="opacity_solid">100%% Solid</string>
+    <string name="opacity_dark">85%% Dark</string>
+    <string name="opacity_glass">70%% Glass</string>
+    <string name="opacity_clear">50%% Clear</string>
     <string name="slider_precision_opacity">Precision Opacity</string>
     <string name="media_player_title">Music &amp; Media Player</string>
     <string name="media_player_desc">Configure ambient backdrop artwork and visualizer animations</string>
@@ -258,7 +258,7 @@
     <string name="privacy_app_icon_only">App Icon Only (Private)</string>
     <string name="privacy_full_content">Full Content Preview</string>
     <string name="toggle_network_access_title">Network Access &amp; Release Checks</string>
-    <string name="toggle_network_access_desc">Allow unauthenticated, read-only queries to GitHub for release updates and insights. Turn off to enforce 100% strict offline mode.</string>
+    <string name="toggle_network_access_desc">Allow unauthenticated, read-only queries to GitHub for release updates and insights. Turn off to enforce 100%% strict offline mode.</string>
     <string name="display_rules_title">Display &amp; Interaction Rules</string>
     <string name="display_rules_desc">Customize automatic expansion, quick action buttons, and shade mirroring</string>
     <string name="toggle_auto_expand_title">Auto-Expand on New Notification</string>
@@ -277,7 +277,7 @@
     <string name="toggle_navigation_desc">Real-time direction arrows and distance for Google Maps &amp; Waze</string>
     <string name="app_alerts_manager_title">App Alerts &amp; Sound Manager</string>
     <string name="app_alerts_manager_desc">Manage notification display and sound playback on a per-app basis</string>
-    <string name="search_installed_apps">Search installed applications...</string>
+    <string name="search_installed_apps">Search installed applications…</string>
     <string name="btn_select_all">Select All</string>
     <string name="btn_deselect_all">Deselect All</string>
     <string name="apps_enabled_count">%1$d of %2$d enabled</string>
@@ -290,7 +290,7 @@
     <string name="toggle_enable_history_title">Enable Notification History Logging</string>
     <string name="toggle_enable_history_desc">Securely store incoming notifications in an on-device SQLite database for searching and review</string>
     <string name="retention_title">Auto-Cleanup Retention Period</string>
-    <string name="search_history_placeholder">Search past notifications by title, content, or app name...</string>
+    <string name="search_history_placeholder">Search past notifications by title, content, or app name…</string>
     <string name="btn_clear_history">Clear All History</string>
     <string name="btn_delete_app_history">Delete by App</string>
     <string name="empty_history_title">No Notifications Logged</string>
@@ -331,7 +331,7 @@
     <string name="github_update_center_title">GitHub Update Center</string>
     <string name="current_version_label">Current Version: v%1$s</string>
     <string name="btn_check_updates">Check</string>
-    <string name="btn_checking_updates">Checking...</string>
+    <string name="btn_checking_updates">Checking…</string>
     <string name="update_available_title">Update Available: %1$s</string>
     <string name="update_up_to_date_title">Smart Island is Up to Date</string>
     <string name="offline_mode_title">Offline Mode Active</string>
