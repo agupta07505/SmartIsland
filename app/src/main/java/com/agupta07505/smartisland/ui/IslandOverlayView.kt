@@ -121,21 +121,19 @@ fun IslandOverlayView(
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
     val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.6f,
-        stiffness = 300f
+        dampingRatio = 0.72f,
+        stiffness = 520f
     )
     val sizeSpecFloat = spring<Float>(
-        dampingRatio = 0.6f,
-        stiffness = 300f
+        dampingRatio = 0.72f,
+        stiffness = 520f
     )
     val heightSpec = spring<androidx.compose.ui.unit.Dp>(
-        // Height must never overshoot its measured content. Overshoot is
-        // especially visible on the compact battery card as empty black space.
-        dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium
+        dampingRatio = 0.76f,
+        stiffness = 520f
     )
     val alphaSpec = tween<Float>(
-        durationMillis = 280,
+        durationMillis = 190,
         easing = FastOutSlowInEasing
     )
 
@@ -233,14 +231,14 @@ fun IslandOverlayView(
         transitionSpec = { sizeSpecFloat },
         label = "contentScale"
     ) {
-        if (it) 1f else 0.92f
+        if (it) 1f else 0.95f
     }
 
     val contentSlideY by transition.animateDp(
         transitionSpec = { sizeSpec },
         label = "contentSlideY"
     ) {
-        if (it) 0.dp else (-12).dp
+        if (it) 0.dp else (-6).dp
     }
 
     val safeWidth = width.coerceAtLeast(0.dp)
@@ -260,14 +258,14 @@ fun IslandOverlayView(
         if (lastSelectedIndex != selectedIndex) {
             lastSelectedIndex = selectedIndex
             switchScaleAnim.animateTo(
-                targetValue = 0.88f,
-                animationSpec = tween(60, easing = FastOutSlowInEasing)
+                targetValue = 0.92f,
+                animationSpec = tween(40, easing = FastOutSlowInEasing)
             )
             switchScaleAnim.animateTo(
                 targetValue = 1f,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium
+                    stiffness = 650f
                 )
             )
         }
@@ -295,17 +293,17 @@ fun IslandOverlayView(
 
     val secondaryAlpha by animateFloatAsState(
         targetValue = if (isSplitMode && !isHiding) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "secondaryAlpha"
     )
     val secondaryScale by animateFloatAsState(
-        targetValue = if (isSplitMode && !isHiding) 1f else 0.4f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (isSplitMode && !isHiding) 1f else 0.3f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
         label = "secondaryScale"
     )
     val secondaryBubbleWidth by animateDpAsState(
         targetValue = if (secondaryIsPill) miniPillWidth else circleSize,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryBubbleWidth"
     )
     val secondaryPillProgress = (miniPillWidth - circleSize).value.let { widthDelta ->
@@ -317,17 +315,17 @@ fun IslandOverlayView(
     }
     val secondaryBubbleCorner by animateDpAsState(
         targetValue = if (secondaryIsPill) settings.cornerRadius.dp else circleSize / 2f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryBubbleCorner"
     )
     val tertiaryAlpha by animateFloatAsState(
         targetValue = if (showTertiaryPill && !isHiding) 1f else 0f,
-        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "tertiaryAlpha"
     )
     val tertiaryScale by animateFloatAsState(
-        targetValue = if (showTertiaryPill && !isHiding) 1f else 0.4f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+        targetValue = if (showTertiaryPill && !isHiding) 1f else 0.3f,
+        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
         label = "tertiaryScale"
     )
 
@@ -343,7 +341,7 @@ fun IslandOverlayView(
             secondaryIsPill -> if (isFullWidth) (expandedCompactX - screenCenter + miniPillWidth / 2f) else 0.dp
             else -> if (isFullWidth) (expandedCompactX + miniPillWidth + compactGap - screenCenter + circleSize / 2f) else ((miniPillWidth + compactGap) / 2f)
         },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
         label = "secondaryOffset"
     )
 
