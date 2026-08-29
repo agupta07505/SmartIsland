@@ -316,7 +316,7 @@
     <string name="toggle_recent_apps_title">Preencher Automaticamente com Apps Recentes</string>
     <string name="toggle_recent_apps_desc_granted">Preenche os espaços livres com seus aplicativos usados mais recentemente</string>
     <string name="toggle_recent_apps_desc_needed">Permissão de acesso ao uso necessária para apps recentes</string>
-    <string name="pinned_apps_title">Aplicativos Fixados (%1$d/8 fixados)</string>
+    <string name="pinned_apps_title">Aplicativos Fixados</string>
 
     <!-- Support & Community -->
     <string name="support_title">Suporte e Comunidade</string>

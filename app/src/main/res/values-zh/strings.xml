@@ -316,7 +316,7 @@
     <string name="toggle_recent_apps_title">自动填充最近使用的应用</string>
     <string name="toggle_recent_apps_desc_granted">用最近打开的应用自动填满空白卡槽</string>
     <string name="toggle_recent_apps_desc_needed">最近应用功能需要授予“使用情况访问权限”</string>
-    <string name="pinned_apps_title">已固定的应用（%1$d/8 已固定）</string>
+    <string name="pinned_apps_title">已固定的应用</string>
 
     <!-- Support & Community -->
     <string name="support_title">支持与社区</string>

@@ -316,7 +316,7 @@
     <string name="toggle_recent_apps_title">Auto-fill with Recent Apps</string>
     <string name="toggle_recent_apps_desc_granted">Fills open slots with your most recently used apps</string>
     <string name="toggle_recent_apps_desc_needed">Usage stats permission required for recent apps</string>
-    <string name="pinned_apps_title">Pinned Applications (%1$d/8 pinned)</string>
+    <string name="pinned_apps_title">Pinned Applications</string>
 
     <!-- Support & Community -->
     <string name="support_title">Support &amp; Community</string>

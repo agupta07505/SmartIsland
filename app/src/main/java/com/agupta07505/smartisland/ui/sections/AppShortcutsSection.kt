@@ -205,7 +205,7 @@ fun AppShortcutsSection(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${settings.shortcutPackages.size}/8 pinned",
+                            text = stringResource(R.string.card_app_shortcuts_status, settings.shortcutPackages.size),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -216,7 +216,7 @@ fun AppShortcutsSection(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search apps to pin...") },
+                    placeholder = { Text(stringResource(R.string.search_installed_apps)) },
                     leadingIcon = {
                         Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
@@ -233,7 +233,7 @@ fun AppShortcutsSection(
 
                 if (filteredApps.isEmpty()) {
                     Text(
-                        text = if (query.isBlank()) "No installed apps found" else "No apps matching \"$query\"",
+                        text = if (query.isBlank()) stringResource(R.string.no_installed_apps_found) else stringResource(R.string.no_apps_matching_query, query),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 12.dp)
