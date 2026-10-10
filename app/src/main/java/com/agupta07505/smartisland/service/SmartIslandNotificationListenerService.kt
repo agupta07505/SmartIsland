@@ -144,6 +144,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
     override fun onDestroy() {
         isSystemConnected = false
+        stopSessionWatch()
         lastSoundPlayedTimeMs = 0L
         lastAutoExpandTimeMs = 0L
         cooldownReleaseJobs.values.forEach { it.cancel() }
@@ -319,6 +320,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         isSystemConnected = true
+        startSessionWatch()
         runCatchingLogged(TAG, "onListenerConnected callback failed") {
             android.util.Log.d(TAG, "onListenerConnected")
             serviceScope.launch {
@@ -360,7 +362,137 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    // Fallback for players whose notification is missing, blocked, or lacks a media session token:
+    // read playback straight from the active MediaSessions and show it as a synthetic Music entry.
+    private val sessionCallbacks = ConcurrentHashMap<MediaSession.Token, Pair<MediaController, MediaController.Callback>>()
+    private val sessionStaleJobs = ConcurrentHashMap<String, Job>()
+    private var sessionsListener: android.media.session.MediaSessionManager.OnActiveSessionsChangedListener? = null
+
+    private fun startSessionWatch() {
+        mainScope.launch {
+            runCatchingLogged(TAG, "Session watch failed") {
+                val mgr = mediaSessionManager ?: return@runCatchingLogged
+                if (sessionsListener == null) {
+                    val listener = android.media.session.MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+                        trackSessions(controllers.orEmpty())
+                    }
+                    mgr.addOnActiveSessionsChangedListener(
+                        listener,
+                        android.content.ComponentName(this@SmartIslandNotificationListenerService, SmartIslandNotificationListenerService::class.java)
+                    )
+                    sessionsListener = listener
+                }
+                trackSessions(activeMediaControllers)
+            }
+        }
+    }
+
+    private fun stopSessionWatch() {
+        runCatchingLogged(TAG, "Session unwatch failed") {
+            sessionsListener?.let { mediaSessionManager?.removeOnActiveSessionsChangedListener(it) }
+        }
+        sessionsListener = null
+        sessionCallbacks.values.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
+        sessionCallbacks.clear()
+        sessionStaleJobs.values.forEach { it.cancel() }
+        sessionStaleJobs.clear()
+    }
+
+    private fun trackSessions(controllers: List<MediaController>) {
+        android.util.Log.d(TAG, "trackSessions: ${controllers.map { it.packageName }}")
+        val live = controllers.map { it.sessionToken }.toSet()
+        sessionCallbacks.keys.filter { it !in live }.forEach { token ->
+            sessionCallbacks.remove(token)?.let { (controller, callback) ->
+                controller.unregisterCallback(callback)
+                dropSessionEntry(controller.packageName)
+            }
+        }
+        controllers.filter { it.packageName != packageName && !sessionCallbacks.containsKey(it.sessionToken) }.forEach { controller ->
+            val callback = object : MediaController.Callback() {
+                override fun onPlaybackStateChanged(state: PlaybackState?) = syncSession(controller)
+                override fun onMetadataChanged(metadata: MediaMetadata?) = syncSession(controller)
+                override fun onSessionDestroyed() = dropSessionEntry(controller.packageName)
+            }
+            controller.registerCallback(callback, android.os.Handler(android.os.Looper.getMainLooper()))
+            sessionCallbacks[controller.sessionToken] = controller to callback
+            syncSession(controller)
+        }
+    }
+
+    private fun syncSession(controller: MediaController) {
+        runCatchingLogged(TAG, "Session sync failed") {
+            val settings = currentSettings
+            val pkg = controller.packageName
+            val key = sessionKey(pkg)
+            if (!settings.enabled || pkg in settings.disabledNotificationPackages) return@runCatchingLogged dropSessionEntry(pkg)
+
+            // A real media notification from this app already drives the island.
+            val entries = notificationRepository.notifications.value
+            if (entries.any { it.packageName == pkg && it.mode == IslandMode.Music && it.key != key }) {
+                return@runCatchingLogged dropSessionEntry(pkg)
+            }
+
+            val state = controller.playbackState?.state
+            android.util.Log.d(TAG, "syncSession: pkg=$pkg state=$state title=${controller.metadata?.description?.title}")
+            val playing = state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
+            sessionStaleJobs.remove(pkg)?.cancel()
+            if (!playing) {
+                if (entries.none { it.key == key }) return@runCatchingLogged
+                // Keep a paused entry briefly so it can be resumed from the island, then let it go.
+                sessionStaleJobs[pkg] = serviceScope.launch {
+                    delay(SESSION_PAUSE_GRACE_MS)
+                    notificationRepository.removeNotification(key)
+                    sessionStaleJobs.remove(pkg)
+                }
+            }
+
+            val metadata = controller.metadata
+            val description = metadata?.description
+            val title = description?.title?.toString()
+                ?: metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)
+                ?: return@runCatchingLogged
+            val text = description?.subtitle?.toString()
+                ?: metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                ?: ""
+            val appName = runCatchingLogged(TAG, "GetApplicationInfo failed") {
+                packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
+            } ?: pkg
+            val info = controller.extractMediaInfo()
+            val isNew = entries.none { it.key == key }
+            notificationRepository.postNotification(
+                IslandNotification(
+                    key = key,
+                    packageName = pkg,
+                    appName = appName,
+                    title = title,
+                    text = text,
+                    timeMillis = System.currentTimeMillis(),
+                    icon = loadAppIconBitmap(pkg),
+                    largeIcon = info.artwork ?: description?.iconBitmap,
+                    mediaPositionMs = info.positionMs,
+                    mediaDurationMs = info.durationMs,
+                    mediaIsPlaying = info.isPlaying,
+                    mediaToken = controller.sessionToken,
+                    mode = IslandMode.Music,
+                    contentIntent = controller.sessionActivity
+                ),
+                autoExpand = isNew && playing && settings.autoExpandOnNotification
+            )
+        }
+    }
+
+    private fun dropSessionEntry(packageName: String) {
+        sessionStaleJobs.remove(packageName)?.cancel()
+        val key = sessionKey(packageName)
+        if (notificationRepository.notifications.value.any { it.key == key }) {
+            notificationRepository.removeNotification(key)
+        }
+    }
+
+    private fun sessionKey(packageName: String) = "session|$packageName"
+
     override fun onListenerDisconnected() {
+        stopSessionWatch()
         isSystemConnected = false
         super.onListenerDisconnected()
         runCatchingLogged(TAG, "Notification-listener self-rebind failed") {
@@ -1108,5 +1240,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         private const val INITIAL_SUPPRESSION_WINDOW_MS = 1500L
         private const val SOUND_DEBOUNCE_MS = 1200L
         private const val AUTO_EXPAND_DEBOUNCE_MS = 1500L
+        private const val SESSION_PAUSE_GRACE_MS = 60_000L
     }
 }
