@@ -23,6 +23,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -94,7 +97,8 @@ fun IslandCollapsedContent(
     notification: IslandNotification?,
     collapsedAlpha: Float,
     settings: SmartIslandSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cameraKeepoutDp: Float = 0f
 ) {
     val density = LocalDensity.current
     val maxTranslationPx = with(density) { COLLAPSED_TRANSLATION_MAX_DP.toPx() }
@@ -102,12 +106,19 @@ fun IslandCollapsedContent(
     val translationXLeft = translationProgress * maxTranslationPx
     val translationXRight = -translationProgress * maxTranslationPx
 
-    Box(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // Neither slot may reach into the camera hole at the pill's center.
+        val keepoutHalf = if (cameraKeepoutDp > 0f) (cameraKeepoutDp / 2f + CAMERA_KEEPOUT_MARGIN_DP).dp else 0.dp
+        val leftSlotMax = (maxWidth / 2f - keepoutHalf - LEFT_SLOT_PADDING_START_DP.dp).coerceAtLeast(0.dp)
+        val rightSlotMax = (maxWidth / 2f - keepoutHalf - RIGHT_SLOT_PADDING_END_DP.dp).coerceAtLeast(0.dp)
+
         // Left Slot (Icon / Glyphs)
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = LEFT_SLOT_PADDING_START_DP.dp)
+                .widthIn(max = leftSlotMax)
+                .clipToBounds()
                 .graphicsLayer {
                     translationX = translationXLeft
                 },
@@ -226,6 +237,8 @@ fun IslandCollapsedContent(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = RIGHT_SLOT_PADDING_END_DP.dp)
+                .widthIn(max = rightSlotMax)
+                .clipToBounds()
                 .graphicsLayer {
                     translationX = translationXRight
                 },
@@ -1146,3 +1159,4 @@ fun BluetoothCollapsedRight(
 private val COLLAPSED_TRANSLATION_MAX_DP = 32.dp
 private const val LEFT_SLOT_PADDING_START_DP = 8
 private const val RIGHT_SLOT_PADDING_END_DP = 12
+private const val CAMERA_KEEPOUT_MARGIN_DP = 3f

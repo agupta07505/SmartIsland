@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.util.CameraAnchor
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.model.SwipeAction
 import com.agupta07505.smartisland.ui.expanded.IslandExpandedContent
@@ -104,8 +105,13 @@ fun IslandOverlayView(
     isInputActive: Boolean = false,
     onReplyStateChanged: (Boolean) -> Unit = {},
     onDismissAllNotifications: () -> Unit = {},
-    isFullWidth: Boolean = true
+    isFullWidth: Boolean = true,
+    cameraAnchor: CameraAnchor? = null
 ) {
+    // The collapsed island is pinned over the physical camera; the manual offset is only a fallback.
+    @Suppress("NAME_SHADOWING")
+    val settings = if (cameraAnchor != null) settings.copy(xOffset = cameraAnchor.xOffsetDp) else settings
+    val cameraKeepoutDp = cameraAnchor?.holeWidthDp ?: 0f
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
     // even though pointerInput(Unit) never restarts its coroutine
     val currentOnToggle by rememberUpdatedState(onToggleExpanded)
@@ -177,14 +183,11 @@ fun IslandOverlayView(
     val compactShapes = compactNotificationShapes(notifications.size, expanded)
     val hasCompanion = if (settings.enableNotchMode) false else notifications.size >= 2
     val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-    val collapsedGroupWidth = settings.width.dp + if (hasCompanion) compactGap + circleSize else 0.dp
 
     val desiredMainLeft = screenCenter + settings.xOffset.dp - settings.width.dp / 2f
-    val (minMainLeft, maxMainLeft) = when {
-        !hasCompanion -> compactGap to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap)
-        isCircleLeft -> (compactGap + circleSize + compactGap) to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap + circleSize + compactGap)
-        else -> compactGap to (screenWidth - compactGap - collapsedGroupWidth).coerceAtLeast(compactGap)
-    }
+    // The main pill never shifts to make room for the companion; it stays over the camera.
+    val minMainLeft = compactGap
+    val maxMainLeft = (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap)
     val collapsedMainLeft = desiredMainLeft.coerceIn(minMainLeft, maxMainLeft)
     val mainCenter = collapsedMainLeft + settings.width.dp / 2f
     val circleLeft = if (isCircleLeft) {
@@ -193,16 +196,14 @@ fun IslandOverlayView(
         collapsedMainLeft + settings.width.dp + compactGap
     }
     val circleCenter = circleLeft + circleSize / 2f
-    val groupStart = if (isCircleLeft && hasCompanion) circleLeft else collapsedMainLeft
-    val groupEnd = if (!isCircleLeft && hasCompanion) circleLeft + circleSize else collapsedMainLeft + settings.width.dp
-    val groupCenter = (groupStart + groupEnd) / 2f
 
     val collapsedMainOffset = if (settings.enableNotchMode) {
         settings.xOffset.dp
     } else if (isFullWidth) {
         mainCenter - screenCenter
     } else {
-        mainCenter - groupCenter
+        // The service centers the collapsed window on the main pill.
+        0.dp
     }
     val expandedTopOffset = calculateExpandedTopOffset(
         enableNotchMode = settings.enableNotchMode,
@@ -373,7 +374,7 @@ fun IslandOverlayView(
     val collapsedSecondaryOffset = if (isFullWidth) {
         circleCenter - screenCenter
     } else {
-        circleCenter - groupCenter
+        circleCenter - mainCenter
     }
     val secondaryExpandedOffset = calculateSecondaryExpandedOffset(
         secondaryIsPill = secondaryIsPill,
@@ -811,7 +812,8 @@ fun IslandOverlayView(
                         mode = activeMode,
                         notification = activeNotification,
                         collapsedAlpha = collapsedAlpha,
-                        settings = settings
+                        settings = settings,
+                        cameraKeepoutDp = cameraKeepoutDp
                     )
                 }
             }
