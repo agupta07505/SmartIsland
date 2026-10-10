@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.material.icons.rounded.BluetoothConnected
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -69,14 +70,18 @@ fun PermissionsSection(
     overlayGranted: Boolean,
     notificationGranted: Boolean,
     batteryIgnored: Boolean = false,
+    bluetoothGranted: Boolean = false,
     onOverlayClick: () -> Unit,
     onNotificationClick: () -> Unit,
     onBatteryClick: () -> Unit,
+    onBluetoothClick: () -> Unit,
     onRefreshPermissions: () -> Unit = {}
-) {
+)
+{
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isExecutingShizuku by remember { mutableStateOf(false) }
+    var isRepairingAccessibility by remember { mutableStateOf(false) }
     var isOemAutostartEnabled by remember { mutableStateOf(batteryIgnored) }
     var isOverlayWarningDisabled by remember { mutableStateOf(false) }
 
@@ -100,100 +105,206 @@ fun PermissionsSection(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.FlashOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = stringResource(R.string.shizuku_card_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            val shizukuStateText = when {
-                                !ShizukuManager.isInstalled(context) -> "Not Installed"
-                                !ShizukuManager.isBinderAvailable() -> "Shizuku Not Running"
-                                !ShizukuManager.hasPermission() -> "Permission Required"
-                                else -> "Ready to Auto-Grant"
-                            }
-                            Text(
-                                text = shizukuStateText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (ShizukuManager.hasPermission()) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Button(
-                        enabled = !isExecutingShizuku,
-                        onClick = {
-                            when {
-                                !ShizukuManager.isInstalled(context) -> {
-                                    Toast.makeText(context, context.getString(R.string.shizuku_not_running), Toast.LENGTH_LONG).show()
-                                }
-                                !ShizukuManager.isBinderAvailable() -> {
-                                    Toast.makeText(context, context.getString(R.string.shizuku_not_running), Toast.LENGTH_LONG).show()
-                                }
-                                !ShizukuManager.hasPermission() -> {
-                                    ShizukuManager.requestPermission()
-                                }
-                                else -> {
-                                    isExecutingShizuku = true
-                                    scope.launch {
-                                        val result = ShizukuManager.autoGrantAllPermissions(context)
-                                        isExecutingShizuku = false
-                                        result.onSuccess { msg ->
-                                            Toast.makeText(context, context.getString(R.string.shizuku_success), Toast.LENGTH_LONG).show()
-                                            isOemAutostartEnabled = true
-                                            isOverlayWarningDisabled = true
-                                            onRefreshPermissions()
-                                        }.onFailure { err ->
-                                            Toast.makeText(context, context.getString(R.string.shizuku_failed, err.localizedMessage ?: ""), Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = if (isExecutingShizuku) stringResource(R.string.shizuku_btn_running) else stringResource(R.string.shizuku_btn_run),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+               Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.FlashOn,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = stringResource(R.string.shizuku_card_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            val shizukuStateText = when {
+                !ShizukuManager.isInstalled(context) -> "Not Installed"
+                !ShizukuManager.isBinderAvailable() -> "Shizuku Not Running"
+                !ShizukuManager.hasPermission() -> "Permission Required"
+                else -> "Ready to Auto-Grant"
+            }
+
+            Text(
+                text = shizukuStateText,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (ShizukuManager.hasPermission()) {
+                    Color(0xFF0F9F6E)
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
                 Text(
+                    modifier = Modifier.padding(horizontal = 14.dp),
                     text = stringResource(R.string.shizuku_card_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+    enabled = !isExecutingShizuku,
+    onClick = {
+        when {
+            !ShizukuManager.isInstalled(context) -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shizuku_not_running),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            !ShizukuManager.isBinderAvailable() -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shizuku_not_running),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            !ShizukuManager.hasPermission() -> {
+                ShizukuManager.requestPermission()
+            }
+
+            else -> {
+                isExecutingShizuku = true
+
+                scope.launch {
+                    val result =
+                        ShizukuManager.autoGrantAllPermissions(context)
+
+                    isExecutingShizuku = false
+
+                    result.onSuccess {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.shizuku_success),
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        isOemAutostartEnabled = true
+                        isOverlayWarningDisabled = true
+                        onRefreshPermissions()
+                    }.onFailure { err ->
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.shizuku_failed,
+                                err.localizedMessage ?: ""
+                            ),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    },
+    shape = RoundedCornerShape(12.dp),
+    contentPadding = PaddingValues(
+        horizontal = 14.dp,
+        vertical = 8.dp
+    )
+) {
+    Text(
+        text = if (isExecutingShizuku) {
+            stringResource(R.string.shizuku_btn_running)
+        } else {
+            stringResource(R.string.shizuku_btn_run)
+        },
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
+OutlinedButton(
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 14.dp),
+    enabled = !isRepairingAccessibility && !isExecutingShizuku,
+    onClick = {
+        when {
+            !ShizukuManager.isBinderAvailable() -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.shizuku_not_running),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            !ShizukuManager.hasPermission() -> {
+                ShizukuManager.requestPermission()
+            }
+
+            else -> {
+                isRepairingAccessibility = true
+
+                scope.launch {
+                    val result =
+                        ShizukuManager.repairAccessibility(context)
+
+                    isRepairingAccessibility = false
+
+                    result.onSuccess {
+                        Toast.makeText(
+                            context,
+                            "Accessibility service repaired via Shizuku!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        onRefreshPermissions()
+                    }.onFailure { err ->
+                        Toast.makeText(
+                            context,
+                            "Repair failed: ${
+                                err.localizedMessage ?: "Unknown error"
+                            }",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    },
+    shape = RoundedCornerShape(10.dp),
+    contentPadding = PaddingValues(
+        horizontal = 10.dp,
+        vertical = 8.dp
+    )
+) {
+    Text(
+        text = if (isRepairingAccessibility) {
+            "Repairing..."
+        } else {
+            "Repair"
+        },
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold
+    )
+}
             }
         }
 
@@ -214,8 +325,16 @@ fun PermissionsSection(
             buttonText = stringResource(R.string.btn_grant),
             onClick = onNotificationClick
         )
+        // Recommended Permission 3: Nearby devices / Bluetooth
+        PermissionCard(
+            title = stringResource(R.string.perm_bluetooth_title),
+            description = stringResource(R.string.perm_bluetooth_desc),
+            granted = bluetoothGranted,
+            buttonText = stringResource(R.string.btn_grant),
+            onClick = onBluetoothClick
+        )
 
-        // Recommended Permission 3: Battery Optimization
+        // Recommended Permission 4: Battery Optimization
         PermissionCard(
             title = stringResource(R.string.perm_battery_title),
             description = stringResource(R.string.perm_battery_desc),
@@ -419,4 +538,3 @@ fun PermissionsSection(
             }
         }
     }
-}

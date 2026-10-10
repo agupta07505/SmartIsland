@@ -186,5 +186,65 @@ class IslandViewModelTest {
         assertEquals(1, viewModel.visibleNotifications.value.size)
         assertEquals(0, viewModel.selectedIndex.value)
     }
-}
+    @Test
+    fun testTimerAndStopwatchAreSelectedWithoutAutoExpanding() = runTest {
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
+        io.mockk.every { settingsRepo.settings } returns
+            kotlinx.coroutines.flow.MutableStateFlow(
+                com.agupta07505.smartisland.data.SmartIslandSettings(
+                    autoExpandOnNotification = false
+                )
+            )
 
+        val notifRepo = SmartIslandNotificationRepository()
+        val viewModel = IslandViewModel(settingsRepo, notifRepo)
+        testDispatcher.scheduler.runCurrent()
+
+        notifRepo.postNotification(
+            IslandNotification(
+                key = "existing",
+                packageName = "com.whatsapp",
+                appName = "WhatsApp",
+                title = "Existing notification",
+                text = "Hello",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Notification
+            )
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        notifRepo.postNotification(
+            IslandNotification(
+                key = "timer",
+                packageName = "com.android.deskclock",
+                appName = "Clock",
+                title = "Timer",
+                text = "00:10",
+                timeMillis = System.currentTimeMillis() + 10_000L,
+                mode = IslandMode.Timer
+            ),
+            autoExpand = true
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(1, viewModel.selectedIndex.value)
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+
+        notifRepo.postNotification(
+            IslandNotification(
+                key = "stopwatch",
+                packageName = "com.android.deskclock",
+                appName = "Clock",
+                title = "Stopwatch running",
+                text = "",
+                timeMillis = System.currentTimeMillis(),
+                mode = IslandMode.Stopwatch
+            ),
+            autoExpand = true
+        )
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(2, viewModel.selectedIndex.value)
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+    }
+}

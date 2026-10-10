@@ -43,6 +43,7 @@ import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandViewModel
 import com.agupta07505.smartisland.ui.OverlayIsland
 import com.agupta07505.smartisland.ui.expanded.sendIntentWithOptions
+import com.agupta07505.smartisland.util.SystemServiceRecovery
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import dagger.hilt.android.AndroidEntryPoint
@@ -337,6 +338,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         isSystemConnected = true
+        SystemServiceRecovery.resetAccessibilityRefreshAttempt()
         if (destroyed || !::viewModel.isInitialized) return
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Service reconnect failed") {
@@ -352,6 +354,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         isSystemConnected = false
+        SystemServiceRecovery.resetAccessibilityRefreshAttempt()
         // Return true so Android system knows to re-bind the accessibility service automatically
         return true
     }
