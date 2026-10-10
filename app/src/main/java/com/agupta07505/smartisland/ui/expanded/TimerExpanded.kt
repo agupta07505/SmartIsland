@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import android.widget.Toast
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -104,7 +105,7 @@ fun TimerExpanded(
         } else {
             val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
             if (t > System.currentTimeMillis()) {
-                ((t - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+                ((t - System.currentTimeMillis() + 999L) / 1000L).coerceAtLeast(0L)
             } else {
                 0L
             }
@@ -112,30 +113,49 @@ fun TimerExpanded(
         mutableStateOf(rem)
     }
 
-    LaunchedEffect(notification?.text, notification?.title) {
-        if (isPaused && notification != null) {
-            val parsed = TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-            if (parsed != null && parsed > 0) {
-                remainingSec = parsed
-            }
-        }
-    }
+    LaunchedEffect(
+    notification?.text,
+    notification?.title,
+    notification?.timerRemainingSeconds
+) {
+    if (isPaused && notification != null) {
+        val pausedRemaining = notification.timerRemainingSeconds
+            ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
 
-    LaunchedEffect(notification?.key, targetTime, isPaused) {
-        if (!isPaused) {
-            while (true) {
-                val now = System.currentTimeMillis()
-                val rem = if (targetTime > now) {
-                    ((targetTime - now + 500L) / 1000L).coerceAtLeast(0L)
-                } else {
-                    0L
-                }
-                remainingSec = rem
-                if (rem <= 0L) break
-                kotlinx.coroutines.delay(500L)
-            }
+        if (pausedRemaining != null && pausedRemaining >= 0L) {
+            remainingSec = pausedRemaining
         }
     }
+}
+
+    LaunchedEffect(
+    notification?.key,
+    targetTime,
+    isPaused,
+    notification?.timerRemainingSeconds
+) {
+    if (isPaused) {
+        notification?.timerRemainingSeconds?.let {
+            remainingSec = it
+        }
+    } else {
+        while (true) {
+            val now = System.currentTimeMillis()
+
+            val rem = if (targetTime > now) {
+                ((targetTime - now + 999L) / 1000L).coerceAtLeast(0L)
+            } else {
+                0L
+            }
+
+            remainingSec = rem
+
+            if (rem <= 0L) break
+
+            kotlinx.coroutines.delay(100L)
+        }
+    }
+}
 
     val displayTime = remember(remainingSec) {
         TimerStopwatchParser.formatTime(remainingSec)
@@ -243,51 +263,60 @@ fun TimerExpanded(
                     !destructiveKeywords.any { t.contains(it) } && !t.contains("+1") && !t.contains("add")
                 }
             }
+Box(
+    modifier = Modifier
+        .size(40.dp)
+        .clip(CircleShape)
+        .background(timerColor)
+        .bounceClick {
+            val currentNotification = notification
+            val action = pauseAction
+            val pendingIntent = action?.pendingIntent
 
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(timerColor)
-                    .bounceClick {
-                        val newPaused = !isPaused
-                        isPaused = newPaused
-                        targetTime = System.currentTimeMillis() + remainingSec * 1000L
-
-                        if (pauseAction?.pendingIntent != null && notification != null) {
-                            triggerAction(context, notification.packageName, pauseAction.pendingIntent, pauseAction.title, notification.contentIntent)
-                        }
-                        if (notification != null) {
-                            val repo = SmartIslandRepositories.notificationRepository(context)
-                            val updatedActions = notification.actionIntents.map { act ->
-                                val t = act.title.lowercase()
-                                if (newPaused && pauseKeywords.any { t.contains(it) }) {
-                                    act.copy(title = "Resume")
-                                } else if (!newPaused && resumeKeywords.any { t.contains(it) }) {
-                                    act.copy(title = "Pause")
-                                } else {
-                                    act
-                                }
-                            }
-                            repo.postNotification(
-                                notification.copy(
-                                    title = if (newPaused) "${notification.title.replace(" (Paused)", "")} (Paused)" else notification.title.replace(" (Paused)", ""),
-                                    text = TimerStopwatchParser.formatTime(remainingSec),
-                                    timeMillis = System.currentTimeMillis() + remainingSec * 1000L,
-                                    actionIntents = updatedActions
-                                )
-                            )
-                        }
-                    },
-                contentAlignment = Alignment.Center
+            if (
+                currentNotification == null ||
+                action == null ||
+                pendingIntent == null
             ) {
-                Icon(
-                    imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                    contentDescription = if (isPaused) "Resume" else "Pause",
-                    tint = Color.Black,
-                    modifier = Modifier.size(20.dp)
+                android.util.Log.w(
+                    "TimerExpanded",
+                    "No real Clock Pause/Resume action is available"
+                )
+
+                Toast.makeText(
+                    context,
+                    "Clock Pause/Resume action unavailable",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                android.util.Log.d(
+                    "TimerExpanded",
+                    "Sending Clock action: ${action.title}"
+                )
+
+                triggerAction(
+                    context,
+                    currentNotification.packageName,
+                    pendingIntent,
+                    action.title,
+                    currentNotification.contentIntent
                 )
             }
+        },
+    contentAlignment = Alignment.Center
+) {
+    Icon(
+        imageVector = if (isPaused) {
+            Icons.Rounded.PlayArrow
+        } else {
+            Icons.Rounded.Pause
+        },
+        contentDescription = if (isPaused) "Resume" else "Pause",
+        tint = Color.Black,
+        modifier = Modifier.size(20.dp)
+    )
+}
+
 
             // 2. Reset / Stop / Cancel Button
             val stopAction = notification?.actionIntents?.firstOrNull { act ->

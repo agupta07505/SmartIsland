@@ -326,26 +326,68 @@ object TimerStopwatchParser {
 
     /**
      * Extracts the remaining time in seconds from a timer notification.
-     */
-    fun parseTimerRemainingSeconds(notification: Notification): Long? {
-        val isPaused = isTimerPaused(notification)
-        val extras = notification.extras
+    * Reads the precise timer deadline from HyperOS timer metadata.
+    * Reads the most reliable future deadline from a timer notification.
+    * Prefers the notification's deadline before HyperOS-specific fallbacks.
+    */
+    fun parseTimerDeadlineMillis(notification: Notification): Long? {
+        if (isTimerPaused(notification)) return null
 
-        // 1. If running and has chronometer countdown base, this is the most accurate
-        if (extras != null && !isPaused) {
-            val isCountDown = runCatching {
-                extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false) ||
-                extras.getBoolean("android.chronometerCountDown", false)
-            }.getOrDefault(false)
-            val chronometerBase = runCatching {
-                extras.getLong("android.chronometerBase", 0L)
-            }.getOrDefault(0L)
+        val now = System.currentTimeMillis()
 
-            if (isCountDown && chronometerBase > 0L) {
-                val diffMs = chronometerBase - SystemClock.elapsedRealtime()
-                if (diffMs > 0) return (diffMs + 500L) / 1000L
+        // 1. Prefer the actual deadline exposed by the notification.
+        val notificationDeadline = runCatching {
+            notification.`when`
+        }.getOrDefault(0L)
+
+        if (notificationDeadline > now) {
+            return notificationDeadline
+        }
+
+        // 2. Try reconstructing the deadline from HyperOS timer metadata.
+        val rawParam = runCatching {
+            notification.extras?.getString("miui.focus.param")
+        }.getOrNull() ?: return null
+
+        val json = runCatching {
+            org.json.JSONObject(rawParam)
+        }.getOrNull() ?: return null
+
+        val timerSystemCurrent = json.optLong("timerSystemCurrent", 0L)
+        val timerTotal = json.optLong("timerTotal", 0L)
+
+        if (timerSystemCurrent > 0L && timerTotal > 0L) {
+            val reconstructedDeadline = timerSystemCurrent + timerTotal
+
+            if (reconstructedDeadline > now) {
+                return reconstructedDeadline
             }
         }
+
+        // 3. Last resort: the HyperOS timerWhen field.
+        val timerWhen = json.optLong("timerWhen", 0L)
+
+        return timerWhen.takeIf { it > now }
+    }
+        fun parseTimerRemainingSeconds(notification: Notification): Long? {
+            val isPaused = isTimerPaused(notification)
+            val extras = notification.extras
+
+            // 1. If running and has chronometer countdown base, this is the most accurate
+            if (extras != null && !isPaused) {
+                val isCountDown = runCatching {
+                    extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false) ||
+                    extras.getBoolean("android.chronometerCountDown", false)
+                }.getOrDefault(false)
+                val chronometerBase = runCatching {
+                    extras.getLong("android.chronometerBase", 0L)
+                }.getOrDefault(0L)
+
+                if (isCountDown && chronometerBase > 0L) {
+                    val diffMs = chronometerBase - SystemClock.elapsedRealtime()
+                    if (diffMs > 0) return (diffMs + 500L) / 1000L
+                }
+            }
 
         // 2. If running and notification.when is in future
         if (!isPaused) {

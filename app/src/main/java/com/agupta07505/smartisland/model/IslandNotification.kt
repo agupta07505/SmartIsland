@@ -28,7 +28,16 @@ data class IslandNotification(
     val mediaIsPlaying: Boolean = false,
     val mediaToken: android.media.session.MediaSession.Token? = null,
     val mode: IslandMode = IslandMode.Notification,
-    val contentIntent: PendingIntent? = null
+    val contentIntent: PendingIntent? = null,
+
+    // Frozen elapsed seconds while the Clock stopwatch is paused.
+    val stopwatchElapsedSeconds: Long? = null,
+
+    // Android's monotonic chronometer base while the stopwatch is running.
+    val stopwatchChronometerBase: Long? = null,
+
+    // Frozen remaining seconds while a Clock timer is paused.
+    val timerRemainingSeconds: Long? = null
 ) {
     // Derived: no need to store separately
     val actions: List<String>

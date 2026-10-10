@@ -26,6 +26,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 object SystemServiceRecovery {
     private val accessibilityRefreshAttempted = AtomicBoolean(false)
 
+    fun resetAccessibilityRefreshAttempt() {
+    accessibilityRefreshAttempted.set(false)
+    }
+
     fun requestRecovery(context: Context) {
         runCatchingLogged(TAG, "System-service recovery failed") {
             val appContext = context.applicationContext

@@ -147,6 +147,8 @@
     <string name="perm_accessibility_desc">Allows Smart Island to float dynamically above the status bar and notch area</string>
     <string name="perm_notification_title">Notification Access</string>
     <string name="perm_notification_desc">Reads incoming messages, calls, media metadata, and live tracking alerts</string>
+    <string name="perm_bluetooth_title">Nearby devices</string>
+    <string name="perm_bluetooth_desc">Allows Smart Island to detect Bluetooth device connections and show connected-device events</string>
     <string name="perm_battery_title">Battery Optimization Bypass</string>
     <string name="perm_battery_desc">Prevents Android and aggressive OEM task killers from terminating background services</string>
     <string name="perm_status_granted">Granted</string>

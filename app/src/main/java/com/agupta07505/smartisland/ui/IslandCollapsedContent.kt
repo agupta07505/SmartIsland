@@ -971,41 +971,67 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
     val targetTime = notification?.timeMillis ?: remember { System.currentTimeMillis() + 300000L }
 
     var remainingSec by remember(notification?.key) {
-        val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
-        val rem = if (parsed != null && parsed > 0) {
+    val parsed = notification?.let {
+        TimerStopwatchParser.parseTimerRemainingSeconds(it)
+    }
+
+    val rem = notification?.timerRemainingSeconds
+        ?: if (parsed != null && parsed > 0L) {
             parsed
         } else if (targetTime > System.currentTimeMillis()) {
-            ((targetTime - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+            (
+                (targetTime - System.currentTimeMillis() + 500L) / 1000L
+            ).coerceAtLeast(0L)
         } else {
             0L
         }
-        mutableStateOf(rem)
+
+    mutableStateOf(rem)
     }
 
-    LaunchedEffect(notification?.text, notification?.title) {
-        if (isPaused && notification != null) {
-            val parsed = TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-            if (parsed != null && parsed > 0) {
-                remainingSec = parsed
-            }
-        }
-    }
+    LaunchedEffect(
+    notification?.text,
+    notification?.title,
+    notification?.timerRemainingSeconds
+) {
+    if (isPaused && notification != null) {
+        val pausedRemaining = notification.timerRemainingSeconds
+            ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
 
-    LaunchedEffect(notification?.key, targetTime, isPaused) {
-        if (!isPaused) {
-            while (true) {
-                val now = System.currentTimeMillis()
-                val rem = if (targetTime > now) {
-                    ((targetTime - now + 500L) / 1000L).coerceAtLeast(0L)
-                } else {
-                    0L
-                }
-                remainingSec = rem
-                if (rem <= 0L) break
-                kotlinx.coroutines.delay(500L)
-            }
+        if (pausedRemaining != null && pausedRemaining >= 0L) {
+            remainingSec = pausedRemaining
         }
     }
+}
+
+    LaunchedEffect(
+    notification?.key,
+    targetTime,
+    isPaused,
+    notification?.timerRemainingSeconds
+) {
+    if (isPaused) {
+        notification?.timerRemainingSeconds?.let {
+            remainingSec = it
+        }
+    } else {
+        while (true) {
+            val now = System.currentTimeMillis()
+
+            val rem = if (targetTime > now) {
+                ((targetTime - now + 999L) / 1000L).coerceAtLeast(0L)
+            } else {
+                0L
+            }
+
+            remainingSec = rem
+
+            if (rem <= 0L) break
+
+            kotlinx.coroutines.delay(100L)
+        }
+    }
+}
 
     val text = remember(remainingSec) {
         TimerStopwatchParser.formatTime(remainingSec)
@@ -1021,22 +1047,68 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
 
 @Composable
 internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
-    val startTime = notification?.timeMillis ?: remember { System.currentTimeMillis() }
-    val isPaused = remember(notification?.key, notification?.actionIntents) {
-        notification?.actionIntents?.any {
-            it.title.contains("resume", ignoreCase = true) || it.title.contains("start", ignoreCase = true)
-        } == true
+    val startTime = notification?.timeMillis
+    ?: remember { System.currentTimeMillis() }
+
+    val frozenElapsedSeconds = notification?.stopwatchElapsedSeconds
+    val chronometerBase = notification?.stopwatchChronometerBase
+
+    val isPaused = remember(
+        notification?.key,
+        notification?.actionIntents,
+        notification?.title,
+        notification?.text,
+        frozenElapsedSeconds
+    ) {
+        frozenElapsedSeconds != null ||
+            notification?.actionIntents?.any {
+                it.title.contains("resume", ignoreCase = true) ||
+                    it.title.contains("start", ignoreCase = true)
+            } == true ||
+            notification?.title?.contains("paused", ignoreCase = true) == true ||
+            notification?.text?.contains("paused", ignoreCase = true) == true
     }
 
-    var elapsedSeconds by remember(notification?.key, startTime) {
-        mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
+    var elapsedSeconds by remember(
+        notification?.key,
+        startTime,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        mutableStateOf(
+            frozenElapsedSeconds
+                ?: chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+                ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                    .coerceAtLeast(0L)
+        )
     }
 
-    LaunchedEffect(notification?.key, startTime, isPaused) {
-        if (!isPaused) {
+    LaunchedEffect(
+        notification?.key,
+        startTime,
+        isPaused,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        if (frozenElapsedSeconds != null) {
+            elapsedSeconds = frozenElapsedSeconds
+        } else if (!isPaused) {
             while (true) {
-                elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
-                kotlinx.coroutines.delay(500L)
+                val clockElapsed = chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+
+                elapsedSeconds = clockElapsed
+                    ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                        .coerceAtLeast(0L)
+
+                kotlinx.coroutines.delay(100L)
             }
         }
     }
