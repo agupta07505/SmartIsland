@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.util.CameraAnchor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,7 +30,8 @@ fun OverlayIsland(
     onOpenFloatingWindow: () -> Unit,
     onOpenNotificationShade: () -> Unit = {},
     modifier: Modifier = Modifier,
-    isFullWidth: Boolean = true
+    isFullWidth: Boolean = true,
+    cameraAnchor: CameraAnchor? = null
 ) {
     val settings by viewModel.settings.collectAsState()
     val expanded by viewModel.expanded.collectAsState()
@@ -108,6 +110,7 @@ fun OverlayIsland(
         isInputActive = isInputActive,
         onReplyStateChanged = { viewModel.setInputActive(it) },
         isFullWidth = isFullWidth,
+        cameraAnchor = cameraAnchor,
         modifier = modifier
     )
 }
