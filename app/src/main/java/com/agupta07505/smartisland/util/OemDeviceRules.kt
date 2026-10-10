@@ -55,9 +55,12 @@ object OemDeviceRules {
     )
 
     private val XIAOMI_SCREEN_RECORDER_PACKAGES = setOf(
-        "com.miui.screenrecorder",
-        "com.miui.soundrecorder",
-        "com.android.soundrecorder"
+    "com.miui.screenrecorder"
+    )
+
+    private val XIAOMI_VOICE_RECORDER_PACKAGES = setOf(
+    "com.miui.soundrecorder",
+    "com.android.soundrecorder"
     )
 
     private val VIVO_SCREEN_RECORDER_PACKAGES = setOf(
@@ -176,11 +179,10 @@ object OemDeviceRules {
         setOf("com.google.android.dialer", "com.android.dialer", "com.android.server.telecom", "com.android.phone")
 
     private val HOTSPOT_PACKAGES = setOf(
-        "com.samsung.android.app.mobilehotspot",
-        "com.samsung.android.server.wifi.mobilehotspot",
-        "com.miui.securitycenter",
-        "com.vivo.easyshare",
-        "com.google.android.tethering.entitlement"
+    "com.samsung.android.app.mobilehotspot",
+    "com.samsung.android.server.wifi.mobilehotspot",
+    "com.vivo.easyshare",
+    "com.google.android.tethering.entitlement"
     )
 
     private val HOTSPOT_KEYWORDS = listOf(
@@ -218,6 +220,7 @@ object OemDeviceRules {
         titleText: String,
         device: OemDeviceType = detectCurrentDevice()
     ): Boolean {
+        if (packageName in XIAOMI_VOICE_RECORDER_PACKAGES) return false
         val lowerText = titleText.lowercase()
         val isKeywordMatch = SCREEN_RECORDING_KEYWORDS.any { lowerText.contains(it) }
 

@@ -39,8 +39,29 @@ class OemDeviceRulesTest {
 
     @Test
     fun testXiaomiScreenRecordingIdentification() {
-        assertTrue(OemDeviceRules.isScreenRecording("com.miui.screenrecorder", "Screen Recorder", OemDeviceType.XIAOMI_REDMI_POCO))
-        assertTrue(OemDeviceRules.isScreenRecording("com.miui.soundrecorder", "Sound Recorder", OemDeviceType.XIAOMI_REDMI_POCO))
+        assertTrue(
+            OemDeviceRules.isScreenRecording(
+                "com.miui.screenrecorder",
+                "Screen Recorder",
+                OemDeviceType.XIAOMI_REDMI_POCO
+            )
+        )
+
+        assertFalse(
+            OemDeviceRules.isScreenRecording(
+                "com.miui.soundrecorder",
+                "Sound Recorder",
+                OemDeviceType.XIAOMI_REDMI_POCO
+            )
+        )
+
+        assertFalse(
+            OemDeviceRules.isScreenRecording(
+                "com.android.soundrecorder",
+                "Recorder Recording",
+                OemDeviceType.XIAOMI_REDMI_POCO
+            )
+        )
     }
 
     @Test
@@ -80,6 +101,7 @@ class OemDeviceRulesTest {
         assertTrue(OemDeviceRules.isHotspot("com.samsung.android.app.mobilehotspot", "Hotspot active"))
         assertTrue(OemDeviceRules.isHotspot("com.android.settings", "Portable hotspot enabled"))
         assertTrue(OemDeviceRules.isHotspot("com.miui.securitycenter", "Tethering active"))
+        assertFalse(OemDeviceRules.isHotspot("com.miui.securitycenter", "Turned on Battery saver"))
         assertFalse(OemDeviceRules.isHotspot("com.spotify.music", "Playing music"))
     }
 

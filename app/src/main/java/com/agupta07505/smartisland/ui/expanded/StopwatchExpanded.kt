@@ -66,31 +66,108 @@ fun StopwatchExpanded(
     val context = LocalContext.current
     val stopwatchColor = Color(settings.stopwatchColor)
 
-    val isNotificationPaused = remember(notification?.key, notification?.actionIntents, notification?.text) {
-        val actions = notification?.actionIntents.orEmpty()
-        actions.any { it.title.contains("resume", ignoreCase = true) || it.title.contains("start", ignoreCase = true) } ||
-            notification?.text?.contains("pause", ignoreCase = true) == true
+    val frozenElapsedSeconds = notification?.stopwatchElapsedSeconds
+    val chronometerBase = notification?.stopwatchChronometerBase
+
+    val resumeKeywords = remember {
+    listOf("resume", "start", "play", "continue", "unpause", "weiter", "reanudar")
+    }
+    val pauseKeywords = remember {
+    listOf("pause", "pausa", "pausar", "sospendi")
+    }
+    val pausedTextKeywords = remember {
+    listOf("paused", "en pause", "pausado", "pausada", "angehalten", "sospeso", "sospesa", "已暂停")
     }
 
-    var isPaused by remember(notification?.key, isNotificationPaused) {
-        mutableStateOf(isNotificationPaused)
+    val isNotificationPaused = remember(
+    notification?.key,
+    notification?.actionIntents,
+    notification?.title,
+    notification?.text
+    ) {
+    val actions = notification?.actionIntents.orEmpty()
+
+    val hasResumeAction = actions.any { action ->
+        resumeKeywords.any { action.title.contains(it, ignoreCase = true) }
+    }
+    val hasPauseAction = actions.any { action ->
+        pauseKeywords.any { action.title.contains(it, ignoreCase = true) }
     }
 
-    var startTime by remember(notification?.key, notification?.timeMillis) {
-        mutableStateOf(notification?.timeMillis ?: System.currentTimeMillis())
+    when {
+        hasResumeAction -> true
+        hasPauseAction -> false
+        else -> pausedTextKeywords.any { keyword ->
+            notification?.title?.contains(keyword, ignoreCase = true) == true ||
+                notification?.text?.contains(keyword, ignoreCase = true) == true
+        }
+    }
     }
 
-    var elapsedSeconds by remember(notification?.key, startTime, isPaused) {
-        mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
+    // Clock's paused notification is authoritative when it supplies a frozen time.
+    val isPaused = isNotificationPaused || frozenElapsedSeconds != null
+
+    val startTime = notification?.timeMillis
+    ?: remember { System.currentTimeMillis() }
+
+    var elapsedSeconds by remember(
+        notification?.key,
+        startTime,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        mutableStateOf(
+            frozenElapsedSeconds
+                ?: chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+                ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                    .coerceAtLeast(0L)
+        )
     }
 
-    var lapCount by remember(notification?.key) { mutableStateOf(1) }
+    val notificationLapCount = remember(
+        notification?.title,
+        notification?.text
+    ) {
+        val lapRegex = Regex("""(?i)\blap\s*[:#]?\s*(\d+)\b""")
 
-    LaunchedEffect(notification?.key, startTime, isPaused) {
-        if (!isPaused) {
+        listOf(
+            notification?.title.orEmpty(),
+            notification?.text.orEmpty()
+        ).firstNotNullOfOrNull { value ->
+            lapRegex.find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        } ?: 1
+    }
+
+    var lapCount by remember(notification?.key) {
+        mutableStateOf(notificationLapCount)
+    }
+
+    LaunchedEffect(
+        notification?.key,
+        startTime,
+        isPaused,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        if (frozenElapsedSeconds != null) {
+            elapsedSeconds = frozenElapsedSeconds
+        } else if (!isPaused) {
             while (true) {
-                elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
-                kotlinx.coroutines.delay(500L)
+                val clockElapsed = chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+
+                elapsedSeconds = clockElapsed
+                    ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                        .coerceAtLeast(0L)
+
+                kotlinx.coroutines.delay(100L)
             }
         }
     }
@@ -186,10 +263,20 @@ fun StopwatchExpanded(
                     .clip(CircleShape)
                     .background(Color(0xFF27272A))
                     .bounceClick {
-                        if (lapAction?.pendingIntent != null && notification != null) {
-                            triggerAction(context, notification.packageName, lapAction.pendingIntent, lapAction.title, notification.contentIntent)
+                        // Clock does not record laps while the stopwatch is paused.
+                        if (!isPaused) {
+                            if (lapAction?.pendingIntent != null && notification != null) {
+                                triggerAction(
+                                    context,
+                                    notification.packageName,
+                                    lapAction.pendingIntent,
+                                    lapAction.title,
+                                    notification.contentIntent
+                                )
+                            }
+
+                            lapCount++
                         }
-                        lapCount++
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -202,25 +289,17 @@ fun StopwatchExpanded(
             }
 
             // 2. Pause / Resume Button
-            val resumeKeywords = listOf("resume", "start", "play", "unpause", "weiter", "reanudar")
-            val pauseKeywords = listOf("pause", "pausa", "pausar", "sospendi", "रोकें", "暂停")
-            val destructiveKeywords = listOf("reset", "stop", "cancel", "clear", "delete", "dismiss")
-
             val pauseAction = if (isPaused) {
-                notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    resumeKeywords.any { t.contains(it) }
-                } ?: notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    !destructiveKeywords.any { t.contains(it) } && !t.contains("lap")
+                notification?.actionIntents?.firstOrNull { action ->
+                    resumeKeywords.any {
+                        action.title.contains(it, ignoreCase = true)
+                    }
                 }
             } else {
-                notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    pauseKeywords.any { t.contains(it) }
-                } ?: notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    !destructiveKeywords.any { t.contains(it) } && !t.contains("lap")
+                notification?.actionIntents?.firstOrNull { action ->
+                    pauseKeywords.any {
+                        action.title.contains(it, ignoreCase = true)
+                    }
                 }
             }
             Box(
@@ -229,37 +308,20 @@ fun StopwatchExpanded(
                     .clip(CircleShape)
                     .background(stopwatchColor)
                     .bounceClick {
-                        val newPaused = !isPaused
-                        isPaused = newPaused
-                        if (!newPaused) {
-                            startTime = System.currentTimeMillis() - elapsedSeconds * 1000L
-                        }
+                        val currentNotification = notification
+                        val action = pauseAction
 
-                        if (pauseAction?.pendingIntent != null && notification != null) {
-                            triggerAction(context, notification.packageName, pauseAction.pendingIntent, pauseAction.title, notification.contentIntent)
-                        } else if (notification != null) {
-                            val repo = SmartIslandRepositories.notificationRepository(context)
-                            val updatedActions = if (newPaused) {
-                                listOf(
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Lap", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Resume", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Reset", null)
-                                )
-                            } else {
-                                listOf(
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Lap", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Pause", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Reset", null)
-                                )
-                            }
-                            repo.postNotification(
-                                notification.copy(
-                                    title = if (newPaused) "Stopwatch (Paused)" else "Stopwatch",
-                                    text = TimerStopwatchParser.formatTime(elapsedSeconds),
-                                    timeMillis = System.currentTimeMillis() - elapsedSeconds * 1000L,
-                                    actionIntents = updatedActions
-                                )
+                        if (currentNotification != null && action?.pendingIntent != null) {
+                            triggerAction(
+                                context,
+                                currentNotification.packageName,
+                                action.pendingIntent,
+                                action.title,
+                                currentNotification.contentIntent
                             )
+                        } else {
+                            // Don't fake a state change if Clock provides no matching action.
+                            onOpenNotification()
                         }
                     },
                 contentAlignment = Alignment.Center
