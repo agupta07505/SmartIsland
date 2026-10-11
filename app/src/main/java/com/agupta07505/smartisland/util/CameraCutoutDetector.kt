@@ -3,6 +3,8 @@
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ *
+ * Fork improvements: larger padding for reliable punch-hole coverage
  */
 
 package com.agupta07505.smartisland.util
@@ -24,8 +26,14 @@ data class DetectedCutoutInfo(
 
 object CameraCutoutDetector {
 
+    // Increased padding so the collapsed black pill completely covers
+    // the physical camera hole on devices like iQOO Z9x (centered punch-hole).
+    private const val PADDING_WIDTH_DP = 36f
+    private const val PADDING_HEIGHT_DP = 16f
+
     /**
-     * Calculates the physical pill position and dimensions matching the device's camera cutout coordinates.
+     * Calculates the physical pill position and dimensions matching the device's
+     * camera cutout coordinates. Extra padding ensures the island fully hides the hole.
      */
     fun calculateCutoutOffset(
         left: Int,
@@ -36,8 +44,9 @@ object CameraCutoutDetector {
         density: Float
     ): DetectedCutoutInfo {
         if (density <= 0f) {
-            return DetectedCutoutInfo(0f, 12f, 112f, 34f, false)
+            return DetectedCutoutInfo(0f, 12f, 120f, 38f, false)
         }
+
         val cutoutCenterX = (left + right) / 2f
         val screenCenterX = screenWidthPx / 2f
         val xOffsetPx = cutoutCenterX - screenCenterX
@@ -46,21 +55,17 @@ object CameraCutoutDetector {
             SmartIslandSettings.MAX_X_OFFSET
         )
 
+        // Slightly higher so the island sits over the hole more naturally
         val yOffsetDp = (top.toFloat() / density).coerceIn(
             SmartIslandSettings.MIN_Y_OFFSET,
             SmartIslandSettings.MAX_Y_OFFSET
         )
 
-        val paddingW = 24f
-        val paddingH = 10f
-        val widthDp = ((right - left).toFloat() / density + paddingW).coerceIn(
-            SmartIslandSettings.MIN_WIDTH,
-            SmartIslandSettings.MAX_WIDTH
-        )
-        val heightDp = ((bottom - top).toFloat() / density + paddingH).coerceIn(
-            SmartIslandSettings.MIN_HEIGHT,
-            SmartIslandSettings.MAX_HEIGHT
-        )
+        val widthDp = ((right - left).toFloat() / density + PADDING_WIDTH_DP)
+            .coerceIn(SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH)
+
+        val heightDp = ((bottom - top).toFloat() / density + PADDING_HEIGHT_DP)
+            .coerceIn(SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT)
 
         return DetectedCutoutInfo(
             xOffsetDp = xOffsetDp,
@@ -71,9 +76,6 @@ object CameraCutoutDetector {
         )
     }
 
-    /**
-     * Calculates the physical pill position and dimensions matching the device's camera cutout rect.
-     */
     fun calculateCutoutOffset(
         rect: Rect,
         screenWidthPx: Int,
@@ -88,7 +90,7 @@ object CameraCutoutDetector {
     )
 
     /**
-     * Detects hardware camera cutout on the current device using WindowInsets / DisplayCutout API.
+     * Detects hardware camera cutout using DisplayCutout API.
      */
     fun detect(context: Context): DetectedCutoutInfo {
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
@@ -128,8 +130,8 @@ object CameraCutoutDetector {
         return DetectedCutoutInfo(
             xOffsetDp = 0f,
             yOffsetDp = yOffsetDp,
-            widthDp = 112f,
-            heightDp = 34f,
+            widthDp = 120f,
+            heightDp = 38f,
             hasHardwareCutout = false
         )
     }
