@@ -3,6 +3,8 @@
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ *
+ * Fork: package renamed to com.srcpolygot.dynamicisland
  */
 
 plugins {
@@ -23,15 +25,15 @@ val hasReleaseSigning = signingStoreFile.isPresent &&
     signingKeyPassword.isPresent
 
 android {
-    namespace = "com.agupta07505.smartisland"
+    namespace = "com.srcpolygot.dynamicisland"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.agupta07505.smartisland"
+        applicationId = "com.srcpolygot.dynamicisland"
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "7.0.0"
+        versionName = "7.0.0-fork"
     }
 
     buildFeatures {
@@ -131,7 +133,6 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.60.1")
     kapt("com.google.dagger:hilt-compiler:2.60.1")
 
-    // Rikka Shizuku API
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
