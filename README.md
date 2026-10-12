@@ -1,51 +1,41 @@
 # Realistic Dynamic Island
 
-**Fork of SmartIsland** focused on a realistic Dynamic Island that **hides the punch-hole** (especially on iQOO Z9x + Funtouch OS).
+**Goal:** Full feature parity with the **iPhone 18 Pro Max Dynamic Island**, adapted for **Android 16**, while completely hiding the punch-hole on devices like the iQOO Z9x.
 
-**New package:** `com.srcpolygot.dynamicisland`  
+**Package:** `com.srcpolygot.dynamicisland`  
 **Application ID:** `com.srcpolygot.dynamicisland`
 
 ---
 
-## Goals
+## Key Targets (iPhone 18 Pro Max)
 
-- Collapsed black pill fully covers the camera cutout
-- Smooth, realistic expand/collapse animations
-- All original SmartIsland features kept
-- Clean architecture, every file ≤ ~300 lines
-- Better Funtouch OS / iQOO battery & autostart handling
+- Up to **3 simultaneous Live Activities**
+- Smaller, tighter collapsed pill that covers the camera cutout
+- All classic modes: Music, Calls, Timer, Navigation, Charging, Privacy indicators, Screen Recording, Voice Memos, Hotspot, etc.
+- Fluid spring animations + Apple-style gestures
+- Native use of **Android 16 Live Updates** where possible
+
+See `IPHONE_18_FEATURE_PARITY.md` for the complete checklist.
 
 ---
 
-## Clean Structure (being built)
+## Clean Structure (growing)
 
 ```
 com.srcpolygot.dynamicisland/
 ├─ domain/
-│   ├─ model/IslandMode.kt
-│   └─ detector/CameraCutoutDetector.kt   ← improved for punch-hole coverage
-├─ ui/
-│   └─ overlay/
-│       ├─ IslandPositionCalculator.kt
-│       ├─ IslandAnimationSpecs.kt
-│       ├─ IslandGestureHandlers.kt
-│       └─ CompactNotificationShape.kt
-└─ ... (more being extracted)
+│   ├─ model/
+│   │   ├─ IslandMode.kt          ← expanded for full parity
+│   │   ├─ IslandNotification.kt
+│   │   └─ ActiveIslandState.kt   ← 3-activity support
+│   └─ detector/
+│       └─ CameraCutoutDetector.kt
+└─ ui/overlay/
+    ├─ IslandPositionCalculator.kt
+    ├─ IslandAnimationSpecs.kt
+    ├─ IslandGestureHandlers.kt
+    └─ CompactNotificationShape.kt
 ```
-
-Old package `com.agupta07505.smartisland` still exists while we migrate.
-
----
-
-## Current Progress
-
-- [x] Fork + README
-- [x] Package rename started (Gradle + new directory)
-- [x] CameraCutoutDetector improved (larger padding)
-- [x] Position / Animation / Gesture helpers extracted
-- [ ] Full migration of remaining large files
-- [ ] Pure black collapsed state by default
-- [ ] Funtouch OS battery helpers
 
 ---
 
@@ -61,4 +51,4 @@ cd SmartIsland
 
 ## License
 
-GNU GPLv3 (same as upstream SmartIsland by Animesh Gupta)
+GNU GPLv3 (based on original SmartIsland by Animesh Gupta)
