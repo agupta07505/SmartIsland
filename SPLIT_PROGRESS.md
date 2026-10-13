@@ -10,33 +10,39 @@
 com.srcpolygot.dynamicisland/
 ├─ domain/
 │   ├─ model/
-│   │   ├─ IslandMode.kt              ← full parity modes
+│   │   ├─ IslandMode.kt
 │   │   ├─ IslandNotification.kt
-│   │   └─ ActiveIslandState.kt       ← 3-activity support
+│   │   └─ ActiveIslandState.kt
 │   └─ detector/
 │       └─ CameraCutoutDetector.kt
+├─ service/
+│   └─ DynamicIslandOverlayService.kt   ← skeleton
 └─ ui/
-    └─ overlay/
-        ├─ IslandOverlay.kt             ← main orchestrator
-        ├─ IslandCollapsedContent.kt    ← pure black pill + 3 dots
-        ├─ IslandExpandedContent.kt     ← expanded card stub
-        ├─ IslandPositionCalculator.kt
-        ├─ IslandAnimationSpecs.kt
-        ├─ IslandGestureHandlers.kt
-        └─ CompactNotificationShape.kt
+    ├─ overlay/
+    │   ├─ IslandOverlay.kt
+    │   ├─ IslandCollapsedContent.kt
+    │   ├─ IslandExpandedContent.kt       ← now dispatches to cards
+    │   ├─ IslandPositionCalculator.kt
+    │   ├─ IslandAnimationSpecs.kt
+    │   ├─ IslandGestureHandlers.kt
+    │   └─ CompactNotificationShape.kt
+    └─ expanded/
+        ├─ MusicExpanded.kt
+        ├─ CallExpanded.kt
+        └─ TimerExpanded.kt
 ```
 
-## Recently added
+## Recently completed
 
-- Collapsed black pill that covers the punch-hole
-- Support for 3 simultaneous activity indicators
-- Expanded content stub
-- Main IslandOverlay composable
+- Music expanded card with play/pause/skip
+- Call expanded card (incoming + ongoing)
+- Timer / Stopwatch expanded card
+- OverlayService skeleton
+- Expanded content now routes to the correct card
 
-## Still needed
+## Next
 
-- Full OverlayService + NotificationListener in the new package
-- Mode-specific expanded cards (Music, Call, Timer, Navigation…)
-- Android 16 Live Updates integration
-- Privacy indicators (camera / mic)
-- Funtouch OS battery helpers
+- Navigation, Battery/Charging, LiveActivity, Privacy cards
+- NotificationListenerService in the new package
+- Android 16 Live Updates wiring
+- Full WindowManager Compose attachment
