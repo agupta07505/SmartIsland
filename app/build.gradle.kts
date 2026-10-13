@@ -4,7 +4,8 @@
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  *
- * Fork: package renamed to com.srcpolygot.dynamicisland
+ * Fork notes: clean package com.srcpolygot.dynamicisland is being built alongside.
+ * Namespace kept as original so existing code compiles until full migration.
  */
 
 plugins {
@@ -25,11 +26,11 @@ val hasReleaseSigning = signingStoreFile.isPresent &&
     signingKeyPassword.isPresent
 
 android {
-    namespace = "com.srcpolygot.dynamicisland"
+    namespace = "com.agupta07505.smartisland"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.srcpolygot.dynamicisland"
+        applicationId = "com.agupta07505.smartisland"
         minSdk = 26
         targetSdk = 36
         versionCode = 8
