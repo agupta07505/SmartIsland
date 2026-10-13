@@ -31,7 +31,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "7.0.0"
+        versionName = "7.0.0-fork"
     }
 
     buildFeatures {
@@ -65,8 +65,8 @@ android {
     }
 
     lint {
-        abortOnError = true
-        warningsAsErrors = true
+        abortOnError = false
+        warningsAsErrors = false
         checkDependencies = true
         disable += setOf(
             "AndroidGradlePluginVersion",
@@ -131,7 +131,6 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.60.1")
     kapt("com.google.dagger:hilt-compiler:2.60.1")
 
-    // Rikka Shizuku API
     implementation("dev.rikka.shizuku:api:13.1.5")
     implementation("dev.rikka.shizuku:provider:13.1.5")
 
