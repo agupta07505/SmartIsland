@@ -4,8 +4,8 @@
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  *
- * Fork notes: clean package com.srcpolygot.dynamicisland is being built alongside.
- * Namespace kept as original so existing code compiles until full migration.
+ * Temporary: exclude com.srcpolygot.dynamicisland source from main compile
+ * until full migration is complete, so the original project builds a working APK.
  */
 
 plugins {
@@ -35,6 +35,15 @@ android {
         targetSdk = 36
         versionCode = 8
         versionName = "7.0.0-fork"
+    }
+
+    // Temporarily exclude the new clean package so the original code compiles
+    sourceSets {
+        getByName("main") {
+            java {
+                exclude("com/srcpolygot/dynamicisland/**")
+            }
+        }
     }
 
     buildFeatures {
