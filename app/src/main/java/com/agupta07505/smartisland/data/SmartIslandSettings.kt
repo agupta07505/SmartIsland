@@ -3,6 +3,8 @@
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ *
+ * Fork defaults: Notch Mode ON + pure black pill sized for punch-hole devices (iQOO Z9x).
  */
 
 package com.agupta07505.smartisland.data
@@ -12,10 +14,10 @@ import org.json.JSONObject
 
 data class SmartIslandSettings(
     val enabled: Boolean = false,
-    val width: Float = 112f,
-    val height: Float = 34f,
+    val width: Float = 126f,
+    val height: Float = 36f,
     val xOffset: Float = 0f,
-    val yOffset: Float = 12f,
+    val yOffset: Float = 10f,
     val cornerRadius: Float = 22f,
     val opacity: Float = 1f,
     val pillColor: Long = 0xFF000000L,
@@ -65,7 +67,7 @@ data class SmartIslandSettings(
     val notificationCooldownExcludedPackages: Set<String> = emptySet(),
     val developerModeEnabled: Boolean = true,
     val recordLogs: Boolean = false,
-    val enableNotchMode: Boolean = false,
+    val enableNotchMode: Boolean = true,
     val enableSwipeActions: Boolean = true,
     val swipeUpAction: String = "DismissCurrent",
     val swipeHoldUpAction: String = "DismissAll",
