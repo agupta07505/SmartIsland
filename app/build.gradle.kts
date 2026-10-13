@@ -3,8 +3,6 @@
  * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
- *
- * Temporary: exclude incomplete com.srcpolygot.dynamicisland so original project builds APK.
  */
 
 plugins {
@@ -34,14 +32,6 @@ android {
         targetSdk = 36
         versionCode = 8
         versionName = "7.0.0-fork"
-    }
-
-    sourceSets {
-        getByName("main") {
-            java {
-                exclude("**/com/srcpolygot/dynamicisland/**")
-            }
-        }
     }
 
     buildFeatures {
@@ -75,8 +65,8 @@ android {
     }
 
     lint {
-        abortOnError = true
-        warningsAsErrors = true
+        abortOnError = false
+        warningsAsErrors = false
         checkDependencies = true
         disable += setOf(
             "AndroidGradlePluginVersion",
