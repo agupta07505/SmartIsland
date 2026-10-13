@@ -41,9 +41,6 @@ android {
             java {
                 exclude("**/com/srcpolygot/dynamicisland/**")
             }
-            kotlin {
-                exclude("**/com/srcpolygot/dynamicisland/**")
-            }
         }
     }
 
