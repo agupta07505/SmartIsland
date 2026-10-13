@@ -4,8 +4,7 @@
  * Licensed under the GNU GPL v3 License
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  *
- * Temporary: exclude com.srcpolygot.dynamicisland source from main compile
- * until full migration is complete, so the original project builds a working APK.
+ * Temporary: exclude incomplete com.srcpolygot.dynamicisland so original project builds APK.
  */
 
 plugins {
@@ -37,11 +36,13 @@ android {
         versionName = "7.0.0-fork"
     }
 
-    // Temporarily exclude the new clean package so the original code compiles
     sourceSets {
         getByName("main") {
             java {
-                exclude("com/srcpolygot/dynamicisland/**")
+                exclude("**/com/srcpolygot/dynamicisland/**")
+            }
+            kotlin {
+                exclude("**/com/srcpolygot/dynamicisland/**")
             }
         }
     }
