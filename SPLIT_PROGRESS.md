@@ -9,40 +9,34 @@
 ```
 com.srcpolygot.dynamicisland/
 ├─ domain/
-│   ├─ model/
-│   │   ├─ IslandMode.kt
-│   │   ├─ IslandNotification.kt
-│   │   └─ ActiveIslandState.kt
-│   └─ detector/
-│       └─ CameraCutoutDetector.kt
+│   ├─ model/ (IslandMode, IslandNotification, ActiveIslandState)
+│   └─ detector/CameraCutoutDetector.kt
 ├─ service/
-│   └─ DynamicIslandOverlayService.kt   ← skeleton
+│   ├─ DynamicIslandOverlayService.kt
+│   └─ DynamicIslandNotificationListener.kt
 └─ ui/
     ├─ overlay/
     │   ├─ IslandOverlay.kt
     │   ├─ IslandCollapsedContent.kt
-    │   ├─ IslandExpandedContent.kt       ← now dispatches to cards
-    │   ├─ IslandPositionCalculator.kt
-    │   ├─ IslandAnimationSpecs.kt
-    │   ├─ IslandGestureHandlers.kt
-    │   └─ CompactNotificationShape.kt
+    │   ├─ IslandExpandedContent.kt   ← routes all major modes
+    │   └─ helpers…
     └─ expanded/
         ├─ MusicExpanded.kt
         ├─ CallExpanded.kt
-        └─ TimerExpanded.kt
+        ├─ TimerExpanded.kt
+        ├─ BatteryExpanded.kt
+        ├─ NavigationExpanded.kt
+        ├─ LiveActivityExpanded.kt
+        ├─ PrivacyExpanded.kt
+        └─ FlashlightExpanded.kt
 ```
 
-## Recently completed
+## Just added
 
-- Music expanded card with play/pause/skip
-- Call expanded card (incoming + ongoing)
-- Timer / Stopwatch expanded card
-- OverlayService skeleton
-- Expanded content now routes to the correct card
+- Privacy indicators (Camera / Mic)
+- Generic Live Activity card (delivery, ride, sports, flight)
+- Flashlight card
+- NotificationListenerService skeleton
+- Expanded content now dispatches every major mode
 
-## Next
-
-- Navigation, Battery/Charging, LiveActivity, Privacy cards
-- NotificationListenerService in the new package
-- Android 16 Live Updates wiring
-- Full WindowManager Compose attachment
+All changes are live on `main`.
