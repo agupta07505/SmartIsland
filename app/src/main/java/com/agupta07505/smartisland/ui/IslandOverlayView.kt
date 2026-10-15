@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.absoluteOffset
@@ -125,6 +126,7 @@ fun IslandOverlayView(
     val scope = rememberCoroutineScope()
     var dragOffset by remember { mutableStateOf(0f) }
     var pillDragOffsetX by remember { mutableStateOf(0f) }
+    var springBackJob by remember { mutableStateOf<Job?>(null) }
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -480,6 +482,9 @@ fun IslandOverlayView(
                     if (isInputActive) return@pointerInput
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        springBackJob?.cancel()
+                        pillDragOffsetX = 0f
+                        dragOffset = 0f
                         userInteractionTimestamp = System.currentTimeMillis()
                         val pressTimeMs = System.currentTimeMillis()
                         val wasExpandedAtStart = currentExpanded
@@ -497,9 +502,11 @@ fun IslandOverlayView(
 
                         val pointerId = down.id
 
+                        try {
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                            if (!change.pressed && !change.changedToUp()) break
 
                             if (change.changedToUp()) {
                                 change.consume()
@@ -759,32 +766,38 @@ fun IslandOverlayView(
                             }
                         }
 
-                        holdJob.cancel()
-                        if (pillDragOffsetX != 0f) {
-                            val startPillOffset = pillDragOffsetX
-                            scope.launch {
-                                androidx.compose.animation.core.Animatable(startPillOffset).animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                ) {
-                                    pillDragOffsetX = value
+                        } finally {
+                            holdJob.cancel()
+                            springBackJob = scope.launch {
+                                if (pillDragOffsetX != 0f) {
+                                    val startPillOffset = pillDragOffsetX
+                                    launch {
+                                        androidx.compose.animation.core.Animatable(startPillOffset).animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) {
+                                            pillDragOffsetX = value
+                                        }
+                                        pillDragOffsetX = 0f
+                                    }
                                 }
-                            }
-                        }
-                        if (dragOffset != 0f) {
-                            val startDrag = dragOffset
-                            scope.launch {
-                                androidx.compose.animation.core.Animatable(startDrag).animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    )
-                                ) {
-                                    dragOffset = value
+                                if (dragOffset != 0f) {
+                                    val startDrag = dragOffset
+                                    launch {
+                                        androidx.compose.animation.core.Animatable(startDrag).animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        ) {
+                                            dragOffset = value
+                                        }
+                                        dragOffset = 0f
+                                    }
                                 }
                             }
                         }
