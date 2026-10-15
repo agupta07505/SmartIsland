@@ -31,7 +31,11 @@ internal fun rememberRecordingSeconds(notification: IslandNotification?): Long {
         if (frozen == null) {
             while (true) {
                 now = System.currentTimeMillis()
-                kotlinx.coroutines.delay(250)
+                // Wake just after the shown second changes, at most 250 ms out.
+                val elapsed = (now - start).coerceAtLeast(0L)
+                kotlinx.coroutines.delay(
+                    com.agupta07505.smartisland.util.TimerClock.msToNextTickUp(elapsed).coerceIn(10L, 250L)
+                )
             }
         }
     }

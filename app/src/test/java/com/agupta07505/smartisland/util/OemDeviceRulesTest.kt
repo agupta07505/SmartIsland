@@ -103,6 +103,8 @@ class OemDeviceRulesTest {
         assertTrue(OemDeviceRules.isHotspot("com.miui.securitycenter", "Tethering active"))
         assertFalse(OemDeviceRules.isHotspot("com.miui.securitycenter", "Battery saver is active"))
         assertFalse(OemDeviceRules.isHotspot("com.spotify.music", "Playing music"))
+        assertFalse(OemDeviceRules.isHotspot("com.google.android.gm", "Re: [SmartIsland] Hotspot card shows up on its own"))
+        assertFalse(OemDeviceRules.isHotspot("com.whatsapp", "Mobile hotspot password"))
     }
 
     @Test

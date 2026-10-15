@@ -11,9 +11,9 @@ package com.agupta07505.smartisland.model
  * Which recorded layer may stand in for the outgoing card of a sideways swipe (ui/IslandCardHost.kt).
  *
  * The card is recorded into two alternating layers while a swipe is under way. When the card changes, the layer drawn last
- * frame used to be parked as the outgoing card without checking what it held. If the pager had already drawn the new card for
- * a frame before the switch was detected, that layer held the NEW card, and the swipe showed it twice: once as the "outgoing"
- * card and once as the incoming one. Each layer now remembers the key of the card it holds.
+ * frame may stand in as the outgoing card only if it holds the OLD card. If the pager has already drawn the new card for
+ * a frame before the switch is detected, that layer holds the NEW card, and using it would show the card twice: once as the
+ * "outgoing" card and once as the incoming one. So each layer remembers the key of the card it holds.
  */
 object SwipeGhost {
     /**

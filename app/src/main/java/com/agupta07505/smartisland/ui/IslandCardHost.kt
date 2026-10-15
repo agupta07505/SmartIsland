@@ -33,6 +33,8 @@ import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.expanded.IslandExpandedContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.abs
 
 /**
  * The expanded card's host. Fades out while collapsing and is laid out at its final width the whole time. For the modes
@@ -145,11 +147,12 @@ internal fun ExpandedCardHost(
             kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { ui.cleanSwapState() }
         }
     }
-    // Expanded content layer — smoothly fade out while collapsing.
+    // Expanded content layer; it fades out while collapsing.
     // For the modes in CardPrewarm the card is also composed and measured while the island is
     // collapsed (PrewarmedCard places it only while it is shown), so the tap does not have to compose it and the
     // height the spring chases is already the real one. `cardLive` is the old condition for "the card is on screen".
     val cardLive = expanded || layout.expandedShown
+    val sideBarsFadePx = LocalDensity.current.density * SIDE_BARS_FADE_DP
     // Card heights outlive the card's composition (it is rebuilt after every close), so what was measured while collapsed or on
     // an earlier visit is still there on the next open and swipe. A different card width (rotation) makes them wrong: start over.
     val heightCache = remember(layout.expandedWidth) { com.agupta07505.smartisland.ui.expanded.CardHeightCache() }
@@ -158,8 +161,8 @@ internal fun ExpandedCardHost(
     // runs, the list and page of the last frame the island was open are kept. Plain holder: [0] = list, [1] = page.
     val openSnapshot = remember { arrayOfNulls<Any>(2) }
     // Only a list that has a card in it is kept: when the card goes (its app came to the front and hides it, it was cleared) the list
-    // can be empty for a frame or two while the island is still open. Keeping THAT list left nothing to fade out, so the island closed
-    // as an empty gray card of the old size. The last list that had a card stays, and the close fades that card instead.
+    // can be empty for a frame or two while the island is still open. Keeping that list would leave nothing to fade out, so the island
+    // would close as an empty gray card of the old size. The last list that had a card stays, and the close fades that card instead.
     if (expanded && notifications.isNotEmpty()) {
         openSnapshot[0] = notifications
         openSnapshot[1] = selectedIndex
@@ -178,8 +181,8 @@ internal fun ExpandedCardHost(
     }
     val cardLiveNow by rememberUpdatedState(cardLive)
     // Collapsed again (card faded out) or a different card became the active one while collapsed: start the waiting
-    // card from scratch, so a reply box, a long message or an open picture of the last visit is forgotten (the
-    // same thing the old removal did), and the new card is measured at its own page.
+    // card from scratch, so a reply box, a long message or an open picture of the last visit is forgotten,
+    // and the new card is measured at its own page.
     var cardEpoch by remember { mutableIntStateOf(0) }
     // Plain holders (not state): [0] = the card was on screen since the last restart, [1] = key it was composed for.
     val liveSeen = remember { BooleanArray(1) }
@@ -215,9 +218,9 @@ internal fun ExpandedCardHost(
         PrewarmedCard(
             placed = { expanded || layout.expandedShown },
             modifier = Modifier
-                // The card is laid out at its final width the whole time and the growing shell
-                // clips it (it used to be laid out at the shell's width every frame: text re-wrapped, and the measured
-                // heights, which the height spring chases, moved during the growth). At rest the width is the same.
+                // The card is laid out at its final width the whole time and the growing shell clips it, so the text
+                // does not re-wrap and the measured heights, which the height spring chases, hold still during the
+                // growth. At rest the width is the same.
                 .requiredWidth(layout.expandedWidth)
                 // Laid out at its natural height whatever the shell's animated height is (the shell clips it), like the width above:
                 // the shell's height spring then only re-runs the shell's layout and draw, not the card's measure. Top-aligned, so a
@@ -242,7 +245,7 @@ internal fun ExpandedCardHost(
                     val switched = ui.pendingCardEnterSign != 0 && ui.pendingCardFromKey != null &&
                         (ui.pendingCardFromKey != shownKeyNow || (drawnKey[0] != null && drawnKey[0] != ui.pendingCardFromKey))
                     // Only until the switch has been parked (a drag, or a swipe waiting for its card). Once the outgoing layer is parked the new card
-                    // slides in drawn directly: it used to be recorded into the other layer and drawn back on every frame of the slide.
+                    // slides in drawn directly, not recorded into the other layer.
                     val recording = ui.cardDragX != 0f || ui.pendingCardEnterSign != 0
                     if (!recording) {
                         // Nothing recorded this frame: a layer left from an earlier swipe must not be parked later.
@@ -294,6 +297,15 @@ internal fun ExpandedCardHost(
                 onReplyStateChanged = { active -> if (!active || cardLiveNow) onReplyStateChanged(active) },
                 onTextExpandedChanged = { active -> if (!active || cardLiveNow) onTextExpandedChanged(active) },
                 snapPageSync = { ui.cardSwipeSnap },
+                // Light look side bars: faded out by the drag, hidden during the swap, back in as the new card settles.
+                sideBarsAlpha = {
+                    val pop = ui.cardPop.value
+                    when {
+                        ui.pendingCardEnterSign != 0 -> 0f
+                        ui.cardSwapSign != 0 -> ((pop - SIDE_BARS_BACK_FROM) / (1f - SIDE_BARS_BACK_FROM)).coerceIn(0f, 1f)
+                        else -> 1f - (abs(ui.cardDragX) / sideBarsFadePx).coerceIn(0f, 1f)
+                    }
+                },
                 drawnCardKey = drawnKey,
                 heightCache = heightCache,
                 siblingPickerOpen = siblingPickerOpen,
@@ -342,3 +354,9 @@ internal fun ExpandedCardHost(
         }
     }
 }
+
+/** Sideways drag (dp) at which the side bars are fully faded out. */
+private const val SIDE_BARS_FADE_DP = 14f
+
+/** Swap progress at which the side bars start fading back in. */
+private const val SIDE_BARS_BACK_FROM = 0.85f

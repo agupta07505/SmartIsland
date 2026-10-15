@@ -14,9 +14,9 @@ import kotlin.math.abs
  * shown card (or idle widget) changes, or when the pill's content layer comes back on screen.
  *
  * The slide offset lives in the shared interaction state, not in the content layer. A slide that is cancelled half way (a second card
- * arrives while it runs, or the island expands and the layer leaves the composition) used to leave the offset where it was, so the
- * whole pill content (app icon, dots, widgets) stayed shifted to one side, partly outside the pill. Every run that is NOT a fresh
- * swipe slide therefore has to bring a left-over offset back to 0.
+ * arrives while it runs, or the island expands and the layer leaves the composition) leaves the offset where it was, so the
+ * whole pill content (app icon, dots, widgets) would stay shifted to one side, partly outside the pill. Every run that is NOT a
+ * fresh swipe slide therefore has to bring a left-over offset back to 0.
  */
 enum class PillEnterStep {
     /** A swipe asked for this card: start the slide from the side opposite to the swipe. */

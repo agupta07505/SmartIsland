@@ -77,7 +77,7 @@ fun MusicExpanded(
     }
 
     // The playhead is a State that is only read while drawing (the seek bar) or by two small texts, so a
-    // tick no longer recomposes the whole card (artwork, blur, buttons). It is also worked out from the last playback state
+    // tick does not recompose the whole card (artwork, blur, buttons). It is also worked out from the last playback state
     // the session reported, not by asking the media app over binder 33 times a second.
     var playbackState by remember(controller) { mutableStateOf(controller?.playbackState) }
     val playbackStateNow = rememberUpdatedState(playbackState)
@@ -162,7 +162,7 @@ fun MusicExpanded(
         if (n.mediaToken == null) return@produceState
         MediaArt.cached(artKey)?.let { value = it; return@produceState }
         // The app's icon is only a stand-in: while a real cover was shown before, it stays on screen until the new one is read (the
-        // card used to flip to the app icon, drawn enlarged as the backdrop, on every track change).
+        // card does not flip to the app icon, drawn enlarged as the backdrop, on every track change).
         val hadCover = MediaArt.lastGood(n.key, blurRadiusDp) != null
         var loaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
             MediaArt.load(context.applicationContext, n, blurRadiusDp)

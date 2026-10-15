@@ -212,7 +212,7 @@ internal fun mediaOutputIcon(kind: com.agupta07505.smartisland.util.MediaOutputK
 internal fun rememberMediaOutput(controller: android.media.session.MediaController?): com.agupta07505.smartisland.util.MediaOutput {
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    // Reading the audio routes is a binder call: it runs in the background (the card used to wait for it on the tap that opens
+    // Reading the audio routes is a binder call: it runs in the background (the card must not wait for it on the tap that opens
     // it). The last output read seeds the chip, so it does not flash "This phone" first.
     var output by androidx.compose.runtime.remember(controller) {
         androidx.compose.runtime.mutableStateOf(lastMediaOutput ?: com.agupta07505.smartisland.util.MediaOutput.Phone)

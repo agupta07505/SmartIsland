@@ -8,7 +8,7 @@
 package com.agupta07505.smartisland.model
 
 /**
- * The two swipe-down gestures are not configurable any more (the settings screen no longer lists them). A swipe down on the
+ * The two swipe-down gestures are not configurable (the settings screen does not list them). A swipe down on the
  * collapsed pill always expands the island, and a swipe down on the expanded island does nothing (a card with expandable text or a picture still opens it).
  * The stored `pillSwipeDownAction` / `swipeDownAction` values are ignored.
  */

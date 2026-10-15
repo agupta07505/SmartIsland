@@ -9,7 +9,7 @@ package com.agupta07505.smartisland.model
 
 /**
  * Where the landscape split (the card island plus the picker or picture island) is in its open / close
- * motion. One name for what used to be spread over `sideBySideWanted`, `splitHolding` and ad-hoc 0.999 / 0.001 checks.
+ * motion. One name for the wanted / holding / progress combinations, instead of ad-hoc 0.999 / 0.001 checks.
  *
  * The phase is derived from two things the content already has: whether the beside island is wanted, and the ONE split
  * progress (0 = card only, 1 = card and beside island). Nothing here animates; it only names the state.

@@ -361,7 +361,7 @@ internal fun buildSettingsSearchIndex(str: (Int) -> String): List<SettingsSearch
     )
     add(
         "color.blur", str(R.string.toggle_expanded_blur_title), color, colorScreen, Icons.Rounded.Palette,
-        "", listOf("blur", "backdrop", "artwork", "album")
+        str(R.string.toggle_expanded_blur_desc), listOf("blur", "backdrop", "artwork", "album", "live", "frosted", "glass", "behind", "card", "off")
     )
     add(
         "color.media_look", str(R.string.media_look_title), color, colorScreen, Icons.Rounded.Palette,

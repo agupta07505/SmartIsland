@@ -69,7 +69,7 @@ fun secondaryCardIndex(cards: List<IslandNotification>, currentIndex: Int, expan
 
 /**
  * A battery event takes a secondary or tertiary cutout like any other card, with or without a live event on the island
- * (see [IslandPriority]); it used to be skipped there when nothing was live, so it never showed beside a notification.
+ * (see [IslandPriority]), so it also shows beside a notification when nothing is live.
  */
 @Suppress("UNUSED_PARAMETER")
 private fun showsInCutout(card: IslandNotification, cards: List<IslandNotification>, currentIndex: Int): Boolean = true

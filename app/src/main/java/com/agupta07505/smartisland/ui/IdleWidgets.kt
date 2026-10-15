@@ -810,7 +810,7 @@ private fun IdleWidgetSlotBody(kind: IdleWidgetKind, frame: IdleWidgetFrame, rig
                 if (right) {
                     VerticalTick(target = face, towardsDown = false) { shown -> SlotText(shown.temp, frame) }
                 } else {
-                    // The glyph morphs into the new one only when the look really changes (phase 7); a new temperature alone leaves it be.
+                    // The glyph morphs into the new one only when the look really changes; a new temperature alone leaves it be.
                     MorphingWeatherGlyph(
                         look = face.look,
                         isDay = face.isDay,
@@ -1029,9 +1029,9 @@ internal fun IdleWidgetIcon(kind: IdleWidgetKind, frame: IdleWidgetFrame, size: 
 private data class WeatherGlyph(val look: WeatherLook, val isDay: Boolean)
 
 /**
- * The weather glyph with its morph (phase 7). When the glyph really changes ([WeatherMorph.changed]) the old one turns and
+ * The weather glyph with its morph. When the glyph really changes ([WeatherMorph.changed]) the old one turns and
  * shrinks away while the new one turns in and grows, cross-fading; a refresh with the same look does nothing. The ambient
- * motions of phase 6 ([MotionGlyph]) only start once the morph has ended. With the system's "remove animations" on, the
+ * motions ([MotionGlyph]) only start once the morph has ended. With the system's "remove animations" on, the
  * glyph swaps at once. Only runs while composed, i.e. while the island shows it.
  */
 @Composable
@@ -1086,7 +1086,7 @@ private fun MorphingWeatherGlyph(look: WeatherLook, isDay: Boolean, windKmh: Flo
 }
 
 /**
- * Whether the net speed counts as fast (phase 8), with hysteresis: it turns on at 1 MB/s and only off again below 0.8 MB/s.
+ * Whether the net speed counts as fast, with hysteresis: it turns on at 1 MB/s and only off again below 0.8 MB/s.
  * The latch lives as long as the glyph is composed; the rule gives the same answer when run again on the same speed.
  */
 @Composable
@@ -1098,7 +1098,7 @@ private fun rememberFastSpeed(bytesPerSecond: Long): Boolean {
 }
 
 /**
- * Whether the next alarm is under 10 minutes away (phase 8). It wakes up only when the window opens and when the alarm rings,
+ * Whether the next alarm is under 10 minutes away. It wakes up only when the window opens and when the alarm rings,
  * so nothing ticks while the alarm is far off; it stops when the alarm fires or is cleared.
  */
 @Composable
@@ -1114,7 +1114,7 @@ private fun rememberAlarmSoon(nextAlarmMs: Long): Boolean {
 }
 
 /**
- * A glyph in an attention state (phase 8): the speed arrow breathes in size, the alarm glyph sits on a soft orange halo that
+ * A glyph in an attention state: the speed arrow breathes in size, the alarm glyph sits on a soft orange halo that
  * breathes. The loop only runs while this is composed, i.e. while the island shows it.
  */
 @Composable
@@ -1161,7 +1161,7 @@ private fun AttentionGlyph(icon: ImageVector, attention: GlyphAttention, size: D
 }
 
 /**
- * One glyph with its ambient motion (phase 6): the sun turns slowly, raindrops fall, the wind glyph sways faster in
+ * One glyph with its ambient motion: the sun turns slowly, raindrops fall, the wind glyph sways faster in
  * stronger wind. With no motion it is the plain white icon. The loop only runs while this is composed, i.e. while the
  * island shows it.
  */

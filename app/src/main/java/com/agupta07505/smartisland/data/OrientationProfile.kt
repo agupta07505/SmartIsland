@@ -65,7 +65,7 @@ fun SmartIslandSettings.forOrientation(
     if (hasContent) return base.landscapeContentPillFor(this, state, hasCards)
 
     // Idle cutout. `landscapeShape` is a legacy setting kept only so old backups still load; it
-    // no longer changes the geometry.
+    // does not change the geometry.
     val flip = if (state.reversed) -1f else 1f
     val size = landscapeCircleSize
     val halfScreen = state.screenWidthDp / 2f

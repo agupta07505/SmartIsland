@@ -225,10 +225,8 @@ internal const val PILL_ENTER_FADE = 0.35f
 internal const val PILL_STRETCH_DAMPING = 0.72f
 internal const val PILL_STRETCH_STIFFNESS = 420f
 
-/** Arrival pulse of the collapsed pill: +5 % width (of the with-content width), a little taller (20 % of the height, at most 8 dp, inside the window's slack), out fast, back soft. */
-internal const val PILL_PULSE_WIDTH_FRACTION = 0.05f
-internal const val PILL_PULSE_HEIGHT_FRACTION = 0.2f
-internal const val PILL_PULSE_HEIGHT_MAX_DP = 8f
+/** Arrival pulse of the collapsed pill: +12.5 % width (of the with-content width), out fast, back soft. The height does not change. */
+internal const val PILL_PULSE_WIDTH_FRACTION = 0.125f
 internal const val PILL_PULSE_OUT_STIFFNESS = 600f
 internal const val PILL_PULSE_BACK_STIFFNESS = 380f
 
@@ -481,8 +479,8 @@ internal fun rememberIslandLayout(
         if (it) expandedWidth else settings.width.dp
     }
     // The height of an island that STAYS expanded (another card is swiped in, a text opens, a step finishes). The
-    // transition's segment still reads "collapsed -> expanded" at rest, so the expand spring (which also rings a little) used to
-    // run here and the shell eased to the new height well after the card had slid in. At rest the shell now follows with a stiffer
+    // transition's segment still reads "collapsed -> expanded" at rest, so the expand spring (which also rings a little) must not
+    // run here, or the shell would ease to the new height well after the card had slid in. At rest the shell follows with a stiffer
     // spring without overshoot. Read without observation: the flag is only looked at when the target height changes.
     val heightFollowSpec = spring<androidx.compose.ui.unit.Dp>(
         dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy,
@@ -604,12 +602,12 @@ internal fun rememberIslandLayout(
 
     // The island grows around the pill's centre instead of sliding to the card's centre. The frame's
     // centre line is the expanded card's centre (offset 0), so the pill's centre is `collapsedMainOffset`.
-    // Both ends are unchanged (pill at rest, card at rest); only the path between them differs, and a
-    // pill centred over the card (portrait) moves exactly as before.
+    // Both ends are fixed (pill at rest, card at rest); only the path between them differs, and a
+    // pill centred over the card (portrait) moves straight.
     // Functions, not values. They read the springs when the shell is laid out / drawn, so the
     // size animation does not recompose the overlay (see IslandLayout).
-    // Always the pill's own height, also while auto-hidden. An expand that starts on a hidden pill used to
-    // see 0 for its first composition (isHiding is still true) and the real height one composition later, which moved the
+    // Always the pill's own height, also while auto-hidden. An expand that starts on a hidden pill would
+    // see 0 for its first composition (isHiding is still true) and the real height one composition later, which would move the
     // island's anchor by half a pill height in the first frames. At rest the shell is 0 high when hidden, so nothing shows.
     val pillHeightNow = settings.height.toFloat()
     val originX: () -> Dp = {
@@ -639,9 +637,7 @@ internal fun rememberIslandLayout(
     val collapsedShownState = remember(collapsedAlphaState) { derivedStateOf { collapsedAlphaState.value > 0f } }
     val expandedShownState = remember(expandedAlphaState) { derivedStateOf { expandedAlphaState.value > 0.01f } }
 
-    // Arrival pulse: a notification or quick event arriving on the collapsed pill grows it to +5 % of its with-content width and a little
-    // taller, then it shrinks back to its normal height and with-content width. The base springs above keep running underneath, so the
-    // pill still stretches to the with-content width on the first card; the pulse is only added on top of them.
+    // Arrival pulse: the pill grows by PILL_PULSE_WIDTH_FRACTION and settles back, added on top of the base width springs.
     val pulse = remember { androidx.compose.animation.core.Animatable(0f) }
     val seenKeys = remember { HashSet<String>().apply { notifications.forEach { add(it.key) } } }
     seenKeys.retainAll(notifications.map { it.key }.toSet())
@@ -655,9 +651,6 @@ internal fun rememberIslandLayout(
     LaunchedEffect(expanded) { if (expanded) pulse.snapTo(0f) }
     val pulseWidthState = remember(widthState, pulse, settings.width) {
         derivedStateOf { widthState.value + (settings.width * PILL_PULSE_WIDTH_FRACTION * pulse.value).dp }
-    }
-    val pulseHeightState = remember(heightState, pulse, settings.height) {
-        derivedStateOf { heightState.value + (minOf(settings.height * PILL_PULSE_HEIGHT_FRACTION, PILL_PULSE_HEIGHT_MAX_DP) * pulse.value).dp }
     }
 
     return IslandLayout(
@@ -686,7 +679,7 @@ internal fun rememberIslandLayout(
         pickerLeftFraction = pickerLeftFraction,
         pickerEdgeFraction = pickerEdgeFraction,
         widthState = pulseWidthState,
-        heightState = pulseHeightState,
+        heightState = heightState,
         radiusState = radiusState,
         topShiftState = topShiftState,
         collapsedAlphaState = collapsedAlphaState,
@@ -716,8 +709,8 @@ internal fun rememberCollapsedContentFade(
     /** The landscape pill is sliding away: its content stays on it and fades with the slide. Otherwise it goes at once. */
     fadeOut: Boolean = false
 ): CollapsedContentFade {
-    // The last shown card lives in plain memory (it used to be state written from a SideEffect, which made
-    // every card update recompose twice), and the fade is a State read at draw time (it used to be read here, per frame).
+    // The last shown card lives in plain memory (state written from a SideEffect would make every card update recompose
+    // twice), and the fade is a State read at draw time (not here, per frame).
     val lastShown = remember { arrayOfNulls<IslandNotification>(1) }
     if (active != null) lastShown[0] = active
     val presence = animateFloatAsState(

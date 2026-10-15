@@ -121,6 +121,8 @@ sealed interface SmartIslandCommand {
     data class CancelNotification(val key: String) : SmartIslandCommand
     /** A reply was sent from the island: the app cancelling or re-posting that card right after must not close it. */
     data class ReplySent(val key: String) : SmartIslandCommand
+    /** A timer was stopped from the island: what was remembered for that app's paused timer is no longer valid. */
+    data class TimerStopped(val packageName: String) : SmartIslandCommand
     data class SeekTo(val packageName: String, val positionMs: Long) : SmartIslandCommand
     data class SkipNext(val packageName: String? = null) : SmartIslandCommand
     data class SkipPrevious(val packageName: String? = null) : SmartIslandCommand

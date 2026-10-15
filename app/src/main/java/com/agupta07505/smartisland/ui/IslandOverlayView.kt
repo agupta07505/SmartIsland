@@ -215,7 +215,7 @@ fun IslandOverlayView(
         } else if (sideBySideHold) {
             androidx.compose.runtime.snapshotFlow { stepDragForHold.active }.first { !it }
             // The content says when its two islands are gone (a timer ended before the card had grown back
-            // to the single island's width, so the single surface and the blur window showed up around a smaller card). The
+            // to the single island's width, so the single surface showed up around a smaller card). The
             // old length is only the safety cap now.
             kotlinx.coroutines.withTimeoutOrNull(sideBySideHoldMs * 3L + 400L) {
                 androidx.compose.runtime.snapshotFlow { stepDragForHold.splitShown }.first { !it }
@@ -224,9 +224,9 @@ fun IslandOverlayView(
             sideBySideHold = false
         }
     }
-    // The hold also ends the moment the content has left the two-island layout (it reports that in splitShown). The flag used to drop
-    // 40 ms later and the surface faded in over another 60 ms, and for those frames the single-layout card was drawn without a surface
-    // in the wide, unclipped two-island shell: the square-cornered slab at the end of the picker close.
+    // The hold also ends the moment the content has left the two-island layout (it reports that in splitShown). The flag must not drop
+    // 40 ms later with the surface fading in over another 60 ms, because for those frames the single-layout card would be drawn without a surface
+    // in the wide, unclipped two-island shell: a square-cornered slab at the end of the picker close.
     val pickerSideBySideRaw = pickerSideBySideNow || (sideBySideHold && isLandscape && expanded && stepDragForHold.splitShown)
     // Set by the watchdog below when the flag was still on with nothing open. It drops the flag until the next picker / picture.
     var forceSingle by remember { mutableStateOf(false) }
@@ -298,7 +298,7 @@ fun IslandOverlayView(
     val pickerLeftFraction = rememberUpdatedState(layout.pickerEdgeFraction)
     val pickerOnLeftState = rememberUpdatedState(pickerOnLeft)
     // True once the single island's surface has faded back in after the two landscape islands (flips twice per split, so reading it
-    // here does not recompose per frame of the fade). The blur window waits for it.
+    // here does not recompose per frame of the fade). The bounds report waits for it.
     val layoutForSurface by rememberUpdatedState(layout)
     val surfaceBack by remember { androidx.compose.runtime.derivedStateOf { layoutForSurface.singleSurfaceAlpha >= 0.98f } }
     // Close hand-off: the content keeps its two-island layout (the same rectangle at progress 0) until the shell is the single island
@@ -341,7 +341,7 @@ fun IslandOverlayView(
             if (com.agupta07505.smartisland.model.ShellStateGuard.canForceSingle(reason)) forceSingle = true
         }
     }
-    // No single expanded island (collapsed, or the two landscape islands): the blur window hides.
+    // No single expanded island (collapsed, or the two landscape islands).
     LaunchedEffect(expanded, pickerSideBySide) {
         if (!expanded || pickerSideBySide) cb.currentOnExpandedSurfaceBounds(null)
     }

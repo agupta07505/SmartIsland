@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -57,7 +58,8 @@ fun ExemptAppsCard(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val exempt = if (landscape) settings.islandExemptAppsLandscape else settings.islandExemptApps
+    val staticApps = if (landscape) emptySet() else settings.islandExemptAppsStatic
+    val exempt = (if (landscape) settings.islandExemptAppsLandscape else settings.islandExemptApps) + staticApps
     var picking by rememberSaveable(landscape) { mutableStateOf(false) }
     val installed by produceState(initialValue = emptyList<LaunchableApp>(), context) {
         value = withContext(Dispatchers.IO) { AppShortcutProvider.installedApps(context) }
@@ -69,7 +71,7 @@ fun ExemptAppsCard(
             text = if (landscape) {
                 "The island is totally off in landscape while any of these apps is open."
             } else {
-                "The island is totally off in portrait while any of these apps is open."
+                "While any of these apps is open the island is either off (hidden, no popups, no gestures) or static (the collapsed island stays in place, but does nothing)."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -93,6 +95,21 @@ fun ExemptAppsCard(
                         }
                     }
                     TextButton(onClick = { scope.launch { repository.setIslandExemptApp(landscape, pkg, false) } }) { Text("Remove") }
+                }
+                if (!landscape) {
+                    val isStatic = pkg in staticApps
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = !isStatic,
+                            onClick = { scope.launch { repository.setIslandExemptStatic(pkg, false) } },
+                            label = { Text("Island off") }
+                        )
+                        FilterChip(
+                            selected = isStatic,
+                            onClick = { scope.launch { repository.setIslandExemptStatic(pkg, true) } },
+                            label = { Text("Static island") }
+                        )
+                    }
                 }
             }
         }

@@ -97,11 +97,11 @@ object GlyphMotions {
 }
 
 /**
- * The morph between two weather glyphs (phase 7): the old glyph turns and shrinks away while the new one turns in and grows to
+ * The morph between two weather glyphs: the old glyph turns and shrinks away while the new one turns in and grows to
  * full size, cross-fading so the two shapes blend. Pure, so the timing and the "did the look change" rule can be tested.
  */
 object WeatherMorph {
-    /** The whole morph takes this long. The ambient motions of phase 6 start only after it. */
+    /** The whole morph takes this long. The ambient motions start only after it. */
     const val MORPH_MS = 650
 
     /** How far each glyph turns, in degrees: the old one leaves this far, the new one arrives from the same way round. */
@@ -145,11 +145,11 @@ object WeatherMorph {
     }
 }
 
-/** The attention state an idle widget glyph can be in (phase 8). */
+/** The attention state an idle widget glyph can be in. */
 enum class GlyphAttention { None, SpeedPulse, AlarmGlow }
 
 /**
- * Attention states (phase 8): a fast connection makes the speed arrow breathe, an alarm that is about to ring makes the alarm
+ * Attention states: a fast connection makes the speed arrow breathe, an alarm that is about to ring makes the alarm
  * glyph glow. Both are soft, slow breathing, never a flash. Pure, so the thresholds, the hysteresis and the timing can be
  * tested without Compose.
  */

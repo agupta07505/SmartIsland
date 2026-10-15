@@ -167,7 +167,7 @@ class SplitMotionTest {
     fun theTwoIslandLayoutIsHeldUntilTheShellIsReady() {
         // Closing: held whatever the shell says.
         assertTrue(SplitMotion.holdTwoIslandLayout(true, false, 0.5f, shellSingleReady = true))
-        // Progress gone but the shell is not the single island yet: still held (this is the frame that used to flash).
+        // Progress gone but the shell is not the single island yet: still held (no flash on this frame).
         assertTrue(SplitMotion.holdTwoIslandLayout(true, false, 0f, shellSingleReady = false))
         // The shell confirmed: the content may flip.
         assertFalse(SplitMotion.holdTwoIslandLayout(true, false, 0f, shellSingleReady = true))

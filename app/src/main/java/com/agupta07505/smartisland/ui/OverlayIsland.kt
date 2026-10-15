@@ -58,6 +58,8 @@ fun OverlayIsland(
     val idleClosing by viewModel.idleClosing.collectAsState()
     val idleLeaving by viewModel.idleLeaving.collectAsState()
     val rotationHidden by viewModel.rotationVeil.collectAsState()
+    // Portrait, static exempt app: the collapsed pill stays but is dead: nothing on it, nothing opens, no touches (the window ignores them).
+    val staticPill by viewModel.islandStaticForApp.collectAsState()
     val context = LocalContext.current
 
     // Rotation: everything fades out at once and returns on the pill's arrival spring and fade curve (RotationVeil).
@@ -198,9 +200,9 @@ fun OverlayIsland(
     ) {
     IslandOverlayView(
         settings = settings,
-        expanded = expanded,
+        expanded = expanded && !staticPill,
         // The Open Apps shortcut shows the quick-launch grid, which is what the island draws for an empty list.
-        notifications = if (appsLauncherOpen && expanded) emptyList() else processedNotifications,
+        notifications = if (staticPill || (appsLauncherOpen && expanded)) emptyList() else processedNotifications,
         selectedIndex = selectedIndex,
         launcherApps = launcherApps,
         onPageSelected = { index -> viewModel.setSelectedNotificationIndex(index) },
@@ -213,7 +215,7 @@ fun OverlayIsland(
         onOpenFloatingWindow = onOpenFloatingWindow,
         onOpenNotificationShade = onOpenNotificationShade,
         // The shade is open: the privacy dots go with the other events (the system shows its own indicator).
-        privacyState = if (shadeOpen) com.agupta07505.smartisland.model.PrivacyIndicatorState() else privacyState,
+        privacyState = if (shadeOpen || staticPill) com.agupta07505.smartisland.model.PrivacyIndicatorState() else privacyState,
         statusBarHeight = statusBarHeight,
         isInputActive = isInputActive,
         onReplyStateChanged = { viewModel.setInputActive(it) },
@@ -221,14 +223,14 @@ fun OverlayIsland(
         cardDepth = cardDepth,
         onCardDeeper = { viewModel.cardGoDeeper() },
         onCardBack = { viewModel.cardGoBack() },
-        siblingPickerOpen = siblingPickerOpen,
+        siblingPickerOpen = siblingPickerOpen && !staticPill,
         readingExpandedText = readingExpandedText,
         onSiblingSelected = { key -> viewModel.selectSibling(key) },
         onSiblingPickerClose = { viewModel.closeSiblingPicker() },
         onOpenSiblingPicker = { viewModel.openSiblingPicker() },
         isFullWidth = isFullWidth,
-        hasIdleStoredCards = hasIdleStoredCards,
-        idleWidgetsSuppressed = idleSuppressed,
+        hasIdleStoredCards = hasIdleStoredCards && !staticPill,
+        idleWidgetsSuppressed = idleSuppressed || staticPill,
         tickPillHold = tickHold,
         onTickPillHold = { viewModel.setTickHold(it) },
         onRevealIdleCards = { viewModel.revealIdleCards() },
@@ -237,18 +239,21 @@ fun OverlayIsland(
         onSwitchSibling = { forward -> viewModel.switchSibling(forward) },
         onTogglePillHidden = { viewModel.togglePillHidden() },
         // The island reports its rect on every frame of a size animation. A change of 2 px or less is skipped (no new
-        // flow value, no blur or touch-region work); the 8 dp touch pad and the blur window's inset hide the difference.
+        // flow value, no touch-region work); the 8 dp touch pad hides the difference.
         onExpandedSurfaceBounds = { next ->
             val last = viewModel.expandedSurfaceBounds.value
-            if (next == null || last == null || com.agupta07505.smartisland.util.BlurFollow.rectMoved(last, next)) {
+            if (next == null || last == null ||
+                kotlin.math.abs(last.left - next.left) > 2 || kotlin.math.abs(last.top - next.top) > 2 ||
+                kotlin.math.abs(last.right - next.right) > 2 || kotlin.math.abs(last.bottom - next.bottom) > 2
+            ) {
                 viewModel.expandedSurfaceBounds.value = next
             }
         },
         onUserEngaged = { viewModel.markUserEngaged() },
         onHandleHeld = { viewModel.setAutoCollapseHeld(it) },
         pickerOnLeft = pickerOnLeft,
-        landscapeDot = landscapeDot,
-        widgetPill = widgetPill,
+        landscapeDot = if (staticPill) null else landscapeDot,
+        widgetPill = widgetPill && !staticPill,
         // One tick when the tap did something (a glyph-free pill centre or the landscape idle circle), none when it did nothing:
         // that tells the owner whether the tap counted.
         onOpenAppsLauncher = { viewModel.openAppsLauncher() },
@@ -258,7 +263,7 @@ fun OverlayIsland(
         idleClosing = idleClosing,
         appsLauncherOpen = appsLauncherOpen && expanded,
         idleLeaving = idleLeaving,
-        widgetIslandOpen = widgetIslandOpen,
+        widgetIslandOpen = widgetIslandOpen && !staticPill,
         onWidgetIslandChange = { viewModel.setWidgetIslandOpen(it) },
         widgetIslandSnap = widgetIslandSnap,
         modifier = modifier.graphicsLayer {

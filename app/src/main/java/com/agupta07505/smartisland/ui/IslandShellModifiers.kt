@@ -116,8 +116,8 @@ internal fun Modifier.islandShellSurface(
         else drawSquareTopShell(r, base.copy(alpha = a), null, a)
     }
     if (!squareTop) {
-        // The normal shell is a plain rounded rectangle, so it is drawn directly. It used to build an Outline and a Path
-        // on every frame of the size animation (an allocation per frame); the radius is clamped to half the short side by the canvas.
+        // The normal shell is a plain rounded rectangle, so it is drawn directly. No Outline or Path is built
+        // on each frame of the size animation (no allocation per frame); the radius is clamped to half the short side by the canvas.
         val corner = CornerRadius(r, r)
         if (brush != null) drawRoundRect(brush, size = size, cornerRadius = corner, alpha = brushAlpha)
         else drawRoundRect(base.copy(alpha = a), size = size, cornerRadius = corner)

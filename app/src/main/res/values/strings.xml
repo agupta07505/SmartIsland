@@ -603,9 +603,11 @@
     <string name="camera_cutout_width">Cutout width</string>
     <string name="camera_cutout_height">Cutout height</string>
     <string name="expanded_style_card_title">Expanded Card Style</string>
-    <string name="toggle_expanded_blur_title">Card Background Blur</string>
-    <string name="toggle_expanded_blur_desc">Blur the artwork and backdrop inside an open card. Only the card is affected, and it works with system window blur off. Needs Android 12+</string>
+    <string name="toggle_expanded_blur_title">Background Blur</string>
+    <string name="toggle_expanded_blur_desc">Card blur blurs the artwork and backdrop inside an open card. Needs Android 12+</string>
     <string name="slider_expanded_blur_radius">Blur Strength</string>
+    <string name="blur_mode_off">Off</string>
+    <string name="blur_mode_card">Card blur</string>
     <string name="media_output_this_phone">This phone</string>
     <string name="media_output_cast">Cast</string>
     <string name="media_output_wired">Wired</string>
@@ -699,7 +701,8 @@
     <string name="detail_title_timing">Timing</string>
     <string name="timing_intro">Fine-tune how long things stay on the island. Changes apply straight away and the defaults match the old fixed values.</string>
     <string name="timing_idle_label">Idle timeout</string>
-    <string name="timing_idle_hint">How long cards stay before the island returns to its idle cutout: ordinary notifications, and live events (music, navigation, timers ...) that appeared by themselves. Live events you open with a tap on the idle cutout stay until you close them. Calls never time out.</string>
+    <string name="timing_never">Never</string>
+    <string name="timing_idle_hint">How long cards stay before the island returns to its idle cutout: ordinary notifications, and live events (music, navigation, timers ...) that appeared by themselves. Live events you open with a tap on the idle cutout stay until you close them. Calls never time out. Slide to the end for Never: cards stay until they are dismissed.</string>
     <string name="timing_battery_label">Battery warning length</string>
     <string name="timing_battery_hint">How long Low battery, Battery saver and Fully charged cards stay.</string>
     <string name="timing_popup_label">Popup length</string>

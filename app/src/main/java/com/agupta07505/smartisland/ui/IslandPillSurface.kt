@@ -22,7 +22,7 @@ import com.agupta07505.smartisland.ui.expanded.expandedGradientBrush
 
 /**
  * The visible island shell: animated size, the finger-follow and merge swell transform, shadow, clip, the
- * expanded-surface bounds report for the blur window, and the background surface. Gestures are added by the caller.
+ * expanded-surface bounds report (for the touch region), and the background surface. Gestures are added by the caller.
  */
 internal fun Modifier.islandPillSurface(
     settings: SmartIslandSettings,
@@ -43,9 +43,8 @@ internal fun Modifier.islandPillSurface(
     /** The shell's opacity, read while drawing so a fade between the media and the shared value does not recompose. */
     shellOpacity: () -> Float = { settings.opacity },
     /**
-     * The single island reports its rect for the blur window only while this is true. Landscape's two islands hand over to the single
-     * island with a 160 ms surface fade; the blur window (a plain rectangle) used to come back before that fade was done and showed
-     * as a grey box with square corners around a still see-through island.
+     * The single island reports its rect (used for the touch region) only while this is true. Landscape's two islands hand over to the
+     * single island with a 160 ms surface fade, so the rect is held back until that fade is done.
      */
     reportBounds: Boolean = true,
     /** Read while drawing: true while the island closes onto the idle circle (landscape, the last card gone). The shell is not drawn then. */
@@ -145,8 +144,8 @@ internal fun Modifier.islandPillSurface(
             }
             // Keep the top edge in place: the stretch reaches down only.
             translationY += com.agupta07505.smartisland.util.SwipeDownPull.topAnchorShiftPx(pullScaleY, size.height)
-            // Only the pill exit fades the layer. The swipe lock cue used to dim it too, but a layer alpha covers the whole subtree
-            // (the card's backdrop and content), so the card went see-through for the 400 ms of the lock. The cue is the outline below.
+            // Only the pill exit fades the layer. The swipe lock cue does not dim it, because a layer alpha covers the whole subtree
+            // (the card's backdrop and content) and the card would go see-through for the 400 ms of the lock. The cue is the outline below.
             alpha = if (shellHidden()) 0f else (pillExit.shellAlpha() * layout.hidingAlpha)
         }
         .then(
@@ -163,7 +162,7 @@ internal fun Modifier.islandPillSurface(
         .then(if (twoIslandsDrawn) Modifier else Modifier.islandShellClip({ layout.safeRadius }, squareTop))
         .then(
             if (cb.currentExpanded && !pickerSideBySide && reportBounds) {
-                // Reports the island's rect (after scale and drag) so the blur window can follow it.
+                // Reports the island's rect (after scale and drag) for the touch region.
                 Modifier.onGloballyPositioned { coords ->
                     val b = coords.boundsInWindow()
                     cb.currentOnExpandedSurfaceBounds(
@@ -182,7 +181,7 @@ internal fun Modifier.islandPillSurface(
             // Light look: the shell eases from the pill colour to the pale surface as the island opens (and back on collapse).
             expandedColor = if (palette.isLight) palette.surface else null,
             expandedFraction = { layout.expandProgress },
-            // The cards no longer slide under the finger (the island leans with them inside it) and the two cards of a swap are one
+            // The cards do not slide under the finger (the island leans with them inside it) and the two cards of a swap are one
             // card apart, so there is no strip of bare shell to cover: the shell keeps its own opacity.
             alpha = { shellOpacity() * layout.singleSurfaceAlpha }
         )

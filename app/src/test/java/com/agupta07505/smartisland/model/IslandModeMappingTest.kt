@@ -194,12 +194,16 @@ class IslandModeMappingTest {
         notification.category = Notification.CATEGORY_STATUS
         notification.actions = null
 
+        val sbn = mockk<StatusBarNotification>()
         val extras = createBaseExtras()
         notification.extras = extras
+        // Hotspot detection is gated on the posting package (system/tethering packages or known OEM hotspot apps).
+        every { sbn.packageName } returns "com.android.systemui"
+        every { sbn.notification } returns notification
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Mobile Hotspot"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Active • 2 devices connected"
 
-        assertEquals(IslandMode.Hotspot, notification.toIslandMode())
+        assertEquals(IslandMode.Hotspot, notification.toIslandMode(sbn))
     }
 
     @Test

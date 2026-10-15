@@ -71,9 +71,8 @@ data class SmartIslandSettings(
     /** False: nothing opens the island by itself while the phone is locked (cards still show in the pill). */
     val autoExpandOnLockScreen: Boolean = true,
     val enableShadow: Boolean = true,
-    val expandedBlurEnabled: Boolean = false,
+    val expandedBlurEnabled: Boolean = true,
     val expandedBlurRadius: Float = 24f,
-    /** See-through blur of whatever is behind an open card (system window blur, heavier). Off by default; the card blur above works without it. */
     /**
      * The media (music) card has its own blur and opacity. A phone or backup saved before this
      * existed starts from the shared values above (see the loaders), so nothing changes until the owner moves them.
@@ -137,14 +136,14 @@ data class SmartIslandSettings(
     val swipeHoldUpAction: String = "DismissAll",
     val swipeDownAction: String = "None",
     val swipeDownCollapsedAction: String = "Expand",
-    val swipeLeftAction: String = "None",
-    val swipeRightAction: String = "None",
+    val swipeLeftAction: String = "NextEvent",
+    val swipeRightAction: String = "PreviousEvent",
     val swipeHorizontalCollapsedAction: String = "NextPrevious",
     val enablePillSwipeActions: Boolean = true,
     val pillSwipeUpAction: String = "DismissCurrent",
     val pillSwipeDownAction: String = "Expand",
-    val pillSwipeLeftAction: String = "PreviousNotification",
-    val pillSwipeRightAction: String = "NextNotification",
+    val pillSwipeLeftAction: String = "NextEvent",
+    val pillSwipeRightAction: String = "PreviousEvent",
     // Long press on the collapsed pill. One real action (hide / show the pill) or "None" to turn it off.
     val longPressAction: String = "TogglePill",
     val circlePosition: String = CIRCLE_POSITION_RIGHT,
@@ -162,6 +161,8 @@ data class SmartIslandSettings(
     /** Apps that switch the island totally off while they are in the foreground, per orientation (see model/IslandExemption). */
     val islandExemptApps: Set<String> = emptySet(),
     val islandExemptAppsLandscape: Set<String> = emptySet(),
+    /** Portrait only: apps that keep the collapsed pill on screen but dead (no content, no popups, no touches) while in the foreground. */
+    val islandExemptAppsStatic: Set<String> = emptySet(),
     val contentPillWidthPercentLandscape: Float = DEFAULT_CONTENT_PILL_PERCENT,
     // ---- Landscape profile (independent of the portrait fields above) ----
     // Legacy since LR4 (idle landscape cutout is always the camera circle); kept for old backups.
@@ -505,6 +506,7 @@ data class SmartIslandSettings(
         settingsObj.put("contentPillSameAsIdle", contentPillSameAsIdle)
         settingsObj.put("islandExemptApps", JSONArray().also { a -> islandExemptApps.forEach { a.put(it) } })
         settingsObj.put("islandExemptAppsLandscape", JSONArray().also { a -> islandExemptAppsLandscape.forEach { a.put(it) } })
+        settingsObj.put("islandExemptAppsStatic", JSONArray().also { a -> islandExemptAppsStatic.forEach { a.put(it) } })
         settingsObj.put("contentPillSameAsIdleLandscape", contentPillSameAsIdleLandscape)
         settingsObj.put("contentPillWidthPercentLandscape", contentPillWidthPercentLandscape.toDouble())
         settingsObj.put("contentPillWidthPercent", contentPillWidthPercent.toDouble())
@@ -572,9 +574,13 @@ data class SmartIslandSettings(
         val settingsCount: Int
     )
 
+    /** Which blur choice is active: the card's own artwork blur, or none. */
+    val expandedBlurMode: ExpandedBlurMode
+        get() = if (expandedBlurEnabled) ExpandedBlurMode.Card else ExpandedBlurMode.Off
+
     /**
      * The settings the media (music) card draws with: the shared blur and opacity fields hold the media values, so
-     * every existing helper (`cardBackgroundBlur`, `islandSurface`, the blur window) works unchanged on this copy.
+     * every existing helper (`cardBackgroundBlur`, `islandSurface`) works unchanged on this copy.
      */
     fun forMedia(): SmartIslandSettings = copy(
         opacity = mediaOpacity,
@@ -656,7 +662,9 @@ data class SmartIslandSettings(
 
         // Timing bounds (milliseconds) and the step the sliders move in.
         const val MIN_IDLE_TIMEOUT_MS = 1_000
-        const val MAX_IDLE_TIMEOUT_MS = 30_000
+        // The slider's last stop (one 500 ms step past 30 s) means "never": the idle timeout is off.
+        const val MAX_IDLE_TIMEOUT_MS = 30_500
+        const val IDLE_TIMEOUT_NEVER_MS = MAX_IDLE_TIMEOUT_MS
         const val MIN_BATTERY_WARNING_MS = 1_000
         const val MAX_BATTERY_WARNING_MS = 15_000
         const val MIN_POPUP_MS = 500
@@ -876,6 +884,7 @@ data class SmartIslandSettings(
                 contentPillSameAsIdle = obj.optBoolean("contentPillSameAsIdle", defaults.contentPillSameAsIdle),
                 islandExemptApps = safeStringSet("islandExemptApps", defaults.islandExemptApps),
                 islandExemptAppsLandscape = safeStringSet("islandExemptAppsLandscape", defaults.islandExemptAppsLandscape),
+                islandExemptAppsStatic = safeStringSet("islandExemptAppsStatic", defaults.islandExemptAppsStatic),
                 contentPillSameAsIdleLandscape = obj.optBoolean("contentPillSameAsIdleLandscape", defaults.contentPillSameAsIdleLandscape),
                 contentPillWidthPercentLandscape = safeFloat(
                     "contentPillWidthPercentLandscape", defaults.contentPillWidthPercentLandscape,
@@ -959,3 +968,5 @@ data class SmartIslandSettings(
         }
     }
 }
+/** The expanded island's blur choice: nothing, or the card's own artwork blur. */
+enum class ExpandedBlurMode { Off, Card }

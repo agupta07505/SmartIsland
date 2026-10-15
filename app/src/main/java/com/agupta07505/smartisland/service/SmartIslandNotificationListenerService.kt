@@ -151,6 +151,11 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                             is SmartIslandCommand.CancelNotification -> {
                                 forceCancelNotification(command.key)
                             }
+                            is SmartIslandCommand.TimerStopped -> {
+                                lastTimerFrozen.remove(command.packageName)
+                                lastTimerShown.remove(command.packageName)
+                                lastTimerTargets.remove(command.packageName)
+                            }
                             is SmartIslandCommand.ReplySent -> {
                                 replyGraceUntil[command.key] = SystemClock.elapsedRealtime() + REPLY_GRACE_MS
                             }
@@ -349,13 +354,20 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     private val recordingStates = ConcurrentHashMap<String, RecordingClock.State>()
 
     /**
-     * Last running clock per app and card type. Some clock apps cancel the stopwatch notification and post a
-     * new paused one on Pause, so the per-key state is gone; this keeps the time the stopwatch had.
+     * Last clock per app and card type, running or frozen. Some clock apps cancel the stopwatch notification and
+     * post a new paused one (on Pause, and again when their screen is left), so the per-key state is gone; this
+     * keeps the time the stopwatch had. A frozen entry stays frozen however long the app is open.
      */
-    private val lastRunningClocks = ConcurrentHashMap<String, RecordingClock.State>()
+    private val lastClocks = ConcurrentHashMap<String, RecordingClock.State>()
 
-    /** Last known end time of a running timer per app, for the same cancel-and-repost case. */
+    /** Last end time of a running timer per app. */
     private val lastTimerTargets = ConcurrentHashMap<String, Long>()
+
+    /** Remaining time frozen at a timer's pause per app. */
+    private val lastTimerFrozen = ConcurrentHashMap<String, Long>()
+
+    /** Time printed at the last paused post per app. */
+    private val lastTimerShown = ConcurrentHashMap<String, Long>()
     private var recordingWatchdog: Job? = null
     private var transferExpiryJob: Job? = null
     /** Cards a reply was just sent from: an app removal inside this window keeps the card (the echo re-posts the key). */
@@ -426,8 +438,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         mediaWatcher?.stop()
         mediaWatcher = null
         recordingStates.clear()
-        lastRunningClocks.clear()
+        lastClocks.clear()
         lastTimerTargets.clear()
+        lastTimerFrozen.clear()
+        lastTimerShown.clear()
         voipMonitor?.stop()
         voipMonitor = null
         isSystemConnected = false
@@ -531,7 +545,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val notification = sbn.notification
         callPostGuard.notePosted(sbn.key, sbn.postTime)
         tracePost(sbn, rankingMap)
-        logCallCandidate(sbn, rankingMap)
 
         // ── Group summary handling ────────────────────────────────────────────────────────────
         // Apps like WhatsApp post two kinds of notifications per conversation:
@@ -843,7 +856,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             .filter { sbn ->
                 val mode = sbn.notification.toIslandMode(sbn, settings.liveActivitiesEnabled, settings.navigationEnabled, settings.deviceType)
                 // The same rule as the first pass: persistent live cards and loud notifications. The first pass can see an empty or
-                // half-ready shade right after the connect, and loud notifications used to be missed for good.
+                // half-ready shade right after the connect, and loud notifications would be missed for good.
                 isPersistentIslandMode(mode) || (mode == IslandMode.Notification && !isSilentNotification(sbn))
             }
             .sortedBy { it.postTime }
@@ -1033,26 +1046,6 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    /** Writes one diagnostic line per call-looking notification (only while the in-app log records). */
-    private fun logCallCandidate(sbn: StatusBarNotification, rankingMap: RankingMap?) {
-        if (!com.agupta07505.smartisland.util.AppLogRecorder.isRecording) return
-        runCatching {
-            val n = sbn.notification
-            if (!com.agupta07505.smartisland.util.CallDiagnostics.isCallLike(n)) return
-            val mode = n.toIslandMode(
-                sbn,
-                currentSettings.liveActivitiesEnabled,
-                currentSettings.navigationEnabled,
-                currentSettings.deviceType
-            )
-            com.agupta07505.smartisland.util.AppLogRecorder.i(
-                "CallDiag",
-                com.agupta07505.smartisland.util.CallDiagnostics.describe(sbn, mode, shouldSuppressFromIsland(sbn, rankingMap)) +
-                    " dndBlocked=${isBlockedByDoNotDisturb(sbn, rankingMap)}"
-            )
-        }
-    }
-
     private fun isIncomingCall(notification: Notification): Boolean =
         CallStyleExtras.isRinging(notification)
 
@@ -1175,9 +1168,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val baseActions = (standardActions + focusActions)
             .distinctBy { it.title.trim().lowercase() to it.pendingIntent }
 
-        // Some clocks and recorders keep the running time and their Pause / Stop buttons inside a custom
-        // notification view instead of the standard fields. Read those views for the cards that need them.
-        val usesCustomViews = mode == IslandMode.Stopwatch ||
+        // Some clocks and recorders keep time and buttons in a custom view. Phone makers' clocks keep their old handling.
+        val isShadeFixCard = (mode == IslandMode.Timer || mode == IslandMode.Stopwatch) &&
+            com.agupta07505.smartisland.util.TimerStopwatchParser.usesShadeFixes(sbn.packageName)
+        val usesCustomViews = mode == IslandMode.Stopwatch || isShadeFixCard ||
             mode == IslandMode.ScreenRecording || mode == IslandMode.AudioRecording
         val viewInfo = if (usesCustomViews) {
             runCatchingLogged(TAG, "Custom notification views could not be read") {
@@ -1198,8 +1192,24 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     )
             }
         ) {
-            // The shade shows a Pause button the standard actions do not have: take the view's buttons.
             baseActions.filter { it.pendingIntent != null } + viewInfo.buttons
+        } else if (isShadeFixCard) {
+            com.agupta07505.smartisland.util.ShadeActions.mirror(
+                baseActions,
+                viewInfo?.buttons.orEmpty(),
+                if (mode == IslandMode.Stopwatch) {
+                    com.agupta07505.smartisland.util.TimerStopwatchParser.ClockKind.Stopwatch
+                } else {
+                    com.agupta07505.smartisland.util.TimerStopwatchParser.ClockKind.Timer
+                }
+            ).also { shown ->
+                com.agupta07505.smartisland.util.AppLogRecorder.d(
+                    "ShadeButtons",
+                    "pkg=${sbn.packageName} mode=$mode standard=${baseActions.map { it.title }}" +
+                        " viewShown=${viewInfo?.buttons?.map { it.title }}" +
+                        " viewHidden=${viewInfo?.hiddenButtons} island=${shown.map { it.title }}"
+                )
+            }
         } else {
             baseActions
         }
@@ -1223,62 +1233,171 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             val rawBig = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
             val rawSub = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
             val nowMs = System.currentTimeMillis()
+            val clockKey = "${sbn.packageName}|${mode.name}"
             val clockPaused = if (isStopwatch) {
-                com.agupta07505.smartisland.util.TimerStopwatchParser.isStopwatchPaused(notification)
+                // Stays paused across the app's cancel-and-repost until it offers Pause again.
+                RecordingClock.resolvePaused(
+                    detected = com.agupta07505.smartisland.util.TimerStopwatchParser.isStopwatchPaused(notification) ||
+                        (isShadeFixCard && com.agupta07505.smartisland.util.ShadeActions.offersResume(actions)),
+                    lastForApp = recordingStates[sbn.key] ?: lastClocks[clockKey],
+                    actionTitles = actions.map { it.title }
+                )
             } else {
                 RecordingClock.isPaused(actions.map { it.title }, "$rawTitle $rawText $rawBig")
             }
-            val clockKey = "${sbn.packageName}|${mode.name}"
-            val previousState = recordingStates[sbn.key] ?: lastRunningClocks[clockKey]?.takeIf { clockPaused }
-            // A chronometer inside the notification's own view knows the real elapsed time; `when` is only
-            // the moment the notification was posted, which restarted the island's clock on every exit.
+            val previousState = RecordingClock.continuation(recordingStates[sbn.key], lastClocks[clockKey], clockPaused)
+            // `when` is only the post time; the view's chronometer has the real elapsed time.
             val viewStartMs = viewInfo?.chronometerElapsedMs
                 ?.takeIf { !clockPaused }
                 ?.let { nowMs - it }
             val chronometerBase = viewStartMs ?: if (!extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false) &&
                 notification.`when` in 1..nowMs &&
-                // A stopwatch with no clock yet may use `when` as its start; afterwards only a
-                // visible chronometer is trusted.
+                // `when` is trusted as the start only before the first clock.
                 (extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) ||
                     (isStopwatch && previousState == null))
             ) notification.`when` else null
+            val stockStopwatch = isShadeFixCard && isStopwatch
+            val showsChronometer = !extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false) &&
+                extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) && notification.`when` in 1..nowMs
+            val exactRunningBase: Long? = if (stockStopwatch && !clockPaused) {
+                viewStartMs ?: notification.`when`.takeIf { showsChronometer }
+            } else {
+                null
+            }
+            // Stopped chronometer corrected to the post time.
+            val exactFrozenMs: Long? = if (stockStopwatch && clockPaused) {
+                viewInfo?.takeIf { !it.chronometerCountDown }?.let { cv ->
+                    cv.chronometerBaseMs?.let { base ->
+                        val applyDelayMs = (nowMs - sbn.postTime).coerceAtLeast(0L)
+                        com.agupta07505.smartisland.util.TimerClock.elapsedFromChronometer(
+                            base,
+                            SystemClock.elapsedRealtime() - applyDelayMs,
+                            cv.shownTimeSeconds?.takeIf { cv.shownFromChronometer },
+                            applyDelayMs
+                        )
+                    }
+                }
+            } else {
+                null
+            }
+            if (stockStopwatch) {
+                com.agupta07505.smartisland.util.AppLogRecorder.d(
+                    "StopwatchClock",
+                    "pkg=${sbn.packageName} paused=$clockPaused exactFrozenMs=$exactFrozenMs exactRunningBase=$exactRunningBase" +
+                        " shownSec=${viewInfo?.shownTimeSeconds} chronoBase=${viewInfo?.chronometerBaseMs}" +
+                        " postAgeMs=${nowMs - sbn.postTime}"
+                )
+            }
             RecordingClock.next(
                 previous = previousState,
                 nowMillis = nowMs,
                 paused = clockPaused,
                 finished = !isStopwatch && notification.isScreenRecordingComplete(),
-                parsedMs = RecordingClock.parseElapsedMs(rawTitle, rawText, rawBig, rawSub),
-                chronometerBaseMs = chronometerBase,
-                fallbackFrozenMs = viewInfo?.chronometerElapsedMs
+                parsedMs = if (stockStopwatch) {
+                    if (clockPaused) {
+                        RecordingClock.frozenReading(
+                            paused = true,
+                            shownMs = viewInfo?.shownTimeSeconds?.let { it * 1000L }?.let { shown ->
+                                if (viewInfo?.shownFromChronometer == true && !viewInfo.chronometerCountDown) {
+                                    RecordingClock.withoutPostAge(shown, nowMs - sbn.postTime)
+                                } else {
+                                    shown
+                                }
+                            },
+                            parsedMs = RecordingClock.parseElapsedMs(rawTitle, rawText, rawBig, rawSub)
+                        )
+                    } else if (exactRunningBase != null) {
+                        null
+                    } else {
+                        RecordingClock.parseElapsedMs(rawTitle, rawText, rawBig, rawSub)
+                    }
+                } else {
+                    RecordingClock.parseElapsedMs(rawTitle, rawText, rawBig, rawSub)
+                },
+                chronometerBaseMs = exactRunningBase ?: chronometerBase,
+                fallbackFrozenMs = if (clockPaused) {
+                    RecordingClock.withoutPostAge(viewInfo?.chronometerElapsedMs, nowMs - sbn.postTime)
+                } else {
+                    viewInfo?.chronometerElapsedMs
+                },
+                exactFrozenMs = exactFrozenMs,
+                exactStart = exactRunningBase != null
             ).also {
                 recordingStates[sbn.key] = it
-                if (it.frozenMs == null) lastRunningClocks[clockKey] = it
+                lastClocks[clockKey] = it
             }
         } else {
             null
         }
 
-        // Timer cards: while paused the app's text often still carries the timer's full length, so the remaining
-        // time is the one the island saw running at the moment of the pause.
+        // A paused timer's text often shows its full length, so the frozen value is used instead.
         val timerPaused = mode == IslandMode.Timer &&
-            com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification)
+            (com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification) ||
+                (isShadeFixCard && com.agupta07505.smartisland.util.ShadeActions.offersResume(actions)) ||
+                // Stays paused across the app's cancel-and-repost until it offers Pause again.
+                (isShadeFixCard && lastTimerFrozen[sbn.packageName] != null &&
+                    !com.agupta07505.smartisland.util.ShadeActions.offersPause(actions) &&
+                    !com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerFinished(notification)))
+        val timerViewRunningMs: Long? = if (mode == IslandMode.Timer && !timerPaused) {
+            viewInfo?.countdownRemainingMs
+        } else {
+            null
+        }
+        val timerViewShownMs: Long? = if (mode == IslandMode.Timer) {
+            viewInfo?.shownTimeSeconds?.let { it * 1000L }
+        } else {
+            null
+        }
         val timerFrozenMs: Long? = if (timerPaused) {
             val nowMs = System.currentTimeMillis()
+            val pauseAtMs = sbn.postTime.coerceIn(nowMs - 10_000L, nowMs)
             val runningTarget = existingNotif
-                ?.takeIf { it.mode == IslandMode.Timer && !it.recordingPaused && it.timeMillis > nowMs }
+                ?.takeIf { it.mode == IslandMode.Timer && !it.recordingPaused && it.timeMillis > pauseAtMs }
                 ?.timeMillis
-                ?: lastTimerTargets[sbn.packageName]?.takeIf { it > nowMs }
+                ?: lastTimerTargets[sbn.packageName]?.takeIf { it > pauseAtMs }
             val keptFrozen = existingNotif
                 ?.takeIf { it.mode == IslandMode.Timer && it.recordingPaused }
                 ?.recordingFrozenMs
             val clockTextSec = com.agupta07505.smartisland.util.TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-            when {
-                runningTarget != null -> (runningTarget - nowMs).coerceAtLeast(0L)
-                keptFrozen != null -> keptFrozen
-                clockTextSec != null && clockTextSec > 0 -> clockTextSec * 1000L
-                else -> 0L
+            val chronoView = viewInfo?.takeIf { isShadeFixCard && it.chronometerCountDown }
+            val shadeExactMs = chronoView?.let { cv ->
+                cv.chronometerBaseMs?.let { base ->
+                    val applyDelayMs = (nowMs - sbn.postTime).coerceAtLeast(0L)
+                    com.agupta07505.smartisland.util.TimerClock.frozenFromChronometer(
+                        base,
+                        SystemClock.elapsedRealtime() - applyDelayMs,
+                        cv.shownTimeSeconds?.takeIf { cv.shownFromChronometer },
+                        applyDelayMs
+                    )
+                }
+            }
+            com.agupta07505.smartisland.util.TimerFreeze.remainingMs(
+                nowMs = pauseAtMs,
+                rememberedFrozenMs = lastTimerFrozen[sbn.packageName],
+                runningTargetMs = runningTarget,
+                keptFrozenMs = keptFrozen,
+                textRemainingMs = timerViewShownMs?.takeIf { it > 0L } ?: clockTextSec?.let { it * 1000L },
+                shadeShownMs = if (isShadeFixCard && viewInfo?.shownFromChronometer == true) timerViewShownMs else null,
+                shadeExactMs = shadeExactMs,
+                shownMs = if (isShadeFixCard) timerViewShownMs?.takeIf { it > 0L } else null,
+                previousShownMs = lastTimerShown[sbn.packageName]
+            ).also {
+                lastTimerFrozen[sbn.packageName] = it
+                if (isShadeFixCard) timerViewShownMs?.takeIf { shown -> shown > 0L }?.let { shown -> lastTimerShown[sbn.packageName] = shown }
+                if (isShadeFixCard) {
+                    com.agupta07505.smartisland.util.AppLogRecorder.d(
+                        "TimerFreeze",
+                        "pkg=${sbn.packageName} frozenMs=$it exactFromChronometer=$shadeExactMs" +
+                            " shownSec=${viewInfo?.shownTimeSeconds} chronoBase=${viewInfo?.chronometerBaseMs}" +
+                            " postAgeMs=${nowMs - sbn.postTime}"
+                    )
+                }
             }
         } else {
+            if (mode == IslandMode.Timer) {
+                lastTimerFrozen.remove(sbn.packageName)
+                lastTimerShown.remove(sbn.packageName)
+            }
             null
         }
 
@@ -1354,6 +1473,20 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 com.agupta07505.smartisland.util.VoipCallSignal.sinceMillis > 0 ->
                 com.agupta07505.smartisland.util.VoipCallSignal.sinceMillis
             mode == IslandMode.Timer && timerFrozenMs != null -> System.currentTimeMillis() + timerFrozenMs
+            // The shade's own count-down chronometer is the exact time left.
+            mode == IslandMode.Timer && timerViewRunningMs != null -> {
+                val target = System.currentTimeMillis() + timerViewRunningMs
+                lastTimerTargets[sbn.packageName] = target
+                target
+            }
+            // No count-down chronometer, but the shade prints the time ("04:59") in the view.
+            mode == IslandMode.Timer && !timerPaused && (timerViewShownMs ?: 0L) > 0L -> {
+                // Whole-second text: the real time left is up to a second more than it prints.
+                val target = com.agupta07505.smartisland.util.TimerClock
+                    .targetFromShownSeconds(System.currentTimeMillis(), timerViewShownMs!! / 1000L)
+                lastTimerTargets[sbn.packageName] = target
+                target
+            }
             mode == IslandMode.Timer -> {
                 if (isMiuiRom) {
                     val preciseDeadline = com.agupta07505.smartisland.util.TimerStopwatchParser
@@ -1378,8 +1511,22 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     }
                 } else {
                     val remSec = com.agupta07505.smartisland.util.TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-                    val target = if (remSec != null && remSec > 0) {
-                        System.currentTimeMillis() + remSec * 1000L
+                    // A stock / third-party clock's own deadline is exact to the millisecond; rounding it to seconds
+                    // first (as before) made the island run up to half a second off the shade.
+                    val exactDeadline = if (isShadeFixCard) {
+                        com.agupta07505.smartisland.util.TimerStopwatchParser.parseTimerDeadlineExact(notification)
+                    } else {
+                        null
+                    }
+                    val target = if (exactDeadline != null) {
+                        exactDeadline
+                    } else if (remSec != null && remSec > 0) {
+                        if (isShadeFixCard) {
+                            com.agupta07505.smartisland.util.TimerClock
+                                .targetFromShownSeconds(System.currentTimeMillis(), remSec)
+                        } else {
+                            System.currentTimeMillis() + remSec * 1000L
+                        }
                     } else if (notification.`when` > System.currentTimeMillis()) {
                         notification.`when`
                     } else if (existingNotif != null && existingNotif.mode == IslandMode.Timer && existingNotif.timeMillis > System.currentTimeMillis()) {
@@ -1451,7 +1598,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
         if (callPostGuard.isStale(sbn.key, sbn.postTime)) {
             // A newer post for this key, its removal, or the user's dismissal was already seen: this snapshot is out of date and
-            // must not bring the card back (it used to be checked for calls only; any slow handler could re-add a gone card).
+            // must not bring the card back (any slow handler could otherwise re-add a gone card).
             traceStage(sbn, "DROPPED", "stage=stale-post mode=$mode postTime=${sbn.postTime} (newer post, removal or dismissal already seen)")
             return
         }
@@ -1514,6 +1661,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 stopwatchElapsedSeconds = stopwatchElapsedSeconds,
                 stopwatchChronometerBase = stopwatchChronometerBase,
                 timerRemainingSeconds = timerRemainingSeconds,
+                exactClock = isShadeFixCard && mode == IslandMode.Timer,
                 transferKind = if (mode == IslandMode.DownloadUpload) {
                     notification.transferKind(sbn.packageName)
                 } else {
@@ -1524,8 +1672,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 recordingFrozenMs = recordingState?.frozenMs ?: timerFrozenMs,
                 recordingPaused = (recordingState?.frozenMs != null &&
                     (isStopwatch || !notification.isScreenRecordingComplete())) ||
-                    (mode == IslandMode.Timer &&
-                        com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification)),
+                    (mode == IslandMode.Timer && (timerPaused ||
+                        com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification))),
                 // Only plain notifications can be "silent"; live cards are usually low importance on purpose.
                 isSilent = mode == IslandMode.Notification && isSilentNotification(sbn),
                 callStatusText = connectingText.orEmpty(),
@@ -1628,8 +1776,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
 
         // Every ordinary notification keeps its own card, keyed by the system notification key.
-        // (An app's earlier cards used to be dropped here, which lost notifications that were
-        // still in the shade and left the same-app secondary cutout with nothing to show.)
+        // (Dropping an app's earlier cards here would lose notifications that are
+        // still in the shade and leave the same-app secondary cutout with nothing to show.)
 
         if (mode == IslandMode.Music) {
             val existing = notificationRepository.notifications.value
@@ -1692,7 +1840,9 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         }
 
         if (mode == IslandMode.Timer) {
-            val isDone = com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerFinished(notification)
+            // A timer whose shade view still counts down is not finished, whatever its text says.
+            val isDone = com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerFinished(notification) &&
+                (timerViewRunningMs ?: 0L) <= 0L
             if (isDone) {
                 pendingRemovals.remove(sbn.key)?.cancel()
                 val job = serviceScope.launch {
@@ -2018,7 +2168,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         latePictureJobs.remove(key)?.cancel()
         val job = serviceScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runSuspendCatchingLogged(TAG, "Late picture job failed") {
-                for ((attempt, waitMs) in com.agupta07505.smartisland.util.PictureRetryPlan.DELAYS_MS.withIndex()) {
+                for (waitMs in com.agupta07505.smartisland.util.PictureRetryPlan.DELAYS_MS) {
                     delay(waitMs)
                     if (callPostGuard.isStale(key, sbn.postTime)) return@runSuspendCatchingLogged
                     if (notificationRepository.notifications.value.none { it.key == key }) return@runSuspendCatchingLogged
@@ -2030,11 +2180,10 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                             notification.readerTextWithoutPictures(notifText)
                         }.orEmpty()
                         notificationRepository.updateNotification(key) { it.copy(media = found, readerText = reader) }
-                        com.agupta07505.smartisland.util.AppLogRecorder.i("MediaDiag", "late picture for $key arrived on attempt ${attempt + 1}")
                         return@runSuspendCatchingLogged
                     }
                 }
-                com.agupta07505.smartisland.util.AppLogRecorder.w("MediaDiag", "no picture for $key after the last retry")
+                com.agupta07505.smartisland.util.AppLogRecorder.w(TAG, "no picture for $key after the last retry")
             }
         }
         latePictureJobs[key] = job

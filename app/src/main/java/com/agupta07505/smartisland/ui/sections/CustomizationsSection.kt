@@ -72,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.R
+import com.agupta07505.smartisland.data.ExpandedBlurMode
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SliderSettingItem
@@ -327,31 +328,25 @@ fun CustomizationsSection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 2.dp))
 
-                // Background blur
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.toggle_expanded_blur_title),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = stringResource(R.string.toggle_expanded_blur_desc),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = settings.expandedBlurEnabled,
-                        onCheckedChange = { checked -> scope.launch { repository.setExpandedBlurEnabled(checked) } }
+                // Background blur: Off or Card blur. The strength slider applies to Card blur; the media card keeps its own blur below.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.toggle_expanded_blur_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.toggle_expanded_blur_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ExpandedBlurModeSelector(
+                        selected = settings.expandedBlurMode,
+                        onSelected = { mode -> scope.launch { repository.setExpandedBlurMode(mode) } }
                     )
                 }
-                AnimatedVisibility(visible = settings.expandedBlurEnabled) {
+                AnimatedVisibility(visible = settings.expandedBlurMode != ExpandedBlurMode.Off) {
                     SliderSettingItem(
                         label = stringResource(R.string.slider_expanded_blur_radius),
                         value = localBlurRadius,
@@ -841,6 +836,44 @@ private fun ExpandedThemeSelector(selected: String, onSelected: (String) -> Unit
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
                     .clickable { onSelected(id) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+
+/** Segmented Off / Card blur switch for the expanded island's background blur. */
+@Composable
+private fun ExpandedBlurModeSelector(selected: ExpandedBlurMode, onSelected: (ExpandedBlurMode) -> Unit) {
+    val options = listOf(
+        ExpandedBlurMode.Off to stringResource(R.string.blur_mode_off),
+        ExpandedBlurMode.Card to stringResource(R.string.blur_mode_card)
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        options.forEach { (mode, label) ->
+            val isSelected = selected == mode
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
+                    .clickable { onSelected(mode) }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {

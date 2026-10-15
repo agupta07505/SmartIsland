@@ -163,7 +163,7 @@ class SiblingPickerTest {
     @Test
     fun rowsKeepTheirPlaceAndNewCardsGoLast() {
         assertEquals(listOf("a", "b", "c"), stableSiblingOrder(emptyList(), listOf("a", "b", "c")))
-        // The newest card used to be first; while the picker is open it is appended instead of pushing every row down.
+        // While the picker is open the newest card is appended instead of pushing every row down.
         assertEquals(listOf("a", "b", "c", "n"), stableSiblingOrder(listOf("a", "b", "c"), listOf("n", "a", "b", "c")))
         // Re-posted cards come back in another order: the rows do not move.
         assertEquals(listOf("a", "b", "c"), stableSiblingOrder(listOf("a", "b", "c"), listOf("c", "a", "b")))

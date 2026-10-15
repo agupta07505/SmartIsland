@@ -118,7 +118,7 @@ object NotificationFilter {
 
         // Suppress background message syncing / polling notifications (e.g. Snapchat, WhatsApp, Telegram "Syncing messages", "Checking for messages")
         // A backup that says "backup in progress" is a transfer card (toIslandMode already decided that), not a message poll:
-        // WhatsApp's chat backup used to be dropped here and never reached the island.
+        // (WhatsApp's chat backup, for one, must reach the island.)
         val isMessageSync = isMessageSyncNotification(titleText) && mode != IslandMode.DownloadUpload
         if (isMessageSync) {
             return "message-sync-text"
@@ -249,10 +249,11 @@ fun Notification.toIslandMode(
     val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
 
     // 0. Timer & Stopwatch (Dedicated Clock/Timer support)
-    if (TimerStopwatchParser.isStopwatch(this, packageName)) {
+    val clockKey = sbn?.let { TimerStopwatchParser.clockKey(it) }
+    if (TimerStopwatchParser.isStopwatch(this, packageName, clockKey)) {
         return IslandMode.Stopwatch
     }
-    if (TimerStopwatchParser.isTimer(this, packageName)) {
+    if (TimerStopwatchParser.isTimer(this, packageName, clockKey)) {
         return IslandMode.Timer
     }
 
@@ -283,7 +284,7 @@ fun Notification.toIslandMode(
     val isCallStyle = CallStyleExtras.isCallTemplate(this)
     val actionLabels = actions.orEmpty().map { it.title?.toString()?.lowercase().orEmpty() }
     val roles = actionLabels.map { VoipCallDetector.classifyCallAction(it) }
-    // The answer side matches whole words, so "Retake" or "Mistake" no longer read as "take".
+    // The answer side matches whole words, so "Retake" or "Mistake" do not read as "take".
     val hasIncomingCallActionPair = CallActionRole.Answer in roles &&
         actionLabels.any {
             it.contains("decline") ||

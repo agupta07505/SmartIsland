@@ -56,14 +56,14 @@ class SmartIslandSettingsTest {
         assertEquals("DismissAll", settings.swipeHoldUpAction)
         assertEquals("None", settings.swipeDownAction)
         assertEquals("Expand", settings.swipeDownCollapsedAction)
-        assertEquals("None", settings.swipeLeftAction)
-        assertEquals("None", settings.swipeRightAction)
+        assertEquals("NextEvent", settings.swipeLeftAction)
+        assertEquals("PreviousEvent", settings.swipeRightAction)
         assertEquals("NextPrevious", settings.swipeHorizontalCollapsedAction)
         assertEquals(true, settings.enablePillSwipeActions)
         assertEquals("DismissCurrent", settings.pillSwipeUpAction)
         assertEquals("Expand", settings.pillSwipeDownAction)
-        assertEquals("PreviousNotification", settings.pillSwipeLeftAction)
-        assertEquals("NextNotification", settings.pillSwipeRightAction)
+        assertEquals("NextEvent", settings.pillSwipeLeftAction)
+        assertEquals("PreviousEvent", settings.pillSwipeRightAction)
         assertEquals("TogglePill", settings.longPressAction)
         assertEquals(SmartIslandSettings.CIRCLE_POSITION_RIGHT, settings.circlePosition)
     }
@@ -527,7 +527,7 @@ class SmartIslandSettingsTest {
         assertTrue(SmartIslandSettings.isValidFont("custom:My Font.ttf"))
         assertFalse(SmartIslandSettings.isValidFont("custom:../x.ttf"))
         assertFalse(SmartIslandSettings.isValidFont("custom:x.woff"))
-        // Fonts that used to ship with the app are gone and fall back to the default.
+        // Fonts that no longer ship with the app fall back to the default.
         assertFalse(SmartIslandSettings.isValidFont("georgia"))
         assertFalse(SmartIslandSettings.isValidFont("sf_pro_auto"))
 
@@ -627,7 +627,7 @@ class SmartIslandSettingsTest {
         assertEquals(0f, SmartIslandSettings.MIN_CIRCLE_OPACITY, 0f)
         val faded = SmartIslandSettings.Default.copy(landscapeCircleOpacity = 0.6f)
         assertEquals(0.6f, SmartIslandSettings.fromJson(faded.toJson()).landscapeCircleOpacity, 0.001f)
-        // A backup that says 0 keeps 0 (it used to be lifted to the 20 % floor).
+        // A backup that says 0 keeps 0 (it is not lifted to the 20 % floor).
         val zero = SmartIslandSettings.Default.copy(landscapeCircleOpacity = 0f)
         assertEquals(0f, SmartIslandSettings.fromJson(zero.toJson()).landscapeCircleOpacity, 0f)
     }

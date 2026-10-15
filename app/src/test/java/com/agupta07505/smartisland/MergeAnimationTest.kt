@@ -108,7 +108,7 @@ class MergeAnimationTest {
 
     @Test
     fun aCutoutAlreadyTouchingThePillIsNotStretchedAtRest() {
-        // contact 0: the round cutout beside a wide pill. It used to be 30 % stretched at merge 0.
+        // contact 0: the round cutout beside a wide pill. It is not stretched at merge 0.
         assertEquals(0f, mergeStretch(0f, 0f), 0.001f)
         assertEquals(0f, mergeStretch(1f, 0f), 0.001f)
         assertTrue(mergeStretch(0.2f, 0f) > mergeStretch(0.05f, 0f))

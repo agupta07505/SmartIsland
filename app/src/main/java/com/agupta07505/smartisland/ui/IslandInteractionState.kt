@@ -98,7 +98,7 @@ internal class IslandInteractionState {
     var onWidgetValueTap: (() -> Unit)? = null
     /**
      * How far (px, signed) the whole island leans sideways with the finger on a left / right swipe (see
-     * [com.agupta07505.smartisland.util.SwipeSideways]). The card itself no longer moves under the finger. It used to be the card's own slide.
+     * [com.agupta07505.smartisland.util.SwipeSideways]). The card itself does not move under the finger.
      */
     var cardDragX by mutableFloatStateOf(0f)
     /**

@@ -179,8 +179,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         runCatchingLogged(TAG, "onAccessibilityEvent failed") {
             if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
             // Content-change events arrive in the hundreds per second while any app draws (a playing
-            // video or music app, a scrolling list, this island's own animation). Each one used to cost a keyguard
-            // binder call on the main thread. They are only a fallback for the lock state now, checked at most once
+            // video or music app, a scrolling list, this island's own animation). Each one would cost a keyguard
+            // binder call on the main thread. They are only a fallback for the lock state, checked at most once
             // per KEYGUARD_POLL_MS; nothing else here looks at them.
             val eventType = event?.eventType
             val nowMs = android.os.SystemClock.elapsedRealtime()
@@ -231,6 +231,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     }
                     // The window list decides the foreground app; the opened window's package is only the fallback
                     // when the list cannot be read (a dialog or floating window must not replace the real app).
+                    android.util.Log.i("SmartIslandExempt", "event opened=$openedPackage fromWindows=$foregroundFromWindows")
                     if (!foregroundFromWindows) viewModel.foregroundPackage.value = openedPackage
                     updateWindowLayoutParams(isWindowExpanded, viewModel.displaySettings.value)
                     // Only ordinary alerts are dropped; running timers, recorders, calls, downloads
@@ -263,10 +264,28 @@ class SmartIslandOverlayService : AccessibilityService() {
                 )
             }
         } ?: return false
-        val picked = com.agupta07505.smartisland.util.ForegroundApp.pick(appWindows) { pkg ->
+        val ignoredPackage: (String) -> Boolean = { pkg ->
             pkg == packageName || pkg == com.agupta07505.smartisland.util.ShadeDetector.SYSTEM_UI || isInputMethodPackage(pkg)
         }
+        var picked = com.agupta07505.smartisland.util.ForegroundApp.pick(appWindows, ignoredPackage)
+        // Some apps (ChatGPT, Authenticator) hide their window from the accessibility window list, so there is no application
+        // window at all and no window event with their package. Ask the usage stats which app last came to the front instead.
+        var fromUsage = false
+        if (picked == null && !locked && appWindows.none { it.isApplicationType }) {
+            picked = usageForeground.current(ignoredPackage)
+            fromUsage = picked != null
+        }
+        // The app window the user is in exists but its root (so its package) cannot be read yet: the caller falls back to the
+        // package of the window event, instead of keeping the previous app (which left an exempt app not recognised).
+        if (picked == null && !locked &&
+            appWindows.any { it.isApplicationType && it.packageName.isNullOrEmpty() && (it.isFocused || it.isActive) }
+        ) return false
         val next = picked ?: if (locked) null else viewModel.foregroundPackage.value
+        android.util.Log.i(
+            "SmartIslandExempt",
+            "scan picked=$picked usage=$fromUsage next=$next was=${viewModel.foregroundPackage.value} locked=$locked windows=" +
+                appWindows.joinToString { "[${it.packageName} app=${it.isApplicationType} act=${it.isActive} foc=${it.isFocused}]" }
+        )
         if (next != viewModel.foregroundPackage.value) {
             com.agupta07505.smartisland.util.AppLogRecorder.i(
                 "Foreground",
@@ -300,6 +319,9 @@ class SmartIslandOverlayService : AccessibilityService() {
      * is asked once per window.
      */
     private val windowPackageCache = HashMap<Int, String>()
+
+    /** Foreground app from the usage stats, for apps that hide their window from the accessibility window list. */
+    private val usageForeground by lazy { com.agupta07505.smartisland.util.UsageForegroundSource(applicationContext) }
 
     private fun windowPackage(w: android.view.accessibility.AccessibilityWindowInfo): String? {
         windowPackageCache[w.id]?.let { return it }
@@ -729,8 +751,19 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Exempt-app visibility collector failed") {
-                // The island's window is hidden (and its touches go to the app) while an exempt app is in the foreground.
-                viewModel.islandOffForApp.collectLatest {
+                // The island's window is hidden (off) or dead (static: no touches, nothing on it) while an exempt app is in the foreground.
+                viewModel.islandExemption.collectLatest { mode ->
+                    // Plain logcat too: it ends up in the exported report even when "record logs" is off.
+                    android.util.Log.i(
+                        "SmartIslandExempt",
+                        "mode=$mode foreground=${viewModel.foregroundPackage.value} off=${viewModel.settingsSnapshot().islandExemptApps}"
+                    )
+                    com.agupta07505.smartisland.util.AppLogRecorder.i(
+                        "Exempt",
+                        "mode=$mode foreground=${viewModel.foregroundPackage.value} " +
+                            "off=${viewModel.settingsSnapshot().islandExemptApps} static=${viewModel.settingsSnapshot().islandExemptAppsStatic} " +
+                            "offLandscape=${viewModel.settingsSnapshot().islandExemptAppsLandscape}"
+                    )
                     if (destroyed || !viewModel.displaySettings.value.enabled) return@collectLatest
                     // Back from an exempt app: the rotation / app switch may have changed the geometry meanwhile.
                     updateWindowLayoutParams(isWindowExpanded, viewModel.displaySettings.value)
@@ -1043,7 +1076,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 val isLocked = keyguardManager?.isKeyguardLocked == true
                 isLockScreenActive = isLocked
                 val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                val isHidden = (!viewModel.displaySettings.value.showOnLockScreen && isLocked) || (isLandscape && !viewModel.displaySettings.value.showInLandscape) || viewModel.islandOffForApp.value
+                val isHidden = (!viewModel.displaySettings.value.showOnLockScreen && isLocked) || (isLandscape && !viewModel.displaySettings.value.showInLandscape) ||
+                    viewModel.exemptionNow() == com.agupta07505.smartisland.model.ExemptMode.Off
                 visibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
 
                 installOverlayViewTreeOwners()
@@ -1147,7 +1181,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                 if (method.name == "onComputeInternalInsets" && args != null && args.isNotEmpty()) {
                     val insets = args[0]
                     val isExpanded = viewModel.expanded.value
-                    val isGone = view.visibility == android.view.View.GONE
+                    // Gone, or a static exempt-app pill: no touch is caught, they all reach the app below.
+                    val isGone = view.visibility == android.view.View.GONE ||
+                        viewModel.exemptionNow() == com.agupta07505.smartisland.model.ExemptMode.Static
                     val settingsVal = viewModel.displaySettings.value
                     val notificationsCount = viewModel.visibleNotifications.value.size
                     val privacyNow = viewModel.privacy.value
@@ -1410,14 +1446,17 @@ class SmartIslandOverlayService : AccessibilityService() {
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val privacyNow = viewModel.privacy.value
         val visibleCount = viewModel.visibleNotifications.value.size
-        val isHidden = (!settings.showOnLockScreen && isLocked) || (isLandscape && !settings.showInLandscape) || viewModel.islandOffForApp.value
+        val isHidden = (!settings.showOnLockScreen && isLocked) || (isLandscape && !settings.showInLandscape) ||
+            viewModel.exemptionNow() == com.agupta07505.smartisland.model.ExemptMode.Off
+        // Static exempt app (portrait): the collapsed pill stays where it is, but takes no touches and shows nothing.
+        val isStatic = !isHidden && viewModel.exemptionNow() == com.agupta07505.smartisland.model.ExemptMode.Static
 
         val targetVisibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
         if (view.visibility != targetVisibility) {
             view.visibility = targetVisibility
         }
 
-        val isSplitMode = com.agupta07505.smartisland.model.hasSecondaryCutout(
+        val isSplitMode = !isStatic && com.agupta07505.smartisland.model.hasSecondaryCutout(
             com.agupta07505.smartisland.model.cutoutCardCount(
                 viewModel.visibleNotifications.value, viewModel.expanded.value,
                 viewModel.selectedIndex.value
@@ -1462,7 +1501,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         // While a card is on the island the window is already full height when collapsed (the touchable region keeps every touch
         // outside the pill going to the app below, as it does for the full width). Growing the window on the tap took a frame or
         // two, and the opening card was clipped to the small collapsed window before the jump to its real height.
-        val preGrown = isTouchableRegionSupported.value && visibleCount > 0 && !isHidden
+        val preGrown = isTouchableRegionSupported.value && visibleCount > 0 && !isHidden && !isStatic
         val fullWindow = expanded || widgetWindowOpen
         val h = if (fullWindow || preGrown) {
             WindowManager.LayoutParams.MATCH_PARENT
@@ -1483,7 +1522,10 @@ class SmartIslandOverlayService : AccessibilityService() {
         val watchOutside = if (expanded && !isInput && isTouchableRegionSupported.value && viewModel.autoExpanded.value) {
             WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         } else 0
-        val currentFlags = focusFlags or watchOutside or
+        // A static pill is never touched: the window ignores touches altogether (this also covers devices where the touchable
+        // region cannot be set and the window is as wide as the pill).
+        val noTouch = if (isStatic) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0
+        val currentFlags = focusFlags or watchOutside or noTouch or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -1786,7 +1828,6 @@ class SmartIslandOverlayService : AccessibilityService() {
         val started = runCatchingLogged(TAG, "Failed to launch app in a floating window") {
             startActivity(launchIntent, systemFreeformBundle())
         } != null
-        freeformDiag("launcher: system freeform for $packageName started=$started")
         return started
     }
 
@@ -1805,7 +1846,6 @@ class SmartIslandOverlayService : AccessibilityService() {
         val sent = runCatchingLogged(TAG, "Failed to ask LMO Freeform for a window") {
             sendBroadcast(lmo.startIntent(component))
         } != null
-        freeformDiag("launcher: lmo freeform for $packageName sent=$sent")
         return sent
     }
 
@@ -1856,35 +1896,20 @@ class SmartIslandOverlayService : AccessibilityService() {
             .toSet()
     } ?: emptySet()
 
-    /** Floating-window trace lines for the in-app diagnostic log (tag FreeformDiag). */
-    private fun freeformDiag(message: String) {
-        com.agupta07505.smartisland.util.AppLogRecorder.i("FreeformDiag", message)
-    }
-
     private fun openCurrentNotificationInFloatingWindow() {
         // Floating window off in settings: the handle is already gone, and the Floating window swipe action does nothing.
         val route = com.agupta07505.smartisland.model.floatingWindowRoute(
             viewModel.settings.value.floatingWindowEnabled,
             viewModel.settings.value.floatingWindowMode
         )
-        freeformDiag(
-            "swipe: route=$route mode=${viewModel.settings.value.floatingWindowMode} " +
-                "enabled=${viewModel.settings.value.floatingWindowEnabled} sdk=${Build.VERSION.SDK_INT}"
-        )
         if (route == com.agupta07505.smartisland.model.FloatingWindowRoute.Off) return
         // The card on screen: selectedIndex indexes the island's own list (filtered, priority-ordered), not the raw repository list.
         val notification = viewModel.currentShownNotification()
-        if (notification == null) freeformDiag("swipe: no card on screen, nothing to open")
         if (notification != null) {
-            freeformDiag(
-                "swipe: card pkg=${notification.packageName} key=${notification.key} mode=${notification.mode} " +
-                    "hasContentIntent=${notification.contentIntent != null}"
-            )
             val launched = when (route) {
                 com.agupta07505.smartisland.model.FloatingWindowRoute.Lmo -> openInLmoFreeform(notification)
                 else -> openInSystemFreeform(notification)
             }
-            freeformDiag("swipe: launcher returned launched=$launched (LMO main path returns true before the task is moved)")
             // Only an ordinary alert is consumed by opening it. Cancelling a running timer,
             // recorder, call or download notification would kill its buttons.
             if (launched && notification.mode == com.agupta07505.smartisland.model.IslandMode.Notification) {
@@ -1933,7 +1958,6 @@ class SmartIslandOverlayService : AccessibilityService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         }
         var started = false
-        freeformDiag("system: sending ${if (notification.contentIntent != null) "contentIntent" else "launch intent"} with windowingMode=$WINDOWING_MODE_FREEFORM")
         if (notification.contentIntent != null) {
             runCatchingLogged(TAG, "Failed to send content intent") {
                 notification.contentIntent.send(this, 0, fillInIntent, null, null, null, bundle)
@@ -1951,7 +1975,6 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
-        freeformDiag("system: started=$started")
         return started
     }
 
@@ -1969,25 +1992,14 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         val pending = notification.contentIntent
         val canMoveTask = pending != null && com.agupta07505.smartisland.util.ShizukuManager.hasPermission()
-        freeformDiag(
-            "lmo: pkg=${notification.packageName} contentIntent=${pending != null} " +
-                "shizukuPermission=${com.agupta07505.smartisland.util.ShizukuManager.hasPermission()} -> " +
-                if (canMoveTask) "main path (open chat, then move its task)" else "FALLBACK path (LMO launches the activity itself, no fullscreen launch)"
-        )
         if (!canMoveTask) return openInLmoFallback(notification)
         // Task snapshot first, so the chat's task can be told apart from tasks the app already had.
         serviceScope.launch {
             // Preferred: open the chat straight on LMO's own display, so it never covers the foreground app.
             if (openInLmoDisplay(notification, pending!!)) return@launch
-            freeformDiag("lmo: direct display launch not possible -> old path (open, then move task)")
             val beforeOut = com.agupta07505.smartisland.util.ShizukuManager.runShellForOutput(lmo.LIST_TASKS_COMMAND).getOrDefault("")
             val beforeTasks = lmo.parseTasks(beforeOut)
             val before = beforeTasks.map { it.taskId }.toSet()
-            freeformDiag(
-                "lmo: before: ${beforeTasks.size} tasks parsed, ${notification.packageName} tasks=" +
-                    lmo.summarize(beforeTasks, notification.packageName) + " " +
-                    lmo.rawLinesFor(beforeOut, notification.packageName)
-            )
             val sent = runCatchingLogged(TAG, "Failed to open the notification's chat") {
                 val fill = Intent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                 val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -1995,12 +2007,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                         setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
                     }.toBundle()
                 } else null
-                freeformDiag("lmo: sending contentIntent with NO windowing options, so the chat opens fullscreen first by design")
                 pending!!.send(this@SmartIslandOverlayService, 0, fill, null, null, null, options)
             } != null
-            freeformDiag("lmo: contentIntent sent=$sent")
             if (!sent) {
-                freeformDiag("lmo: send failed -> fallback")
                 openInLmoFallback(notification)
                 return@launch
             }
@@ -2016,46 +2025,21 @@ class SmartIslandOverlayService : AccessibilityService() {
                 )
                 task = lmo.pickTask(after, before, notification.packageName)
                     ?.takeIf { it.taskId !in before } // wait for a genuinely new task while polling
-                freeformDiag("lmo: poll $pollsUsed ${notification.packageName} tasks=${lmo.summarize(after, notification.packageName)} newTask=${task?.taskId}")
                 if (task == null) kotlinx.coroutines.delay(LMO_TASK_POLL_MS)
             }
             // No new task appeared: the app reused one it had, so take its front-most task.
             if (task == null) {
                 val reusedOut = com.agupta07505.smartisland.util.ShizukuManager.runShellForOutput(lmo.LIST_TASKS_COMMAND).getOrDefault("")
                 task = lmo.pickTask(lmo.parseTasks(reusedOut), before, notification.packageName)
-                freeformDiag(
-                    "lmo: no new task after $pollsUsed polls (app reused a task?) -> front-most of the package = ${task?.taskId} " +
-                        lmo.rawLinesFor(reusedOut, notification.packageName)
-                )
             }
             val found = task
             if (found == null) {
                 Log.w(TAG, "LMO: no task found for ${notification.packageName}; falling back to launching it in LMO")
-                freeformDiag("lmo: NO task found -> FALLBACK launch (the fullscreen copy already opened stays, a second copy floats)")
                 openInLmoFallback(notification)
             } else {
-                freeformDiag("lmo: moving task ${found.taskId} (${found.className}, user ${found.userId}) into a window, taskId in broadcast=${found.taskId}")
                 runCatchingLogged(TAG, "Failed to ask LMO Freeform to move task ${found.taskId}") {
                     sendBroadcast(lmo.startIntent(found.component, found.userId, found.taskId))
                 }
-                // Where did it end up? Look again after LMO had time to act: one task or two, window mode and bounds.
-                kotlinx.coroutines.delay(1500)
-                val finalOut = com.agupta07505.smartisland.util.ShizukuManager.runShellForOutput(lmo.LIST_TASKS_COMMAND).getOrDefault("")
-                val finalTasks = lmo.parseTasks(finalOut)
-                freeformDiag(
-                    "lmo: after broadcast (+1.5s): ${notification.packageName} tasks=${lmo.summarize(finalTasks, notification.packageName)} " +
-                        "movedTaskStillListed=${finalTasks.any { it.taskId == found.taskId }} " +
-                        lmo.rawLinesFor(finalOut, notification.packageName)
-                )
-                // For the next step (opening the chat straight onto LMO's window, no full-screen first): which
-                // display the moved task is on and what LMO's display looks like.
-                val rootLines = finalOut.lineSequence().map { it.trim() }.filter { "RootTask id=" in it }.take(6)
-                    .joinToString(" | ") { it.take(160) }
-                val displays = com.agupta07505.smartisland.util.ShizukuManager
-                    .runShellForOutput("dumpsys display 2>/dev/null | grep -E 'mBaseDisplayInfo=DisplayInfo' | cut -c1-420")
-                    .getOrDefault("").trim().lineSequence().take(4).joinToString(" | ")
-                freeformDiag("lmo: root tasks: $rootLines")
-                freeformDiag("lmo: displays: $displays")
             }
         }
         return true
@@ -2074,7 +2058,6 @@ class SmartIslandOverlayService : AccessibilityService() {
         val pkg = notification.packageName
         val component = lmo.pendingIntentActivity(pending) ?: lmo.launcherComponent(packageManager, pkg)
         if (component == null) {
-            freeformDiag("lmo-display: no target activity for $pkg")
             return false
         }
         val knownDisplays = lmo.parseDisplayIds(shizuku.runShellForOutput(lmo.LIST_DISPLAYS_COMMAND).getOrDefault(""), pkg)
@@ -2091,10 +2074,8 @@ class SmartIslandOverlayService : AccessibilityService() {
             if (displayId == null) kotlinx.coroutines.delay(LMO_TASK_POLL_MS)
         }
         if (displayId == null) {
-            freeformDiag("lmo-display: no new lmo-freeform display for $pkg within ${LMO_DISPLAY_WAIT_MS}ms")
             return false
         }
-        freeformDiag("lmo-display: window display=$displayId, sending contentIntent onto it")
         val options = ActivityOptions.makeBasic().apply {
             setLaunchDisplayId(displayId)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -2105,7 +2086,6 @@ class SmartIslandOverlayService : AccessibilityService() {
             pending.send(this, 0, Intent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), null, null, null, options)
         } != null
         if (!sent) {
-            freeformDiag("lmo-display: send failed")
             return true // the window exists; opening the chat again on display 0 would only cover the foreground app
         }
         // Did Android honour the display? A new task of this app on display 0 means it did not.
@@ -2113,10 +2093,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         val out = shizuku.runShellForOutput(lmo.LIST_TASKS_COMMAND).getOrDefault("")
         val displays = lmo.taskDisplays(out)
         val tasks = lmo.parseTasks(out).filter { it.packageName == pkg }
-        freeformDiag("lmo-display: after send: " + tasks.joinToString { "${it.taskId}@display${displays[it.taskId]}" })
         val misplaced = tasks.filter { it.taskId !in before && displays[it.taskId] == 0 }.maxByOrNull { it.taskId }
         if (misplaced != null) {
-            freeformDiag("lmo-display: Android ignored the display, task ${misplaced.taskId} is on display 0 -> moving it")
             runCatchingLogged(TAG, "Failed to move task ${misplaced.taskId}") {
                 sendBroadcast(lmo.startIntent(misplaced.component, misplaced.userId, misplaced.taskId))
             }
@@ -2129,10 +2107,6 @@ class SmartIslandOverlayService : AccessibilityService() {
         val lmo = com.agupta07505.smartisland.util.LmoFreeform
         val component = notification.contentIntent?.let { lmo.pendingIntentActivity(it) }
             ?: lmo.launcherComponent(packageManager, notification.packageName)
-        freeformDiag(
-            "lmo fallback: target=${component?.flattenToShortString()} " +
-                "(from ${if (notification.contentIntent?.let { lmo.pendingIntentActivity(it) } != null) "contentIntent" else "launcher activity"}), taskId=-1 (new task)"
-        )
         if (component == null) {
             Toast.makeText(this, "Can't open ${notification.appName}", Toast.LENGTH_SHORT).show()
             return false

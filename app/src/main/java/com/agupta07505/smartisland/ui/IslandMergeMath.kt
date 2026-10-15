@@ -80,9 +80,9 @@ private const val MIN_STRETCH_PEAK = 0.2f
  */
 internal fun mergeStretch(merge: Float, contact: Float): Float {
     val m = merge.coerceIn(0f, 1f)
-    // A cutout that already touches the pill (contact 0, e.g. beside a wide pill or an open island) used to
-    // skip the rise and stay stretched at merge 0, so the round cutout looked warped at rest. The stretch
-    // now always starts at 0 and peaks no earlier than MIN_STRETCH_PEAK of the merge.
+    // A cutout that already touches the pill (contact 0, e.g. beside a wide pill or an open island) must not
+    // skip the rise and stay stretched at merge 0, or the round cutout would look warped at rest. The stretch
+    // always starts at 0 and peaks no earlier than MIN_STRETCH_PEAK of the merge.
     val peak = contact.coerceIn(MIN_STRETCH_PEAK, 0.999f)
     val start = (peak - 0.35f).coerceAtLeast(0f)
     val rise = ((m - start) / (peak - start)).coerceIn(0f, 1f)

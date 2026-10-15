@@ -9,11 +9,11 @@ package com.agupta07505.smartisland.util
 
 /**
  * Late pictures. A chat app posts the message first and has the picture ready a moment later (the
- * link is empty until the download finishes, or the file is not in the app's folder yet). The island used to read the
- * picture while building the card, including Shizuku's slow fallbacks, so the card itself came late, and a picture that
- * was not ready was never asked for again.
+ * link is empty until the download finishes, or the file is not in the app's folder yet). Reading the picture while
+ * building the card, including Shizuku's slow fallbacks, would make the card itself come late, and a picture that
+ * was not ready would never be asked for again.
  *
- * Now the card is posted at once with whatever the fast read found, and a background job asks again on this schedule
+ * So the card is posted at once with whatever the fast read found, and a background job asks again on this schedule
  * (with the fallbacks) until a picture turns up, the card goes, or a newer post for the key arrives.
  */
 object PictureRetryPlan {

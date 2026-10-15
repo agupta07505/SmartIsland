@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Settings > Idle widgets > Units: the temperature unit (Auto, °C, °F) and the wind speed unit (Auto, km/h, m/s, mph, kn). Auto
- * follows the region of the phone. Always visible, so the choice no longer hides behind the Weather widget being selected.
+ * follows the region of the phone. Always visible, so the choice does not hide behind the Weather widget being selected.
  */
 @Composable
 internal fun IdleUnitsCard(settings: SmartIslandSettings, repository: SmartIslandSettingsRepository) {

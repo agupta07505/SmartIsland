@@ -39,7 +39,7 @@ data class MediaSnapshot(
 
 /**
  * True while a session is playing or only briefly between playing states (buffering, connecting, skipping).
- * Those transient states used to read as "not playing", which dropped the card's rank for a moment and made
+ * Reading those transient states as "not playing" would drop the card's rank for a moment and make
  * the primary and secondary cutouts swap and swap back.
  */
 fun isPlayingLike(state: Int?): Boolean = when (state) {

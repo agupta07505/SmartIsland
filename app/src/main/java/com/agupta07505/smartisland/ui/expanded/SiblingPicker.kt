@@ -125,7 +125,7 @@ internal const val PICKER_TAP_SLOP_DP = 10f
 
 /**
  * Taps are ignored for this long after the rows moved (the picker just opened, a card arrived or left): they were aimed
- * at where a row used to be.
+ * at where a row was before the move.
  */
 internal const val PICKER_LAYOUT_SETTLE_MS = 250L
 
@@ -222,7 +222,7 @@ fun SiblingPicker(
     LaunchedEffect(keys) { layoutShift[0] = android.os.SystemClock.uptimeMillis() }
 
     // The rows are lazy. Only the few that are on screen are composed and measured (an app with 23 cards
-    // used to compose all 23 rows in the frame the picker opened). The list starts on the row that keeps the current card in
+    // does not compose all 23 rows in the frame the picker opens). The list starts on the row that keeps the current card in
     // view, so there is no first frame at the top and a jump after it.
     val startIndex = siblingPickerFirstVisible(
         ordered.size,

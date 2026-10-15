@@ -28,6 +28,7 @@ package com.agupta07505.smartisland.model
  * @param shadeOpen the notification shade is pulled down: every event is hidden and only the idle circle stays
  * @param widgetsSuppressed the widgets are held off on purpose ("off after tap to close" / "off after long press to hide",
  *   see [IdleWidgetOff]): they draw nothing then, so the pill must not stay on screen empty; the idle circle takes over
+ * @param emptyPillShown the empty pill was asked for with a tap on the idle cutout (long press on it opens the app shortcuts)
  * @param tickHold a tick (hourly, sunrise/sunset moments, weather change; ui/TickPill.kt) is due or playing: the pill is on the island for its
  *   length even though it was hidden by a long press or the widgets are held off, and goes again when the tick is done
  */
@@ -38,9 +39,11 @@ fun landscapeWidgetPillWanted(
     pillHidden: Boolean,
     shadeOpen: Boolean,
     widgetsSuppressed: Boolean = false,
-    tickHold: Boolean = false
+    tickHold: Boolean = false,
+    emptyPillShown: Boolean = false
 ): Boolean = isLandscape && !shadeOpen && (
-    (tickHold && widgetsEnabled) ||
+    emptyPillShown ||
+        (tickHold && widgetsEnabled) ||
         (widgetsEnabled && !widgetsSuppressed && !pillHidden && IdleWidgets.parse(widgetIds).isNotEmpty())
     )
 

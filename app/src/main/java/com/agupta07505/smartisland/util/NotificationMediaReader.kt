@@ -31,7 +31,6 @@ import kotlin.math.max
  */
 class NotificationMediaReader(private val context: Context) {
     private val cache = LruCache<String, NotificationMedia>(24)
-    private val lastDiag = HashMap<String, String>()
 
     /**
      * [allowFallbacks] false is the fast read for building the card: the normal open of the picture link only, no Shizuku shell
@@ -70,32 +69,15 @@ class NotificationMediaReader(private val context: Context) {
             ?.filterIsInstance<Bundle>()
             ?: return emptyList()
         val result = mutableListOf<NotificationMedia>()
-        var withUri = 0
-        var notImage = 0
-        var failed = 0
         for (bundle in bundles.takeLast(MAX_MESSAGES_LOOKED_AT)) {
             val uri = messageUri(bundle) ?: continue
-            withUri++
             val mime = runCatching { bundle.getString(MESSAGE_TYPE) }.getOrNull()
-            if (mime != null && !mime.startsWith("image/")) {
-                notImage++
-                continue
-            }
+            if (mime != null && !mime.startsWith("image/")) continue
             val cacheKey = "$key|$uri"
             val sticker = isStickerMessage(bundle, mime, shadeText)
             val media = cache.get(cacheKey)
                 ?: loadWithFallbacks(uri, mime, shadeText, packageName, postedAtMs, sticker, allowFallbacks)?.also { cache.put(cacheKey, it) }
-            if (media != null) result.add(media) else failed++
-        }
-        // One line per post that has messages, so a missing picture can be traced in the diagnostic log:
-        // no data URI at all (the app sent none), a URI that is not an image, one that could not be
-        // opened or decoded, or pictures that were read.
-        if (bundles.isNotEmpty() && (withUri > 0 || result.isEmpty())) {
-            val line = "messages=${bundles.size} withUri=$withUri notImage=$notImage failed=$failed read=${result.size}"
-            if (lastDiag[key] != line) {
-                lastDiag[key] = line
-                AppLogRecorder.i(TAG, line)
-            }
+            if (media != null) result.add(media)
         }
         return result.takeLast(MAX_MEDIA)
     }
@@ -296,7 +278,7 @@ class NotificationMediaReader(private val context: Context) {
     }.getOrNull()
 
     private companion object {
-        const val TAG = "MediaDiag"
+        const val TAG = "NotificationMediaReader"
         // Keys of Notification.MessagingStyle.Message.toBundle().
         const val MESSAGE_URI = "uri"
         const val MESSAGE_TYPE = "type"

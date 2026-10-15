@@ -13,8 +13,8 @@ import com.agupta07505.smartisland.model.SwipeAction
 import com.agupta07505.smartisland.util.HapticStrength
 
 /**
- * Runs a swipe / long-press action with the island's current callbacks. One place for what used to be copied
- * into every gesture branch; see [executeSwipeAction] for what each action does.
+ * Runs a swipe / long-press action with the island's current callbacks. One place for the action logic, instead of a copy
+ * in every gesture branch; see [executeSwipeAction] for what each action does.
  */
 internal class IslandActionRunner(
     private val context: android.content.Context,

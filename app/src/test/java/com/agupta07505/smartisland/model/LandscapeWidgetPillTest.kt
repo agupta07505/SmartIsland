@@ -21,8 +21,17 @@ class LandscapeWidgetPillTest {
         pillHidden: Boolean = false,
         shadeOpen: Boolean = false,
         suppressed: Boolean = false,
-        tickHold: Boolean = false
-    ) = landscapeWidgetPillWanted(landscape, enabled, ids, pillHidden, shadeOpen, suppressed, tickHold)
+        tickHold: Boolean = false,
+        emptyPill: Boolean = false
+    ) = landscapeWidgetPillWanted(landscape, enabled, ids, pillHidden, shadeOpen, suppressed, tickHold, emptyPill)
+
+    @Test
+    fun theEmptyPillNeedsNoWidgetsButStillLandscapeAndNoShade() {
+        assertTrue(wanted(enabled = false, ids = "", emptyPill = true))
+        assertTrue(wanted(pillHidden = true, emptyPill = true))
+        assertFalse(wanted(landscape = false, emptyPill = true))
+        assertFalse(wanted(shadeOpen = true, emptyPill = true))
+    }
 
     @Test
     fun aTickBringsThePillInWhileItIsHiddenOrTheWidgetsAreHeldOff() {

@@ -54,7 +54,7 @@ internal fun snapToStep(value: Float, step: Float, min: Float, max: Float): Floa
     ((value / step).roundToInt() * step).coerceIn(min, max)
 
 /**
- * Settings > Timing: the timers that used to be fixed in code. Sliders keep a local draft while
+ * Settings > Timing: the timers the person can adjust. Sliders keep a local draft while
  * dragging and write to the settings once, when the finger lifts (or a +/- button is pressed).
  */
 @Composable
@@ -63,6 +63,7 @@ fun TimingSection(
     repository: SmartIslandSettingsRepository
 ) {
     val scope = rememberCoroutineScope()
+    val neverText = stringResource(R.string.timing_never)
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Card(
@@ -87,7 +88,10 @@ fun TimingSection(
                     min = SmartIslandSettings.MIN_IDLE_TIMEOUT_MS,
                     max = SmartIslandSettings.MAX_IDLE_TIMEOUT_MS,
                     step = 500,
-                    onCommit = { scope.launch { repository.setIdleTimeoutMs(it) } }
+                    onCommit = { scope.launch { repository.setIdleTimeoutMs(it) } },
+                    valueText = { ms ->
+                        if (ms.roundToInt() >= SmartIslandSettings.IDLE_TIMEOUT_NEVER_MS) neverText else formatSeconds(ms)
+                    }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                 TimingSlider(

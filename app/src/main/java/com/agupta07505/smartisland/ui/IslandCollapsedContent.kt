@@ -947,6 +947,8 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
     }
 
     val targetTime = notification?.timeMillis ?: remember { System.currentTimeMillis() + 300000L }
+    // Exact cards truncate to whole seconds like the shade.
+    val exact = !isMiuiRom && notification?.exactClock == true
 
     var remainingSec by remember(notification?.key) {
         val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
@@ -960,7 +962,9 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
                     0L
                 }
         } else {
-            if (parsed != null && parsed > 0) {
+            if (exact && !isPaused && targetTime > System.currentTimeMillis()) {
+                com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
+            } else if (parsed != null && parsed > 0) {
                 parsed
             } else if (targetTime > System.currentTimeMillis()) {
                 ((targetTime - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
@@ -973,7 +977,9 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
 
     // The paused remaining time the listener froze; the text of a paused timer can still show its full length.
     val frozenSec = if (isPaused && notification?.recordingPaused == true) {
-        notification.recordingFrozenMs?.let { (it + 500L) / 1000L }
+        notification.recordingFrozenMs?.let {
+            com.agupta07505.smartisland.util.TimerClock.displaySeconds(it, exact, 500L)
+        }
     } else {
         null
     }
@@ -1021,14 +1027,17 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
             if (!isPaused) {
                 while (true) {
                     val now = System.currentTimeMillis()
-                    val rem = if (targetTime > now) {
-                        ((targetTime - now + 500L) / 1000L).coerceAtLeast(0L)
-                    } else {
-                        0L
-                    }
+                    val remMs = (targetTime - now).coerceAtLeast(0L)
+                    val rem = com.agupta07505.smartisland.util.TimerClock.displaySeconds(remMs, exact, 500L)
                     remainingSec = rem
-                    if (rem <= 0L) break
-                    kotlinx.coroutines.delay(500L)
+                    if (exact) {
+                        if (remMs <= 0L) break
+                        // Wake just after the shown second changes.
+                        kotlinx.coroutines.delay(com.agupta07505.smartisland.util.TimerClock.msToNextTick(remMs))
+                    } else {
+                        if (rem <= 0L) break
+                        kotlinx.coroutines.delay(500L)
+                    }
                 }
             }
         }

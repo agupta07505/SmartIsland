@@ -141,7 +141,7 @@ internal fun Modifier.islandMainGestures(
                 val readerStartedOnScroll = wasExpandedAtStart && readerTracker.touchStartsOnScroll(android.os.SystemClock.uptimeMillis())
                 val readerMovesAtDown = readerTracker.moveCount
                 // Preview, reader or an open picture: the island's normal swipe actions are off there. Only swipe down (one step
-                // deeper) and swipe up (one step back) work, so the reader's text no longer swallows those drags (it still
+                // deeper) and swipe up (one step back) work, so the reader's text does not swallow those drags (it still
                 // scrolls: a drag it consumes is its own).
                 val stepsActive = wasExpandedAtStart && cb.currentSettings.enableSwipeActions &&
                     cb.currentCardDepth != CardDepth.First
@@ -380,7 +380,7 @@ internal fun Modifier.islandMainGestures(
                                     commitPillSwipe(fireDirection, dragAccumulatorX, cb, runner, ui, scope, maxSlidePx)
                                 } else if ((isPillSwipeEnabled && crossedOnce) || tapGuard.exceeded) {
                                     // Pulled back towards the start, too diagonal, or simply moved too far for a tap: no gesture,
-                                    // and not a tap either (the dead zone; it used to expand the pill for a drag under the swipe threshold).
+                                    // and not a tap either (the dead zone: a drag under the swipe threshold does not expand the pill).
                                 } else {
                                     // Tap on collapsed pill: expands or reveals
                                     if (!isHoldRegistered) {
@@ -428,8 +428,11 @@ internal fun Modifier.islandMainGestures(
                                         ) {
                                             // The empty middle of the collapsed pill puts every card away (a glyph still expands).
                                             cb.currentOnIdleDotTap()
+                                        } else if (isLandscape && !settings.enableNotchMode && cb.currentNotifications.isEmpty()) {
+                                            // Landscape idle cutout: show / hide the empty pill.
+                                            cb.currentOnIdleDotTap()
                                         } else if (cb.currentNotifications.isNotEmpty()) {
-                                            // (An empty island no longer opens the shortcuts on a tap: that is a long press now.)
+                                            // (An empty island does not open the shortcuts on a tap: that is a long press.)
                                             cb.currentOnToggle()
                                         }
                                     }
@@ -591,8 +594,7 @@ internal fun Modifier.islandMainGestures(
                                         )
                                     }
                                 } else 0f
-                                // A swipe down only leans the island a little (it used to follow the finger for up to 100 dp);
-                                // a swipe up still follows as before.
+                                // A swipe down only leans the island a little; a swipe up follows the finger.
                                 // A step (swipe down for the next mode, swipe up to go back, the preview / reader / picture) changes
                                 // the island's height with the finger and never moves the island itself, so a swipe up while a step is open
                                 // (also one that follows a swipe down without lifting) leaves the island where it is.
@@ -827,10 +829,10 @@ private fun commitPillSwipe(
 
 
 /**
- * True = the expanded card's swipe slides the new card in from the side (old behaviour, heavier);
+ * True = the expanded card's swipe slides the new card in from the side (heavier);
  * false = the new card replaces the old one at once and the switch squash plays (lighter).
- * Back to true. The outgoing card stays on screen as a recorded layer (ExpandedCardHost) so no second card is composed.
- * It no longer leaves as a strip with the new card; it fades out in place and the new card fades in after the lift.
+ * The outgoing card stays on screen as a recorded layer (ExpandedCardHost) so no second card is composed.
+ * It does not leave as a strip with the new card; it fades out in place and the new card fades in after the lift.
  */
 internal const val EXPANDED_SWIPE_SLIDES_IN = true
 

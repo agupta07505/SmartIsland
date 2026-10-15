@@ -10,9 +10,9 @@ package com.agupta07505.smartisland.model
 /**
  * How the expanded island's card pager and the selection follow each other.
  *
- * The pager goes by PAGE POSITION and the selection by card, and the two used to sync both ways. When the list changed shape (a
- * screen recording ranks above ordinary notifications, so it is inserted at page 0 and every page shifts by one) the pager, still on
- * page 0, showed the recorder, then scrolled to the owner's card, and a page that settled while the list was changing wrote
+ * The pager goes by PAGE POSITION and the selection by card, so syncing both ways blindly goes wrong when the list changes shape (a
+ * screen recording ranks above ordinary notifications, so it is inserted at page 0 and every page shifts by one): the pager, still on
+ * page 0, would show the recorder, then scroll to the owner's card, and a page that settled while the list was changing would write
  * whichever card sat there back as the open card. The rules below keep that from happening; the pager code only applies them.
  *
  *  - The list-to-page sync is told apart by what the pages ARE ([pageGroups]): a deliberate change (a tap on a cutout, a swipe action,

@@ -245,8 +245,8 @@ fun EventTogglesSection(
                         }
                     }
 
-                    // Prompts that used to sit under a row (location for Wi-Fi, network checks for
-                    // VPN, Shizuku for screen sharing) now live under the grid, with their button.
+                    // Prompts that belong to a row (location for Wi-Fi, network checks for
+                    // VPN, Shizuku for screen sharing) live under the grid, with their button.
                     events.forEach { event ->
                         val needsLocation = event == IslandEvent.WIFI && !locationGranted
                         val needsLocationSwitch = event == IslandEvent.WIFI && locationGranted && !locationOn

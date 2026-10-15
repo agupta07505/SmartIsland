@@ -10,13 +10,13 @@ package com.agupta07505.smartisland.model
 import java.util.Locale
 
 /**
- * What the semi-expanded widget island says per widget (phase 3). Pure rules only (when there is something to show, the texts and the
+ * What the semi-expanded widget island says per widget. Pure rules only (when there is something to show, the texts and the
  * unit maths), so they can be unit tested; the drawing is `IdleWidgetIslandContent` in ui/IdleWidgets.kt.
  *
  * The clock is not here on purpose: its job is the hourly tick (HourChimeLayer), it never sits on the pill and has no island.
  */
 object WidgetIslandContent {
-    /** Kept for [alarmInWindow]; the alarm's island itself no longer waits for this window (see [hasContent]). */
+    /** Kept for [alarmInWindow]; the alarm's island itself does not wait for this window (see [hasContent]). */
     const val ALARM_WINDOW_MS = 12 * 60 * 60 * 1000L
 
     /** Battery island line: watts or volts, chosen in settings. */

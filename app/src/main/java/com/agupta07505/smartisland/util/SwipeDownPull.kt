@@ -29,8 +29,8 @@ object SwipeDownPull {
     const val EXPANDED_STRETCH_Y = 0.015f
 
     /**
-     * How far (dp) the whole expanded island may travel down with a swipe down. It used to follow the finger
-     * for up to 100 dp, which pulled the card far down the screen; now it only leans a little.
+     * How far (dp) the whole expanded island may travel down with a swipe down. It only leans a little
+     * rather than following the finger down the screen.
      */
     const val EXPANDED_DOWN_MAX_DP = 6f
 

@@ -122,4 +122,26 @@ class LandscapeIdleDotTest {
     fun tapOnAnEmptyIdleDotDoesNothingButIsHandled() {
         assertEquals(IdleDotTap.None, idleDotTapAction(hasCards = false, hasIdleStoredCards = false))
     }
+
+    @Test
+    fun tapOnAnEmptyLandscapeCutoutShowsTheEmptyPill() {
+        assertEquals(
+            IdleDotTap.ShowEmptyPill,
+            idleDotTapAction(hasCards = false, hasIdleStoredCards = false, emptyPillAvailable = true)
+        )
+    }
+
+    @Test
+    fun tapOnTheShownEmptyPillHidesIt() {
+        assertEquals(
+            IdleDotTap.HideEmptyPill,
+            idleDotTapAction(hasCards = false, hasIdleStoredCards = false, emptyPillAvailable = true, emptyPillShown = true)
+        )
+    }
+
+    @Test
+    fun cardsAndStoredCardsKeepTheirTapOverTheEmptyPill() {
+        assertEquals(IdleDotTap.PutAwayNow, idleDotTapAction(true, false, emptyPillAvailable = true, emptyPillShown = true))
+        assertEquals(IdleDotTap.RevealStored, idleDotTapAction(false, true, emptyPillAvailable = true))
+    }
 }

@@ -158,7 +158,7 @@ class GlyphMotionTest {
         assertEquals(-WeatherMorph.TURN_DEGREES / 2f, mid.incoming.rotationDegrees, 0.001f)
     }
 
-    // ---- Phase 8: attention states ----
+    // ---- Attention states ----
 
     @Test
     fun fastSpeedStartsAtOneMegabytePerSecond() {

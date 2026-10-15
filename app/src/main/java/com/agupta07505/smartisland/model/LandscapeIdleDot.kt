@@ -71,13 +71,26 @@ enum class IdleDotTap {
     /** Cards on the island go away immediately, as the idle timeout would do. */
     PutAwayNow,
 
+    /** Landscape, nothing on the island: show the empty pill (long press opens the app shortcuts). */
+    ShowEmptyPill,
+
+    /** The empty pill is shown: hide it. */
+    HideEmptyPill,
+
     /** Nothing to reveal or put away; the tap is still consumed (the dot is always a target). */
     None
 }
 
 /** The same rule in both orientations (portrait: the pill's centre, landscape: the dot): cards on the island go away in the two-step close, stored cards come back. */
-fun idleDotTapAction(hasCards: Boolean, hasIdleStoredCards: Boolean): IdleDotTap = when {
+fun idleDotTapAction(
+    hasCards: Boolean,
+    hasIdleStoredCards: Boolean,
+    emptyPillAvailable: Boolean = false,
+    emptyPillShown: Boolean = false
+): IdleDotTap = when {
     hasCards -> IdleDotTap.PutAwayNow
     hasIdleStoredCards -> IdleDotTap.RevealStored
+    emptyPillShown -> IdleDotTap.HideEmptyPill
+    emptyPillAvailable -> IdleDotTap.ShowEmptyPill
     else -> IdleDotTap.None
 }

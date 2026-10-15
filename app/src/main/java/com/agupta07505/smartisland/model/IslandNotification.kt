@@ -70,7 +70,12 @@ data class IslandNotification(
     /** Android's monotonic chronometer base while the stopwatch is running. */
     val stopwatchChronometerBase: Long? = null,
     /** Frozen remaining seconds while a Clock timer is paused. */
-    val timerRemainingSeconds: Long? = null
+    val timerRemainingSeconds: Long? = null,
+    /**
+     * Timer cards from a Google / AOSP / third-party clock: [timeMillis] and [recordingFrozenMs] are exact and the
+     * card shows them like the shade does (whole seconds, truncated). False for OEM clocks, which keep their rounding.
+     */
+    val exactClock: Boolean = false
 ) {
     /**
      * A loud notification is any card that is not silent: the system does not list it under "Silent"
@@ -106,5 +111,7 @@ data class IslandNotificationAction(
     val isQuickReply: Boolean = false,
     val remoteInputKey: String? = null,
     /** The button's own icon; only read for media cards, so their extra buttons look like the app's. */
-    val icon: android.graphics.Bitmap? = null
+    val icon: android.graphics.Bitmap? = null,
+    /** True when [pendingIntent] is the island's proxy for a button in the notification's custom view. */
+    val viaView: Boolean = false
 )

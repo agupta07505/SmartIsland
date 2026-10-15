@@ -148,6 +148,8 @@ fun IslandExpandedContent(
     onSplitCardWidthMeasured: (Dp) -> Unit = {},
     // True while a swipe is swapping the card (the island slides the cards itself): the pager jumps to the page.
     snapPageSync: () -> Boolean = { false },
+    // 0..1 opacity of the light look's side bars; the host lowers it during a sideways swipe.
+    sideBarsAlpha: () -> Float = { 1f },
     // Written while laying out: the key of the card the pager really draws this frame (the host parks the outgoing card of a swipe by it).
     drawnCardKey: Array<String?>? = null,
     heightCache: CardHeightCache? = null
@@ -238,12 +240,12 @@ fun IslandExpandedContent(
 
     // How the pager and the selection follow each other (rules in model/PagerSelection.kt).
     //  - A DELIBERATE selection change (a tap on a cutout, a swipe action, the picker) moves the selection between pages that stay the
-    //    same: the pager scrolls to it as before (animated, or a jump while a swipe swaps the card).
+    //    same: the pager scrolls to it (animated, or a jump while a swipe swaps the card).
     //  - A LIST change (a recording starts or ends, a card arrives or goes) changes the pages themselves, so page numbers shift. The pager
     //    then only JUMPS (no animation) to the shown card's new page, in the same frame as the change (an effect that runs right after the
     //    composition, before the pager measures), so a card that was inserted in front is never drawn and nothing swipes in or out.
     //  - A page that settled is written back as the open card ONLY when a finger dragged the pager. A scroll the app started itself
-    //    never writes back, so a stale page can no longer make another card the open card.
+    //    never writes back, so a stale page cannot make another card the open card.
     val pageGroups = com.agupta07505.smartisland.model.PagerSelection.pageGroups(notifications, selectedIndex)
     val pagerSync = remember { PagerSyncState() }
     val shapeChanged = com.agupta07505.smartisland.model.PagerSelection.shapeChanged(pagerSync.committedGroups, pageGroups)
@@ -347,9 +349,9 @@ fun IslandExpandedContent(
         // glitch where battery/call expand more (taller) than other modes.
         val offsetFraction = pagerState.currentPageOffsetFraction
         // A swipe action puts the new card in through the selection, and the pager only follows a moment later (an effect, then a
-        // scroll, then another composition), so the island's height used to start heading for the new card a few frames after the
-        // card began to slide in. While the pager is idle the height follows the selected card at once; while the pager itself
-        // moves (a finger on it, an animated scroll) it keeps interpolating between the two pages as before.
+        // scroll, then another composition), so without this the island's height would start heading for the new card a few frames
+        // after the card began to slide in. While the pager is idle the height follows the selected card at once; while the pager
+        // itself moves (a finger on it, an animated scroll) it interpolates between the two pages.
         val pagerIdle = !pagerState.isScrollInProgress && offsetFraction == 0f
         val currentPage = if (pagerIdle && !siblingPickerOpen && selectedPage in pageCards.indices) selectedPage else pagerState.currentPage
         val currentNotification = cardAt(currentPage)
@@ -446,8 +448,8 @@ fun IslandExpandedContent(
                     splitProgress.snapTo(com.agupta07505.smartisland.model.SplitMotion.fromGeometry(besideDragSplitProgress(opening, p)))
                 }
             } else {
-                // A spring (no bounce) instead of the timed tween. A turn-around in the middle keeps the speed it had,
-                // and the overlay no longer times the close itself: it waits for [StepDragState.splitShown] to go false (below).
+                // A spring (no bounce) rather than a timed tween. A turn-around in the middle keeps the speed it had,
+                // and the overlay does not time the close itself: it waits for [StepDragState.splitShown] to go false (below).
                 splitProgress.animateTo(
                     targetValue = if (sideBySideWanted) 1f else 0f,
                     animationSpec = androidx.compose.animation.core.spring(
@@ -658,9 +660,9 @@ fun IslandExpandedContent(
                                 if (com.agupta07505.smartisland.model.SplitMotion.reflowed(raw)) finalW else wideW
                             } else w
                             reflowFade[0] = if (splitWasPicker[0] && wideW != finalW) 1 else 0
-                            // The card is measured at its natural height at this width. It used to be forced to the height it
-                            // had at the single island's width, so once its text re-wrapped narrower the last lines and the buttons
-                            // were cut off (and the page never reported its taller natural height, so nothing corrected it).
+                            // The card is measured at its natural height at this width, not at the height it had at the single
+                            // island's width: forcing that height cuts off the last lines and the buttons once the text re-wraps
+                            // narrower, and the page would never report its taller natural height.
                             val placeable = measurable.measure(
                                 androidx.compose.ui.unit.Constraints(
                                     minWidth = contentW, maxWidth = contentW,
@@ -850,8 +852,10 @@ fun IslandExpandedContent(
             val overscanPalette = LocalIslandPalette.current
             if (overscanPalette.isLight && currentNotification != null) {
                 val overscanFromDp = pageHeights[currentNotification.key] ?: targetHeight
-                val overscanColor = if (notificationHasPictureBackdrop(currentNotification, settings)) {
-                    Color.Black.copy(alpha = 0.85f * cardScrimScale(settings))
+                val overscanHasPicture = notificationHasPictureBackdrop(currentNotification, settings)
+                val overscanScrimScale = cardScrimScale(settings)
+                val overscanColor = if (overscanHasPicture) {
+                    Color.Black.copy(alpha = 0.85f * overscanScrimScale)
                 } else {
                     overscanPalette.scrim.copy(alpha = 0.45f)
                 }
@@ -864,6 +868,36 @@ fun IslandExpandedContent(
                                 topLeft = Offset(0f, overscanFromDp.toPx()),
                                 size = androidx.compose.ui.geometry.Size(size.width, 300.dp.toPx())
                             )
+                            // The same gap at the sides: while the island opens, the shell is a few pixels wider than the page for a
+                            // frame or two, and the pale shell showed as a thin white sliver at both ends of a dark picture card.
+                            // The picture backdrop's dim (black, 0.35 at the top to 0.85 at the bottom) is carried on past the page's
+                            // left and right edges; the shell's own clip cuts it at the island's edge.
+
+                            val sideBars = sideBarsAlpha()
+                            if (overscanHasPicture && sideBars > 0f) {
+                                val pageHeightPx = overscanFromDp.toPx()
+                                val sideWidthPx = 48.dp.toPx()
+                                val dim = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Black.copy(alpha = 0.35f *
+                                overscanScrimScale * sideBars),
+                                        Color.Black.copy(alpha = 0.85f *
+                                overscanScrimScale * sideBars)
+                                    ),
+                                    startY = 0f,
+                                    endY = pageHeightPx
+                                )
+                                drawRect(
+                                    brush = dim,
+                                    topLeft = Offset(-sideWidthPx, 0f),
+                                    size = androidx.compose.ui.geometry.Size(sideWidthPx, pageHeightPx)
+                                )
+                                drawRect(
+                                    brush = dim,
+                                    topLeft = Offset(size.width, 0f),
+                                    size = androidx.compose.ui.geometry.Size(sideWidthPx, pageHeightPx)
+                                )
+                            }
                         }
                 )
             }
@@ -1305,7 +1339,7 @@ private fun EmptyExpanded(
             }
             // One window height for every page, so swiping never resizes the island: tall enough for the fullest page.
             val rows = maxOf(launcherRows(pinnedApps.size), if (settings.showRecentApps) launcherRows(recentApps.size) else 1)
-            // A little extra under every page: room for the page dots, which used to be cut off at the window's bottom edge.
+            // A little extra under every page: room for the page dots, which would be cut off at the window's bottom edge.
             val pageHeight = maxOf(
                 LAUNCHER_TILE_HEIGHT * rows + LAUNCHER_ROW_GAP * (rows - 1),
                 utilitiesPageHeight(utilityRows),
@@ -1554,7 +1588,7 @@ private fun LauncherGrid(
     val context = LocalContext.current
     // The app whose long-press actions are showing. Reset whenever the list of apps changes underneath it.
     var menuApp by remember(apps) { mutableStateOf<LaunchableApp?>(null) }
-    // Dragging the pinned apps. A long press opens the actions as before; dragging on from it (past the touch slop) swaps the menu
+    // Dragging the pinned apps. A long press opens the actions; dragging on from it (past the touch slop) swaps the menu
     // for a floating copy of the icon. Dropped on another pinned app it trades places with it; held over an app (or a folder with
     // room) for [FOLDER_DWELL_MS] it makes a folder with it instead (the tile grows and the phone buzzes when that is armed). A
     // folder opens on tap, and an app dragged out of the open folder gets a slot of its own, or is unpinned when all the slots

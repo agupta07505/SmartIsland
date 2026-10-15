@@ -11,12 +11,12 @@ package com.agupta07505.smartisland.model
  * Smooth rotation.
  *
  * When the phone turns, the system hands out the old display cutout and window metrics for a moment, so the
- * island used to jump through wrong positions before it settled. Now everything (pill, idle circle, secondary
+ * island would jump through wrong positions before it settled. So everything (pill, idle circle, secondary
  * cutout, expanded card) fades out at once, stays hidden while the orientation settles, and comes back at its
  * final position.
  *
  * Timing: the overlay service re-reads the orientation three times, waiting [REFRESH_GAPS_MS] before each one (so at 0,
- * 150 and 600 ms after the turn; that schedule was already there and is unchanged). The veil lifts [MARGIN_MS] after
+ * 150 and 600 ms after the turn). The veil lifts [MARGIN_MS] after
  * the last read, and never later than [MAX_HIDDEN_MS] after it came down.
  */
 object RotationVeil {

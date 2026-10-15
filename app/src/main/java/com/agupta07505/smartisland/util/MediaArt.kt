@@ -19,10 +19,10 @@ import com.agupta07505.smartisland.ui.expanded.mediaIsExplicit
 /**
  * Everything the media card needs from the session's metadata, worked out OFF the main thread.
  *
- * The card used to read the metadata, copy the artwork, sample its colour, read the audio output and (with blur on) blur the
- * full-size artwork with a render effect on every frame, all inside composition on the tap that opens the island. The collapsed
- * pill then looked dead for seconds (worse with the media blur on). Now this is loaded in the background while the pill is
- * still collapsed ([load] from `IslandCardHost`), kept in a small cache, and the card only picks the finished result up.
+ * Reading the metadata, copying the artwork, sampling its colour, reading the audio output and (with blur on) blurring the
+ * full-size artwork inside composition on the tap that opens the island would leave the collapsed pill looking dead for
+ * seconds (worse with the media blur on). So this is loaded in the background while the pill is still collapsed
+ * ([load] from `IslandCardHost`), kept in a small cache, and the card only picks the finished result up.
  */
 object MediaArt {
 

@@ -48,9 +48,9 @@ import androidx.compose.runtime.setValue
 /**
  * Secondary / tertiary cutout state for [IslandOverlayView] (see [IslandLayout]).
  *
- * The animated values are held as State objects behind getters, like [IslandLayout]. They used to be read
- * in rememberIslandSecondary, i.e. inside the root composable, so with two cards on the island (a live event plus a
- * notification) the WHOLE overlay recomposed on every frame of an expand, a collapse or a card arriving. Now a read in a
+ * The animated values are held as State objects behind getters, like [IslandLayout]. Reading them in
+ * rememberIslandSecondary, i.e. inside the root composable, would recompose the WHOLE overlay on every frame of an expand, a
+ * collapse or a card arriving with two cards on the island (a live event plus a notification). So a read in a
  * graphicsLayer / layout / offset lambda only re-runs that lambda, and the `*Shown` flags (derived, they flip once per
  * animation) are what composition looks at.
  */
@@ -283,17 +283,6 @@ internal fun rememberIslandSecondary(
         secondaryIdleMerged = true
     }
     val secondaryMergeAnim = remember { androidx.compose.animation.core.Animatable(0f) }
-    // Diagnostic for the warped-cutout report: once the open island has settled, log what the round cutout is
-    // drawn with (width vs. circle size, merge, scale) so a bad frame can be traced in the diagnostic log.
-    LaunchedEffect(expanded, secondaryIsPill, sameAppCompanion) {
-        if (!expanded || secondaryNotification == null) return@LaunchedEffect
-        kotlinx.coroutines.delay(900)
-        com.agupta07505.smartisland.util.AppLogRecorder.i(
-            "SecondaryDiag",
-            "expanded pill=$secondaryIsPill picker=$sameAppCompanion width=${secondaryBubbleWidthState.value.value} circle=${circleSize.value} " +
-                "mini=${miniPillWidth.value} merge=${secondaryMergeAnim.value} scale=${secondaryScaleState.value} corner=${secondaryBubbleCornerState.value.value}"
-        )
-    }
     val secondaryBubblePresent = screenShareBubble || secondaryNotification != null
     LaunchedEffect(secondaryIdleMerged, expanded, settings.mergeStyle, secondaryBubblePresent, holdMerge, idleCloseMerge) {
         if (holdMerge && !secondaryBubblePresent && !expanded) {
