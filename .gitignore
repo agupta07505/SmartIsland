@@ -42,3 +42,16 @@ socials.txt
 # Critical README.md
 install.ps1
 ISLAND_HORIZONTAL_ALIGNMENT_FIX.md
+
+# Claude rules
+claude_rules.md
+
+# Personal checklist
+CheckList.md
+
+# Personal code maps
+feature_map.md
+ui_map.md
+
+# Local Claude Code instructions
+CLAUDE.local.md
