@@ -41,6 +41,7 @@ class SystemEventReceiver(
 
     override fun onReceive(context: Context, intent: Intent) {
         runCatchingLogged("SystemEventReceiver", "Broadcast callback failed") {
+            android.util.Log.d("SystemEventReceiver", "onReceive action=${intent.action}")
             when (intent.action) {
                 BluetoothDevice.ACTION_ACL_CONNECTED -> {
                     val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -57,6 +58,7 @@ class SystemEventReceiver(
 
                     // Suppress smartwatches, health trackers, and peripherals from hijacking the Island with connection alerts
                     if (isIgnoredBluetoothDevice(device, deviceName)) {
+                        android.util.Log.d("SystemEventReceiver", "Ignored Bluetooth device by wearable/peripheral filter")
                         return@runCatchingLogged
                     }
 
