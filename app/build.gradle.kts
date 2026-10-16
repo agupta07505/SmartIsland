@@ -137,6 +137,7 @@ dependencies {
 
     debugImplementation(composeBom)
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.10")
