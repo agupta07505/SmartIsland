@@ -167,7 +167,7 @@ fun IslandExpandedContent(
             return when (notif?.mode) {
                 IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
                 IslandMode.Notification -> height.coerceIn(95.dp, 145.dp)
-                IslandMode.Music -> height.coerceIn(115.dp, 180.dp)
+                IslandMode.Music -> height.coerceIn(150.dp, 260.dp)
                 IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
                 IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
                 IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
@@ -198,7 +198,7 @@ fun IslandExpandedContent(
             val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) }
                 ?: com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(nextNotification?.mode))
             val fraction = kotlin.math.abs(offsetFraction)
-            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 205.dp)
+            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 300.dp)
         }
 
         LaunchedEffect(targetHeight) {
@@ -229,12 +229,16 @@ fun IslandExpandedContent(
                                     pageHeights = pageHeights.toMutableMap().apply { put(notification.key, heightDp) }
                                 }
                             }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                onOpenNotification(notification)
-                            }
+                            .then(
+                                // The music card is interactive: only its header opens the app.
+                                if (notification.mode == IslandMode.Music) Modifier
+                                else Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    onOpenNotification(notification)
+                                }
+                            )
                     ) {
                         if (settings.enableNotificationBackdrop && notification.mode != IslandMode.Music) {
                             NotificationBackdrop(
@@ -263,6 +267,8 @@ fun IslandExpandedContent(
                             IslandMode.Music -> MusicExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
+                                onOpenApp = { onOpenNotification(notification) },
+                                onCollapse = onCollapse,
                                 settings = settings
                             )
                             IslandMode.Battery -> BatteryExpanded(

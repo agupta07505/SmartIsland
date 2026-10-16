@@ -142,22 +142,38 @@ fun IslandOverlayView(
     ).dp
     val transition = updateTransition(targetState = expanded, label = "islandTransition")
 
-    val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.72f,
-        stiffness = 520f
-    )
-    val sizeSpecFloat = spring<Float>(
-        dampingRatio = 0.72f,
-        stiffness = 520f
-    )
-    val heightSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.76f,
-        stiffness = 520f
-    )
-    val alphaSpec = tween<Float>(
-        durationMillis = 190,
-        easing = FastOutSlowInEasing
-    )
+    // Motion follows Apple's spring conventions. Opening is a lightly damped spring (response ≈ 0.42s,
+    // damping 0.86: a barely-there settle); closing is critically damped (response ≈ 0.36s, damping 1.0:
+    // no bounce, so it never overshoots back into the content). Stiffness = (2π / response)².
+    // With system animations off, geometry snaps and fades shorten to 120ms.
+    val reduceMotion = rememberReduceMotion()
+    val appleEase = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+    fun dpSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.Dp> =
+        when {
+            reduceMotion -> androidx.compose.animation.core.snap()
+            opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
+            else -> spring(dampingRatio = 1f, stiffness = 305f)
+        }
+    fun floatSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
+        when {
+            reduceMotion -> androidx.compose.animation.core.snap()
+            opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
+            else -> spring(dampingRatio = 1f, stiffness = 305f)
+        }
+    // Content cross-fade is staggered: opening content waits for the shell to start growing, and
+    // closing content leaves first so the shell never shrinks around visible content.
+    fun expandedAlphaSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
+        when {
+            reduceMotion -> tween(120)
+            opening -> tween(durationMillis = 240, delayMillis = 70, easing = appleEase)
+            else -> tween(durationMillis = 110, easing = androidx.compose.animation.core.FastOutLinearInEasing)
+        }
+    fun collapsedAlphaSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
+        when {
+            reduceMotion -> tween(120)
+            opening -> tween(durationMillis = 90, easing = androidx.compose.animation.core.FastOutLinearInEasing)
+            else -> tween(durationMillis = 180, delayMillis = 110, easing = appleEase)
+        }
 
     val activeNotification = notifications.getOrNull(safeIndex)
     val activeMode = activeNotification?.mode ?: IslandMode.Empty
@@ -239,45 +255,45 @@ fun IslandOverlayView(
     val isHiding = isIdleHiding || (settings.autoHidePill && isAutoHidden)
     val pillBackgroundColor = Color(settings.pillColor)
 
-    val width by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandWidth") {
+    val width by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandWidth") {
         if (it) expandedWidth else if (isHiding) 0.dp else settings.width.dp
     }
-    val height by transition.animateDp(transitionSpec = { heightSpec }, label = "islandHeight") {
+    val height by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandHeight") {
         if (it) expandedHeight else if (isHiding) 0.dp else settings.height.dp
     }
-    val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
+    val yOffset by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandYOffset") {
         if (it) expandedTopOffset else 0.dp
     }
-    val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
+    val radius by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandRadius") {
         if (it) 34.dp else if (isHiding) 0.dp else settings.cornerRadius.dp
     }
-    val animatedXOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandXOffset") {
+    val animatedXOffset by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandXOffset") {
         if (it) 0.dp else collapsedMainOffset
     }
 
     val collapsedAlpha by transition.animateFloat(
-        transitionSpec = { alphaSpec },
+        transitionSpec = { collapsedAlphaSpec(targetState) },
         label = "collapsedAlpha"
     ) {
         if (it || isHiding) 0f else 1f
     }
 
     val expandedAlpha by transition.animateFloat(
-        transitionSpec = { alphaSpec },
+        transitionSpec = { expandedAlphaSpec(targetState) },
         label = "expandedAlpha"
     ) {
         if (it) 1f else 0f
     }
 
     val contentScale by transition.animateFloat(
-        transitionSpec = { sizeSpecFloat },
+        transitionSpec = { floatSpec(targetState) },
         label = "contentScale"
     ) {
-        if (it) 1f else 0.95f
+        if (it) 1f else 0.92f
     }
 
     val contentSlideY by transition.animateDp(
-        transitionSpec = { sizeSpec },
+        transitionSpec = { dpSpec(targetState) },
         label = "contentSlideY"
     ) {
         if (it) 0.dp else (-6).dp
@@ -490,6 +506,11 @@ fun IslandOverlayView(
                         var dragAccumulatorX = 0f
                         var isDragging = false
                         var pillGestureTriggered = false
+                        // Set once a child (button, slider, pager) consumes this pointer: from then on
+                        // the pill must not treat the gesture as its own tap, hold or swipe.
+                        var childHandled = false
+                        var slopAccumulatorX = 0f
+                        var slopAccumulatorY = 0f
 
                         val holdJob = scope.launch {
                             kotlinx.coroutines.delay(HOLD_GESTURE_THRESHOLD_MS)
@@ -502,6 +523,13 @@ fun IslandOverlayView(
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+
+                            if (change.isConsumed) childHandled = true
+                            if (childHandled) {
+                                holdJob.cancel()
+                                if (!change.pressed) break
+                                continue
+                            }
 
                             if (change.changedToUp()) {
                                 change.consume()
@@ -548,7 +576,7 @@ fun IslandOverlayView(
                                         )
                                     } else if (!isDragging || abs(dragOffset) < 10f * displayMetrics.density) {
                                         if (!isHoldRegistered) {
-                                            if (currentNotification != null) {
+                                            if (currentNotification != null && currentNotification.mode != IslandMode.Music) {
                                                 currentOnOpenNotification(currentNotification)
                                             } else {
                                                 SmartIslandRepositories.notificationRepository(context).resetTimer()
@@ -649,8 +677,24 @@ fun IslandOverlayView(
                                 }
                                 break
                             } else {
-                                val dragAmountY = change.positionChange().y
-                                val dragAmountX = change.positionChange().x
+                                var dragAmountY = change.positionChange().y
+                                var dragAmountX = change.positionChange().x
+                                // A finger always drifts a little during a tap. Claiming (consuming) that drift
+                                // cancels the tap of any button underneath, so hold back until the movement
+                                // clearly exceeds touch slop, then replay what was held.
+                                if (!isDragging) {
+                                    slopAccumulatorY += dragAmountY
+                                    slopAccumulatorX += dragAmountX
+                                    if (abs(slopAccumulatorY) >= viewConfiguration.touchSlop ||
+                                        abs(slopAccumulatorX) >= viewConfiguration.touchSlop
+                                    ) {
+                                        dragAmountY = slopAccumulatorY
+                                        dragAmountX = slopAccumulatorX
+                                    } else {
+                                        dragAmountY = 0f
+                                        dragAmountX = 0f
+                                    }
+                                }
                                 if (abs(dragAmountY) > 0.5f || abs(dragAmountX) > 0.5f) {
                                     isDragging = true
                                     dragAccumulatorY += dragAmountY
@@ -1161,7 +1205,7 @@ internal enum class CompactNotificationShape { MiniPill, Circle }
 
 internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
     return when (mode) {
-        IslandMode.Music -> 175.dp
+        IslandMode.Music -> 205.dp
         IslandMode.Notification -> 135.dp
         IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
         IslandMode.LiveActivity, IslandMode.Navigation -> 180.dp

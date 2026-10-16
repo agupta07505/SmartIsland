@@ -631,4 +631,12 @@
     <string name="a11y_turn_direction">转弯方向</string>
     <string name="a11y_bluetooth_device">蓝牙设备</string>
     <string name="a11y_battery">电池</string>
+    <string name="a11y_play">播放</string>
+    <string name="a11y_pause">暂停</string>
+    <string name="a11y_previous">上一首</string>
+    <string name="a11y_next">下一首</string>
+    <string name="a11y_stop_playback">停止播放并关闭</string>
+    <string name="a11y_unlike">取消喜欢</string>
+    <string name="a11y_playback_position">播放位置</string>
+    <string name="music_open_app">打开应用</string>
 </resources>

@@ -164,8 +164,9 @@ class IslandViewModel(
     private fun startAutoCollapseTimer() {
         autoCollapseJob?.cancel()
         if (isInputActive.value) return
+        val delayMs = if (mode.value == IslandMode.Music) MUSIC_COLLAPSE_DELAY_MS else AUTO_COLLAPSE_DELAY_MS
         autoCollapseJob = viewModelScope.launch {
-            delay(AUTO_COLLAPSE_DELAY_MS)
+            delay(delayMs)
             collapse()
         }
     }
@@ -212,6 +213,7 @@ class IslandViewModel(
     companion object {
         private const val TAG = "IslandViewModel"
         private const val AUTO_COLLAPSE_DELAY_MS = 5000L
+        private const val MUSIC_COLLAPSE_DELAY_MS = 10_000L
 
         fun provideFactory(
             settingsRepo: SmartIslandSettingsRepository,

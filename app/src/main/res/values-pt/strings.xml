@@ -631,4 +631,12 @@
     <string name="a11y_turn_direction">Direção da curva</string>
     <string name="a11y_bluetooth_device">Dispositivo Bluetooth</string>
     <string name="a11y_battery">Bateria</string>
+    <string name="a11y_play">Reproduzir</string>
+    <string name="a11y_pause">Pausar</string>
+    <string name="a11y_previous">Faixa anterior</string>
+    <string name="a11y_next">Próxima faixa</string>
+    <string name="a11y_stop_playback">Parar reprodução e fechar</string>
+    <string name="a11y_unlike">Remover das curtidas</string>
+    <string name="a11y_playback_position">Posição da reprodução</string>
+    <string name="music_open_app">Abrir app</string>
 </resources>
