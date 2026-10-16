@@ -1,7 +1,6 @@
 # Smart Island Proguard Rules
 
 # Keep Compose Runtime and library classes
--keep class androidx.compose.** { *; }
 
 # Keep DataStore Preferences serializer/keys
 -keep class androidx.datastore.preferences.core.** { *; }
@@ -46,4 +45,11 @@
 -keep class android.media.session.PlaybackState$CustomAction {
     public java.lang.String getAction();
     public java.lang.CharSequence getName();
+}
+
+# Release builds drop debug/verbose/info logging (also keeps notification keys out of logcat).
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
 }

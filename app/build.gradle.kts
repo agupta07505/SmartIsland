@@ -34,6 +34,10 @@ android {
         versionName = "7.0.0"
     }
 
+    androidResources {
+        localeFilters += setOf("en", "pt", "zh")
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true

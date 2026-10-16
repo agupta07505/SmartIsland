@@ -17,6 +17,9 @@ import android.provider.Settings
 import android.widget.Toast
 
 object HotspotUtil {
+    private val CLIENT_COUNT_PATTERN_3 = Regex("""\b(\d+)\s+connected\s+devices?\b""", RegexOption.IGNORE_CASE)
+    private val CLIENT_COUNT_PATTERN_2 = Regex("""\b(?:devices?|connected|clients?)\s*[:=]?\s*(\d+)\b""", RegexOption.IGNORE_CASE)
+    private val CLIENT_COUNT_PATTERN_1 = Regex("""\b(\d+)\s*(?:device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
     fun parseDeviceCount(title: String?, text: String?): Int {
         val fullText = "${title.orEmpty()} ${text.orEmpty()}"
         val lower = fullText.lowercase()
@@ -26,16 +29,13 @@ object HotspotUtil {
         }
 
         // Pattern 1: "1 device", "2 devices", "1 connected", "2 clients"
-        val pattern1 = Regex("""\b(\d+)\s*(?:device|connected|client)s?\b""", RegexOption.IGNORE_CASE)
-        pattern1.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        CLIENT_COUNT_PATTERN_1.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
 
         // Pattern 2: "devices: 1", "connected: 2", "clients: 0"
-        val pattern2 = Regex("""\b(?:devices?|connected|clients?)\s*[:=]?\s*(\d+)\b""", RegexOption.IGNORE_CASE)
-        pattern2.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        CLIENT_COUNT_PATTERN_2.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
 
         // Pattern 3: "1 connected device"
-        val pattern3 = Regex("""\b(\d+)\s+connected\s+devices?\b""", RegexOption.IGNORE_CASE)
-        pattern3.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        CLIENT_COUNT_PATTERN_3.find(fullText)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
 
         return 0
     }

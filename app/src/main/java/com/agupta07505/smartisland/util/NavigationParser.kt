@@ -50,6 +50,10 @@ object NavigationParser {
         "com.nhn.android.nmap"
     )
 
+    private val TURN_LEFT_REGEX = Regex("\\b(turn|go|head|take)\\s+left\\b")
+    private val TURN_RIGHT_REGEX = Regex("\\b(turn|go|head|take)\\s+right\\b")
+    private val LEFT_WORD_REGEX = Regex("\\bleft\\b")
+    private val RIGHT_WORD_REGEX = Regex("\\bright\\b")
     private val DISTANCE_PATTERN = Pattern.compile("^(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", Pattern.CASE_INSENSITIVE)
     private val GENERIC_DISTANCE_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", Pattern.CASE_INSENSITIVE)
 
@@ -148,10 +152,10 @@ object NavigationParser {
             lower.contains("roundabout") || lower.contains("rotary") || lower.contains("traffic circle") -> TurnDirection.ROUNDABOUT
             lower.contains("arrived") || lower.contains("destination") || lower.contains("reached") || lower.contains("you have arrived") -> TurnDirection.DESTINATION
             // Word-boundary direction matching only when not preceded by numbers/time words
-            Regex("\\b(turn|go|head|take)\\s+left\\b").containsMatchIn(lower) -> TurnDirection.LEFT
-            Regex("\\b(turn|go|head|take)\\s+right\\b").containsMatchIn(lower) -> TurnDirection.RIGHT
-            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left") && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left") && Regex("\\bleft\\b").containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
-            !lower.contains("right now") && !lower.contains("all right") && Regex("\\bright\\b").containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.RIGHT
+            TURN_LEFT_REGEX.containsMatchIn(lower) -> TurnDirection.LEFT
+            TURN_RIGHT_REGEX.containsMatchIn(lower) -> TurnDirection.RIGHT
+            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left") && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left") && LEFT_WORD_REGEX.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
+            !lower.contains("right now") && !lower.contains("all right") && RIGHT_WORD_REGEX.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.RIGHT
             else -> TurnDirection.STRAIGHT
         }
     }
