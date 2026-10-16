@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -378,7 +381,7 @@ fun MusicExpanded(
                 )
                 Text(
                     notification?.text?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Artist",
-                    color = Color(0xFFD5DAE0),
+                    color = IslandPalette.secondaryLabel,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 12.sp
@@ -387,7 +390,7 @@ fun MusicExpanded(
         }
         Spacer(Modifier.height(7.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(formatDuration(livePositionMs), color = Color.White, fontSize = 10.sp)
+            Text(formatDuration(livePositionMs), color = Color.White, fontSize = 11.sp)
             WavyMusicSeekBar(
                 progress = progress,
                 isPlaying = localIsPlaying,
@@ -412,7 +415,7 @@ fun MusicExpanded(
                 },
                 modifier = Modifier.weight(1f)
             )
-            Text(formatDuration(durationMs), color = Color.White, fontSize = 10.sp)
+            Text(formatDuration(durationMs), color = Color.White, fontSize = 11.sp)
         }
         Spacer(Modifier.height(8.dp))
         Row(
@@ -432,8 +435,8 @@ fun MusicExpanded(
             ) {
                 Icon(
                     imageVector = if (localIsLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Like",
-                    tint = if (localIsLiked) Color(0xFFFF4B72) else Color.White,
+                    contentDescription = stringResource(R.string.a11y_like),
+                    tint = if (localIsLiked) IslandPalette.danger else Color.White,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -521,12 +524,12 @@ fun MusicExpanded(
                 contentAlignment = Alignment.Center
             ) {
                 val tintColor = when (repeatMode) {
-                    1, 2 -> Color(0xFF1DB954) // spotify green loop active
+                    1, 2 -> IslandPalette.success // spotify green loop active
                     else -> Color.White
                 }
                 Icon(
                     imageVector = if (repeatMode == 1) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-                    contentDescription = "Loop",
+                    contentDescription = stringResource(R.string.a11y_loop),
                     tint = tintColor,
                     modifier = Modifier.size(24.dp)
                 )

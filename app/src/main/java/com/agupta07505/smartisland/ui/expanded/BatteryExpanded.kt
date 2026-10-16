@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.animateFloatCalm
+import com.agupta07505.smartisland.ui.IslandPalette
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -76,8 +78,8 @@ fun BatteryExpanded(
     val isLowBattery = titleLower.contains("low") || notification.category == "battery_low" || pct <= 20f
 
     val batteryColor = when {
-        isLowBattery -> Color(0xFFEF4444)
-        isBatterySaver -> Color(0xFFF59E0B)
+        isLowBattery -> IslandPalette.danger
+        isBatterySaver -> IslandPalette.warning
         else -> Color(settings.batteryColor)
     }
     val midBatteryColor = lerp(batteryColor, Color.White, 0.35f)
@@ -92,7 +94,7 @@ fun BatteryExpanded(
     }
 
     val flowTransition = rememberInfiniteTransition(label = "electricFlow")
-    val flowOffset by flowTransition.animateFloat(
+    val flowOffset by flowTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
@@ -102,7 +104,7 @@ fun BatteryExpanded(
         label = "flowOffset"
     )
 
-    val rotationAngle by flowTransition.animateFloat(
+    val rotationAngle by flowTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -218,7 +220,7 @@ fun BatteryExpanded(
                 )
                 Text(
                     text = timeText,
-                    color = Color(0xFF98A2B3),
+                    color = IslandPalette.secondaryLabel,
                     fontSize = 11.sp,
                     maxLines = 1
                 )
@@ -233,7 +235,7 @@ fun BatteryExpanded(
                 modifier = Modifier
                     .width(72.dp)
                     .height(32.dp)
-                    .border(1.5.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
+                    .border(1.5.dp, IslandPalette.fillStrong, RoundedCornerShape(8.dp))
                     .background(Color(0x1AFFFFFF), RoundedCornerShape(8.dp))
                     .padding(2.5.dp)
             ) {

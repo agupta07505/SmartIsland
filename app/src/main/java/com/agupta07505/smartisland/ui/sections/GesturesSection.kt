@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import com.agupta07505.smartisland.ui.components.SmartIslandSwitch
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -184,7 +185,7 @@ fun GesturesSection(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -226,7 +227,7 @@ fun GesturesSection(
                             Text(
                                 text = stringResource(R.string.enable_pill_swipe_gestures_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
@@ -236,7 +237,7 @@ fun GesturesSection(
                             )
                         }
                     }
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.enablePillSwipeActions,
                         onCheckedChange = { isEnabled ->
                             coroutineScope.launch {
@@ -278,7 +279,7 @@ fun GesturesSection(
                 Text(
                     text = stringResource(R.string.pill_swipe_customization_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -379,7 +380,7 @@ fun GesturesSection(
                                         getSwipeActionTitle(currentAction)
                                     },
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (isActionDisabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -397,7 +398,7 @@ fun GesturesSection(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -439,7 +440,7 @@ fun GesturesSection(
                             Text(
                                 text = stringResource(R.string.enable_swipe_gestures_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
@@ -449,7 +450,7 @@ fun GesturesSection(
                             )
                         }
                     }
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.enableSwipeActions,
                         onCheckedChange = { isEnabled ->
                             coroutineScope.launch {
@@ -491,7 +492,7 @@ fun GesturesSection(
                 Text(
                     text = stringResource(R.string.expanded_swipe_customization_title),
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -591,7 +592,7 @@ fun GesturesSection(
                                         getSwipeActionTitle(currentAction)
                                     },
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = if (isActionDisabled) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
                                 )
                             }
@@ -609,7 +610,7 @@ fun GesturesSection(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -637,7 +638,7 @@ fun GesturesSection(
                         Text(
                             text = stringResource(R.string.gestures_guide_title),
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
@@ -741,7 +742,7 @@ fun GesturesSection(
                     text = {
                         Text(
                             text = label,
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                            fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Medium,
                             fontSize = 13.sp
                         )
                     }
@@ -865,7 +866,7 @@ fun GesturesSection(
                 Text(
                     text = stringResource(R.string.swipe_action_dialog_title, stringResource(gesture.titleRes)),
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
@@ -924,7 +925,7 @@ fun GesturesSection(
                                 Text(
                                     text = getSwipeActionTitle(action),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                     color = if (isNone) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
@@ -1057,8 +1058,8 @@ private fun GestureSummaryBadge(
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color, maxLines = 1)
-                Text(sub, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1)
+                Text(sub, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -1078,7 +1079,7 @@ private fun GestureDetailCard(
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        border = null,
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -1110,13 +1111,13 @@ private fun GestureDetailCard(
                         Text(
                             text = gestureNumber,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = badgeColor
                         )
                         Text(
                             text = gestureName,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -1134,7 +1135,7 @@ private fun GestureDetailCard(
                     Text(
                         text = actionBadge,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = badgeColor,
                         maxLines = 1,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1157,7 +1158,7 @@ private fun GestureDetailCard(
                 Text(
                     text = "How to Perform This Gesture:",
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -1177,7 +1178,7 @@ private fun GestureDetailCard(
                             Text(
                                 text = "${index + 1}",
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = badgeColor
                             )
                         }
@@ -1196,7 +1197,7 @@ private fun GestureDetailCard(
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
+                border = null,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1213,8 +1214,8 @@ private fun GestureDetailCard(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = "PRO TIP",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(

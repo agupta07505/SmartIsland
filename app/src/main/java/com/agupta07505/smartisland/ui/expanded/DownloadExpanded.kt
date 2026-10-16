@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.IslandPalette
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -170,7 +171,7 @@ fun DownloadExpanded(
                 )
                 Text(
                     text = cleanSubtitle,
-                    color = Color(0xFFD5DAE0),
+                    color = IslandPalette.secondaryLabel,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -209,7 +210,7 @@ fun DownloadExpanded(
 
                 Text(
                     text = formatNotificationTime(notification.timeMillis),
-                    color = Color(0xFFB7C0CA),
+                    color = IslandPalette.secondaryLabel,
                     fontSize = 11.sp
                 )
             }
@@ -226,7 +227,7 @@ fun DownloadExpanded(
                     .weight(1f)
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(Color(0x33FFFFFF))
+                    .background(IslandPalette.fillStrong)
             ) {
                 Box(
                     modifier = Modifier
@@ -257,9 +258,9 @@ fun DownloadExpanded(
                 notification.actionIntents.forEach { action ->
                     Box(
                         modifier = Modifier
-                            .height(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFFE2E8F0))
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(IslandPalette.fill)
                             .bounceClick {
                                 if (action.pendingIntent != null) {
                                     triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
@@ -276,9 +277,9 @@ fun DownloadExpanded(
                     ) {
                         Text(
                             text = action.title,
-                            color = Color(0xFF1F2937),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                            color = IslandPalette.label,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

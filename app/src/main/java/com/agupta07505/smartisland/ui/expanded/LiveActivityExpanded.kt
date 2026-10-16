@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -156,7 +159,7 @@ fun LiveActivityExpanded(
                 )
                 Text(
                     text = subStatusText,
-                    color = Color(0xFFD5DAE0),
+                    color = IslandPalette.secondaryLabel,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -199,7 +202,7 @@ fun LiveActivityExpanded(
 
                     // Background path line
                     drawLine(
-                        color = Color(0x33FFFFFF),
+                        color = IslandPalette.fillStrong,
                         start = Offset(12.dp.toPx(), cy),
                         end = Offset(width - 12.dp.toPx(), cy),
                         strokeWidth = strokeWidth,
@@ -232,9 +235,9 @@ fun LiveActivityExpanded(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Initial", color = Color(0xFF94A3B8), fontSize = 10.sp)
-                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("Destination", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                Text("Initial", color = IslandPalette.secondaryLabel, fontSize = 11.sp)
+                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Destination", color = IslandPalette.secondaryLabel, fontSize = 11.sp)
             }
         }
 
@@ -253,9 +256,9 @@ fun LiveActivityExpanded(
                     notification.actionIntents.take(2).forEach { action ->
                         Box(
                             modifier = Modifier
-                                .height(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFE2E8F0))
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(IslandPalette.fill)
                                 .bounceClick {
                                     if (action.pendingIntent != null) {
                                         triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
@@ -272,9 +275,9 @@ fun LiveActivityExpanded(
                         ) {
                             Text(
                                 text = action.title,
-                                color = Color(0xFF1F2937),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                color = IslandPalette.label,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
@@ -285,15 +288,16 @@ fun LiveActivityExpanded(
 
             Box(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(44.dp)
+                    .bounceClick { onOpenNotification() }
+                    .padding(10.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF222222))
-                    .bounceClick { onOpenNotification() },
+                    .background(IslandPalette.fill),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
+                    contentDescription = stringResource(R.string.a11y_open_app),
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )

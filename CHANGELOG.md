@@ -4,6 +4,13 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [Unreleased]
+
+### Changed
+- **Apple HIG UI revamp**: new neutral light/dark palette with the burnt-orange accent reserved for primary actions and selection; Apple-style type scale (17sp body, 11sp minimum); inset-grouped settings lists, large-title screens with a back bar, and a flat bottom tab bar.
+- **Accessibility**: 44dp minimum touch targets on sliders, chips and island buttons; status shown with icon plus text instead of color alone; TalkBack labels localized (en, pt, zh); `bounceClick` now exposes button semantics.
+- **Island overlay**: unified on-island palette, consistent action buttons, and decorative looping animations pause when system animations are off.
+
 ## [7.0.0] - 2026-09-20
 
 ### Major Release Highlights (v7.0.0)

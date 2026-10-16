@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.util.formatNotificationTime
 import com.agupta07505.smartisland.util.HotspotUtil
 import com.agupta07505.smartisland.util.TimerStopwatchParser
@@ -186,7 +188,7 @@ fun IslandCollapsedContent(
                     ) {
                         Icon(
                             Icons.Rounded.BluetoothConnected,
-                            contentDescription = "Bluetooth",
+                            contentDescription = stringResource(R.string.a11y_bluetooth),
                             tint = Color(settings.bluetoothColor),
                             modifier = Modifier.size(14.dp)
                         )
@@ -202,7 +204,7 @@ fun IslandCollapsedContent(
                     ) {
                         Icon(
                             Icons.Rounded.FlashlightOn,
-                            contentDescription = "Flashlight",
+                            contentDescription = stringResource(R.string.a11y_flashlight),
                             tint = Color(settings.flashlightColor),
                             modifier = Modifier.size(14.dp)
                         )
@@ -265,8 +267,8 @@ fun IslandCollapsedContent(
                     val isBatterySaver = title.contains("saver") || notification?.category == "battery_saver"
                     val isLowBattery = title.contains("low") || notification?.category == "battery_low" || (pctText.replace("%", "").toFloatOrNull() ?: 50f) <= 20f
                     val textColor = when {
-                        isLowBattery -> Color(0xFFEF4444)
-                        isBatterySaver -> Color(0xFFF59E0B)
+                        isLowBattery -> IslandPalette.danger
+                        isBatterySaver -> IslandPalette.warning
                         else -> Color(settings.batteryColor)
                     }
                     Text(
@@ -294,14 +296,14 @@ fun IslandCollapsedContent(
                 IslandMode.Flashlight -> {
                     Text(
                         text = "ON",
-                        color = Color(0xFFFACC15),
+                        color = IslandPalette.warning,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 IslandMode.ScreenRecording -> {
                     val time = notification?.timeMillis ?: System.currentTimeMillis()
-                    CallTimer(postTimeMillis = time, color = Color(0xFFEF4444))
+                    CallTimer(postTimeMillis = time, color = IslandPalette.danger)
                 }
                 IslandMode.Timer -> {
                     TimerCountdown(notification = notification, color = Color(settings.timerColor))
@@ -327,7 +329,7 @@ internal fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: 
     ) {
         Icon(
             imageVector = Icons.Rounded.WifiTethering,
-            contentDescription = "Hotspot",
+            contentDescription = stringResource(R.string.a11y_hotspot),
             tint = hotspotColor,
             modifier = Modifier.size(15.dp)
         )
@@ -358,13 +360,13 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
     val isLowBattery = title.contains("low") || notification?.category == "battery_low" || pct <= 20f
 
     val batteryColor = when {
-        isLowBattery -> Color(0xFFEF4444)
-        isBatterySaver -> Color(0xFFF59E0B)
+        isLowBattery -> IslandPalette.danger
+        isBatterySaver -> IslandPalette.warning
         else -> Color(settings.batteryColor)
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "batteryPulse")
-    val pulseScale by infiniteTransition.animateFloat(
+    val pulseScale by infiniteTransition.animateFloatCalm(
         initialValue = 0.9f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
@@ -374,7 +376,7 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
         label = "batteryScale"
     )
 
-    val rotationAngle by infiniteTransition.animateFloat(
+    val rotationAngle by infiniteTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -398,7 +400,7 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
             isBatterySaver -> {
                 Icon(
                     Icons.Rounded.BatterySaver,
-                    contentDescription = "Battery Saver",
+                    contentDescription = stringResource(R.string.a11y_battery_saver),
                     tint = batteryColor,
                     modifier = Modifier.size(14.dp)
                 )
@@ -406,7 +408,7 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
             isLowBattery -> {
                 Icon(
                     Icons.Rounded.BatteryAlert,
-                    contentDescription = "Low Battery",
+                    contentDescription = stringResource(R.string.a11y_low_battery),
                     tint = batteryColor,
                     modifier = Modifier
                         .size(14.dp)
@@ -419,7 +421,7 @@ internal fun BatteryCollapsedGlyph(notification: IslandNotification?, settings: 
             else -> {
                 Icon(
                     Icons.Rounded.Bolt,
-                    contentDescription = "Charging",
+                    contentDescription = stringResource(R.string.a11y_charging),
                     tint = batteryColor,
                     modifier = Modifier
                         .size(14.dp)
@@ -498,7 +500,7 @@ private fun AudioVisualizer(
         val heights = listOf(0.3f to 0.9f, 0.5f to 1.0f, 0.2f to 0.7f)
 
         heights.forEachIndexed { index, (min, max) ->
-            val heightFraction by infiniteTransition.animateFloat(
+            val heightFraction by infiniteTransition.animateFloatCalm(
                 initialValue = min,
                 targetValue = if (isPlaying) max else min,
                 animationSpec = infiniteRepeatable(
@@ -677,14 +679,14 @@ internal fun NavigationCollapsedGlyph(notification: IslandNotification?, setting
     if (turnDirection == com.agupta07505.smartisland.util.TurnDirection.DESTINATION) {
         Icon(
             imageVector = Icons.Rounded.LocationOn,
-            contentDescription = "Destination",
+            contentDescription = stringResource(R.string.a11y_destination),
             tint = navColor,
             modifier = Modifier.size(18.dp)
         )
     } else {
         Icon(
             imageVector = Icons.Rounded.Navigation,
-            contentDescription = "Turn direction",
+            contentDescription = stringResource(R.string.a11y_turn_direction),
             tint = navColor,
             modifier = Modifier
                 .size(18.dp)
@@ -796,7 +798,7 @@ private fun DownloadUploadCollapsedRight(
 
     val infiniteTransition = rememberInfiniteTransition(label = "downloadUploadAnim")
 
-    val motionFraction by infiniteTransition.animateFloat(
+    val motionFraction by infiniteTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -843,7 +845,7 @@ private fun DownloadUploadCollapsedRight(
 @Composable
 internal fun ScreenRecordingCollapsedGlyph(settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val infiniteTransition = rememberInfiniteTransition(label = "collapsedRecordingPulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
+    val pulseAlpha by infiniteTransition.animateFloatCalm(
         initialValue = 0.4f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -888,7 +890,7 @@ internal fun TimerCollapsedGlyph(notification: IslandNotification?, settings: Sm
         }
     }
     val infiniteTransition = rememberInfiniteTransition(label = "timerPulse")
-    val pulseScale by infiniteTransition.animateFloat(
+    val pulseScale by infiniteTransition.animateFloatCalm(
         initialValue = 0.92f,
         targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
@@ -907,7 +909,7 @@ internal fun TimerCollapsedGlyph(notification: IslandNotification?, settings: Sm
     ) {
         Icon(
             imageVector = Icons.Rounded.HourglassBottom,
-            contentDescription = "Timer",
+            contentDescription = stringResource(R.string.a11y_timer),
             tint = timerColor,
             modifier = Modifier
                 .size(13.dp)
@@ -925,7 +927,7 @@ internal fun TimerCollapsedGlyph(notification: IslandNotification?, settings: Sm
 internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val stopwatchColor = Color(settings.stopwatchColor)
     val infiniteTransition = rememberInfiniteTransition(label = "stopwatchRotate")
-    val rotation by infiniteTransition.animateFloat(
+    val rotation by infiniteTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -944,7 +946,7 @@ internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings
     ) {
         Icon(
             imageVector = Icons.Rounded.AvTimer,
-            contentDescription = "Stopwatch",
+            contentDescription = stringResource(R.string.a11y_stopwatch),
             tint = stopwatchColor,
             modifier = Modifier
                 .size(14.dp)
@@ -1071,7 +1073,7 @@ fun BluetoothCollapsedRight(
     if (!settings.showBluetoothBattery || batteryLevel == null) {
         Image(
             painter = painterResource(id = com.agupta07505.smartisland.R.drawable.ic_bluetooth_device),
-            contentDescription = "Bluetooth Device",
+            contentDescription = stringResource(R.string.a11y_bluetooth_device),
             modifier = Modifier
                 .size(20.dp)
                 .clip(CircleShape)
@@ -1102,7 +1104,7 @@ fun BluetoothCollapsedRight(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val batteryColor = if (batteryLevel <= 20) Color(0xFFEF4444) else Color(0xFF10B981)
+                    val batteryColor = if (batteryLevel <= 20) IslandPalette.danger else IslandPalette.success
                     val batteryIcon = when {
                         batteryLevel >= 80 -> Icons.Rounded.BatteryFull
                         batteryLevel >= 40 -> Icons.Rounded.Battery5Bar
@@ -1111,7 +1113,7 @@ fun BluetoothCollapsedRight(
                     }
                     Icon(
                         imageVector = batteryIcon,
-                        contentDescription = "Battery",
+                        contentDescription = stringResource(R.string.a11y_battery),
                         tint = batteryColor,
                         modifier = Modifier.size(13.dp)
                     )
@@ -1132,7 +1134,7 @@ fun BluetoothCollapsedRight(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Headphones,
-                        contentDescription = "Earbuds",
+                        contentDescription = stringResource(R.string.a11y_earbuds),
                         tint = Color(settings.bluetoothColor),
                         modifier = Modifier.size(13.dp)
                     )

@@ -53,7 +53,7 @@ fun WavyMusicSeekBar(
     thumbRadius: Dp = 8.dp
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wavySeekBarPhase")
-    val phase by infiniteTransition.animateFloat(
+    val phase by infiniteTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = if (isPlaying) 6.2831855f else 0f,
         animationSpec = infiniteRepeatable(

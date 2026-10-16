@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import android.app.ActivityOptions
 import android.app.RemoteInput
 import android.content.Intent
@@ -167,7 +170,7 @@ fun NotificationExpanded(
                 )
                 Text(
                     text = notification?.text?.takeIf { it.isNotBlank() } ?: "New activity",
-                    color = Color(0xFFD5DAE0),
+                    color = IslandPalette.secondaryLabel,
                     minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -179,7 +182,7 @@ fun NotificationExpanded(
             // Time text on top right using the internal helper in IslandCollapsedContent
             Text(
                 text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
-                color = Color(0xFFB7C0CA),
+                color = IslandPalette.secondaryLabel,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 8.dp)
             )
@@ -235,7 +238,7 @@ fun NotificationExpanded(
                         .weight(1f)
                         .height(36.dp)
                         .clip(RoundedCornerShape(18.dp))
-                        .background(Color(0xFF222222))
+                        .background(IslandPalette.fill)
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
@@ -260,7 +263,7 @@ fun NotificationExpanded(
                             if (replyText.isEmpty()) {
                                 Text(
                                     text = "Reply to ${notification.title.ifBlank { notification.appName }}...",
-                                    color = Color(0xFF888888),
+                                    color = IslandPalette.secondaryLabel,
                                     fontSize = 12.sp
                                 )
                             }
@@ -278,7 +281,7 @@ fun NotificationExpanded(
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(
-                            if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else Color(0xFF333333)
+                            if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else IslandPalette.fill
                         )
                         .bounceClick {
                             sendReplyAction()
@@ -287,7 +290,7 @@ fun NotificationExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = "Send Reply",
+                        contentDescription = stringResource(R.string.a11y_send_reply),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
@@ -298,7 +301,7 @@ fun NotificationExpanded(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF222222))
+                        .background(IslandPalette.fill)
                         .bounceClick {
                             isReplying = false
                             onReplyStateChanged(false)
@@ -308,8 +311,8 @@ fun NotificationExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
-                        contentDescription = "Cancel",
-                        tint = Color(0xFFB7C0CA),
+                        contentDescription = stringResource(R.string.a11y_cancel),
+                        tint = IslandPalette.secondaryLabel,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -331,9 +334,9 @@ fun NotificationExpanded(
                             val isReplyAction = action.isQuickReply || action.title.lowercase().contains("reply")
                             Box(
                                 modifier = Modifier
-                                    .height(28.dp)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(Color(0xFFE2E8F0)) // light grey background matching the Telegram button
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(IslandPalette.fill) // light grey background matching the Telegram button
                                     .bounceClick {
                                         if (isReplyAction) {
                                             isReplying = true
@@ -354,9 +357,9 @@ fun NotificationExpanded(
                             ) {
                                 Text(
                                     text = action.title,
-                                    color = Color(0xFF1F2937), // dark grey text
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
+                                    color = IslandPalette.label, // dark grey text
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
@@ -368,15 +371,16 @@ fun NotificationExpanded(
                 // Down Arrow Button on bottom right
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(44.dp)
+                        .bounceClick { onOpenNotification() }
+                        .padding(10.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF222222))
-                        .bounceClick { onOpenNotification() },
+                        .background(IslandPalette.fill),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "Open App",
+                        contentDescription = stringResource(R.string.a11y_open_app),
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )

@@ -164,9 +164,9 @@ fun CustomizationsSection(
         // 1. Transparency & Pill Appearance
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -178,7 +178,7 @@ fun CustomizationsSection(
                 Text(
                     text = stringResource(R.string.opacity_card_title).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 0.8.sp
                 )
@@ -222,7 +222,7 @@ fun CustomizationsSection(
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -269,9 +269,9 @@ fun CustomizationsSection(
         // 2. Feature & Mode Accent Color Studio Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -283,7 +283,7 @@ fun CustomizationsSection(
                 Text(
                     text = stringResource(R.string.card_color_studio_title).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 0.8.sp,
                     modifier = Modifier.padding(bottom = 4.dp)
@@ -459,7 +459,7 @@ internal fun RgbColorPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = { Text(title, fontWeight = FontWeight.SemiBold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // Color Preview Box
@@ -475,7 +475,7 @@ internal fun RgbColorPickerDialog(
                 ) {
                     Text(
                         text = "#$hexInput",
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (previewColor.red * 0.299 + previewColor.green * 0.587 + previewColor.blue * 0.114 > 0.5) Color.Black else Color.White
                     )
                 }
@@ -486,7 +486,7 @@ internal fun RgbColorPickerDialog(
                     onValueChange = { updateFromHex(it) },
                     label = { Text(stringResource(R.string.color_hex_input)) },
                     placeholder = { Text(stringResource(R.string.color_hex_hint)) },
-                    prefix = { Text("#", fontWeight = FontWeight.Bold) },
+                    prefix = { Text("#", fontWeight = FontWeight.SemiBold) },
                     isError = isHexError,
                     supportingText = if (isHexError) {
                         { Text(stringResource(R.string.color_hex_error), color = MaterialTheme.colorScheme.error) }
@@ -590,7 +590,7 @@ internal fun RgbColorPickerDialog(
                     onSave(finalColor)
                 }
             ) {
-                Text(stringResource(R.string.btn_save_color), fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.btn_save_color), fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {

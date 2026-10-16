@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import com.agupta07505.smartisland.ui.components.SmartIslandSwitch
+import com.agupta07505.smartisland.ui.semantic
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -152,7 +154,7 @@ fun DeveloperOptionsSection(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -175,7 +177,7 @@ fun DeveloperOptionsSection(
                                 .size(42.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (settings.recordLogs) Color(0xFFEF4444).copy(alpha = 0.15f)
+                                    if (settings.recordLogs) MaterialTheme.semantic.danger.copy(alpha = 0.15f)
                                     else MaterialTheme.colorScheme.surfaceVariant
                                 ),
                             contentAlignment = Alignment.Center
@@ -183,7 +185,7 @@ fun DeveloperOptionsSection(
                             Icon(
                                 imageVector = if (settings.recordLogs) Icons.Rounded.RadioButtonChecked else Icons.Rounded.BugReport,
                                 contentDescription = null,
-                                tint = if (settings.recordLogs) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (settings.recordLogs) MaterialTheme.semantic.danger else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -191,7 +193,7 @@ fun DeveloperOptionsSection(
                             Text(
                                 text = stringResource(R.string.dev_record_logs_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
@@ -202,7 +204,7 @@ fun DeveloperOptionsSection(
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.recordLogs,
                         onCheckedChange = { enabled ->
                             scope.launch {
@@ -219,7 +221,7 @@ fun DeveloperOptionsSection(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            if (settings.recordLogs) Color(0xFFEF4444).copy(alpha = 0.10f)
+                            if (settings.recordLogs) MaterialTheme.semantic.danger.copy(alpha = 0.10f)
                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
                         .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -234,14 +236,14 @@ fun DeveloperOptionsSection(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(if (settings.recordLogs) Color(0xFFEF4444) else Color(0xFF94A3B8))
+                                .background(if (settings.recordLogs) MaterialTheme.semantic.danger else Color(0xFF94A3B8))
                         )
                         Text(
                             text = if (settings.recordLogs) stringResource(R.string.status_recording_active)
                             else stringResource(R.string.status_recording_idle),
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (settings.recordLogs) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (settings.recordLogs) MaterialTheme.semantic.danger else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
@@ -258,7 +260,7 @@ fun DeveloperOptionsSection(
                 Text(
                     text = stringResource(R.string.dev_export_section_title),
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
 
@@ -279,7 +281,7 @@ fun DeveloperOptionsSection(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.btn_export_logs_storage),
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -361,7 +363,7 @@ fun DeveloperOptionsSection(
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -382,7 +384,7 @@ fun DeveloperOptionsSection(
                     Text(
                         text = stringResource(R.string.dev_system_snapshot_title),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -438,7 +440,7 @@ fun DeveloperOptionsSection(
             title = {
                 Text(
                     text = stringResource(R.string.dialog_clear_logs_title),
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             },
             text = {

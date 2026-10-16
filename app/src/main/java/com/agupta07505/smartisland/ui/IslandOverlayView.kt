@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.model.SwipeAction
 import com.agupta07505.smartisland.ui.expanded.IslandExpandedContent
@@ -987,13 +989,13 @@ private fun SecondaryBubbleContent(
                 modifier = Modifier
                     .size(20.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
+                    .background(IslandPalette.warning.copy(alpha = 0.25f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Rounded.FlashlightOn,
-                    contentDescription = "Flashlight",
-                    tint = Color(0xFFFACC15),
+                    contentDescription = stringResource(R.string.a11y_flashlight),
+                    tint = IslandPalette.warning,
                     modifier = Modifier.size(12.dp)
                 )
             }

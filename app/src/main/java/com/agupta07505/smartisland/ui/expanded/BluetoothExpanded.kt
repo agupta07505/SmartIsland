@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -78,7 +80,7 @@ fun BluetoothExpanded(
         }
     }
 
-    val batteryColor = if ((batteryLevel ?: 100) <= 20) Color(0xFFEF4444) else Color(0xFF10B981)
+    val batteryColor = if ((batteryLevel ?: 100) <= 20) IslandPalette.danger else IslandPalette.success
     val batteryIcon = when {
         (batteryLevel ?: 100) >= 80 -> Icons.Rounded.BatteryFull
         (batteryLevel ?: 100) >= 40 -> Icons.Rounded.Battery5Bar
@@ -107,7 +109,7 @@ fun BluetoothExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.BluetoothConnected,
-                    contentDescription = "Bluetooth Connected",
+                    contentDescription = stringResource(R.string.a11y_bluetooth_connected),
                     tint = Color(settings.bluetoothColor),
                     modifier = Modifier.size(24.dp)
                 )
@@ -131,12 +133,12 @@ fun BluetoothExpanded(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF10B981))
+                                .background(IslandPalette.success)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = if (settings.showBluetoothBattery && batteryLevel != null) "Connected" else statusText,
-                            color = Color(0xFF10B981),
+                            color = IslandPalette.success,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -208,7 +210,7 @@ fun BluetoothExpanded(
                         ) {
                             Icon(
                                 imageVector = batteryIcon,
-                                contentDescription = "Battery Level",
+                                contentDescription = stringResource(R.string.a11y_battery_level),
                                 tint = batteryColor,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -231,7 +233,7 @@ fun BluetoothExpanded(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Headphones,
-                            contentDescription = "Earbuds",
+                            contentDescription = stringResource(R.string.a11y_earbuds),
                             tint = Color(settings.bluetoothColor),
                             modifier = Modifier.size(24.dp)
                         )
@@ -241,7 +243,7 @@ fun BluetoothExpanded(
         } else {
             Image(
                 painter = painterResource(id = R.drawable.ic_bluetooth_device),
-                contentDescription = "Bluetooth Device Image",
+                contentDescription = stringResource(R.string.a11y_bluetooth_device_image),
                 modifier = Modifier
                     .size(46.dp)
                     .clip(RoundedCornerShape(12.dp))

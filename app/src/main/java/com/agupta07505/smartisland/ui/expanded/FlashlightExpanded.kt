@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
@@ -73,7 +75,7 @@ fun FlashlightExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.FlashlightOn,
-                    contentDescription = "Flashlight Active",
+                    contentDescription = stringResource(R.string.a11y_flashlight_active),
                     tint = torchColor,
                     modifier = Modifier.size(24.dp)
                 )

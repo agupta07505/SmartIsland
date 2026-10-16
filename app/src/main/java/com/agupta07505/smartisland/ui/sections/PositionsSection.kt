@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import com.agupta07505.smartisland.ui.components.SmartIslandSwitch
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -164,7 +165,7 @@ fun PositionsSection(
                     Text(
                         text = stringResource(R.string.preset_compact_pill),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (!isNotch) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (!isNotch) FontWeight.SemiBold else FontWeight.Medium,
                         color = if (!isNotch) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -207,7 +208,7 @@ fun PositionsSection(
                     Text(
                         text = stringResource(R.string.notch_mode_card_title),
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isNotch) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (isNotch) FontWeight.SemiBold else FontWeight.Medium,
                         color = if (isNotch) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -217,9 +218,9 @@ fun PositionsSection(
         // 2. Quick Layout Presets Grid
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -236,7 +237,7 @@ fun PositionsSection(
                     Text(
                         text = stringResource(R.string.presets_title).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 0.8.sp
                     )
@@ -346,9 +347,9 @@ fun PositionsSection(
         if (!settings.enableNotchMode) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                border = null,
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Row(
@@ -392,7 +393,7 @@ fun PositionsSection(
                             Text(
                                 text = stringResource(R.string.circle_position_left),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (isLeft) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -409,7 +410,7 @@ fun PositionsSection(
                             Text(
                                 text = stringResource(R.string.circle_position_right),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (!isLeft) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -421,9 +422,9 @@ fun PositionsSection(
         // 4. Precision Tuning Sliders Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -434,7 +435,7 @@ fun PositionsSection(
                 Text(
                     text = stringResource(R.string.precision_tuning_title).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 0.8.sp,
                     modifier = Modifier.padding(bottom = 6.dp)
@@ -495,7 +496,7 @@ fun PositionsSection(
                             Text(
                                 text = "0 dp",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
@@ -525,9 +526,9 @@ fun PositionsSection(
         // 5. Appearance & Behavior Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -538,7 +539,7 @@ fun PositionsSection(
                 Text(
                     text = stringResource(R.string.category_appearance_controls).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 0.8.sp,
                     modifier = Modifier.padding(bottom = 6.dp)
@@ -588,7 +589,7 @@ fun PositionsSection(
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                     color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -633,7 +634,7 @@ fun PositionsSection(
                             text = hexLabel,
                             color = if (pillColorObj.red * 0.299 + pillColorObj.green * 0.587 + pillColorObj.blue * 0.114 > 0.5) Color.Black else Color.White,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
@@ -661,7 +662,7 @@ fun PositionsSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.enableShadow,
                         onCheckedChange = { checked ->
                             scope.launch { repository.setEnableShadow(checked) }
@@ -715,7 +716,7 @@ fun PositionsSection(
                                     Text(
                                         text = "${targetVal.toInt()}dp",
                                         style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -746,7 +747,7 @@ fun PositionsSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.showInLandscape,
                         onCheckedChange = { checked ->
                             scope.launch { repository.setShowInLandscape(checked) }
@@ -776,7 +777,7 @@ fun PositionsSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Switch(
+                    SmartIslandSwitch(
                         checked = settings.autoExpandOnNotification,
                         onCheckedChange = { checked ->
                             scope.launch { repository.setAutoExpandOnNotification(checked) }
@@ -840,7 +841,7 @@ private fun PresetChipItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )

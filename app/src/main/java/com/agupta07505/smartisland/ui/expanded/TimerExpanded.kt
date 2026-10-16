@@ -7,6 +7,10 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.animateFloatCalm
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -142,7 +146,7 @@ fun TimerExpanded(
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "timerPulse")
-    val pulseScale by infiniteTransition.animateFloat(
+    val pulseScale by infiniteTransition.animateFloatCalm(
         initialValue = 0.95f,
         targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
@@ -174,7 +178,7 @@ fun TimerExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.HourglassBottom,
-                    contentDescription = "Timer",
+                    contentDescription = stringResource(R.string.a11y_timer),
                     tint = timerColor,
                     modifier = Modifier
                         .size(22.dp)
@@ -213,7 +217,7 @@ fun TimerExpanded(
                 }
                 Text(
                     text = timerSubtitle,
-                    color = if (remainingSec == 0L && !isPaused) Color(0xFFEF4444) else timerColor,
+                    color = if (remainingSec == 0L && !isPaused) IslandPalette.danger else timerColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -298,7 +302,7 @@ fun TimerExpanded(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF27272A))
+                    .background(IslandPalette.fill)
                     .bounceClick {
                         if (stopAction?.pendingIntent != null && notification != null) {
                             triggerAction(context, notification.packageName, stopAction.pendingIntent, stopAction.title, notification.contentIntent)
@@ -311,8 +315,8 @@ fun TimerExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Stop,
-                    contentDescription = "Stop",
-                    tint = Color(0xFFEF4444),
+                    contentDescription = stringResource(R.string.a11y_stop),
+                    tint = IslandPalette.danger,
                     modifier = Modifier.size(18.dp)
                 )
             }

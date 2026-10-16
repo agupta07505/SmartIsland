@@ -7,6 +7,10 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.animateFloatCalm
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -100,7 +104,7 @@ fun StopwatchExpanded(
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "stopwatchAnim")
-    val rotation by infiniteTransition.animateFloat(
+    val rotation by infiniteTransition.animateFloatCalm(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
@@ -132,7 +136,7 @@ fun StopwatchExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.AvTimer,
-                    contentDescription = "Stopwatch",
+                    contentDescription = stringResource(R.string.a11y_stopwatch),
                     tint = stopwatchColor,
                     modifier = Modifier
                         .size(22.dp)
@@ -184,7 +188,7 @@ fun StopwatchExpanded(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF27272A))
+                    .background(IslandPalette.fill)
                     .bounceClick {
                         if (lapAction?.pendingIntent != null && notification != null) {
                             triggerAction(context, notification.packageName, lapAction.pendingIntent, lapAction.title, notification.contentIntent)
@@ -195,8 +199,8 @@ fun StopwatchExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Flag,
-                    contentDescription = "Lap",
-                    tint = Color(0xFFE4E4E7),
+                    contentDescription = stringResource(R.string.a11y_lap),
+                    tint = IslandPalette.label,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -281,7 +285,7 @@ fun StopwatchExpanded(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF3F3F46))
+                    .background(IslandPalette.fillStrong)
                     .bounceClick {
                         if (resetAction?.pendingIntent != null && notification != null) {
                             triggerAction(context, notification.packageName, resetAction.pendingIntent, resetAction.title, notification.contentIntent)
@@ -294,8 +298,8 @@ fun StopwatchExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Refresh,
-                    contentDescription = "Reset",
-                    tint = Color(0xFFE4E4E7),
+                    contentDescription = stringResource(R.string.a11y_reset),
+                    tint = IslandPalette.label,
                     modifier = Modifier.size(16.dp)
                 )
             }

@@ -7,13 +7,32 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.ui.components.SmartIslandSwitch
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import com.agupta07505.smartisland.ui.components.BackBar
+import com.agupta07505.smartisland.ui.components.FilledActionButton
+import com.agupta07505.smartisland.ui.components.GroupedRow
+import com.agupta07505.smartisland.ui.components.GroupedSection
+import com.agupta07505.smartisland.ui.components.LargeTitleHeader
+import com.agupta07505.smartisland.ui.components.StatusKind
+import com.agupta07505.smartisland.ui.components.StatusLabel
+import com.agupta07505.smartisland.ui.components.SwitchRow
+import com.agupta07505.smartisland.ui.components.TintedActionButton
 import android.widget.Toast
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -276,31 +295,31 @@ fun SmartIslandHomeScreen(
         ) { detailSection ->
             if (detailSection == null) {
                 val screenWidthDp = LocalConfiguration.current.screenWidthDp
-                val horizontalPad = when {
-                    screenWidthDp < 360 -> 14.dp
-                    screenWidthDp > 600 -> 28.dp
-                    else -> 20.dp
-                }
-                Column(
+                val horizontalPad = if (screenWidthDp > 600) Dimens.ScreenMarginWide else Dimens.ScreenMargin
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(MaterialTheme.colorScheme.background),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 640.dp)
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(
                             start = horizontalPad,
                             end = horizontalPad,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
                             bottom = 32.dp
                         ),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)
                 ) {
-                    // Studio Top Header
-                    StudioTopHeader(
-                        isIslandEnabled = settings.enabled,
-                        canEnable = canEnable,
-                        onHealthClick = {
-                            transitionDirection = 1
-                            activeDetailSection = FeatureDetailSection.PermissionsCenter
+                    LargeTitleHeader(
+                        title = when (selectedTab) {
+                            StudioTab.Studio -> stringResource(R.string.app_name)
+                            StudioTab.Position -> stringResource(R.string.tab_position)
+                            StudioTab.Settings -> stringResource(R.string.tab_settings)
                         }
                     )
 
@@ -374,6 +393,7 @@ fun SmartIslandHomeScreen(
                         )
                     }
                 }
+                }
             } else {
                 DetailScreenHost(
                     section = detailSection,
@@ -402,188 +422,34 @@ fun SmartIslandHomeScreen(
 }
 
 @Composable
-private fun StudioTopHeader(
-    isIslandEnabled: Boolean,
-    canEnable: Boolean,
-    onHealthClick: () -> Unit
-) {
-    val context = LocalContext.current
-    val appIcon = remember(context) {
-        runCatchingLogged("HeaderSection", "Failed to get application icon") {
-            val drawable = context.packageManager.getApplicationIcon(context.packageName)
-            val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 144
-            val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 144
-            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
-            drawable.setBounds(0, 0, width, height)
-            drawable.draw(canvas)
-            bitmap.asImageBitmap()
-        }
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (appIcon != null) {
-                Image(
-                    bitmap = appIcon,
-                    contentDescription = "Smart Island Logo",
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("SI", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
-            }
-            Column {
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = stringResource(R.string.app_subtitle),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Live Health Status Badge
-        val statusColor = when {
-            !canEnable -> Color(0xFFE88C25) // Action required
-            isIslandEnabled -> Color(0xFF0F9F6E) // Active
-            else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // Ready/Off
-        }
-        val statusText = when {
-            !canEnable -> stringResource(R.string.status_setup_needed)
-            isIslandEnabled -> stringResource(R.string.status_active)
-            else -> stringResource(R.string.status_ready)
-        }
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(statusColor.copy(alpha = 0.12f))
-                .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-                .clickable(onClick = onHealthClick)
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(statusColor, CircleShape)
-                )
-                Text(
-                    text = statusText,
-                    color = statusColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun MasterPowerCard(
     enabled: Boolean,
     canEnable: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onSetupPermissionsClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.master_switch_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = if (canEnable) {
-                        if (enabled) stringResource(R.string.master_switch_active_desc)
-                        else stringResource(R.string.master_switch_ready_desc)
-                    } else stringResource(R.string.master_switch_missing_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = enabled,
-                enabled = canEnable || enabled,
-                onCheckedChange = onCheckedChange
-            )
-        }
-
+    GroupedSection {
+        SwitchRow(
+            title = stringResource(R.string.master_switch_title),
+            subtitle = if (canEnable) {
+                if (enabled) stringResource(R.string.master_switch_active_desc)
+                else stringResource(R.string.master_switch_ready_desc)
+            } else stringResource(R.string.master_switch_missing_desc),
+            checked = enabled,
+            enabled = canEnable || enabled,
+            onCheckedChange = onCheckedChange
+        )
         if (!canEnable) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onSetupPermissionsClick)
-                    .background(Color(0xFFE88C25).copy(alpha = 0.08f))
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Warning,
-                        contentDescription = null,
-                        tint = Color(0xFFE88C25),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.btn_grant_required_permissions),
-                        color = Color(0xFFE88C25),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
+            GroupedRow(
+                title = stringResource(R.string.btn_grant_required_permissions),
+                onClick = onSetupPermissionsClick,
+                trailing = {
+                    StatusLabel(
+                        text = stringResource(R.string.status_setup_needed),
+                        kind = StatusKind.Warning
                     )
                 }
-            }
+            )
         }
     }
 }
@@ -594,172 +460,103 @@ private fun SimulationLabCard(
     onModeSelect: (IslandMode) -> Unit,
     onClearAll: () -> Unit
 ) {
-    data class ModeItem(val mode: IslandMode, val icon: ImageVector)
+    data class ModeItem(val mode: IslandMode, val icon: ImageVector, val labelRes: Int)
     val modes = remember {
         listOf(
-            ModeItem(IslandMode.Music, Icons.Rounded.MusicNote),
-            ModeItem(IslandMode.IncomingCall, Icons.Rounded.Call),
-            ModeItem(IslandMode.Notification, Icons.Rounded.Notifications),
-            ModeItem(IslandMode.Battery, Icons.Rounded.BatteryChargingFull),
-            ModeItem(IslandMode.LiveActivity, Icons.Rounded.Navigation),
-            ModeItem(IslandMode.Navigation, Icons.Rounded.Explore),
-            ModeItem(IslandMode.DownloadUpload, Icons.Rounded.FileDownload),
-            ModeItem(IslandMode.Hotspot, Icons.Rounded.WifiTethering),
-            ModeItem(IslandMode.Bluetooth, Icons.Rounded.BluetoothConnected),
-            ModeItem(IslandMode.Flashlight, Icons.Rounded.FlashlightOn),
-            ModeItem(IslandMode.ScreenRecording, Icons.Rounded.Videocam),
-            ModeItem(IslandMode.Timer, Icons.Rounded.HourglassBottom),
-            ModeItem(IslandMode.Stopwatch, Icons.Rounded.AvTimer)
+            ModeItem(IslandMode.Music, Icons.Rounded.MusicNote, R.string.mode_music_player),
+            ModeItem(IslandMode.IncomingCall, Icons.Rounded.Call, R.string.mode_incoming_call),
+            ModeItem(IslandMode.Notification, Icons.Rounded.Notifications, R.string.mode_notification),
+            ModeItem(IslandMode.Battery, Icons.Rounded.BatteryChargingFull, R.string.mode_battery_charge),
+            ModeItem(IslandMode.LiveActivity, Icons.Rounded.Navigation, R.string.mode_live_activity),
+            ModeItem(IslandMode.Navigation, Icons.Rounded.Explore, R.string.mode_turn_navigation),
+            ModeItem(IslandMode.DownloadUpload, Icons.Rounded.FileDownload, R.string.mode_file_transfer),
+            ModeItem(IslandMode.Hotspot, Icons.Rounded.WifiTethering, R.string.mode_hotspot_share),
+            ModeItem(IslandMode.Bluetooth, Icons.Rounded.BluetoothConnected, R.string.mode_bluetooth),
+            ModeItem(IslandMode.Flashlight, Icons.Rounded.FlashlightOn, R.string.mode_flashlight),
+            ModeItem(IslandMode.ScreenRecording, Icons.Rounded.Videocam, R.string.mode_screen_recording),
+            ModeItem(IslandMode.Timer, Icons.Rounded.HourglassBottom, R.string.mode_timer),
+            ModeItem(IslandMode.Stopwatch, Icons.Rounded.AvTimer, R.string.mode_stopwatch)
         )
     }
-    // Resolve labels via composable context
-    val modeLabels = listOf(
-        stringResource(R.string.mode_music_player),
-        stringResource(R.string.mode_incoming_call),
-        stringResource(R.string.mode_notification),
-        stringResource(R.string.mode_battery_charge),
-        stringResource(R.string.mode_live_activity),
-        stringResource(R.string.mode_turn_navigation),
-        stringResource(R.string.mode_file_transfer),
-        stringResource(R.string.mode_hotspot_share),
-        stringResource(R.string.mode_bluetooth),
-        stringResource(R.string.mode_flashlight),
-        stringResource(R.string.mode_screen_recording),
-        stringResource(R.string.mode_timer),
-        stringResource(R.string.mode_stopwatch)
-    )
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    GroupedSection(
+        header = stringResource(R.string.simulation_lab_title),
+        footer = stringResource(R.string.simulation_lab_desc)
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(12.dp)
         ) {
-            Row(
+            val columns = if (maxWidth >= 480.dp) 3 else 2
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column {
-                    Text(
-                        text = stringResource(R.string.simulation_lab_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = stringResource(R.string.simulation_lab_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(
-                    onClick = onClearAll,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = stringResource(R.string.btn_clear_all_test_notifications),
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val columns = when {
-                    maxWidth >= 330.dp -> 3
-                    maxWidth >= 210.dp -> 2
-                    else -> 1
-                }
-                val chunkedIndices = remember(modes.size, columns) {
-                    modes.indices.chunked(columns)
-                }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    chunkedIndices.forEach { rowIndices ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowIndices.forEach { index ->
-                                val item = modes[index]
-                                ModeChipButton(
-                                    label = modeLabels[index],
-                                    icon = item.icon,
-                                    isSelected = activeMode == item.mode,
-                                    onClick = { onModeSelect(item.mode) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            repeat(columns - rowIndices.size) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                modes.chunked(columns).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowItems.forEach { item ->
+                            ModeChipButton(
+                                label = stringResource(item.labelRes),
+                                icon = item.icon,
+                                isSelected = activeMode == item.mode,
+                                onClick = { onModeSelect(item.mode) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        repeat(columns - rowItems.size) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
+        GroupedRow(
+            title = stringResource(R.string.btn_clear_all_test_notifications),
+            destructive = true,
+            showChevron = false,
+            onClick = onClearAll
+        )
     }
 }
 
+/** Selectable mode chip: 48dp tall, selection shown by fill, weight and a checkmark (not color alone). */
 @Composable
 private fun ModeChipButton(
     label: String,
     icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    iconTint: Color = MaterialTheme.colorScheme.primary
+    modifier: Modifier = Modifier
 ) {
-    Box(
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (isSelected) iconTint.copy(alpha = 0.15f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-            )
-            .border(
-                width = if (isSelected) 1.5.dp else 0.5.dp,
-                color = if (isSelected) iconTint.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(10.dp)
-            )
-            .bounceClick(onClick)
-            .padding(horizontal = 6.dp, vertical = 9.dp),
-        contentAlignment = Alignment.Center
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(Dimens.ControlRadius))
+            .background(if (isSelected) accent.copy(alpha = 0.14f) else MaterialTheme.semantic.fill)
+            .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(15.dp)
-            )
-            Spacer(Modifier.width(5.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) iconTint else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+        Icon(
+            imageVector = if (isSelected) Icons.Rounded.CheckCircle else icon,
+            contentDescription = null,
+            tint = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isSelected) accent else MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -772,220 +569,166 @@ private fun SettingsOverviewSection(
     onNavigateTo: (FeatureDetailSection) -> Unit
 ) {
     val canEnable = overlayGranted && notificationGranted && batteryIgnored
+    val sectionIcon = Dimens.SeparatorInset
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Section 1: Features
-        SettingsCategoryGroup(title = stringResource(R.string.category_behaviors_launcher)) {
-            FeatureStudioNavigationCard(
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)) {
+        GroupedSection(
+            header = stringResource(R.string.category_behaviors_launcher),
+            dividerInset = sectionIcon
+        ) {
+            GroupedRow(
                 title = stringResource(R.string.card_notifications_privacy_title),
                 icon = Icons.Rounded.Notifications,
-                statusText = if (settings.showOnLockScreen) stringResource(R.string.card_notifications_privacy_status_lock) else null,
+                value = if (settings.showOnLockScreen) stringResource(R.string.card_notifications_privacy_status_lock) else null,
                 onClick = { onNavigateTo(FeatureDetailSection.NotificationRules) }
             )
-
-            FeatureStudioNavigationCard(
+            GroupedRow(
                 title = stringResource(R.string.card_app_shortcuts_title),
                 icon = Icons.Rounded.Apps,
-                statusText = if (settings.enableAppShortcuts) {
+                value = if (settings.enableAppShortcuts) {
                     stringResource(R.string.card_app_shortcuts_status, settings.shortcutPackages.size)
                 } else null,
-                statusColor = if (settings.enableAppShortcuts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 onClick = { onNavigateTo(FeatureDetailSection.AppShortcuts) }
             )
-
-            FeatureStudioNavigationCard(
+            GroupedRow(
                 title = stringResource(R.string.card_notification_history_title),
                 icon = Icons.Rounded.History,
-                statusText = if (settings.enableNotificationHistory) stringResource(R.string.card_notification_history_status_active) else null,
-                statusColor = if (settings.enableNotificationHistory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                value = if (settings.enableNotificationHistory) stringResource(R.string.card_notification_history_status_active) else null,
                 onClick = { onNavigateTo(FeatureDetailSection.NotificationHistory) }
             )
         }
 
-        // Section 2: Appearance
-        SettingsCategoryGroup(title = stringResource(R.string.category_appearance_controls)) {
-            FeatureStudioNavigationCard(
+        GroupedSection(
+            header = stringResource(R.string.category_appearance_controls),
+            dividerInset = sectionIcon
+        ) {
+            GroupedRow(
                 title = stringResource(R.string.card_color_studio_title),
                 icon = Icons.Rounded.Palette,
-                statusText = stringResource(R.string.card_color_studio_status, (settings.opacity * 100).toInt()),
+                value = stringResource(R.string.card_color_studio_status, (settings.opacity * 100).toInt()),
                 onClick = { onNavigateTo(FeatureDetailSection.ColorStudio) }
             )
-
-            FeatureStudioNavigationCard(
+            GroupedRow(
                 title = stringResource(R.string.card_gestures_guide_title),
                 icon = Icons.Rounded.Gesture,
                 onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
             )
         }
 
-        // Section 3: System
-        SettingsCategoryGroup(title = stringResource(R.string.category_system_core)) {
-            FeatureStudioNavigationCard(
+        GroupedSection(
+            header = stringResource(R.string.category_system_core),
+            dividerInset = sectionIcon
+        ) {
+            GroupedRow(
                 title = stringResource(R.string.card_permissions_setup_title),
                 icon = Icons.Rounded.Shield,
-                statusText = if (!canEnable) stringResource(R.string.status_action_required) else null,
-                statusColor = if (canEnable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
-                onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) }
+                onClick = { onNavigateTo(FeatureDetailSection.PermissionsCenter) },
+                trailing = {
+                    if (!canEnable) {
+                        StatusLabel(
+                            text = stringResource(R.string.status_action_required),
+                            kind = StatusKind.Warning
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             )
-
-            FeatureStudioNavigationCard(
+            GroupedRow(
                 title = stringResource(R.string.card_backup_restore_title),
                 icon = Icons.Rounded.SettingsBackupRestore,
                 onClick = { onNavigateTo(FeatureDetailSection.BackupRestore) }
             )
         }
 
-        // Section 4: About
-        SettingsCategoryGroup(title = stringResource(R.string.category_about_community)) {
-            FeatureStudioNavigationCard(
+        GroupedSection(
+            header = stringResource(R.string.category_about_community),
+            dividerInset = sectionIcon
+        ) {
+            GroupedRow(
                 title = stringResource(R.string.card_about_app_title),
                 icon = Icons.Rounded.Info,
-                statusText = "v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME}",
+                value = "v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME}",
                 onClick = { onNavigateTo(FeatureDetailSection.AboutApp) }
             )
-
-            FeatureStudioNavigationCard(
+            GroupedRow(
                 title = stringResource(R.string.card_support_requests_title),
                 icon = Icons.Rounded.People,
                 onClick = { onNavigateTo(FeatureDetailSection.SupportCommunity) }
             )
         }
 
-        SettingsCategoryGroup(title = stringResource(R.string.category_developer_options)) {
-            FeatureStudioNavigationCard(
+        GroupedSection(
+            header = stringResource(R.string.category_developer_options),
+            dividerInset = sectionIcon
+        ) {
+            GroupedRow(
                 title = stringResource(R.string.card_developer_options_title),
                 icon = Icons.Rounded.Tune,
-                statusText = if (settings.recordLogs) stringResource(R.string.status_recording_active) else null,
-                statusColor = if (settings.recordLogs) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                onClick = { onNavigateTo(FeatureDetailSection.DeveloperOptions) }
+                onClick = { onNavigateTo(FeatureDetailSection.DeveloperOptions) },
+                trailing = {
+                    if (settings.recordLogs) {
+                        StatusLabel(
+                            text = stringResource(R.string.status_recording_active),
+                            kind = StatusKind.Danger
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             )
         }
     }
 }
 
-@Composable
-private fun SettingsCategoryGroup(
-    title: String,
-    content: @Composable () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 0.8.sp,
-            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
-        )
-        content()
-    }
-}
-
-@Composable
-private fun FeatureStudioNavigationCard(
-    title: String,
-    icon: ImageVector,
-    iconColor: Color = MaterialTheme.colorScheme.primary,
-    statusText: String? = null,
-    statusColor: Color = MaterialTheme.colorScheme.primary,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .bounceClick(onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconColor.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        if (statusText != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = statusText,
-                color = statusColor,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-            modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
+/** Flat tab bar: no indicator pill, accent for the selected tab, secondary label for the rest. */
 @Composable
 private fun StudioBottomNavigationBar(
     selectedTab: StudioTab,
     onTabSelected: (StudioTab) -> Unit
 ) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp
-    ) {
-        NavigationBarItem(
-            selected = selectedTab == StudioTab.Studio,
-            onClick = { onTabSelected(StudioTab.Studio) },
-            icon = { Icon(Icons.Rounded.FlashOn, contentDescription = stringResource(R.string.tab_studio)) },
-            label = { Text(stringResource(R.string.tab_studio), fontWeight = FontWeight.SemiBold) },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        NavigationBarItem(
-            selected = selectedTab == StudioTab.Position,
-            onClick = { onTabSelected(StudioTab.Position) },
-            icon = { Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.tab_position)) },
-            label = { Text(stringResource(R.string.tab_position), fontWeight = FontWeight.SemiBold) },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary
-            )
-        )
-        NavigationBarItem(
-            selected = selectedTab == StudioTab.Settings,
-            onClick = { onTabSelected(StudioTab.Settings) },
-            icon = { Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.tab_settings)) },
-            label = { Text(stringResource(R.string.tab_settings), fontWeight = FontWeight.SemiBold) },
-            colors = NavigationBarItemDefaults.colors(
-                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                selectedIconColor = MaterialTheme.colorScheme.primary,
-                selectedTextColor = MaterialTheme.colorScheme.primary
-            )
-        )
+    val tabs = listOf(
+        Triple(StudioTab.Studio, Icons.Rounded.FlashOn, R.string.tab_studio),
+        Triple(StudioTab.Position, Icons.Rounded.Tune, R.string.tab_position),
+        Triple(StudioTab.Settings, Icons.Rounded.Settings, R.string.tab_settings)
+    )
+    Column {
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.semantic.separator)
+        NavigationBar(
+            containerColor = MaterialTheme.semantic.bar,
+            tonalElevation = 0.dp
+        ) {
+            tabs.forEach { (tab, icon, labelRes) ->
+                val label = stringResource(labelRes)
+                NavigationBarItem(
+                    selected = selectedTab == tab,
+                    onClick = { onTabSelected(tab) },
+                    icon = { Icon(icon, contentDescription = null) },
+                    label = {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (selectedTab == tab) FontWeight.SemiBold else FontWeight.Medium
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -1008,63 +751,47 @@ private fun DetailScreenHost(
     val isScrollableParent = section != FeatureDetailSection.NotificationHistory
     val scrollModifier = if (isScrollableParent) Modifier.verticalScroll(rememberScrollState()) else Modifier
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    val horizontalPad = when {
-        screenWidthDp < 360 -> 14.dp
-        screenWidthDp > 600 -> 28.dp
-        else -> 20.dp
+    val horizontalPad = if (screenWidthDp > 600) Dimens.ScreenMarginWide else Dimens.ScreenMargin
+
+    val title = when (section) {
+        FeatureDetailSection.NotificationRules -> stringResource(R.string.detail_title_notifications_privacy)
+        FeatureDetailSection.AppShortcuts -> stringResource(R.string.detail_title_app_shortcuts)
+        FeatureDetailSection.NotificationHistory -> stringResource(R.string.detail_title_notification_history)
+        FeatureDetailSection.ColorStudio -> stringResource(R.string.detail_title_color_studio)
+        FeatureDetailSection.GesturesGuide -> stringResource(R.string.detail_title_gestures_guide)
+        FeatureDetailSection.PermissionsCenter -> stringResource(R.string.detail_title_permissions_center)
+        FeatureDetailSection.BackupRestore -> stringResource(R.string.detail_title_backup_restore)
+        FeatureDetailSection.AboutApp -> stringResource(R.string.detail_title_about_app)
+        FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
+        FeatureDetailSection.DeveloperOptions -> stringResource(R.string.detail_title_developer_options)
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.TopCenter
+    ) {
+    Column(
+        modifier = Modifier
+            .widthIn(max = 640.dp)
+            .fillMaxSize()
             .then(scrollModifier)
             .padding(
                 start = horizontalPad,
                 end = horizontalPad,
-                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 12.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                 bottom = if (isScrollableParent) 28.dp else 12.dp
             ),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            val title = when (section) {
-                FeatureDetailSection.NotificationRules -> stringResource(R.string.detail_title_notifications_privacy)
-                FeatureDetailSection.AppShortcuts -> stringResource(R.string.detail_title_app_shortcuts)
-                FeatureDetailSection.NotificationHistory -> stringResource(R.string.detail_title_notification_history)
-                FeatureDetailSection.ColorStudio -> stringResource(R.string.detail_title_color_studio)
-                FeatureDetailSection.GesturesGuide -> stringResource(R.string.detail_title_gestures_guide)
-                FeatureDetailSection.PermissionsCenter -> stringResource(R.string.detail_title_permissions_center)
-                FeatureDetailSection.BackupRestore -> stringResource(R.string.detail_title_backup_restore)
-                FeatureDetailSection.AboutApp -> stringResource(R.string.detail_title_about_app)
-                FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
-                FeatureDetailSection.DeveloperOptions -> stringResource(R.string.detail_title_developer_options)
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
+        Column {
+            BackBar(
+                parentTitle = stringResource(R.string.tab_settings),
+                onBack = onBack,
+                modifier = Modifier.offset(x = (-8).dp)
             )
+            LargeTitleHeader(title = title)
         }
 
         when (section) {
@@ -1138,6 +865,7 @@ private fun DetailScreenHost(
             }
         }
     }
+    }
 }
 
 private fun isNotificationListenerEnabled(context: Context): Boolean {
@@ -1198,154 +926,52 @@ private fun WelcomeDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .padding(16.dp),
-            shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                .widthIn(max = 420.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (appIcon != null) {
-                    Image(
-                        bitmap = appIcon,
-                        contentDescription = "Smart Island Logo",
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(18.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("SI", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-
-                Text(
-                    text = stringResource(R.string.welcome_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+            if (appIcon != null) {
+                Image(
+                    bitmap = appIcon,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(RoundedCornerShape(16.dp))
                 )
-
-                Text(
-                    text = stringResource(R.string.welcome_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 20.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Button(
-                    onClick = onStarClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        GithubIcon(tint = MaterialTheme.colorScheme.onSecondary)
-                        Text(
-                            stringResource(R.string.star_on_github),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondary
-                        )
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = onJoinCommunityClick,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.People,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            stringResource(R.string.join_telegram),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                ElevatedButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(stringResource(R.string.btn_get_started), fontWeight = FontWeight.Bold)
-                }
             }
+            Text(
+                text = stringResource(R.string.welcome_title),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() }
+            )
+            Text(
+                text = stringResource(R.string.welcome_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            FilledActionButton(
+                text = stringResource(R.string.btn_get_started),
+                onClick = onDismiss
+            )
+            TintedActionButton(
+                text = stringResource(R.string.star_on_github),
+                onClick = onStarClick
+            )
+            TintedActionButton(
+                text = stringResource(R.string.join_telegram),
+                onClick = onJoinCommunityClick
+            )
         }
-    }
-}
-
-@Composable
-private fun GithubIcon(tint: Color = Color.Black) {
-    Canvas(modifier = Modifier.size(18.dp)) {
-        val scaleX = size.width / 24f
-        val scaleY = size.height / 24f
-        val path = androidx.compose.ui.graphics.Path().apply {
-            moveTo(12f * scaleX, 2f * scaleY)
-            cubicTo(6.477f * scaleX, 2f * scaleY, 2f * scaleX, 6.477f * scaleX, 2f * scaleX, 12f * scaleY)
-            cubicTo(2f * scaleX, 16.42f * scaleY, 4.865f * scaleX, 20.166f * scaleY, 8.839f * scaleX, 21.489f * scaleY)
-            cubicTo(9.339f * scaleX, 21.581f * scaleY, 9.521f * scaleX, 21.272f * scaleY, 9.521f * scaleX, 21.007f * scaleY)
-            cubicTo(9.521f * scaleX, 20.77f * scaleY, 9.513f * scaleX, 20.141f * scaleY, 9.508f * scaleX, 19.307f * scaleY)
-            cubicTo(6.726f * scaleX, 19.91f * scaleY, 6.139f * scaleX, 17.97f * scaleY, 6.139f * scaleX, 17.97f * scaleY)
-            cubicTo(5.685f * scaleX, 16.814f * scaleY, 5.029f * scaleX, 16.506f * scaleY, 5.029f * scaleX, 16.506f * scaleY)
-            cubicTo(4.121f * scaleX, 15.886f * scaleY, 5.098f * scaleX, 15.898f * scaleY, 5.098f * scaleX, 15.898f * scaleY)
-            cubicTo(6.101f * scaleX, 15.968f * scaleY, 6.629f * scaleX, 16.928f * scaleY, 6.629f * scaleX, 16.928f * scaleY)
-            cubicTo(7.521f * scaleX, 18.457f * scaleY, 8.97f * scaleX, 18.015f * scaleY, 9.539f * scaleX, 17.759f * scaleY)
-            cubicTo(9.631f * scaleX, 17.113f * scaleY, 9.889f * scaleX, 16.673f * scaleY, 10.175f * scaleX, 16.423f * scaleY)
-            cubicTo(7.955f * scaleX, 16.17f * scaleY, 5.62f * scaleX, 15.313f * scaleY, 5.62f * scaleX, 11.48f * scaleY)
-            cubicTo(5.62f * scaleX, 10.389f * scaleY, 6.01f * scaleX, 9.496f * scaleY, 6.649f * scaleX, 8.797f * scaleY)
-            cubicTo(6.546f * scaleX, 8.544f * scaleY, 6.203f * scaleX, 7.527f * scaleY, 6.747f * scaleX, 6.15f * scaleY)
-            cubicTo(6.747f * scaleX, 6.15f * scaleY, 7.587f * scaleX, 5.881f * scaleY, 9.497f * scaleX, 7.175f * scaleY)
-            cubicTo(10.295f * scaleX, 6.953f * scaleY, 11.15f * scaleX, 6.842f * scaleY, 12f * scaleX, 6.838f * scaleY)
-            cubicTo(12.85f * scaleX, 6.842f * scaleY, 13.705f * scaleX, 6.953f * scaleY, 14.503f * scaleX, 7.175f * scaleY)
-            cubicTo(16.413f * scaleX, 5.881f * scaleY, 17.253f * scaleX, 6.15f * scaleY, 17.253f * scaleX, 6.15f * scaleY)
-            cubicTo(17.797f * scaleX, 7.527f * scaleY, 17.454f * scaleX, 8.544f * scaleY, 17.351f * scaleX, 8.797f * scaleY)
-            cubicTo(17.99f * scaleX, 9.496f * scaleY, 18.38f * scaleX, 10.389f * scaleY, 18.38f * scaleX, 11.48f * scaleY)
-            cubicTo(18.38f * scaleX, 15.323f * scaleY, 16.041f * scaleX, 16.168f * scaleY, 13.813f * scaleX, 16.415f * scaleY)
-            cubicTo(14.172f * scaleX, 16.724f * scaleY, 14.491f * scaleX, 17.334f * scaleY, 14.491f * scaleX, 18.267f * scaleY)
-            cubicTo(14.491f * scaleX, 19.603f * scaleY, 14.479f * scaleX, 20.682f * scaleY, 14.479f * scaleX, 21.01f * scaleY)
-            cubicTo(14.479f * scaleX, 21.277f * scaleY, 14.659f * scaleX, 21.589f * scaleY, 15.167f * scaleX, 21.489f * scaleY)
-            cubicTo(19.141f * scaleX, 20.16f * scaleY, 22f * scaleX, 12f * scaleY, 22f * scaleX, 12f * scaleY)
-            cubicTo(22f * scaleX, 6.477f * scaleY, 17.523f * scaleY, 2f * scaleY, 12f * scaleY, 2f * scaleY)
-            close()
-        }
-        drawPath(path, color = tint)
     }
 }
 

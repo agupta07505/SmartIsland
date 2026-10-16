@@ -9,6 +9,7 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -367,7 +368,7 @@ private fun EmptyExpanded(
             Text(stringResource(R.string.shortcuts_title), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 stringResource(R.string.shortcuts_desc),
-                color = Color(0xFFB7C0CA),
+                color = IslandPalette.secondaryLabel,
                 fontSize = 13.sp
             )
             Text(
@@ -382,7 +383,7 @@ private fun EmptyExpanded(
         } else if (loadedApps.isEmpty()) {
             Text(
                 stringResource(R.string.quick_launch_apps_unavailable),
-                color = Color(0xFFB7C0CA),
+                color = IslandPalette.secondaryLabel,
                 fontSize = 13.sp
             )
         } else {
@@ -432,7 +433,7 @@ private fun ShortcutApp(app: LaunchableApp, onClick: () -> Unit) {
         Text(
             text = app.label,
             color = Color.White,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             maxLines = 1
         )
     }

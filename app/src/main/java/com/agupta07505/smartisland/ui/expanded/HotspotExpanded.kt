@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import android.content.Intent
 import android.provider.Settings
 import android.widget.Toast
@@ -111,7 +114,7 @@ fun HotspotExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.WifiTethering,
-                    contentDescription = "Hotspot",
+                    contentDescription = stringResource(R.string.a11y_hotspot),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -130,7 +133,7 @@ fun HotspotExpanded(
                 )
                 Text(
                     text = cleanSubtitle,
-                    color = Color(0xFFD5DAE0),
+                    color = IslandPalette.secondaryLabel,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -170,7 +173,7 @@ fun HotspotExpanded(
 
                 Text(
                     text = formatNotificationTime(notification.timeMillis),
-                    color = Color(0xFFB7C0CA),
+                    color = IslandPalette.secondaryLabel,
                     fontSize = 11.sp
                 )
             }
@@ -181,7 +184,7 @@ fun HotspotExpanded(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0x22FFFFFF))
+                .background(IslandPalette.fill)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Row(
@@ -195,7 +198,7 @@ fun HotspotExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Devices,
-                        contentDescription = "Devices",
+                        contentDescription = stringResource(R.string.a11y_devices),
                         tint = accentColor,
                         modifier = Modifier.size(18.dp)
                     )
@@ -224,9 +227,9 @@ fun HotspotExpanded(
         ) {
             Box(
                 modifier = Modifier
-                    .height(28.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFFE2E8F0))
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(IslandPalette.fill)
                     .bounceClick {
                         HotspotUtil.openHotspotSettings(context, notification.contentIntent)
                         onCollapse()
@@ -236,18 +239,18 @@ fun HotspotExpanded(
             ) {
                 Text(
                     text = "Hotspot Settings",
-                    color = Color(0xFF1F2937),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
+                    color = IslandPalette.label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
             extraActionIntents.forEach { action ->
                 Box(
                     modifier = Modifier
-                        .height(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0x33FFFFFF))
+                        .height(40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(IslandPalette.fillStrong)
                         .bounceClick {
                             if (action.pendingIntent != null) {
                                 triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)

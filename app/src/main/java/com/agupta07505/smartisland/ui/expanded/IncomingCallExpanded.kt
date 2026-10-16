@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,7 +80,7 @@ fun IncomingCallExpanded(
         }
 
         CircleActionButton(
-            color = Color(0xFFE11D48),
+            color = IslandPalette.danger,
             icon = Icons.Rounded.Close,
             onClick = { 
                 notification.sendFirstAction(context, "decline", "reject", "hang", "end", "cancel") 

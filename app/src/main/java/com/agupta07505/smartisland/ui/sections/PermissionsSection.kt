@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import com.agupta07505.smartisland.ui.semantic
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -87,7 +88,7 @@ fun PermissionsSection(
         // Shizuku 1-Tap Auto Setup Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
             ),
@@ -130,7 +131,7 @@ fun PermissionsSection(
                             Text(
                                 text = stringResource(R.string.shizuku_card_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             val shizukuStateText = when {
@@ -142,7 +143,7 @@ fun PermissionsSection(
                             Text(
                                 text = shizukuStateText,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = if (ShizukuManager.hasPermission()) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.primary,
+                                color = if (ShizukuManager.hasPermission()) MaterialTheme.semantic.success else MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -184,7 +185,7 @@ fun PermissionsSection(
                         Text(
                             text = if (isExecutingShizuku) stringResource(R.string.shizuku_btn_running) else stringResource(R.string.shizuku_btn_run),
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -225,13 +226,13 @@ fun PermissionsSection(
         )
 
         // Overlay System Warning Card
-        val warningIconColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.onSurfaceVariant
-        val warningBgColor = if (isOverlayWarningDisabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+        val warningIconColor = if (isOverlayWarningDisabled) MaterialTheme.semantic.success else MaterialTheme.colorScheme.onSurfaceVariant
+        val warningBgColor = if (isOverlayWarningDisabled) MaterialTheme.semantic.success.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -266,21 +267,21 @@ fun PermissionsSection(
                             Text(
                                 text = "Suppress System Overlay Warning",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             if (isOverlayWarningDisabled) {
                                 Spacer(Modifier.height(3.dp))
                                 Box(
                                     modifier = Modifier
-                                        .background(Color(0xFF0F9F6E).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.semantic.success.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = "Configured",
-                                        color = Color(0xFF0F9F6E),
+                                        color = MaterialTheme.semantic.success,
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -315,13 +316,13 @@ fun PermissionsSection(
         }
 
         // OEM Autostart & Kill Protection Card
-        val oemIconColor = if (isOemAutostartEnabled) Color(0xFF0F9F6E) else MaterialTheme.colorScheme.tertiary
-        val oemBgColor = if (isOemAutostartEnabled) Color(0xFF0F9F6E).copy(alpha = 0.12f) else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+        val oemIconColor = if (isOemAutostartEnabled) MaterialTheme.semantic.success else MaterialTheme.colorScheme.tertiary
+        val oemBgColor = if (isOemAutostartEnabled) MaterialTheme.semantic.success.copy(alpha = 0.12f) else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            border = null,
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
@@ -356,21 +357,21 @@ fun PermissionsSection(
                             Text(
                                 text = "OEM Autostart & Kill Protection",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             if (isOemAutostartEnabled) {
                                 Spacer(Modifier.height(3.dp))
                                 Box(
                                     modifier = Modifier
-                                        .background(Color(0xFF0F9F6E).copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.semantic.success.copy(alpha = 0.12f), shape = RoundedCornerShape(6.dp))
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = "Configured",
-                                        color = Color(0xFF0F9F6E),
+                                        color = MaterialTheme.semantic.success,
                                         fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -394,7 +395,7 @@ fun PermissionsSection(
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                             ) {
-                                Text("Shizuku", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Shizuku", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         OutlinedButton(

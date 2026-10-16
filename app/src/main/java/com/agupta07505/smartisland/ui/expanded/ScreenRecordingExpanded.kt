@@ -7,6 +7,10 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import com.agupta07505.smartisland.ui.animateFloatCalm
+import com.agupta07505.smartisland.R
+import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.ui.IslandPalette
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -77,7 +81,7 @@ fun ScreenRecordingExpanded(
     val timerText = "%02d:%02d".format(minutes, seconds)
 
     val infiniteTransition = rememberInfiniteTransition(label = "recordingPulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
+    val pulseAlpha by infiniteTransition.animateFloatCalm(
         initialValue = 0.3f,
         targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
@@ -87,7 +91,7 @@ fun ScreenRecordingExpanded(
         label = "pulseAlpha"
     )
 
-    val pulseScale by infiniteTransition.animateFloat(
+    val pulseScale by infiniteTransition.animateFloatCalm(
         initialValue = 0.9f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
@@ -141,7 +145,7 @@ fun ScreenRecordingExpanded(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Recording • ",
-                        color = Color(0xFF9CA3AF),
+                        color = IslandPalette.secondaryLabel,
                         fontSize = 12.sp
                     )
                     Text(
@@ -180,7 +184,7 @@ fun ScreenRecordingExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Stop,
-                    contentDescription = "Stop Recording",
+                    contentDescription = stringResource(R.string.a11y_stop_recording),
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
