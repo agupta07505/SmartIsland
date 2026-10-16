@@ -14,8 +14,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 
 data class GitHubRelease(
     val tagName: String,
@@ -67,9 +65,6 @@ object GitHubApiService {
     private const val REPO_OWNER = "agupta07505"
     private const val REPO_NAME = "SmartIsland"
     private const val BASE_URL = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME"
-    private const val CONNECT_TIMEOUT_MS = 6000
-    private const val READ_TIMEOUT_MS = 6000
-    private const val USER_AGENT = "SmartIsland-App"
 
     /**
      * Fetches the latest public release from GitHub without sending any user data.
@@ -265,27 +260,7 @@ object GitHubApiService {
         return false
     }
 
-    private fun makeHttpGet(urlString: String): String {
-        val url = URL(urlString)
-        val connection = url.openConnection() as HttpURLConnection
-        return try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = CONNECT_TIMEOUT_MS
-            connection.readTimeout = READ_TIMEOUT_MS
-            connection.setRequestProperty("User-Agent", USER_AGENT)
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            connection.instanceFollowRedirects = true
-
-            val responseCode = connection.responseCode
-            if (responseCode !in 200..299) {
-                val errorStream = connection.errorStream
-                val errorText = errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
-                throw IllegalStateException("GitHub API error HTTP $responseCode: $errorText")
-            }
-
-            connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
-    }
+    // Personal build ships without INTERNET permission; every remote lookup fails fast and offline.
+    private fun makeHttpGet(@Suppress("UNUSED_PARAMETER") urlString: String): String =
+        throw UnsupportedOperationException("Network access is disabled in this build")
 }

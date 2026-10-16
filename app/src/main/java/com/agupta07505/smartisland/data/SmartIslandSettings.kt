@@ -54,7 +54,7 @@ data class SmartIslandSettings(
     val enableMusicArtworkBackground: Boolean = true,
     val enableNotificationBackdrop: Boolean = true,
     val deviceType: String = "AUTO",
-    val allowNetworkChecks: Boolean = true,
+    val allowNetworkChecks: Boolean = false,
     val enableNotificationHistory: Boolean = false,
     val notificationHistoryRetentionHours: Int = 72,
     val showBluetoothBattery: Boolean = true,

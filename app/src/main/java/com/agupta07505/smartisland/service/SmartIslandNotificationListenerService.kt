@@ -463,7 +463,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             settings.navigationEnabled,
             settings.deviceType
         )
-        android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key} title=${extras.getCharSequence(Notification.EXTRA_TITLE)}")
+        android.util.Log.d(TAG, "handleNotificationPosted: mode=$mode key=${sbn.key}")
 
         // Check intelligent anti-spam notification cooldown
         if (NotificationCooldownManager.shouldThrottle(sbn, settings, mode)) {
