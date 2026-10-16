@@ -7,7 +7,7 @@
 -->
 <resources>
     <!-- Application Info -->
-    <string name="app_name">Smart Island</string>
+    <string name="app_name">Smart Island Personal</string>
     <string name="app_subtitle">悬浮动态灵动岛</string>
     <string name="app_description">Smart Island 为 Android 重塑通知体验，带来精美的悬浮交互、实时动态控制与丝滑动画，让重要信息尽收眼底。</string>
     <string name="accessibility_service_label">Smart Island 服务</string>

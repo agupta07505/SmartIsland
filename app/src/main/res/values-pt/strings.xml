@@ -7,7 +7,7 @@
 -->
 <resources>
     <!-- Application Info -->
-    <string name="app_name">Smart Island</string>
+    <string name="app_name">Smart Island Personal</string>
     <string name="app_subtitle">Sobreposição Dinâmica Flutuante</string>
     <string name="app_description">O Smart Island reinventa as notificações do Android com uma linda experiência flutuante, controles interativos e animações fluidas — mantendo tudo o que importa a um simples toque.</string>
     <string name="accessibility_service_label">Serviço do Smart Island</string>

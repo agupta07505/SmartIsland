@@ -27,11 +27,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.agupta07505.smartisland"
+        applicationId = "com.niteeshbharadwaj.smartisland.personal"
         minSdk = 26
         targetSdk = 36
         versionCode = 8
-        versionName = "7.0.0"
+        versionName = "7.0.0-personal"
     }
 
     androidResources {
