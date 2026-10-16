@@ -237,7 +237,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         // CRASH FIX: Android 13+/14+ requires explicit export flag for system broadcasts
         runCatchingLogged(TAG, "registerReceiver failed") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(systemEventReceiver, filter, Context.RECEIVER_EXPORTED)
+                registerReceiver(systemEventReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
             } else {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(systemEventReceiver, filter)
@@ -255,7 +255,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         runCatchingLogged(TAG, "registerReceiver screenStateReceiver failed") {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(screenStateReceiver, screenFilter, Context.RECEIVER_EXPORTED)
+                registerReceiver(screenStateReceiver, screenFilter, Context.RECEIVER_NOT_EXPORTED)
             } else {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(screenStateReceiver, screenFilter)
