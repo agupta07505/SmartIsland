@@ -35,8 +35,15 @@ class SmartIslandApp : Application() {
             ) as java.lang.reflect.Method
             
             val vmRuntime = getRuntime.invoke(null)
-            setHiddenApiExemptions.invoke(vmRuntime, arrayOf("L") as Any)
-            android.util.Log.d("SmartIslandApp", "Successfully bypassed Hidden API restrictions (unsealed reflection)")
+            setHiddenApiExemptions.invoke(
+                vmRuntime,
+                arrayOf(
+                    "Landroid/view/ViewTreeObserver",
+                    "Landroid/bluetooth/BluetoothDevice;->getBatteryLevel",
+                    "Landroid/media/session/"
+                ) as Any
+            )
+            android.util.Log.d("SmartIslandApp", "Hidden API exemptions applied for overlay insets, Bluetooth battery and media session")
         } catch (e: Exception) {
             android.util.Log.e("SmartIslandApp", "Failed to bypass Hidden API restrictions", e)
         }

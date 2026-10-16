@@ -68,4 +68,11 @@ class ShizukuManagerTest {
             merged
         )
     }
+
+    @Test
+    fun testShellQuoteNeutralisesMetacharacters() {
+        org.junit.Assert.assertEquals("'a/b:c'", ShizukuManager.shellQuote("a/b:c"))
+        org.junit.Assert.assertEquals("'x; rm -rf \$HOME'", ShizukuManager.shellQuote("x; rm -rf \$HOME"))
+        org.junit.Assert.assertEquals("'it'\\''s'", ShizukuManager.shellQuote("it's"))
+    }
 }

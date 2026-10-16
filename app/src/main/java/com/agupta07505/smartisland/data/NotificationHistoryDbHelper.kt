@@ -46,6 +46,12 @@ class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
         const val COL_WAS_DISMISSED = "was_dismissed"
     }
 
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        // Deleted notification text must not linger in free pages of the database file.
+        db.rawQuery("PRAGMA secure_delete = ON", null).close()
+    }
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """

@@ -96,6 +96,8 @@ object ShizukuManager {
         }
     }
 
+    internal fun shellQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
+
     internal fun mergeColonSeparated(currentList: String, newEntry: String): String {
         val list = currentList.split(':').filter { it.isNotBlank() }.toMutableList()
         if (!list.contains(newEntry)) {
@@ -142,10 +144,10 @@ object ShizukuManager {
             "appops set $pkg AUTO_START allow",
             "appops set $pkg RUN_IN_BACKGROUND allow",
             "appops set $pkg RUN_ANY_IN_BACKGROUND allow",
-            "settings put secure enabled_accessibility_services $mergedAccessibilityServices",
+            "settings put secure enabled_accessibility_services ${shellQuote(mergedAccessibilityServices)}",
             "settings put secure accessibility_enabled 1",
             "cmd notification allow_listener $notificationClass",
-            "settings put secure enabled_notification_listeners $mergedNotificationListeners",
+            "settings put secure enabled_notification_listeners ${shellQuote(mergedNotificationListeners)}",
             "am set-standby-bucket $pkg active",
             "dumpsys deviceidle whitelist +$pkg"
         )
@@ -177,7 +179,7 @@ object ShizukuManager {
         val commands = listOf(
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
             "cmd notification allow_listener $notificationClass",
-            "settings put secure enabled_notification_listeners $mergedNotificationListeners"
+            "settings put secure enabled_notification_listeners ${shellQuote(mergedNotificationListeners)}"
         )
         runShizukuCommands(commands)
     }
@@ -192,7 +194,7 @@ object ShizukuManager {
         val commands = listOf(
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
             "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
-            "settings put secure enabled_accessibility_services $mergedAccessibilityServices",
+            "settings put secure enabled_accessibility_services ${shellQuote(mergedAccessibilityServices)}",
             "settings put secure accessibility_enabled 1"
         )
         runShizukuCommands(commands)
