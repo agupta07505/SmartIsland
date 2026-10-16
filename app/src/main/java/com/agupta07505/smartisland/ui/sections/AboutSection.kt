@@ -83,11 +83,6 @@ import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
-import com.agupta07505.smartisland.util.GitHubApiService
-import com.agupta07505.smartisland.util.GitHubCommit
-import com.agupta07505.smartisland.util.GitHubContributor
-import com.agupta07505.smartisland.util.GitHubRelease
-import com.agupta07505.smartisland.util.GitHubRepoStats
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.launch
 
@@ -95,135 +90,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun AboutSection(
     settings: SmartIslandSettings = SmartIslandSettings.Default,
-    repository: SmartIslandSettingsRepository? = null,
-    onNavigateToUpdates: () -> Unit = {}
+    repository: SmartIslandSettingsRepository? = null
 ) {
     val context = LocalContext.current
     val currentVersion = remember(context) { getAppVersion(context) }
-    var repoStats by remember { mutableStateOf<GitHubRepoStats?>(null) }
-
-    LaunchedEffect(settings.allowNetworkChecks) {
-        if (!settings.allowNetworkChecks) return@LaunchedEffect
-        GitHubApiService.getRepoStats().onSuccess { repoStats = it }
-    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. App Updates & Downloads Quick Access Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Download,
-                                contentDescription = "Updates & Downloads",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = stringResource(R.string.card_updates_downloads_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "Current: v$currentVersion • Changelogs & stats",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Button(
-                        onClick = onNavigateToUpdates,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Text("Open", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // GitHub Repo Badges
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RepoBadge(
-                        icon = Icons.Rounded.Star,
-                        label = "Stars",
-                        value = repoStats?.stars?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.ForkRight,
-                        label = "Forks",
-                        value = repoStats?.forks?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/fork"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.BugReport,
-                        label = "Issues",
-                        value = repoStats?.openIssues?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.Description,
-                        label = "License",
-                        value = repoStats?.licenseName ?: "GPL-3.0",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/LICENSE"))
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-            }
-        }
-
         // 4. 100% On-Device & Zero-Telemetry Privacy Shield
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -409,32 +284,6 @@ fun AboutSection(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun RepoBadge(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    tint: Color,
-    onClick: () -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = value, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

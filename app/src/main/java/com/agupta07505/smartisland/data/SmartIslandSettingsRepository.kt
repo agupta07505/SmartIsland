@@ -80,7 +80,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
         val EnableNotificationBackdrop = booleanPreferencesKey("enable_notification_backdrop")
         val DeviceType = stringPreferencesKey("device_type")
-        val AllowNetworkChecks = booleanPreferencesKey("allow_network_checks")
         val EnableNotificationHistory = booleanPreferencesKey("enable_notification_history")
         val NotificationHistoryRetentionHours = intPreferencesKey("notification_history_retention_hours")
         val ShowBluetoothBattery = booleanPreferencesKey("show_bluetooth_battery")
@@ -221,7 +220,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
                 enableNotificationBackdrop = prefs[Keys.EnableNotificationBackdrop] ?: defaults.enableNotificationBackdrop,
                 deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType,
-                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks,
                 enableNotificationHistory = prefs[Keys.EnableNotificationHistory] ?: defaults.enableNotificationHistory,
                 notificationHistoryRetentionHours = prefs[Keys.NotificationHistoryRetentionHours] ?: defaults.notificationHistoryRetentionHours,
                 showBluetoothBattery = prefs[Keys.ShowBluetoothBattery] ?: defaults.showBluetoothBattery,
@@ -441,9 +439,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
         it[Keys.AutoExpandOnNotification] = value
     }
-    suspend fun setAllowNetworkChecks(value: Boolean) = editSafely {
-        it[Keys.AllowNetworkChecks] = value
-    }
     suspend fun setEnableNotificationHistory(value: Boolean) = editSafely {
         it[Keys.EnableNotificationHistory] = value
     }
@@ -623,7 +618,6 @@ class SmartIslandSettingsRepository(private val context: Context) {
         prefs[Keys.EnableMusicArtworkBackground] = settings.enableMusicArtworkBackground
         prefs[Keys.EnableNotificationBackdrop] = settings.enableNotificationBackdrop
         prefs[Keys.DeviceType] = settings.deviceType
-        prefs[Keys.AllowNetworkChecks] = settings.allowNetworkChecks
         prefs[Keys.EnableNotificationHistory] = settings.enableNotificationHistory
         prefs[Keys.NotificationHistoryRetentionHours] = settings.notificationHistoryRetentionHours
         prefs[Keys.ShowBluetoothBattery] = settings.showBluetoothBattery

@@ -54,7 +54,6 @@ data class SmartIslandSettings(
     val enableMusicArtworkBackground: Boolean = true,
     val enableNotificationBackdrop: Boolean = true,
     val deviceType: String = "AUTO",
-    val allowNetworkChecks: Boolean = false,
     val enableNotificationHistory: Boolean = false,
     val notificationHistoryRetentionHours: Int = 72,
     val showBluetoothBattery: Boolean = true,
@@ -143,7 +142,6 @@ data class SmartIslandSettings(
         settingsObj.put("enableMusicArtworkBackground", enableMusicArtworkBackground)
         settingsObj.put("enableNotificationBackdrop", enableNotificationBackdrop)
         settingsObj.put("deviceType", deviceType)
-        settingsObj.put("allowNetworkChecks", allowNetworkChecks)
         settingsObj.put("enableNotificationHistory", enableNotificationHistory)
         settingsObj.put("notificationHistoryRetentionHours", notificationHistoryRetentionHours)
         settingsObj.put("showBluetoothBattery", showBluetoothBattery)
@@ -298,7 +296,6 @@ data class SmartIslandSettings(
                 enableMusicArtworkBackground = obj.optBoolean("enableMusicArtworkBackground", defaults.enableMusicArtworkBackground),
                 enableNotificationBackdrop = obj.optBoolean("enableNotificationBackdrop", defaults.enableNotificationBackdrop),
                 deviceType = obj.optString("deviceType", defaults.deviceType),
-                allowNetworkChecks = obj.optBoolean("allowNetworkChecks", defaults.allowNetworkChecks),
                 enableNotificationHistory = obj.optBoolean("enableNotificationHistory", defaults.enableNotificationHistory),
                 notificationHistoryRetentionHours = obj.optInt("notificationHistoryRetentionHours", defaults.notificationHistoryRetentionHours).coerceIn(1, 720),
                 showBluetoothBattery = obj.optBoolean("showBluetoothBattery", defaults.showBluetoothBattery),

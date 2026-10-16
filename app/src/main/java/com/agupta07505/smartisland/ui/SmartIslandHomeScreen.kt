@@ -140,7 +140,6 @@ import com.agupta07505.smartisland.ui.sections.GesturesSection
 import com.agupta07505.smartisland.ui.sections.NotificationHistorySection
 import com.agupta07505.smartisland.ui.sections.NotificationsAndPrivacySection
 import com.agupta07505.smartisland.ui.sections.PermissionsSection
-import com.agupta07505.smartisland.ui.sections.UpdatesAndDownloadsSection
 import com.agupta07505.smartisland.ui.sections.PositionsSection
 import com.agupta07505.smartisland.ui.sections.SupportSection
 import com.agupta07505.smartisland.util.SystemServiceRecovery
@@ -161,7 +160,6 @@ private enum class FeatureDetailSection {
     GesturesGuide,
     PermissionsCenter,
     BackupRestore,
-    UpdatesAndDownloads,
     AboutApp,
     SupportCommunity,
     DeveloperOptions
@@ -840,12 +838,6 @@ private fun SettingsOverviewSection(
         // Section 4: About
         SettingsCategoryGroup(title = stringResource(R.string.category_about_community)) {
             FeatureStudioNavigationCard(
-                title = stringResource(R.string.card_updates_downloads_title),
-                icon = Icons.Rounded.CloudDownload,
-                onClick = { onNavigateTo(FeatureDetailSection.UpdatesAndDownloads) }
-            )
-
-            FeatureStudioNavigationCard(
                 title = stringResource(R.string.card_about_app_title),
                 icon = Icons.Rounded.Info,
                 statusText = "v${com.agupta07505.smartisland.BuildConfig.VERSION_NAME}",
@@ -1063,7 +1055,6 @@ private fun DetailScreenHost(
                 FeatureDetailSection.GesturesGuide -> stringResource(R.string.detail_title_gestures_guide)
                 FeatureDetailSection.PermissionsCenter -> stringResource(R.string.detail_title_permissions_center)
                 FeatureDetailSection.BackupRestore -> stringResource(R.string.detail_title_backup_restore)
-                FeatureDetailSection.UpdatesAndDownloads -> stringResource(R.string.detail_title_updates_downloads)
                 FeatureDetailSection.AboutApp -> stringResource(R.string.detail_title_about_app)
                 FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
                 FeatureDetailSection.DeveloperOptions -> stringResource(R.string.detail_title_developer_options)
@@ -1133,14 +1124,10 @@ private fun DetailScreenHost(
             FeatureDetailSection.BackupRestore -> {
                 BackupRestoreSection(settings = settings, repository = repository)
             }
-            FeatureDetailSection.UpdatesAndDownloads -> {
-                UpdatesAndDownloadsSection(settings = settings, repository = repository)
-            }
             FeatureDetailSection.AboutApp -> {
                 AboutSection(
                     settings = settings,
-                    repository = repository,
-                    onNavigateToUpdates = { onNavigateTo(FeatureDetailSection.UpdatesAndDownloads) }
+                    repository = repository
                 )
             }
             FeatureDetailSection.SupportCommunity -> {

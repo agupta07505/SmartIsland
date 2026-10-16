@@ -348,16 +348,6 @@ fun NotificationsAndPrivacySection(
                         }
                     }
                 }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                ToggleRowItem(
-                    title = stringResource(R.string.toggle_network_access_title),
-                    subtitle = stringResource(R.string.toggle_network_access_desc),
-                    icon = Icons.Rounded.Public,
-                    checked = settings.allowNetworkChecks,
-                    onCheckedChange = { scope.launch { repository.setAllowNetworkChecks(it) } }
-                )
             }
         }
 

@@ -36,7 +36,6 @@ class SmartIslandSettingsTest {
         assertEquals(0xFFF59E0BL, settings.timerColor)
         assertEquals(0xFF06B6D4L, settings.stopwatchColor)
         assertEquals(true, settings.enableAppShortcuts)
-        assertEquals(false, settings.allowNetworkChecks)
         assertEquals(true, settings.showBluetoothBattery)
         assertEquals(true, settings.enableBatteryMode)
         assertEquals(false, settings.enableNotificationCooldown)
@@ -123,7 +122,6 @@ class SmartIslandSettingsTest {
             enableMusicArtworkBackground = false,
             enableNotificationBackdrop = false,
             deviceType = "CUSTOM",
-            allowNetworkChecks = false,
             enableNotificationHistory = true,
             notificationHistoryRetentionHours = 48,
             developerModeEnabled = true,
@@ -275,5 +273,22 @@ class SmartIslandSettingsTest {
         val invalidJson = """{"settings": {"circlePosition": "top_center"}}"""
         val settingsInvalid = SmartIslandSettings.fromJson(invalidJson)
         assertEquals(SmartIslandSettings.CIRCLE_POSITION_RIGHT, settingsInvalid.circlePosition)
+    }
+
+    @Test
+    fun testLegacyNetworkFlagInBackupIsIgnored() {
+        val legacy = """{"settings": {"allowNetworkChecks": true, "enabled": true}}"""
+        val restored = SmartIslandSettings.fromJson(legacy)
+        assertEquals(true, restored.enabled)
+        assertEquals(false, restored.toJson().contains("allowNetworkChecks"))
+    }
+
+    @Test
+    fun testHistoryDisabledByDefaultWithBoundedRetention() {
+        val defaults = SmartIslandSettings.Default
+        assertEquals(false, defaults.enableNotificationHistory)
+        assertEquals(72, defaults.notificationHistoryRetentionHours)
+        val clamped = SmartIslandSettings.fromJson("""{"settings": {"notificationHistoryRetentionHours": 100000}}""")
+        assertEquals(720, clamped.notificationHistoryRetentionHours)
     }
 }
