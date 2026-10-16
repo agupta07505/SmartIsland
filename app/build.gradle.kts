@@ -65,6 +65,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Log stripping is on by default; build with -PkeepLogs to diagnose device issues.
+            if (!project.hasProperty("keepLogs")) {
+                proguardFiles("proguard-strip-logs.pro")
+            }
         }
     }
 
