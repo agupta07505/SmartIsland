@@ -668,4 +668,13 @@
     <string name="buddy_status_on">已开启</string>
     <string name="buddy_status_off">已关闭</string>
     <string name="detail_title_buddy">Buddy</string>
+    <string name="buddy_react_title">对事件做出反应</string>
+    <string name="buddy_react_desc">发生事件时 Buddy 会做出反应，例如解锁手机。</string>
+    <string name="buddy_try_header">试一试</string>
+    <string name="buddy_try_footer">在上方预览中播放。</string>
+    <string name="buddy_try_wake">醒来</string>
+    <string name="buddy_try_charging">充电</string>
+    <string name="buddy_try_download">下载完成</string>
+    <string name="buddy_try_music">播放音乐</string>
+    <string name="buddy_try_timer">计时结束</string>
 </resources>

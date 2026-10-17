@@ -23,11 +23,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import com.agupta07505.smartisland.buddy.geometry.MascotGeometry
 import com.agupta07505.smartisland.buddy.model.MascotColor
-import com.agupta07505.smartisland.buddy.model.MascotEye
 import com.agupta07505.smartisland.buddy.model.MascotLook
 import com.agupta07505.smartisland.buddy.model.MascotMood
 import com.agupta07505.smartisland.buddy.model.MascotPoint
@@ -35,8 +35,14 @@ import com.agupta07505.smartisland.buddy.model.MascotSize
 import com.agupta07505.smartisland.buddy.model.MascotStyle
 import com.agupta07505.smartisland.buddy.model.face
 
+/** One mood's two eye outlines, as the 24 points every eye shares and as ready-made paths. */
+private class EyeSet(val left: List<MascotPoint>, val right: List<MascotPoint>) {
+    val leftPath: Path = MascotGeometry.smoothClosedPath(left).toPath()
+    val rightPath: Path = MascotGeometry.smoothClosedPath(right).toPath()
+}
+
 /** Everything about one look at one size that does not change per frame. */
-private class MascotShapes(look: MascotLook, size: Float, mood: MascotMood) {
+private class MascotShapes(look: MascotLook, size: Float) {
     val robot = look.style == MascotStyle.Robot
     val face = look.face
     val body: Path
@@ -45,12 +51,21 @@ private class MascotShapes(look: MascotLook, size: Float, mood: MascotMood) {
     val bulb: Path
     val visor: Path
     val shine: Path
-    val leftEye: Path
-    val rightEye: Path
     val leftCenter = Offset(face.leftEye.x * size, face.leftEye.y * size)
     val rightCenter = Offset(face.rightEye.x * size, face.rightEye.y * size)
     val figureShift = MascotGeometry.figureOffset(look) * size
-    val expression = mood.expression
+    private val eyeSize = MascotSize(face.eyeSize.width * size, face.eyeSize.height * size)
+
+    // Built once per mood, on first use; a mood the buddy never shows costs nothing.
+    private val eyes = HashMap<MascotMood, EyeSet>()
+
+    fun eyesFor(mood: MascotMood): EyeSet = eyes.getOrPut(mood) {
+        val e = mood.expression
+        EyeSet(
+            MascotGeometry.eyePoints(e.left, eyeSize, right = false),
+            MascotGeometry.eyePoints(e.right, eyeSize, right = true)
+        )
+    }
 
     init {
         if (robot) {
@@ -66,12 +81,11 @@ private class MascotShapes(look: MascotLook, size: Float, mood: MascotMood) {
             ears = Path(); antenna = Path(); bulb = Path(); visor = Path()
             shine = MascotGeometry.shine(face, size).toPath()
         }
-        val eyeSize = MascotSize(face.eyeSize.width * size, face.eyeSize.height * size)
-        // Eyes are built around their own centre so a blink can squash them about it.
-        leftEye = MascotGeometry.eye(expression.left, eyeSize, MascotPoint.Zero, right = false).toPath()
-        rightEye = MascotGeometry.eye(expression.right, eyeSize, MascotPoint.Zero, right = true).toPath()
     }
 }
+
+private fun lerpPoints(a: List<MascotPoint>, b: List<MascotPoint>, t: Float): List<MascotPoint> =
+    a.indices.map { MascotPoint(a[it].x + (b[it].x - a[it].x) * t, a[it].y + (b[it].y - a[it].y) * t) }
 
 /**
  * Draws the buddy in a square of [size]. [pose] is read only inside the draw scope. The figure is
@@ -83,15 +97,14 @@ fun MascotCanvas(
     look: MascotLook,
     pose: MascotPose,
     size: Dp,
-    modifier: Modifier = Modifier,
-    mood: MascotMood = MascotMood.Idle
+    modifier: Modifier = Modifier
 ) {
     val sizePx = with(LocalDensity.current) { size.toPx() }
-    val shapes = remember(look, sizePx, mood) { MascotShapes(look, sizePx, mood) }
+    val shapes = remember(look, sizePx) { MascotShapes(look, sizePx) }
     val light = look.palette.light.toColor()
     val shade = look.palette.shade.toColor()
     Canvas(modifier = modifier.size(size)) {
-        drawBuddy(shapes, light, shade, look.palette.light.toColor(), pose, sizePx)
+        drawBuddy(shapes, light, shade, pose, sizePx)
     }
 }
 
@@ -99,22 +112,38 @@ private fun DrawScope.drawBuddy(
     s: MascotShapes,
     light: Color,
     shade: Color,
-    lit: Color,
     pose: MascotPose,
     size: Float
 ) {
+    val progress = pose.morph.value
+    val from = pose.faceFrom
+    val to = pose.faceTo
+    val fromExpr = from.expression
+    val toExpr = to.expression
+    val gazeX = fromExpr.gaze.x + (toExpr.gaze.x - fromExpr.gaze.x) * progress
+    val gazeY = fromExpr.gaze.y + (toExpr.gaze.y - fromExpr.gaze.y) * progress
+    val tilt = fromExpr.tilt + (toExpr.tilt - fromExpr.tilt) * progress + pose.tilt.value
+
     // Lift the figure by its own offset so its middle sits at the box's middle.
     translate(left = 0f, top = -s.figureShift) {
         // Squash and tilt are about the figure's base, as in the reference rig.
-        val pivot = Offset(size / 2f, size * 0.94f)
+        val pivot = Offset(size / 2f, size * 0.92f)
         translate(top = -pose.lift.value) {
-            rotate(degrees = Math.toDegrees(pose.tilt.value.toDouble()).toFloat(), pivot = pivot) {
+            rotate(degrees = Math.toDegrees(tilt.toDouble()).toFloat(), pivot = pivot) {
                 val squash = pose.squash.value
-                scale(scaleX = 1f + squash, scaleY = 1f - squash, pivot = pivot) {
+                scale(scaleX = 1f + 0.8f * squash, scaleY = 1f - squash, pivot = pivot) {
                     if (s.robot) {
+                        val bulbColor = lerp(shade, light, pose.bulbLit.value)
                         drawPath(s.ears, shade)
                         drawPath(s.antenna, shade)
-                        drawPath(s.bulb, lit)
+                        if (pose.glow.value > 0f) {
+                            drawCircle(
+                                light.copy(alpha = 0.55f * pose.glow.value),
+                                radius = size * 0.13f,
+                                center = Offset(size * 0.5f, size * 0.11f)
+                            )
+                        }
+                        drawPath(s.bulb, bulbColor)
                     }
                     drawPath(s.body, Brush.verticalGradient(listOf(light, shade), startY = 0f, endY = size))
                     if (s.robot) {
@@ -122,22 +151,32 @@ private fun DrawScope.drawBuddy(
                     } else {
                         drawPath(s.shine, MascotColor.Shine.toColor())
                     }
-                    val gaze = Offset(
-                        (s.expression.gaze.x * size) + pose.gazeX.value,
-                        (s.expression.gaze.y * size) + pose.gazeY.value
-                    )
-                    val eyeColor = if (s.robot) lit else MascotColor.Ink.toColor()
-                    drawEye(s.leftEye, s.leftCenter + gaze, pose.blink.value, eyeColor, s.robot, size)
-                    drawEye(s.rightEye, s.rightCenter + gaze, pose.blink.value, eyeColor, s.robot, size)
+                    val gaze = Offset(gazeX * size + pose.gazeX.value, gazeY * size + pose.gazeY.value)
+                    val eyeColor = if (s.robot) light else MascotColor.Ink.toColor()
+                    val leftPath: Path
+                    val rightPath: Path
+                    if (progress >= 1f || from == to) {
+                        val set = s.eyesFor(to)
+                        leftPath = set.leftPath
+                        rightPath = set.rightPath
+                    } else {
+                        val a = s.eyesFor(from)
+                        val b = s.eyesFor(to)
+                        leftPath = MascotGeometry.smoothClosedPath(lerpPoints(a.left, b.left, progress)).toPath()
+                        rightPath = MascotGeometry.smoothClosedPath(lerpPoints(a.right, b.right, progress)).toPath()
+                    }
+                    drawEye(leftPath, s.leftCenter + gaze, pose, eyeColor, s.robot, size)
+                    drawEye(rightPath, s.rightCenter + gaze, pose, eyeColor, s.robot, size)
                 }
             }
         }
     }
 }
 
-private fun DrawScope.drawEye(path: Path, center: Offset, blink: Float, color: Color, glow: Boolean, size: Float) {
+private fun DrawScope.drawEye(path: Path, center: Offset, pose: MascotPose, color: Color, glow: Boolean, size: Float) {
     translate(left = center.x, top = center.y) {
-        scale(scaleX = 1f, scaleY = blink, pivot = Offset.Zero) {
+        val beat = pose.eyeScale.value
+        scale(scaleX = beat, scaleY = beat * pose.blink.value, pivot = Offset.Zero) {
             if (glow) {
                 // A lit visor eye glows softly; a thin translucent halo stands in for the reference's shadow.
                 drawPath(path, color.copy(alpha = 0.35f), style = Stroke(width = (size * 0.05f).coerceAtLeast(1f)))

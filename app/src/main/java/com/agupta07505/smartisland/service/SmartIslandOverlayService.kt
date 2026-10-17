@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.buddy.runtime.MascotEvents
+import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import com.agupta07505.smartisland.ui.PillLayout
 import com.agupta07505.smartisland.util.CameraCutoutDetector
 import android.annotation.SuppressLint
@@ -113,6 +115,44 @@ class SmartIslandOverlayService : AccessibilityService() {
             }
     )
 
+    private var unlockWatchJob: kotlinx.coroutines.Job? = null
+    private var lastUnlockAnnouncedMs = 0L
+
+    /**
+     * Tells the buddy the phone was unlocked. Some ROMs never deliver ACTION_USER_PRESENT to this app, so
+     * after the screen turns on we also watch the keyguard for a few minutes at most (a cheap check four
+     * times a second, only while it is showing) and announce the moment it goes away. A phone with no lock
+     * is announced at once. Whichever signal comes first wins; the other is ignored.
+     */
+    private fun watchForUnlock() {
+        unlockWatchJob?.cancel()
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        if (keyguardManager?.isKeyguardLocked != true) {
+            announceUnlock()
+            return
+        }
+        unlockWatchJob = serviceScope.launch {
+            repeat(UNLOCK_WATCH_MAX_TICKS) {
+                kotlinx.coroutines.delay(UNLOCK_WATCH_INTERVAL_MS)
+                if (keyguardManager.isKeyguardLocked != true) {
+                    isLockScreenActive = false
+                    if (::viewModel.isInitialized) {
+                        updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
+                    }
+                    announceUnlock()
+                    return@launch
+                }
+            }
+        }
+    }
+
+    private fun announceUnlock() {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastUnlockAnnouncedMs < UNLOCK_DEDUPE_MS) return
+        lastUnlockAnnouncedMs = now
+        MascotEvents.post(MascotMoment.Unlock)
+    }
+
     // Monitor screen state and unlock events to show/hide the island accordingly
     private val screenStateReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -127,8 +167,10 @@ class SmartIslandOverlayService : AccessibilityService() {
                             isWindowExpanded,
                             viewModel.settings.value
                         )
+                        watchForUnlock()
                     }
                     Intent.ACTION_SCREEN_OFF -> {
+                        unlockWatchJob?.cancel()
                         overlayOwners.pause()
                         isLockScreenActive = true
                         updateWindowLayoutParams(
@@ -138,6 +180,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     }
                     Intent.ACTION_USER_PRESENT -> {
                         isLockScreenActive = false
+                        announceUnlock()
                         updateWindowLayoutParams(
                             isWindowExpanded,
                             viewModel.settings.value
@@ -990,5 +1033,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         private const val OVERLAY_CHANNEL_ID = "smart_island_overlay"
         private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
         private const val AUTO_COLLAPSE_DELAY_MS = 220L
+        private const val UNLOCK_WATCH_INTERVAL_MS = 250L
+        private const val UNLOCK_WATCH_MAX_TICKS = 960
+        private const val UNLOCK_DEDUPE_MS = 3000L
     }
 }

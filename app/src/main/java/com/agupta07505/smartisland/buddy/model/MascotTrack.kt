@@ -34,6 +34,13 @@ data class MascotTrack(
     /** How many times larger than the pill it is drawn (the Settings preview shows the pill bigger). */
     val scale: Float = 1f
 ) {
+    /**
+     * How high a hop of [share] of the buddy's size lifts it, kept clear of the pill's top so it never
+     * leaves the pill.
+     */
+    fun hop(share: Float): Float =
+        min(size * share, max(scale, baseline - size / 2f - ceiling - (if (hidden == null) 1f else 2f) * scale))
+
     /** The same track [by] times larger. */
     fun scaled(by: Float) = MascotTrack(
         width * by, height * by, size * by, rest * by,

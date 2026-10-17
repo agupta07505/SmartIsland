@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.buddy.MascotRuntime
+import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.model.MascotTrack
 import com.agupta07505.smartisland.buddy.ui.MascotLayer
 import com.agupta07505.smartisland.util.CameraCutoutDetector
@@ -198,6 +200,12 @@ fun IslandOverlayView(
     val holeWidthDp = if (cutoutInfo.hasHardwareCutout) cutoutInfo.rawWidthDp else null
     val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
+    // The buddy hears about events even while the island is busy, so a reaction can wait for the rest.
+    LaunchedEffect(settings.buddyEnabled, settings.buddyReacts) {
+        MascotRuntime.controller.reacts = settings.buddyEnabled && settings.buddyReacts
+        if (!settings.buddyEnabled) return@LaunchedEffect
+        MascotEvents.moments.collect { MascotRuntime.controller.post(it) }
+    }
     val buddyTrack = remember(pillWidthDp, settings.height, settings.xOffset, settings.buddyEnabled, settings.buddySide, cutoutInfo) {
         MascotTrack.forPill(
             pillWidthDp = pillWidthDp.value,
@@ -879,7 +887,8 @@ fun IslandOverlayView(
                         MascotLayer(
                             look = settings.buddyLook,
                             track = buddyTrack,
-                            active = !expanded && !isHiding && collapsedAlpha > 0.99f
+                            active = !expanded && !isHiding && collapsedAlpha > 0.99f,
+                            controller = MascotRuntime.controller
                         )
                     }
                 }

@@ -49,7 +49,11 @@ import com.agupta07505.smartisland.buddy.model.MascotShape
 import com.agupta07505.smartisland.buddy.model.MascotSide
 import com.agupta07505.smartisland.buddy.model.MascotStyle
 import com.agupta07505.smartisland.buddy.model.MascotTrack
+import com.agupta07505.smartisland.buddy.runtime.MascotController
+import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import com.agupta07505.smartisland.buddy.ui.MascotLayer
+import com.agupta07505.smartisland.ui.components.GroupedRow
+import android.os.SystemClock
 import com.agupta07505.smartisland.buddy.ui.toColor
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
@@ -69,6 +73,8 @@ fun BuddySection(
 ) {
     val scope = rememberCoroutineScope()
     val look = settings.buddyLook
+    // The preview has its own controller: it always rests, and "Try It" plays reactions on it directly.
+    val previewController = remember { MascotController { SystemClock.elapsedRealtime() / 1000.0 } }
     val styleLabels = mapOf(
         MascotStyle.Minimal to stringResource(R.string.buddy_style_minimal),
         MascotStyle.Robot to stringResource(R.string.buddy_style_robot)
@@ -100,7 +106,8 @@ fun BuddySection(
             BuddyPreview(
                 look = look,
                 side = settings.buddySideValue,
-                contentDescription = previewDescription
+                contentDescription = previewDescription,
+                controller = previewController
             )
         }
 
@@ -145,6 +152,33 @@ fun BuddySection(
                     ),
                     selected = settings.buddySideValue,
                     onSelect = { scope.launch { repository.setBuddySide(it.id) } }
+                )
+            }
+        }
+
+        GroupedSection(footer = stringResource(R.string.buddy_react_desc)) {
+            SwitchRow(
+                title = stringResource(R.string.buddy_react_title),
+                checked = settings.buddyReacts,
+                onCheckedChange = { scope.launch { repository.setBuddyReacts(it) } }
+            )
+        }
+
+        GroupedSection(
+            header = stringResource(R.string.buddy_try_header),
+            footer = stringResource(R.string.buddy_try_footer)
+        ) {
+            listOf(
+                R.string.buddy_try_wake to MascotMoment.Unlock,
+                R.string.buddy_try_charging to MascotMoment.Charging,
+                R.string.buddy_try_download to MascotMoment.DownloadFinished,
+                R.string.buddy_try_music to MascotMoment.Music,
+                R.string.buddy_try_timer to MascotMoment.TimeIsUp
+            ).forEach { (label, moment) ->
+                GroupedRow(
+                    title = stringResource(label),
+                    showChevron = false,
+                    onClick = { moment.reaction?.let { previewController.demo(it) } }
                 )
             }
         }
@@ -243,7 +277,8 @@ private fun SwatchRow(
 private fun BuddyPreview(
     look: com.agupta07505.smartisland.buddy.model.MascotLook,
     side: MascotSide,
-    contentDescription: String
+    contentDescription: String,
+    controller: MascotController
 ) {
     val scale = 2.5f
     // A typical island: 112 x 34dp around a 30dp camera hole.
@@ -282,7 +317,7 @@ private fun BuddyPreview(
                         .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
                 )
             }
-            MascotLayer(look = look, track = track, active = true)
+            MascotLayer(look = look, track = track, active = true, controller = controller)
         }
     }
 }

@@ -93,13 +93,15 @@ Every step ends green on `lintDebug testDebugUnitTest` (lint has `warningsAsErro
 Phase 1 build notes: `PillLayout` (width + idle-hide, used by overlay, window and touch region), `MascotTrack`, `MascotBlink` (single and double blink timings from the reference), `MascotCanvas/Pose/Layer`. Rest position follows the reference: beside the camera with a 4-8dp gap; a pill with no camera rests the buddy in the middle. 199 unit tests green, lint clean. 1.11 device check done on the phone (see its note).
 
 ### Phase 2: Moods, reaction gate, unlock
-- [ ] 2.1 `MascotReactionGate` (time injected) + test
-- [ ] 2.2 `MascotEvents` facade (`SharedFlow`) and `MascotController` (state only: reaction queue, rest state, resting mood)
-- [ ] 2.3 Eye morph (`from -> to` over 160ms) and expression changes; `Linger` reactions at rest
-- [ ] 2.4 Hook `ACTION_USER_PRESENT` to WakeUp; sleepy drift
-- [ ] 2.5 Preview buttons route through `controller.post`
-- [ ] 2.6 Tests: `MascotControllerTest` (virtual time: queue patience, gate spacing); event mapping test
-- [ ] 2.7 Verify on phone: preview reactions play; unlock wakes the buddy
+- [x] 2.1 `MascotReactionGate` (time injected) + test
+- [x] 2.2 `MascotEvents` facade (`SharedFlow`) and `MascotController` (state only: reaction queue, rest state, resting mood)
+- [x] 2.3 Eye morph (`from -> to` over 160ms) and expression changes; `Linger` reactions at rest
+- [x] 2.4 Unlock to WakeUp, plus sleepy drift. This phone's ROM never delivers `ACTION_USER_PRESENT` to the app (SCREEN_ON/OFF arrive), so the service also watches the keyguard after SCREEN_ON (250ms check, only while locked, 4 min cap) and announces the unlock once (3s dedupe)
+- [x] 2.5 Preview buttons route through `controller.post`
+- [x] 2.6 Tests: `MascotControllerTest` (virtual time: queue patience, gate spacing); event mapping test
+- [x] 2.7 Verified on the phone: "Try It > Charging" shows heart eyes on the preview; unlocking plays WakeUp on the real pill (happy-eyes frame captured). All 12 reactions are ported; only Love, WakeUp and blink were watched on the device
+
+Phase 2 build notes: `MascotReactionGate`, `MascotMoment`, `MascotController` (virtual-time tested), `MascotEvents`, `MascotRuntime`, `MascotPose` face morph (220ms), `MascotReactions` (all 12), sleepy drift, Buddy settings gain "React to Events" and a "Try It" list. 215 unit tests green, lint clean.
 
 ### Phase 3: Visits
 - [ ] 3.1 Port `Step` sampler and `MascotMotion` paths (lap, pass, home, arrive, farewell, retreat, cross)

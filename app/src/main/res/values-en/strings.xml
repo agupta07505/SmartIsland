@@ -668,4 +668,13 @@
     <string name="buddy_status_on">On</string>
     <string name="buddy_status_off">Off</string>
     <string name="detail_title_buddy">Buddy</string>
+    <string name="buddy_react_title">React to Events</string>
+    <string name="buddy_react_desc">Buddy reacts when something happens, like unlocking your phone.</string>
+    <string name="buddy_try_header">Try It</string>
+    <string name="buddy_try_footer">Plays on the preview above.</string>
+    <string name="buddy_try_wake">Wake Up</string>
+    <string name="buddy_try_charging">Charging</string>
+    <string name="buddy_try_download">Download Finished</string>
+    <string name="buddy_try_music">Music Playing</string>
+    <string name="buddy_try_timer">Timer Done</string>
 </resources>

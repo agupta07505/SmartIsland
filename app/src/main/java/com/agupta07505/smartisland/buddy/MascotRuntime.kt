@@ -1,0 +1,16 @@
+/*
+ * Smart Island (2026)
+ * © Animesh Gupta — github.com/agupta07505
+ * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ */
+
+package com.agupta07505.smartisland.buddy
+
+import android.os.SystemClock
+import com.agupta07505.smartisland.buddy.runtime.MascotController
+
+/** The one controller for the buddy living in the real island. The Settings preview has its own. */
+object MascotRuntime {
+    val controller = MascotController { SystemClock.elapsedRealtime() / 1000.0 }
+}
