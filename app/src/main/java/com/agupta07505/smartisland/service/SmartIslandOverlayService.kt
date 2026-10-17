@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.buddy.MascotRuntime
 import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import com.agupta07505.smartisland.ui.PillLayout
@@ -305,6 +306,15 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
+
+        // A buddy that tucks away or comes back changes how wide the pill is, so the window and touch region follow.
+        serviceScope.launch {
+            MascotRuntime.controller.tucked.collect {
+                if (!destroyed && ::viewModel.isInitialized) {
+                    updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
+                }
+            }
+        }
 
         val screenFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
@@ -691,7 +701,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val isSplitMode = (viewModel.notifications.value.size >= 2) && !settings.enableNotchMode
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount()) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
@@ -798,7 +808,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
         val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false)
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount()) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density

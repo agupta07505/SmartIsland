@@ -123,14 +123,19 @@ private fun DrawScope.drawBuddy(
     val gazeX = fromExpr.gaze.x + (toExpr.gaze.x - fromExpr.gaze.x) * progress
     val gazeY = fromExpr.gaze.y + (toExpr.gaze.y - fromExpr.gaze.y) * progress
     val tilt = fromExpr.tilt + (toExpr.tilt - fromExpr.tilt) * progress + pose.tilt.value
+    // A stroll adds its own hop, landing squash and sideways look (its x is placed by the layer).
+    val walk = pose.walk()
+    val walkLift = (walk?.lift ?: 0f) * density
+    val walkSquash = walk?.squash ?: 0f
+    val walkGaze = (walk?.gaze ?: 0f) * size
 
     // Lift the figure by its own offset so its middle sits at the box's middle.
     translate(left = 0f, top = -s.figureShift) {
         // Squash and tilt are about the figure's base, as in the reference rig.
         val pivot = Offset(size / 2f, size * 0.92f)
-        translate(top = -pose.lift.value) {
+        translate(top = -(pose.lift.value + walkLift)) {
             rotate(degrees = Math.toDegrees(tilt.toDouble()).toFloat(), pivot = pivot) {
-                val squash = pose.squash.value
+                val squash = pose.squash.value + walkSquash
                 scale(scaleX = 1f + 0.8f * squash, scaleY = 1f - squash, pivot = pivot) {
                     if (s.robot) {
                         val bulbColor = lerp(shade, light, pose.bulbLit.value)
@@ -151,7 +156,7 @@ private fun DrawScope.drawBuddy(
                     } else {
                         drawPath(s.shine, MascotColor.Shine.toColor())
                     }
-                    val gaze = Offset(gazeX * size + pose.gazeX.value, gazeY * size + pose.gazeY.value)
+                    val gaze = Offset(gazeX * size + pose.gazeX.value + walkGaze, gazeY * size + pose.gazeY.value)
                     val eyeColor = if (s.robot) light else MascotColor.Ink.toColor()
                     val leftPath: Path
                     val rightPath: Path

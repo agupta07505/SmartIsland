@@ -677,4 +677,12 @@
     <string name="buddy_try_download">下载完成</string>
     <string name="buddy_try_music">播放音乐</string>
     <string name="buddy_try_timer">计时结束</string>
+    <string name="buddy_visits">串门</string>
+    <string name="buddy_visits_off">关闭</string>
+    <string name="buddy_visits_rare">偶尔</string>
+    <string name="buddy_visits_normal">正常</string>
+    <string name="buddy_visits_frequent">经常</string>
+    <string name="buddy_tuck_title">空闲时躲起来</string>
+    <string name="buddy_tuck_desc">静止 30 秒后，Buddy 会打个哈欠并躲到摄像头后面。</string>
+    <string name="buddy_try_visit">串门</string>
 </resources>

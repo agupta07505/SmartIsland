@@ -45,8 +45,15 @@ object PillLayout {
         return baseWidthDp + 2f * shortfall
     }
 
-    fun effectiveWidthDp(settings: SmartIslandSettings, holeWidthDp: Float?, notificationCount: Int): Float =
-        effectiveWidthDp(settings.width, settings.height, holeWidthDp, buddyOnPill(settings, notificationCount))
+    /** A buddy tucked behind the camera needs no wing, so the pill goes back to its base width. */
+    fun effectiveWidthDp(
+        settings: SmartIslandSettings,
+        holeWidthDp: Float?,
+        notificationCount: Int,
+        tucked: Boolean = false
+    ): Float = effectiveWidthDp(
+        settings.width, settings.height, holeWidthDp, buddyOnPill(settings, notificationCount) && !tucked
+    )
 
     /**
      * Whether the overlay window is hidden while nothing is happening. A resting buddy overrides

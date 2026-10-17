@@ -41,6 +41,21 @@ data class MascotTrack(
     fun hop(share: Float): Float =
         min(size * share, max(scale, baseline - size / 2f - ceiling - (if (hidden == null) 1f else 2f) * scale))
 
+    /** Where it stands just out of sight behind the camera, [margin] dp past the camera's near edge. */
+    fun behindCamera(hidden: ClosedFloatingPointRange<Float>, margin: Float): Float =
+        hidden.start + size / 2f + margin * scale
+
+    /** The same track with its resting place on the camera's left. */
+    val leftSide: MascotTrack
+        get() = if (!mirrored) this else copy(mirrored = false, rest = width - rest)
+
+    /** Where it says hello across the pill: past the camera, as far from it as it rests, or toward a capsule's far end. */
+    val farSpot: Float
+        get() {
+            val hole = hidden ?: return min(width - size * 0.8f, rest + width * 0.22f)
+            return hole.endInclusive + (hole.start - rest)
+        }
+
     /** The same track [by] times larger. */
     fun scaled(by: Float) = MascotTrack(
         width * by, height * by, size * by, rest * by,

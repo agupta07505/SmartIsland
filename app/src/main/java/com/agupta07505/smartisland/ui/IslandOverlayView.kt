@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui
 
+import androidx.compose.runtime.collectAsState
+import com.agupta07505.smartisland.buddy.model.MascotVisitKind
+import com.agupta07505.smartisland.buddy.runtime.MascotVisitScheduler
 import com.agupta07505.smartisland.buddy.MascotRuntime
 import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.model.MascotTrack
@@ -198,13 +201,31 @@ fun IslandOverlayView(
     val appContext = androidx.compose.ui.platform.LocalContext.current
     val cutoutInfo = remember(configuration) { CameraCutoutDetector.detect(appContext) }
     val holeWidthDp = if (cutoutInfo.hasHardwareCutout) cutoutInfo.rawWidthDp else null
-    val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size).dp
+    val buddyTucked by MascotRuntime.controller.tucked.collectAsState()
+    val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size, buddyTucked).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
     // The buddy hears about events even while the island is busy, so a reaction can wait for the rest.
     LaunchedEffect(settings.buddyEnabled, settings.buddyReacts) {
         MascotRuntime.controller.reacts = settings.buddyEnabled && settings.buddyReacts
         if (!settings.buddyEnabled) return@LaunchedEffect
         MascotEvents.moments.collect { MascotRuntime.controller.post(it) }
+    }
+    // Now and then it strolls through the pill, and a tucked buddy is called back out. Skipped under Battery
+    // Saver, with Reduce Motion, and whenever the pill is busy (the controller only starts a visit at rest).
+    val visitFrequency = settings.buddyVisitFrequency
+    val visitsReduceMotion = rememberReduceMotion()
+    val visitsContext = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(settings.buddyEnabled, visitFrequency, visitsReduceMotion) {
+        if (!settings.buddyEnabled || visitsReduceMotion) return@LaunchedEffect
+        val power = visitsContext.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
+        while (true) {
+            val wait = MascotVisitScheduler.nextDelaySec(visitFrequency) ?: return@LaunchedEffect
+            kotlinx.coroutines.delay((wait * 1000f).toLong())
+            if (power?.isPowerSaveMode == true) continue
+            val controller = MascotRuntime.controller
+            if (controller.tucked.value) controller.untuck(MascotVisitScheduler.greeting())
+            else controller.startVisit(MascotVisitKind.Lap, MascotVisitScheduler.greeting())
+        }
     }
     val buddyTrack = remember(pillWidthDp, settings.height, settings.xOffset, settings.buddyEnabled, settings.buddySide, cutoutInfo) {
         MascotTrack.forPill(
@@ -888,7 +909,8 @@ fun IslandOverlayView(
                             look = settings.buddyLook,
                             track = buddyTrack,
                             active = !expanded && !isHiding && collapsedAlpha > 0.99f,
-                            controller = MascotRuntime.controller
+                            controller = MascotRuntime.controller,
+                            hidesWhenIdle = settings.buddyHidesWhenIdle
                         )
                     }
                 }

@@ -104,12 +104,14 @@ Phase 1 build notes: `PillLayout` (width + idle-hide, used by overlay, window an
 Phase 2 build notes: `MascotReactionGate`, `MascotMoment`, `MascotController` (virtual-time tested), `MascotEvents`, `MascotRuntime`, `MascotPose` face morph (220ms), `MascotReactions` (all 12), sleepy drift, Buddy settings gain "React to Events" and a "Try It" list. 215 unit tests green, lint clean.
 
 ### Phase 3: Visits
-- [ ] 3.1 Port `Step` sampler and `MascotMotion` paths (lap, pass, home, arrive, farewell, retreat, cross)
-- [ ] 3.2 `MascotTrack` from pill size and the raw cutout (capsule path when there is no hardware cutout)
-- [ ] 3.3 `pose.play(path)` driver, one animated clock
-- [ ] 3.4 Visit scheduler (frequency, skipped under Battery Saver, screen off, expanded, lock screen); welcome hello on enable, farewell on disable; hide-when-idle tuck after 30s with the idle-hide interaction from the plan
-- [ ] 3.5 Test: `MascotMotionTest` (every kind, hidden and capsule tracks, monotonic key times, mirror symmetry, durations)
-- [ ] 3.6 Verify on phone: visit timing, behind-the-cutout pass on the punch hole, Reduce Motion (no strolls)
+- [x] 3.1 Port `Step` sampler and `MascotMotion` paths (lap, pass, home, arrive, farewell, retreat, cross)
+- [x] 3.2 `MascotTrack` from pill size and the raw cutout (capsule path when there is no hardware cutout)
+- [x] 3.3 `pose.play(path)` driver, one animated clock
+- [x] 3.4 Visit scheduler (frequency, skipped under Battery Saver, screen off, expanded, lock screen); welcome hello on enable, farewell on disable; hide-when-idle tuck after 30s with the idle-hide interaction from the plan
+- [x] 3.5 Test: `MascotMotionTest` (every kind, hidden and capsule tracks, monotonic key times, mirror symmetry, durations)
+- [x] 3.6 Verified on the phone: farewell (wink, hop, away behind the camera) then arrival on switching Buddy off and on; idle tuck about 30s after rest; the scheduled visit (Often) brought it back out about 150s later; a full Lap on the preview (out from behind the camera, hello, out the far end, back in at the near end, hop to rest). **Not yet checked:** Battery Saver skip, Reduce Motion, and the pill dropping its wing on tuck (this phone's 112dp pill needs no wing)
+
+Phase 3 build notes (3.6 device check done): `MascotMotion` ports every path (lap, pass, home, arrive, farewell, cross, retreat, cameo, linger, countdown) with the reference sampler; `MascotPath` interpolates in the placement and draw phases (no recomposition while walking); the controller owns the visit, the tuck (30s idle: yawn then away behind the camera, the pill drops its wing) and the schedule (Off/Rare/Normal/Often, skipped under Battery Saver and Reduce Motion). Buddy settings gain Visits, Tuck Away When Idle and a Visit row in Try It; switching Buddy on plays an arrival and off plays a farewell. 241 unit tests green, lint clean.
 
 ### Phase 4: Cameos and event hooks (C1)
 - [ ] 4.1 `Cameo`, `Countdown`, `Retreat`, `Cross`; step-aside of slot content

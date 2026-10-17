@@ -677,4 +677,12 @@
     <string name="buddy_try_download">Download Finished</string>
     <string name="buddy_try_music">Music Playing</string>
     <string name="buddy_try_timer">Timer Done</string>
+    <string name="buddy_visits">Visits</string>
+    <string name="buddy_visits_off">Off</string>
+    <string name="buddy_visits_rare">Rare</string>
+    <string name="buddy_visits_normal">Normal</string>
+    <string name="buddy_visits_frequent">Often</string>
+    <string name="buddy_tuck_title">Tuck Away When Idle</string>
+    <string name="buddy_tuck_desc">After 30 seconds of rest, Buddy yawns and tucks away behind the camera.</string>
+    <string name="buddy_try_visit">Visit</string>
 </resources>

@@ -9,7 +9,10 @@
 
 package com.agupta07505.smartisland.buddy.runtime
 
+import com.agupta07505.smartisland.buddy.model.MascotMood
 import com.agupta07505.smartisland.buddy.model.MascotReaction
+import com.agupta07505.smartisland.buddy.model.MascotVisit
+import com.agupta07505.smartisland.buddy.model.MascotVisitKind
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,6 +33,14 @@ class MascotController(private val clock: () -> Double) {
     /** The latest reaction to play. Each has a fresh [MascotReactionEvent.id]. */
     val reaction: StateFlow<MascotReactionEvent?> = _reaction.asStateFlow()
 
+    private val _visit = MutableStateFlow<MascotVisit?>(null)
+    /** The stroll under way, if any. The layer plays it and reports back with [endVisit]. */
+    val visit: StateFlow<MascotVisit?> = _visit.asStateFlow()
+
+    private val _tucked = MutableStateFlow(false)
+    /** Out of sight behind the camera after a long idle (or while it waits to arrive). The pill drops its wing. */
+    val tucked: StateFlow<Boolean> = _tucked.asStateFlow()
+
     private val gate = MascotReactionGate()
     private var nextId = 1L
     private var pending: Pending? = null
@@ -49,6 +60,44 @@ class MascotController(private val clock: () -> Double) {
 
     fun now(): Double = clock()
 
+    /** Starts a stroll if the buddy is at rest and none is under way. Returns whether it started. */
+    fun startVisit(kind: MascotVisitKind, greeting: MascotMood = MascotMood.Happy): Boolean {
+        if (!atRest || _visit.value != null) return false
+        _visit.value = MascotVisit(nextId++, kind, greeting, clock())
+        return true
+    }
+
+    /** The layer finished (or abandoned) visit [id]. Leaving for the idle tuck leaves it tucked. */
+    fun endVisit(id: Long) {
+        val v = _visit.value ?: return
+        if (v.id != id) return
+        _visit.value = null
+        if (v.kind == HIDE_AWAY) _tucked.value = true
+        flush()
+    }
+
+    /** After a long idle: a yawn, then away behind the camera. */
+    fun requestTuck(): Boolean = startVisit(HIDE_AWAY, MascotMood.Sleepy)
+
+    /** Out of sight at once, so a buddy about to arrive is not seen resting first. */
+    fun hideForArrival() {
+        _tucked.value = true
+    }
+
+    /** Comes back out from behind the camera. */
+    fun untuck(greeting: MascotMood = MascotMood.Happy) {
+        if (!_tucked.value) return
+        _tucked.value = false
+        startVisit(MascotVisitKind.Arrive, greeting)
+    }
+
+    /** Drops anything under way, as when the buddy is switched off. */
+    fun reset() {
+        pending = null
+        _visit.value = null
+        _tucked.value = false
+    }
+
     /** Something happened. Plays now if the buddy is at rest, else waits for it. */
     fun post(moment: MascotMoment) {
         val reaction = moment.reaction ?: return
@@ -58,6 +107,8 @@ class MascotController(private val clock: () -> Double) {
     fun post(reaction: MascotReaction) {
         if (!reacts) return
         pending = Pending(reaction, clock() + MascotReactionGate.PATIENCE_SEC)
+        // Something to react to brings it back out first, and the reaction plays when it lands.
+        if (_tucked.value && atRest) untuck()
         flush()
     }
 
@@ -69,7 +120,11 @@ class MascotController(private val clock: () -> Double) {
     fun setAtRest(value: Boolean) {
         if (atRest == value) return
         atRest = value
-        if (value) flush()
+        if (value) {
+            // A reaction that waited for the pill to empty brings a tucked buddy back out.
+            if (pending != null && _tucked.value) untuck()
+            flush()
+        }
     }
 
     private fun flush() {
@@ -79,7 +134,7 @@ class MascotController(private val clock: () -> Double) {
             pending = null
             return
         }
-        if (!atRest) return
+        if (!atRest || _visit.value != null || _tucked.value) return
         pending = null
         if (!gate.admits(p.reaction, now)) return
         _reaction.value = MascotReactionEvent(nextId++, p.reaction, now)
@@ -90,6 +145,27 @@ class MascotController(private val clock: () -> Double) {
         pending = null
     }
 }
+
+/**
+ * The visit schedule and the greetings it brings. Pure, so tests can pin the numbers.
+ */
+object MascotVisitScheduler {
+    /** How long after being put away it stays idle before tucking itself behind the camera. */
+    const val HIDE_DELAY_SEC = 30f
+    /** The faces it greets with, picked at random. */
+    val greetings = listOf(MascotMood.Happy, MascotMood.Wink, MascotMood.Love)
+
+    /** Seconds until the next visit for [frequency], or null when visits are off. */
+    fun nextDelaySec(frequency: com.agupta07505.smartisland.buddy.model.MascotVisitFrequency, random: kotlin.random.Random = kotlin.random.Random): Float? {
+        val range = frequency.delaySec ?: return null
+        return range.start + random.nextFloat() * (range.endInclusive - range.start)
+    }
+
+    fun greeting(random: kotlin.random.Random = kotlin.random.Random): MascotMood = greetings[random.nextInt(greetings.size)]
+}
+
+/** The idle tuck: a yawn where it rests, then away behind the camera. */
+val HIDE_AWAY: MascotVisitKind = MascotVisitKind.Linger(MascotReaction.Yawn)
 
 /**
  * One-line entry point for receivers and services, so they need no controller reference. Moments

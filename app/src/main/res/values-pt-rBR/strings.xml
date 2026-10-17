@@ -677,4 +677,12 @@
     <string name="buddy_try_download">Download concluído</string>
     <string name="buddy_try_music">Música tocando</string>
     <string name="buddy_try_timer">Temporizador concluído</string>
+    <string name="buddy_visits">Visitas</string>
+    <string name="buddy_visits_off">Desligado</string>
+    <string name="buddy_visits_rare">Raras</string>
+    <string name="buddy_visits_normal">Normais</string>
+    <string name="buddy_visits_frequent">Frequentes</string>
+    <string name="buddy_tuck_title">Esconder quando ocioso</string>
+    <string name="buddy_tuck_desc">Após 30 segundos de descanso, o Buddy boceja e se esconde atrás da câmera.</string>
+    <string name="buddy_try_visit">Visita</string>
 </resources>

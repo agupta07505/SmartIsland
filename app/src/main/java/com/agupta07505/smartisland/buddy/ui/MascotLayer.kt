@@ -16,11 +16,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import com.agupta07505.smartisland.buddy.runtime.MascotVisitScheduler
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.buddy.model.MascotLook
@@ -51,7 +56,8 @@ fun MascotLayer(
     track: MascotTrack,
     active: Boolean,
     controller: MascotController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hidesWhenIdle: Boolean = false
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current.density
@@ -74,10 +80,31 @@ fun MascotLayer(
         }
     }
 
-    // Blinks, and a doze after a long rest. Nothing runs while it sleeps or is not at rest.
-    LaunchedEffect(active, reduceMotion, pose.baseMood) {
+    // Strolls. The controller starts one; this plays it and reports back, even if cut short.
+    val visit by controller.visit.collectAsState()
+    val tucked by controller.tucked.collectAsState()
+    LaunchedEffect(visit?.id, reduceMotion, track) {
+        val v = visit ?: return@LaunchedEffect
+        try {
+            pose.playVisit(v, track, reduceMotion)
+        } finally {
+            controller.endVisit(v.id)
+        }
+    }
+
+    // After a long idle it yawns and tucks itself behind the camera, and the pill drops its wing.
+    val lastReaction by controller.reaction.collectAsState()
+    LaunchedEffect(active, hidesWhenIdle, tucked, visit == null, lastReaction?.id, pose.baseMood) {
+        if (!active || !hidesWhenIdle || tucked || visit != null) return@LaunchedEffect
+        delay((MascotVisitScheduler.HIDE_DELAY_SEC * 1000f).toLong())
+        // Not now (something is under way)? Try again shortly rather than waiting a full delay.
+        while (isActive && !controller.requestTuck()) delay(3000)
+    }
+
+    // Blinks, and a doze after a long rest. Nothing runs while it sleeps, strolls or is not at rest.
+    LaunchedEffect(active, reduceMotion, pose.baseMood, visit == null, tucked) {
         pose.blink.snapTo(1f)
-        if (!active || !pose.baseMood.expression.blinks) return@LaunchedEffect
+        if (!active || visit != null || tucked || !pose.baseMood.expression.blinks) return@LaunchedEffect
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         var blinks = 0
         while (isActive) {
@@ -94,15 +121,21 @@ fun MascotLayer(
 
     val size = track.size.dp
     // The box keeps headroom for the robot's antenna; the canvas centres the figure itself, so the box
-    // is placed by its middle on the track's baseline.
+    // is placed by its middle on the track's baseline. Its x follows the stroll, read in the placement
+    // phase only, so walking costs no recomposition.
     Box(modifier = modifier.fillMaxSize().clearAndSetSemantics { }) {
-        Box(
-            modifier = Modifier.offset(
-                x = (track.rest - track.size / 2f).dp,
-                y = (track.baseline - track.size / 2f).dp
-            )
-        ) {
-            MascotCanvas(look = look, pose = pose, size = size)
+        if (!tucked || visit != null) {
+            Box(
+                modifier = Modifier.offset {
+                    val cx = pose.walk()?.x ?: track.rest
+                    IntOffset(
+                        ((cx - track.size / 2f) * density).roundToInt(),
+                        ((track.baseline - track.size / 2f) * density).roundToInt()
+                    )
+                }
+            ) {
+                MascotCanvas(look = look, pose = pose, size = size)
+            }
         }
     }
 }

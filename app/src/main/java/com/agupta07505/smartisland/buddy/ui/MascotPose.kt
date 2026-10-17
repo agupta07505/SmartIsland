@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.agupta07505.smartisland.buddy.model.MascotMood
+import com.agupta07505.smartisland.buddy.model.MascotPath
 import com.agupta07505.smartisland.buddy.runtime.MascotBlink
 import kotlinx.coroutines.delay
 
@@ -52,6 +53,15 @@ class MascotPose {
 
     /** The face it keeps at rest; reactions flash another over it and come back to this. */
     var baseMood by mutableStateOf(MascotMood.Idle)
+
+    // A stroll under way: where it is along its path, read in the layout and draw phases only.
+    var path by mutableStateOf<MascotPath?>(null)
+    /** Seconds into [path]. */
+    val visitTime = Animatable(0f)
+    private val scratch = MascotPath.Sample()
+
+    /** Where the stroll has it right now, or null when it is not walking. Reuses one sample: read it, don't keep it. */
+    fun walk(): MascotPath.Sample? = path?.at(visitTime.value, scratch)
 
     private fun shownMood(): MascotMood = if (morph.value >= 0.5f) faceTo else faceFrom
 

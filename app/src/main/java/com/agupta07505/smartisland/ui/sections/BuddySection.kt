@@ -32,6 +32,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import com.agupta07505.smartisland.buddy.MascotRuntime
+import com.agupta07505.smartisland.buddy.model.MascotVisitFrequency
+import com.agupta07505.smartisland.buddy.model.MascotVisitKind
+import com.agupta07505.smartisland.buddy.motion.MascotMotion
+import com.agupta07505.smartisland.buddy.runtime.MascotVisitScheduler
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -118,7 +124,25 @@ fun BuddySection(
             SwitchRow(
                 title = stringResource(R.string.buddy_show),
                 checked = settings.buddyEnabled,
-                onCheckedChange = { scope.launch { repository.setBuddyEnabled(it) } }
+                onCheckedChange = { on ->
+                    scope.launch {
+                        val live = MascotRuntime.controller
+                        if (on) {
+                            // Out from behind the camera to its place, with a hello.
+                            live.hideForArrival()
+                            repository.setBuddyEnabled(true)
+                            delay(250)
+                            live.untuck(MascotVisitScheduler.greeting())
+                        } else {
+                            // A glad hop and away before the pill folds back.
+                            if (live.startVisit(MascotVisitKind.Farewell, MascotVisitScheduler.greeting())) {
+                                delay((MascotMotion.FAREWELL_SEC * 1000f).toLong() + 100)
+                            }
+                            repository.setBuddyEnabled(false)
+                            live.reset()
+                        }
+                    }
+                }
             )
         }
 
@@ -157,6 +181,24 @@ fun BuddySection(
         }
 
         GroupedSection(footer = stringResource(R.string.buddy_react_desc)) {
+            ControlRow(title = stringResource(R.string.buddy_visits)) {
+                SegmentedControl(
+                    options = listOf(
+                        MascotVisitFrequency.Off to stringResource(R.string.buddy_visits_off),
+                        MascotVisitFrequency.Rare to stringResource(R.string.buddy_visits_rare),
+                        MascotVisitFrequency.Normal to stringResource(R.string.buddy_visits_normal),
+                        MascotVisitFrequency.Frequent to stringResource(R.string.buddy_visits_frequent)
+                    ),
+                    selected = settings.buddyVisitFrequency,
+                    onSelect = { scope.launch { repository.setBuddyVisits(it.id) } }
+                )
+            }
+            SwitchRow(
+                title = stringResource(R.string.buddy_tuck_title),
+                subtitle = stringResource(R.string.buddy_tuck_desc),
+                checked = settings.buddyHidesWhenIdle,
+                onCheckedChange = { scope.launch { repository.setBuddyHidesWhenIdle(it) } }
+            )
             SwitchRow(
                 title = stringResource(R.string.buddy_react_title),
                 checked = settings.buddyReacts,
@@ -168,6 +210,11 @@ fun BuddySection(
             header = stringResource(R.string.buddy_try_header),
             footer = stringResource(R.string.buddy_try_footer)
         ) {
+            GroupedRow(
+                title = stringResource(R.string.buddy_try_visit),
+                showChevron = false,
+                onClick = { previewController.startVisit(MascotVisitKind.Lap, MascotVisitScheduler.greeting()) }
+            )
             listOf(
                 R.string.buddy_try_wake to MascotMoment.Unlock,
                 R.string.buddy_try_charging to MascotMoment.Charging,
@@ -306,6 +353,8 @@ private fun BuddyPreview(
                 .clip(RoundedCornerShape((track.height / 2f).dp))
                 .background(Color.Black)
         ) {
+            MascotLayer(look = look, track = track, active = true, controller = controller)
+            // The camera hole is drawn over the buddy, so a stroll passes behind it as on the real pill.
             val hole = track.hidden
             if (hole != null) {
                 Box(
@@ -317,7 +366,6 @@ private fun BuddyPreview(
                         .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
                 )
             }
-            MascotLayer(look = look, track = track, active = true, controller = controller)
         }
     }
 }
