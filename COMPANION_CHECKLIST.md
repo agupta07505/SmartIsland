@@ -78,17 +78,19 @@ Every step ends green on `lintDebug testDebugUnitTest` (lint has `warningsAsErro
 - [x] 0.3 Credit added: About > Acknowledgements row (opens the upstream repo, strings in all six locale files) and a README Acknowledgements section; no Vorssaint name or logo used elsewhere
 
 ### Phase 1: Static buddy at rest
-- [ ] 1.1 Model: `MascotStyle/Shape/Palette/Look/Mood/Eye/Expression/Reaction/Side/VisitFrequency` (pure Kotlin) + `MascotFaceLayout`
-- [ ] 1.2 Test: palette contrast (light and shade vs black at least 3:1, eyes vs body at least 4.5:1), mood-to-expression table
-- [ ] 1.3 Geometry: bodies, robot, `eyePoints` (exactly 24 points), `resample`, `smoothClosedPath`, `figureOffset`
-- [ ] 1.4 Test: `MascotGeometryTest` (24 points per eye, closed outline, finite bounds per shape)
-- [ ] 1.5 `CameraCutoutDetector`: add the raw cutout rect; extend `CameraCutoutDetectorTest`
-- [ ] 1.6 Shared helpers: `effectivePillWidthDp(...)` and `isIdleHidden(...)`; replace all duplicated sites (C3); behavior-neutral, existing tests plus a new helper test
-- [ ] 1.7 Settings: fields, JSON backup keys with clamping and invalid-enum fallback, DataStore keys, setters; extend `SmartIslandSettingsTest`
-- [ ] 1.8 `MascotCanvas` + `MascotPose` (draw-phase reads only); `MascotLayer` placed in the pill, shown only when enabled, `Empty` and collapsed; wing widening by shortfall (C2)
-- [ ] 1.9 Blink loop with `rememberReduceMotion()` and lifecycle/visibility gating (C7)
-- [ ] 1.10 `BuddySection` (preview card, pickers, swatches, switches), Settings > Appearance row, `FeatureDetailSection.Buddy`, strings in all six locales
-- [ ] 1.11 Verify on phone: renders at rest, no touch-region change, notification still shows and hides the buddy, idle frames between blinks are zero (`adb shell dumpsys gfxinfo`), light and dark settings
+- [x] 1.1 Model: `MascotStyle/Shape/Palette/Look/Mood/Eye/Expression/Reaction/Side/VisitFrequency` (pure Kotlin) + `MascotFaceLayout`
+- [x] 1.2 Test: palette contrast (light and shade vs black at least 3:1, eyes vs body at least 4.5:1), mood-to-expression table
+- [x] 1.3 Geometry: bodies, robot, `eyePoints` (exactly 24 points), `resample`, `smoothClosedPath`, `figureOffset`
+- [x] 1.4 Test: `MascotGeometryTest` (24 points per eye, closed outline, finite bounds per shape)
+- [x] 1.5 `CameraCutoutDetector`: add the raw cutout rect; extend `CameraCutoutDetectorTest`
+- [x] 1.6 Shared helpers: `effectivePillWidthDp(...)` and `isIdleHidden(...)`; replace all duplicated sites (C3); behavior-neutral, existing tests plus a new helper test
+- [x] 1.7 Settings: fields, JSON backup keys with clamping and invalid-enum fallback, DataStore keys, setters; extend `SmartIslandSettingsTest`
+- [x] 1.8 `MascotCanvas` + `MascotPose` (draw-phase reads only); `MascotLayer` placed in the pill, shown only when enabled, `Empty` and collapsed; wing widening by shortfall (C2)
+- [x] 1.9 Blink loop with `rememberReduceMotion()` and lifecycle/visibility gating (C7)
+- [x] 1.10 `BuddySection`, Settings > Appearance row, `FeatureDetailSection.Buddy`, strings in all six locales. Phase 1 shows only controls that already do something (Show Buddy, Style, Shape, Color, Side); Visits, React to Events and Auto-Hide controls are persisted but stay hidden until Phases 3-4 so no dead controls appear
+- [x] 1.11 Verified on the phone (punch-hole, 112dp pill, dark mode): buddy rests beside the camera; steps aside for a notification and returns after Clear; the Buddy settings screen previews every look; idle rendering is sparse (0 frames in most seconds, 6-21 frames in blink seconds, via `dumpsys gfxinfo`). **Not yet checked:** light mode, landscape, lock screen, Battery Saver, no-cutout and left-corner cameras (Phase 5 matrix)
+
+Phase 1 build notes: `PillLayout` (width + idle-hide, used by overlay, window and touch region), `MascotTrack`, `MascotBlink` (single and double blink timings from the reference), `MascotCanvas/Pose/Layer`. Rest position follows the reference: beside the camera with a 4-8dp gap; a pill with no camera rests the buddy in the middle. 199 unit tests green, lint clean. 1.11 device check done on the phone (see its note).
 
 ### Phase 2: Moods, reaction gate, unlock
 - [ ] 2.1 `MascotReactionGate` (time injected) + test

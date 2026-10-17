@@ -291,4 +291,70 @@ class SmartIslandSettingsTest {
         val clamped = SmartIslandSettings.fromJson("""{"settings": {"notificationHistoryRetentionHours": 100000}}""")
         assertEquals(720, clamped.notificationHistoryRetentionHours)
     }
+
+    @Test
+    fun buddyDefaultsAreOffAndStandardLook() {
+        val d = SmartIslandSettings.Default
+        assertEquals(false, d.buddyEnabled)
+        assertEquals("minimal", d.buddyStyle)
+        assertEquals("ball", d.buddyShape)
+        assertEquals("pearl", d.buddyPalette)
+        assertEquals("left", d.buddySide)
+        assertEquals("normal", d.buddyVisits)
+        assertEquals(true, d.buddyReacts)
+        assertEquals(true, d.buddyHidesWhenIdle)
+        assertEquals(com.agupta07505.smartisland.buddy.model.MascotLook.Standard, d.buddyLook)
+    }
+
+    @Test
+    fun buddySettingsRoundTripThroughBackup() {
+        val original = SmartIslandSettings.Default.copy(
+            buddyEnabled = true,
+            buddyStyle = "robot",
+            buddyShape = "squircle",
+            buddyPalette = "mint",
+            buddySide = "right",
+            buddyVisits = "off",
+            buddyReacts = false,
+            buddyHidesWhenIdle = false
+        )
+        val restored = SmartIslandSettings.fromJson(original.toJson(appVersion = "7.0.0"))
+        assertEquals(original.buddyEnabled, restored.buddyEnabled)
+        assertEquals("robot", restored.buddyStyle)
+        assertEquals("squircle", restored.buddyShape)
+        assertEquals("mint", restored.buddyPalette)
+        assertEquals("right", restored.buddySide)
+        assertEquals("off", restored.buddyVisits)
+        assertEquals(false, restored.buddyReacts)
+        assertEquals(false, restored.buddyHidesWhenIdle)
+    }
+
+    @Test
+    fun invalidBuddyValuesFallBackToDefaults() {
+        val json = SmartIslandSettings.Default.copy(
+            buddyStyle = "dragon",
+            buddyShape = "triangle",
+            buddyPalette = "neon",
+            buddySide = "up",
+            buddyVisits = "hourly"
+        ).toJson()
+        val restored = SmartIslandSettings.fromJson(json)
+        assertEquals("minimal", restored.buddyStyle)
+        assertEquals("ball", restored.buddyShape)
+        assertEquals("pearl", restored.buddyPalette)
+        assertEquals("left", restored.buddySide)
+        assertEquals("normal", restored.buddyVisits)
+    }
+
+    @Test
+    fun oldBackupWithoutBuddyKeysKeepsBuddyDefaults() {
+        val old = SmartIslandSettings.Default.toJson()
+        val stripped = org.json.JSONObject(old).also { root ->
+            val settings = root.getJSONObject("settings")
+            settings.keys().asSequence().filter { it.startsWith("buddy") }.toList().forEach { settings.remove(it) }
+        }.toString()
+        val restored = SmartIslandSettings.fromJson(stripped)
+        assertEquals(false, restored.buddyEnabled)
+        assertEquals("pearl", restored.buddyPalette)
+    }
 }

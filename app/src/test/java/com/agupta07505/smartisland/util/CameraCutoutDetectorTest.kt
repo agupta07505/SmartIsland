@@ -56,4 +56,26 @@ class CameraCutoutDetectorTest {
         assertEquals(-140f, result.xOffsetDp, 0.01f)
         assertEquals(4f, result.yOffsetDp, 0.01f) // 10 / 2.5 = 4dp
     }
+
+    @Test
+    fun testRawCutoutMeasurementsAreUnpaddedAndUnclamped() {
+        val result = CameraCutoutDetector.calculateCutoutOffset(
+            left = 50, top = 10, right = 130, bottom = 90, screenWidthPx = 1080, density = 2.5f
+        )
+        // 80px / 2.5 = 32dp: the real hole, not the padded pill width.
+        assertEquals(32f, result.rawWidthDp, 0.01f)
+        // Centre 90px vs 540px, -450px / 2.5 = -180dp, even though xOffsetDp is clamped to -140.
+        assertEquals(-180f, result.rawCenterOffsetDp, 0.01f)
+        assertEquals(-140f, result.xOffsetDp, 0.01f)
+    }
+
+    @Test
+    fun testNoCutoutHasNoRawMeasurements() {
+        val result = CameraCutoutDetector.calculateCutoutOffset(
+            left = 0, top = 0, right = 10, bottom = 10, screenWidthPx = 1080, density = 0f
+        )
+        assertEquals(false, result.hasHardwareCutout)
+        assertEquals(0f, result.rawWidthDp, 0f)
+        assertEquals(0f, result.rawCenterOffsetDp, 0f)
+    }
 }

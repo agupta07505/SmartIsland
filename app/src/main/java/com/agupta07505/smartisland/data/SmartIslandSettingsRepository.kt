@@ -7,6 +7,11 @@
 
 package com.agupta07505.smartisland.data
 
+import com.agupta07505.smartisland.buddy.model.MascotPalette
+import com.agupta07505.smartisland.buddy.model.MascotShape
+import com.agupta07505.smartisland.buddy.model.MascotSide
+import com.agupta07505.smartisland.buddy.model.MascotStyle
+import com.agupta07505.smartisland.buddy.model.MascotVisitFrequency
 import android.content.Context
 import android.util.Log
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -103,6 +108,14 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val PillSwipeLeftAction = stringPreferencesKey("pill_swipe_left_action")
         val PillSwipeRightAction = stringPreferencesKey("pill_swipe_right_action")
         val CirclePosition = stringPreferencesKey("circle_position")
+        val BuddyEnabled = booleanPreferencesKey("buddy_enabled")
+        val BuddyStyle = stringPreferencesKey("buddy_style")
+        val BuddyShape = stringPreferencesKey("buddy_shape")
+        val BuddyPalette = stringPreferencesKey("buddy_palette")
+        val BuddySide = stringPreferencesKey("buddy_side")
+        val BuddyVisits = stringPreferencesKey("buddy_visits")
+        val BuddyReacts = booleanPreferencesKey("buddy_reacts")
+        val BuddyHidesWhenIdle = booleanPreferencesKey("buddy_hides_when_idle")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -242,7 +255,15 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 pillSwipeDownAction = prefs[Keys.PillSwipeDownAction] ?: defaults.pillSwipeDownAction,
                 pillSwipeLeftAction = prefs[Keys.PillSwipeLeftAction] ?: defaults.pillSwipeLeftAction,
                 pillSwipeRightAction = prefs[Keys.PillSwipeRightAction] ?: defaults.pillSwipeRightAction,
-                circlePosition = prefs[Keys.CirclePosition]?.takeIf { it in VALID_CIRCLE_POSITIONS } ?: defaults.circlePosition
+                circlePosition = prefs[Keys.CirclePosition]?.takeIf { it in VALID_CIRCLE_POSITIONS } ?: defaults.circlePosition,
+                buddyEnabled = prefs[Keys.BuddyEnabled] ?: defaults.buddyEnabled,
+                buddyStyle = MascotStyle.fromId(prefs[Keys.BuddyStyle]).id,
+                buddyShape = MascotShape.fromId(prefs[Keys.BuddyShape]).id,
+                buddyPalette = MascotPalette.fromId(prefs[Keys.BuddyPalette]).id,
+                buddySide = MascotSide.fromId(prefs[Keys.BuddySide]).id,
+                buddyVisits = MascotVisitFrequency.fromId(prefs[Keys.BuddyVisits]).id,
+                buddyReacts = prefs[Keys.BuddyReacts] ?: defaults.buddyReacts,
+                buddyHidesWhenIdle = prefs[Keys.BuddyHidesWhenIdle] ?: defaults.buddyHidesWhenIdle
             )
         }
 
@@ -508,6 +529,14 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setCirclePosition(value: String) = editSafely {
         it[Keys.CirclePosition] = if (value in VALID_CIRCLE_POSITIONS) value else SmartIslandSettings.CIRCLE_POSITION_RIGHT
     }
+    suspend fun setBuddyEnabled(value: Boolean) = editSafely { it[Keys.BuddyEnabled] = value }
+    suspend fun setBuddyStyle(value: String) = editSafely { it[Keys.BuddyStyle] = MascotStyle.fromId(value).id }
+    suspend fun setBuddyShape(value: String) = editSafely { it[Keys.BuddyShape] = MascotShape.fromId(value).id }
+    suspend fun setBuddyPalette(value: String) = editSafely { it[Keys.BuddyPalette] = MascotPalette.fromId(value).id }
+    suspend fun setBuddySide(value: String) = editSafely { it[Keys.BuddySide] = MascotSide.fromId(value).id }
+    suspend fun setBuddyVisits(value: String) = editSafely { it[Keys.BuddyVisits] = MascotVisitFrequency.fromId(value).id }
+    suspend fun setBuddyReacts(value: Boolean) = editSafely { it[Keys.BuddyReacts] = value }
+    suspend fun setBuddyHidesWhenIdle(value: Boolean) = editSafely { it[Keys.BuddyHidesWhenIdle] = value }
     suspend fun toggleNotificationCooldownExcludedPackage(packageName: String) = editSafely { prefs ->
         val current = prefs[Keys.NotificationCooldownExcludedPackages] ?: emptySet()
         prefs[Keys.NotificationCooldownExcludedPackages] = if (packageName in current) {
@@ -645,6 +674,14 @@ class SmartIslandSettingsRepository(private val context: Context) {
         } else {
             SmartIslandSettings.CIRCLE_POSITION_RIGHT
         }
+        prefs[Keys.BuddyEnabled] = settings.buddyEnabled
+        prefs[Keys.BuddyStyle] = MascotStyle.fromId(settings.buddyStyle).id
+        prefs[Keys.BuddyShape] = MascotShape.fromId(settings.buddyShape).id
+        prefs[Keys.BuddyPalette] = MascotPalette.fromId(settings.buddyPalette).id
+        prefs[Keys.BuddySide] = MascotSide.fromId(settings.buddySide).id
+        prefs[Keys.BuddyVisits] = MascotVisitFrequency.fromId(settings.buddyVisits).id
+        prefs[Keys.BuddyReacts] = settings.buddyReacts
+        prefs[Keys.BuddyHidesWhenIdle] = settings.buddyHidesWhenIdle
     }
 
     suspend fun resetAllSettings() = restoreSettings(SmartIslandSettings.Default.copy(welcomeDialogShown = true))

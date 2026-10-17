@@ -32,6 +32,8 @@ import com.agupta07505.smartisland.ui.components.StatusLabel
 import com.agupta07505.smartisland.ui.components.SwitchRow
 import com.agupta07505.smartisland.ui.components.TintedActionButton
 import android.widget.Toast
+import androidx.compose.material.icons.rounded.EmojiEmotions
+import com.agupta07505.smartisland.ui.sections.BuddySection
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -181,7 +183,8 @@ private enum class FeatureDetailSection {
     BackupRestore,
     AboutApp,
     SupportCommunity,
-    DeveloperOptions
+    DeveloperOptions,
+    Buddy
 }
 
 @SuppressLint("BatteryLife")
@@ -613,6 +616,12 @@ private fun SettingsOverviewSection(
                 icon = Icons.Rounded.Gesture,
                 onClick = { onNavigateTo(FeatureDetailSection.GesturesGuide) }
             )
+            GroupedRow(
+                title = stringResource(R.string.buddy_title),
+                icon = Icons.Rounded.EmojiEmotions,
+                value = stringResource(if (settings.buddyEnabled) R.string.buddy_status_on else R.string.buddy_status_off),
+                onClick = { onNavigateTo(FeatureDetailSection.Buddy) }
+            )
         }
 
         GroupedSection(
@@ -764,6 +773,7 @@ private fun DetailScreenHost(
         FeatureDetailSection.AboutApp -> stringResource(R.string.detail_title_about_app)
         FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
         FeatureDetailSection.DeveloperOptions -> stringResource(R.string.detail_title_developer_options)
+        FeatureDetailSection.Buddy -> stringResource(R.string.detail_title_buddy)
     }
 
     Box(
@@ -862,6 +872,9 @@ private fun DetailScreenHost(
             }
             FeatureDetailSection.DeveloperOptions -> {
                 DeveloperOptionsSection(settings = settings, repository = repository)
+            }
+            FeatureDetailSection.Buddy -> {
+                BuddySection(settings = settings, repository = repository)
             }
         }
     }

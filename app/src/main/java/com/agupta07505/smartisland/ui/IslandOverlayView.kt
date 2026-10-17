@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.buddy.model.MascotTrack
+import com.agupta07505.smartisland.buddy.ui.MascotLayer
+import com.agupta07505.smartisland.util.CameraCutoutDetector
 import com.agupta07505.smartisland.R
 import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.data.SmartIslandCommand
@@ -189,30 +192,47 @@ fun IslandOverlayView(
         }
     }
 
+    // One shared width: the base width, widened only as far as a resting buddy needs (see PillLayout).
+    val appContext = androidx.compose.ui.platform.LocalContext.current
+    val cutoutInfo = remember(configuration) { CameraCutoutDetector.detect(appContext) }
+    val holeWidthDp = if (cutoutInfo.hasHardwareCutout) cutoutInfo.rawWidthDp else null
+    val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size).dp
+    val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
+    val buddyTrack = remember(pillWidthDp, settings.height, settings.xOffset, settings.buddyEnabled, settings.buddySide, cutoutInfo) {
+        MascotTrack.forPill(
+            pillWidthDp = pillWidthDp.value,
+            pillHeightDp = settings.height,
+            sizeDp = PillLayout.buddySizeDp(settings.height),
+            holeWidthDp = holeWidthDp,
+            // Where the hole sits in the pill: the pill's middle, plus how far the hole is from where the pill is.
+            holeCenterDp = holeWidthDp?.let { pillWidthDp.value / 2f + (cutoutInfo.rawCenterOffsetDp - settings.xOffset) },
+            side = settings.buddySideValue
+        )
+    }
     val compactGap = COMPACT_INDICATOR_GAP_DP.dp
-    val miniPillWidth = settings.width.dp
+    val miniPillWidth = pillWidthDp
     val circleSize = settings.height.dp
     val compactShapes = compactNotificationShapes(notifications.size, expanded)
     val hasCompanion = if (settings.enableNotchMode) false else notifications.size >= 2
     val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-    val collapsedGroupWidth = settings.width.dp + if (hasCompanion) compactGap + circleSize else 0.dp
+    val collapsedGroupWidth = pillWidthDp + if (hasCompanion) compactGap + circleSize else 0.dp
 
-    val desiredMainLeft = screenCenter + settings.xOffset.dp - settings.width.dp / 2f
+    val desiredMainLeft = screenCenter + settings.xOffset.dp - pillWidthDp / 2f
     val (minMainLeft, maxMainLeft) = when {
-        !hasCompanion -> compactGap to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap)
-        isCircleLeft -> (compactGap + circleSize + compactGap) to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap + circleSize + compactGap)
+        !hasCompanion -> compactGap to (screenWidth - compactGap - pillWidthDp).coerceAtLeast(compactGap)
+        isCircleLeft -> (compactGap + circleSize + compactGap) to (screenWidth - compactGap - pillWidthDp).coerceAtLeast(compactGap + circleSize + compactGap)
         else -> compactGap to (screenWidth - compactGap - collapsedGroupWidth).coerceAtLeast(compactGap)
     }
     val collapsedMainLeft = desiredMainLeft.coerceIn(minMainLeft, maxMainLeft)
-    val mainCenter = collapsedMainLeft + settings.width.dp / 2f
+    val mainCenter = collapsedMainLeft + pillWidthDp / 2f
     val circleLeft = if (isCircleLeft) {
         collapsedMainLeft - compactGap - circleSize
     } else {
-        collapsedMainLeft + settings.width.dp + compactGap
+        collapsedMainLeft + pillWidthDp + compactGap
     }
     val circleCenter = circleLeft + circleSize / 2f
     val groupStart = if (isCircleLeft && hasCompanion) circleLeft else collapsedMainLeft
-    val groupEnd = if (!isCircleLeft && hasCompanion) circleLeft + circleSize else collapsedMainLeft + settings.width.dp
+    val groupEnd = if (!isCircleLeft && hasCompanion) circleLeft + circleSize else collapsedMainLeft + pillWidthDp
     val groupCenter = (groupStart + groupEnd) / 2f
 
     val collapsedMainOffset = if (settings.enableNotchMode) {
@@ -230,7 +250,7 @@ fun IslandOverlayView(
         circleSizeDp = settings.height,
         compactGapDp = COMPACT_INDICATOR_GAP_DP
     ).dp
-    val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
+    val isIdleHiding = PillLayout.pillIdleHiding(settings, notifications.size)
 
     var isAutoHidden by remember { mutableStateOf(false) }
     var userInteractionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -256,7 +276,7 @@ fun IslandOverlayView(
     val pillBackgroundColor = Color(settings.pillColor)
 
     val width by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandWidth") {
-        if (it) expandedWidth else if (isHiding) 0.dp else settings.width.dp
+        if (it) expandedWidth else if (isHiding) 0.dp else pillWidthDp
     }
     val height by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandHeight") {
         if (it) expandedHeight else if (isHiding) 0.dp else settings.height.dp
@@ -434,7 +454,7 @@ fun IslandOverlayView(
         if (isHiding && !currentExpanded) {
             Box(
                 modifier = Modifier
-                    .width(settings.width.dp)
+                    .width(pillWidthDp)
                     .height(settings.height.dp)
                     .graphicsLayer {
                         translationX = collapsedMainOffset.toPx()
@@ -842,7 +862,7 @@ fun IslandOverlayView(
             if (collapsedAlpha > 0f) {
                 Box(
                     modifier = Modifier
-                        .width(settings.width.dp)
+                        .width(pillWidthDp)
                         .height(settings.height.dp)
                         .align(Alignment.TopCenter)
                         .graphicsLayer {
@@ -855,6 +875,13 @@ fun IslandOverlayView(
                         collapsedAlpha = collapsedAlpha,
                         settings = settings
                     )
+                    if (buddyOnPill) {
+                        MascotLayer(
+                            look = settings.buddyLook,
+                            track = buddyTrack,
+                            active = !expanded && !isHiding && collapsedAlpha > 0.99f
+                        )
+                    }
                 }
             }
 

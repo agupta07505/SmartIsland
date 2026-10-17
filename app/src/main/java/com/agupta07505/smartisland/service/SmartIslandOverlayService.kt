@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.ui.PillLayout
+import com.agupta07505.smartisland.util.CameraCutoutDetector
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.KeyguardManager
@@ -533,7 +535,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     val isGone = view.visibility == android.view.View.GONE
                     val settingsVal = viewModel.settings.value
                     val notificationsCount = viewModel.notifications.value.size
-                    val isIdleHidden = settingsVal.hideWhenIdle && notificationsCount == 0 && !settingsVal.enableAppShortcuts
+                    val isIdleHidden = PillLayout.windowIdleHidden(settingsVal, notificationsCount)
                     android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded isGone=$isGone isIdleHidden=$isIdleHidden")
                     if (isGone || isIdleHidden) {
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
@@ -636,7 +638,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         viewModel.isLocked.value = isLocked
         
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val isIdleHidden = settings.hideWhenIdle && viewModel.notifications.value.isEmpty() && !settings.enableAppShortcuts
+        val isIdleHidden = PillLayout.windowIdleHidden(settings, viewModel.notifications.value.size)
         val isHidden = (!settings.showOnLockScreen && isLocked) || (isLandscape && !settings.showInLandscape) || isIdleHidden
 
         val targetVisibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
@@ -646,7 +648,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val isSplitMode = (viewModel.notifications.value.size >= 2) && !settings.enableNotchMode
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = settings.width * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount()) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
@@ -741,12 +743,19 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
     }
 
+    /** What the overlay composable counts: the notifications actually shown (foreground music is filtered out). */
+    private fun visibleCount(): Int = if (::viewModel.isInitialized) viewModel.visibleNotifications.value.size else 0
+
+    /** The camera hole's true width in dp, or null on devices without a hardware cutout. */
+    private fun cutoutHoleWidthDp(): Float? =
+        CameraCutoutDetector.detect(this).let { if (it.hasHardwareCutout) it.rawWidthDp else null }
+
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
         val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
         val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false)
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = settings.width * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount()) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
