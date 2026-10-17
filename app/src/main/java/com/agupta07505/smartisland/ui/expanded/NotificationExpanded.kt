@@ -105,12 +105,12 @@ fun NotificationExpanded(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = bottomPadding),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val largeIcon = notification?.largeIcon
@@ -118,7 +118,7 @@ fun NotificationExpanded(
             val mainIcon = largeIcon ?: icon
             if (mainIcon != null) {
                 val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
-                Box(modifier = Modifier.size(42.dp)) {
+                Box(modifier = Modifier.size(34.dp)) {
                     Image(
                         bitmap = mainIcon.asImageBitmap(),
                         contentDescription = null,
@@ -129,7 +129,7 @@ fun NotificationExpanded(
                     if (largeIcon != null && icon != null) {
                         Box(
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(14.dp)
                                 .align(Alignment.BottomEnd)
                                 .background(Color.Black, CircleShape)
                                 .padding(1.5.dp)
@@ -147,7 +147,7 @@ fun NotificationExpanded(
             } else {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(34.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(settings.notificationDotColor)),
                     contentAlignment = Alignment.Center
@@ -161,18 +161,18 @@ fun NotificationExpanded(
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    fontSize = 17.sp,
-                    lineHeight = 20.sp,
+                    fontSize = 15.sp,
+                    lineHeight = 18.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = notification?.text?.takeIf { it.isNotBlank() } ?: "New activity",
                     color = Color(0xFFD5DAE0),
-                    minLines = 2,
+                    minLines = 1,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp
                 )
             }
 
@@ -180,8 +180,8 @@ fun NotificationExpanded(
             Text(
                 text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
                 color = Color(0xFFB7C0CA),
-                fontSize = 11.sp,
-                modifier = Modifier.padding(start = 8.dp)
+                fontSize = 10.sp,
+                modifier = Modifier.padding(start = 6.dp)
             )
         }
 
