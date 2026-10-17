@@ -639,4 +639,6 @@
     <string name="a11y_unlike">取消喜欢</string>
     <string name="a11y_playback_position">播放位置</string>
     <string name="music_open_app">打开应用</string>
+    <string name="about_acknowledgements_title">致谢</string>
+    <string name="about_buddy_credit">Buddy 移植自 Vorssaint (GPL-3.0-or-later)</string>
 </resources>

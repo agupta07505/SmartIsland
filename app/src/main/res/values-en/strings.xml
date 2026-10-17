@@ -639,4 +639,6 @@
     <string name="a11y_unlike">Remove from liked songs</string>
     <string name="a11y_playback_position">Playback position</string>
     <string name="music_open_app">Open app</string>
+    <string name="about_acknowledgements_title">Acknowledgements</string>
+    <string name="about_buddy_credit">Buddy is ported from Vorssaint (GPL-3.0-or-later)</string>
 </resources>

@@ -341,3 +341,7 @@ Smart Island is strictly privacy-first:
 
 Smart Island is licensed under the [GNU General Public License v3.0](LICENSE).  
 Copyright (C) 2026 **Animesh Gupta**.
+
+### Acknowledgements
+
+The **Buddy** feature is a Kotlin port of the island mascot from [Vorssaint](https://github.com/vorssaint/vorssaint-utils) (Copyright (C) 2026 Vorssaint, GPL-3.0-or-later). Ported files keep that notice. The Vorssaint name, logo and icon are not used; see its `TRADEMARKS.md`.

@@ -639,4 +639,6 @@
     <string name="a11y_unlike">Remover das curtidas</string>
     <string name="a11y_playback_position">Posição da reprodução</string>
     <string name="music_open_app">Abrir app</string>
+    <string name="about_acknowledgements_title">Agradecimentos</string>
+    <string name="about_buddy_credit">O Buddy é um port do Vorssaint (GPL-3.0-or-later)</string>
 </resources>

@@ -82,7 +82,9 @@ import com.agupta07505.smartisland.BuildConfig
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.buddy.MascotAttribution
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
+import androidx.compose.material.icons.rounded.Favorite
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.launch
 
@@ -201,6 +203,19 @@ fun AboutSection(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
                         runCatchingLogged("AboutSection", "Failed to open Open Source link") {
+                            context.startActivity(intent)
+                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
+                    }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+                ClickableRowItem(
+                    label = stringResource(R.string.about_acknowledgements_title),
+                    subtitle = stringResource(R.string.about_buddy_credit),
+                    icon = Icons.Rounded.Favorite,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(MascotAttribution.SOURCE_URL))
+                        runCatchingLogged("AboutSection", "Failed to open acknowledgements link") {
                             context.startActivity(intent)
                         } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                     }
