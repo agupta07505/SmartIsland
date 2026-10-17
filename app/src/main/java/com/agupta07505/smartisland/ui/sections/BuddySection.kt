@@ -175,7 +175,22 @@ fun BuddySection(
                         MascotSide.Right to stringResource(R.string.buddy_side_right)
                     ),
                     selected = settings.buddySideValue,
-                    onSelect = { scope.launch { repository.setBuddySide(it.id) } }
+                    onSelect = { side ->
+                        if (side != settings.buddySideValue) {
+                            scope.launch {
+                                // It crosses behind the camera to the other side: hidden while the side changes,
+                                // then out from the camera's far edge to its new place.
+                                val live = MascotRuntime.controller
+                                val crossesLive = live.atRest
+                                if (crossesLive) live.hideForArrival()
+                                previewController.hideForArrival()
+                                repository.setBuddySide(side.id)
+                                delay(120)
+                                if (crossesLive && !live.startCross()) live.untuck()
+                                previewController.startCross()
+                            }
+                        }
+                    }
                 )
             }
         }

@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.buddy.runtime.MascotEventMapper
+import com.agupta07505.smartisland.buddy.runtime.NoteSnapshot
 import com.agupta07505.smartisland.buddy.MascotRuntime
 import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.runtime.MascotMoment
@@ -86,6 +88,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
             if (destroyed || !::viewModel.isInitialized) return
+            MascotEvents.post(if (enabled) MascotMoment.TorchOn else MascotMoment.TorchOff)
             if (enabled) {
                 notificationRepository.postNotification(
                     IslandNotification(
@@ -145,6 +148,85 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
             }
         }
+    }
+
+    private val mascotMapper = MascotEventMapper()
+    private var timerWatchJob: kotlinx.coroutines.Job? = null
+    private var watchedTimerKey: String? = null
+    private var watchedTimerEnd = 0L
+
+    /**
+     * Feeds the buddy what happens on the island: transfers finishing or failing, timers starting and
+     * running out, recording, music starting. Charging, low battery, the torch and unlock are posted where
+     * they happen. Only runs while Buddy is on.
+     */
+    private fun startMascotObservers() {
+        serviceScope.launch {
+            notificationRepository.notifications.collect { list ->
+                if (destroyed || !viewModel.settings.value.buddyEnabled) {
+                    mascotMapper.reset()
+                    cancelTimerWatch(post = false)
+                    return@collect
+                }
+                val snapshots = list.map {
+                    NoteSnapshot(
+                        key = it.key, mode = it.mode, title = it.title, text = it.text,
+                        progress = it.progress, progressMax = it.progressMax,
+                        mediaIsPlaying = it.mediaIsPlaying, timeMillis = it.timeMillis
+                    )
+                }
+                val moments = mascotMapper.onChange(
+                    snapshots, android.os.SystemClock.elapsedRealtime() / 1000.0, System.currentTimeMillis()
+                )
+                for (moment in moments) {
+                    if (moment == MascotMoment.Music) {
+                        // Once the song's strip has settled, if the music still plays.
+                        launch {
+                            kotlinx.coroutines.delay(MUSIC_GROOVE_DELAY_MS)
+                            val stillPlaying = notificationRepository.notifications.value.any {
+                                it.mode == com.agupta07505.smartisland.model.IslandMode.Music && it.mediaIsPlaying
+                            }
+                            if (stillPlaying) MascotEvents.post(moment)
+                        }
+                    } else {
+                        MascotEvents.post(moment)
+                    }
+                }
+                watchTimer(list)
+            }
+        }
+    }
+
+    /** A running timer's last seconds are watched: the buddy comes out over its mark when 5s remain. */
+    private fun watchTimer(list: List<IslandNotification>) {
+        val timer = list.firstOrNull { it.mode == com.agupta07505.smartisland.model.IslandMode.Timer }
+        if (timer == null) {
+            cancelTimerWatch(post = true)
+            return
+        }
+        val end = timer.timeMillis
+        if (watchedTimerKey == timer.key && kotlin.math.abs(watchedTimerEnd - end) < TIMER_END_JITTER_MS) return
+        // New, or its end moved (paused, resumed, changed): watch it afresh.
+        cancelTimerWatch(post = watchedTimerKey != null)
+        watchedTimerKey = timer.key
+        watchedTimerEnd = end
+        val untilWatch = end - System.currentTimeMillis() - (com.agupta07505.smartisland.buddy.motion.MascotMotion.COUNTDOWN_LEAD_SEC * 1000f).toLong()
+        if (untilWatch < -4000L) return
+        timerWatchJob = serviceScope.launch {
+            kotlinx.coroutines.delay(maxOf(0L, untilWatch))
+            val current = notificationRepository.notifications.value.firstOrNull { it.key == timer.key }
+            if (current != null && kotlin.math.abs(current.timeMillis - end) < TIMER_END_JITTER_MS) {
+                MascotEvents.post(MascotMoment.CountdownStart)
+            }
+        }
+    }
+
+    private fun cancelTimerWatch(post: Boolean) {
+        timerWatchJob?.cancel()
+        timerWatchJob = null
+        if (watchedTimerKey != null && post) MascotEvents.post(MascotMoment.CountdownCancel)
+        watchedTimerKey = null
+        watchedTimerEnd = 0L
     }
 
     private fun announceUnlock() {
@@ -266,6 +348,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             return
         }
         viewModel = initializedViewModel
+        startMascotObservers()
         
         systemEventReceiver = SystemEventReceiver(notificationRepository, settingsProvider = { viewModel.settings.value })
         val filter = IntentFilter().apply {
@@ -1044,6 +1127,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
         private const val AUTO_COLLAPSE_DELAY_MS = 220L
         private const val UNLOCK_WATCH_INTERVAL_MS = 250L
+        private const val MUSIC_GROOVE_DELAY_MS = 1200L
+        private const val TIMER_END_JITTER_MS = 1500L
         private const val UNLOCK_WATCH_MAX_TICKS = 960
         private const val UNLOCK_DEDUPE_MS = 3000L
     }

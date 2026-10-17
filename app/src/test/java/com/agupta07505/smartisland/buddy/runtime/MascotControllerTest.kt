@@ -105,7 +105,7 @@ class MascotControllerTest {
 
     @Test
     fun everyMomentMapsToAReactionAndTheTableMatchesThePlan() {
-        for (m in MascotMoment.entries) assertTrue(m.name, m.reaction != null)
+        for (m in MascotMoment.entries.filter { it != MascotMoment.CountdownStart && it != MascotMoment.CountdownCancel }) assertTrue(m.name, m.reaction != null)
         assertEquals(MascotReaction.Love, MascotMoment.Charging.reaction)
         assertEquals(MascotReaction.Yawn, MascotMoment.BatteryLow.reaction)
         assertEquals(MascotReaction.Ready, MascotMoment.TimerStarted.reaction)

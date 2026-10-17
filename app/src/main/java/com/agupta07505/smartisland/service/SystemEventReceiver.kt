@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.service
 
+import com.agupta07505.smartisland.buddy.runtime.MascotEvents
+import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
@@ -139,6 +141,7 @@ class SystemEventReceiver(
                     }
                 }
                 Intent.ACTION_POWER_CONNECTED -> {
+                    MascotEvents.post(MascotMoment.Charging)
                     if (!settingsProvider().enableBatteryMode) {
                         notificationRepository.removeNotification("system_battery")
                         return@runCatchingLogged
@@ -155,6 +158,7 @@ class SystemEventReceiver(
                     updateBatteryState(context, intent, autoExpand = false)
                 }
                 Intent.ACTION_BATTERY_LOW -> {
+                    MascotEvents.post(MascotMoment.BatteryLow)
                     if (!settingsProvider().enableBatteryMode) {
                         notificationRepository.removeNotification("system_battery")
                         return@runCatchingLogged

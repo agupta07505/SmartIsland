@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.buddy.model.MascotSide
 import androidx.compose.runtime.collectAsState
 import com.agupta07505.smartisland.buddy.model.MascotVisitKind
 import com.agupta07505.smartisland.buddy.runtime.MascotVisitScheduler
@@ -204,6 +205,14 @@ fun IslandOverlayView(
     val buddyTucked by MascotRuntime.controller.tucked.collectAsState()
     val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size, buddyTucked).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
+    // A cameo or countdown watch brings the buddy out over a busy pill, in one wing (a countdown is
+    // watched from the camera's left, over the timer's mark, whichever side it rests on).
+    val buddyVisit by MascotRuntime.controller.visit.collectAsState()
+    val buddyAside = settings.buddyEnabled && buddyVisit?.kind?.takesOnlyItsWing == true
+    val buddyAsideSideLeft = when (buddyVisit?.kind) {
+        is MascotVisitKind.Countdown, MascotVisitKind.Retreat -> true
+        else -> settings.buddySideValue == MascotSide.Left
+    }
     // The buddy hears about events even while the island is busy, so a reaction can wait for the rest.
     LaunchedEffect(settings.buddyEnabled, settings.buddyReacts) {
         MascotRuntime.controller.reacts = settings.buddyEnabled && settings.buddyReacts
@@ -302,6 +311,8 @@ fun IslandOverlayView(
     }
 
     val isHiding = isIdleHiding || (settings.autoHidePill && isAutoHidden)
+    val buddyCanCameo = settings.buddyEnabled && notifications.isNotEmpty() && !expanded && !isHiding
+    LaunchedEffect(buddyCanCameo) { MascotRuntime.controller.setCanCameo(buddyCanCameo) }
     val pillBackgroundColor = Color(settings.pillColor)
 
     val width by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandWidth") {
@@ -902,13 +913,15 @@ fun IslandOverlayView(
                         mode = activeMode,
                         notification = activeNotification,
                         collapsedAlpha = collapsedAlpha,
-                        settings = settings
+                        settings = settings,
+                        stepAsideLeft = buddyAside && buddyAsideSideLeft,
+                        stepAsideRight = buddyAside && !buddyAsideSideLeft
                     )
-                    if (buddyOnPill) {
+                    if (buddyOnPill || buddyAside) {
                         MascotLayer(
                             look = settings.buddyLook,
                             track = buddyTrack,
-                            active = !expanded && !isHiding && collapsedAlpha > 0.99f,
+                            active = buddyOnPill && !expanded && !isHiding && collapsedAlpha > 0.99f,
                             controller = MascotRuntime.controller,
                             hidesWhenIdle = settings.buddyHidesWhenIdle
                         )

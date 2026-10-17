@@ -86,7 +86,7 @@ fun MascotLayer(
     LaunchedEffect(visit?.id, reduceMotion, track) {
         val v = visit ?: return@LaunchedEffect
         try {
-            pose.playVisit(v, track, reduceMotion)
+            pose.playVisit(v, track, reduceMotion, hopPx)
         } finally {
             controller.endVisit(v.id)
         }

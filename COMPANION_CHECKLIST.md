@@ -114,10 +114,12 @@ Phase 2 build notes: `MascotReactionGate`, `MascotMoment`, `MascotController` (v
 Phase 3 build notes (3.6 device check done): `MascotMotion` ports every path (lap, pass, home, arrive, farewell, cross, retreat, cameo, linger, countdown) with the reference sampler; `MascotPath` interpolates in the placement and draw phases (no recomposition while walking); the controller owns the visit, the tuck (30s idle: yawn then away behind the camera, the pill drops its wing) and the schedule (Off/Rare/Normal/Often, skipped under Battery Saver and Reduce Motion). Buddy settings gain Visits, Tuck Away When Idle and a Visit row in Try It; switching Buddy on plays an arrival and off plays a farewell. 241 unit tests green, lint clean.
 
 ### Phase 4: Cameos and event hooks (C1)
-- [ ] 4.1 `Cameo`, `Countdown`, `Retreat`, `Cross`; step-aside of slot content
-- [ ] 4.2 Hooks: charging (Love), battery low (Yawn), torch (Perk/Yawn), recording start (Ready), timer start/finish (Ready/Surprised), download done/failed (Celebrate/Confused, with a small failure-text parser and test), music start (Groove, at most once per 10 min)
-- [ ] 4.3 Tests for each mapping
-- [ ] 4.4 Verify on phone with the Simulation Lab and a real charger plug-in
+- [x] 4.1 `Cameo`, `Countdown`, `Retreat`, `Cross`; step-aside of slot content
+- [x] 4.2 Hooks: charging (Love), battery low (Yawn), torch (Perk/Yawn), recording start (Ready), timer start/finish (Ready/Surprised), download done/failed (Celebrate/Confused, with a small failure-text parser and test), music start (Groove, at most once per 10 min)
+- [x] 4.3 Tests for each mapping
+- [x] 4.4 Verified on the phone: unlocking while a music pill is showing brings the buddy out over the pill's left wing (the album art steps aside), plays the wake-up, and the art returns; a charging event while the buddy was tucked brought it out (arrival) and it played the love reaction at rest. Charging was simulated with `dumpsys battery set ac 1`. **Not yet watched on the phone:** the charging/groove cameo (the music card stays expanded longer than a reaction waits, so those can expire), torch, recording, timer countdown/retreat, download events and the side-change crossing. These are covered by unit tests only
+
+Phase 4 build notes: `MascotEventMapper` (pure; music/recording/timer/download-complete and failed) + `MascotDownloadText` (English, pt and zh keywords); controller cameo (`canCameo`), countdown/retreat, cross; `IslandCollapsedContent` steps the buddy's wing aside; the service posts torch, charging, low-battery, unlock, and watches notification changes and the last 5s of a timer; changing the Buddy side plays a crossing. 262 unit tests green, lint clean.
 
 ### Phase 5: Polish
 - [ ] 5.1 Gaze toward touch and optional pat (reuse the pill's one gesture handler; no second `pointerInput`; respects the slop and consumed-pointer rules already in place)

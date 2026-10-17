@@ -13,6 +13,7 @@ import com.agupta07505.smartisland.buddy.model.MascotMood
 import com.agupta07505.smartisland.buddy.model.MascotReaction
 import com.agupta07505.smartisland.buddy.model.MascotVisit
 import com.agupta07505.smartisland.buddy.model.MascotVisitKind
+import com.agupta07505.smartisland.buddy.motion.MascotMotion
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -56,6 +57,19 @@ class MascotController(private val clock: () -> Double) {
             if (!value) pending = null
         }
 
+    /**
+     * Whether the closed pill is showing something else but has room for the buddy to come out over it:
+     * enabled, collapsed, visible, with an activity on it. Reactions then play as a cameo instead of waiting.
+     */
+    var canCameo: Boolean = false
+        private set
+
+    fun setCanCameo(value: Boolean) {
+        if (canCameo == value) return
+        canCameo = value
+        if (value) flush()
+    }
+
     private data class Pending(val reaction: MascotReaction, val deadlineSec: Double)
 
     fun now(): Double = clock()
@@ -67,12 +81,37 @@ class MascotController(private val clock: () -> Double) {
         return true
     }
 
+    /**
+     * Comes out over what the pill shows, for the last [totalSec] seconds of a timer, to watch it run out.
+     * Needs room on the pill (see [canCameo]); returns whether it started.
+     */
+    fun startCountdown(totalSec: Float): Boolean {
+        if (!canCameo || _visit.value != null || totalSec <= 1f) return false
+        _visit.value = MascotVisit(nextId++, MascotVisitKind.Countdown(totalSec), MascotMood.Idle, clock())
+        return true
+    }
+
+    /** The timer it watched was paused or cancelled: back behind the camera. */
+    fun retreat() {
+        val v = _visit.value ?: return
+        if (v.kind !is MascotVisitKind.Countdown) return
+        _visit.value = MascotVisit(nextId++, MascotVisitKind.Retreat, MascotMood.Idle, clock())
+    }
+
+    /** Moved to the camera's other side: from where it rested, behind the camera, across, and out to its new place. */
+    fun startCross(greeting: MascotMood = MascotMood.Wink): Boolean {
+        if (!atRest || _visit.value != null) return false
+        _visit.value = MascotVisit(nextId++, MascotVisitKind.Cross, greeting, clock())
+        return true
+    }
+
     /** The layer finished (or abandoned) visit [id]. Leaving for the idle tuck leaves it tucked. */
     fun endVisit(id: Long) {
         val v = _visit.value ?: return
         if (v.id != id) return
         _visit.value = null
         if (v.kind == HIDE_AWAY) _tucked.value = true
+        if (v.kind == MascotVisitKind.Cross) _tucked.value = false
         flush()
     }
 
@@ -100,8 +139,11 @@ class MascotController(private val clock: () -> Double) {
 
     /** Something happened. Plays now if the buddy is at rest, else waits for it. */
     fun post(moment: MascotMoment) {
-        val reaction = moment.reaction ?: return
-        post(reaction)
+        when (moment) {
+            MascotMoment.CountdownStart -> if (reacts) startCountdown(MascotMotion.COUNTDOWN_LEAD_SEC)
+            MascotMoment.CountdownCancel -> retreat()
+            else -> moment.reaction?.let { post(it) }
+        }
     }
 
     fun post(reaction: MascotReaction) {
@@ -134,7 +176,15 @@ class MascotController(private val clock: () -> Double) {
             pending = null
             return
         }
-        if (!atRest || _visit.value != null || _tucked.value) return
+        if (_visit.value != null) return
+        if (!atRest && canCameo) {
+            // Busy pill with room: out from behind the camera over what it shows, react where it would rest.
+            pending = null
+            if (!gate.admits(p.reaction, now)) return
+            _visit.value = MascotVisit(nextId++, MascotVisitKind.Cameo(p.reaction), MascotMood.Idle, now)
+            return
+        }
+        if (!atRest || _tucked.value) return
         pending = null
         if (!gate.admits(p.reaction, now)) return
         _reaction.value = MascotReactionEvent(nextId++, p.reaction, now)

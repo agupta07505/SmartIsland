@@ -26,5 +26,9 @@ enum class MascotMoment(val reaction: MascotReaction?) {
     TorchOn(MascotReaction.Perk),
     TorchOff(MascotReaction.Yawn),
     ScreenRecording(MascotReaction.Ready),
-    Unlock(MascotReaction.WakeUp)
+    Unlock(MascotReaction.WakeUp),
+    /** The last seconds of a timer: the buddy comes out to watch it run out. Not a reaction. */
+    CountdownStart(null),
+    /** The timer it watched was paused or cancelled: back behind the camera. Not a reaction. */
+    CountdownCancel(null)
 }

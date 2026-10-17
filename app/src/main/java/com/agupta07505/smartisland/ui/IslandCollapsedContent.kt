@@ -96,9 +96,22 @@ fun IslandCollapsedContent(
     notification: IslandNotification?,
     collapsedAlpha: Float,
     settings: SmartIslandSettings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** The buddy is out over this wing (a cameo or a countdown watch): its content steps aside until it is gone. */
+    stepAsideLeft: Boolean = false,
+    stepAsideRight: Boolean = false
 ) {
     val density = LocalDensity.current
+    val leftShown by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (stepAsideLeft) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(150),
+        label = "stepAsideLeft"
+    )
+    val rightShown by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (stepAsideRight) 0f else 1f,
+        animationSpec = androidx.compose.animation.core.tween(150),
+        label = "stepAsideRight"
+    )
     val maxTranslationPx = with(density) { COLLAPSED_TRANSLATION_MAX_DP.toPx() }
     val translationProgress = 1f - collapsedAlpha
     val translationXLeft = translationProgress * maxTranslationPx
@@ -112,6 +125,7 @@ fun IslandCollapsedContent(
                 .padding(start = LEFT_SLOT_PADDING_START_DP.dp)
                 .graphicsLayer {
                     translationX = translationXLeft
+                    alpha = leftShown
                 },
             contentAlignment = Alignment.Center
         ) {
@@ -230,6 +244,7 @@ fun IslandCollapsedContent(
                 .padding(end = RIGHT_SLOT_PADDING_END_DP.dp)
                 .graphicsLayer {
                     translationX = translationXRight
+                    alpha = rightShown
                 },
             contentAlignment = Alignment.Center
         ) {

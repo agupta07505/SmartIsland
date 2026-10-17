@@ -13,6 +13,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import com.agupta07505.smartisland.buddy.model.MascotTrack
 import com.agupta07505.smartisland.buddy.model.MascotVisit
+import com.agupta07505.smartisland.buddy.model.MascotVisitKind
 import com.agupta07505.smartisland.buddy.motion.MascotMotion
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
@@ -25,10 +26,19 @@ import kotlinx.coroutines.withContext
  * where it stands. A visit that ends out of sight (the idle tuck, a farewell) keeps its last frame, so the
  * buddy is not seen jumping back to its place; whoever ends the visit hides it.
  */
-suspend fun MascotPose.playVisit(visit: MascotVisit, track: MascotTrack, reduceMotion: Boolean) {
+suspend fun MascotPose.playVisit(
+    visit: MascotVisit,
+    track: MascotTrack,
+    reduceMotion: Boolean,
+    hopPx: Float = 0f
+) {
     val path = MascotMotion.path(visit.kind, track)
+    val cameo = visit.kind as? MascotVisitKind.Cameo
     if (reduceMotion || path.size == 0) {
-        if (path.greeting.endInclusive > path.greeting.start) {
+        if (cameo != null) {
+            // No stroll: it stands where it would rest and only changes face.
+            react(cameo.reaction, hopPx, reduceMotion = true)
+        } else if (path.greeting.endInclusive > path.greeting.start) {
             flashFace(visit.greeting, ((path.greeting.endInclusive - path.greeting.start) * 1000f).toInt(), true)
         }
         return
@@ -37,6 +47,13 @@ suspend fun MascotPose.playVisit(visit: MascotVisit, track: MascotTrack, reduceM
     visitTime.snapTo(0f)
     try {
         coroutineScope {
+            if (cameo != null) {
+                // It lands where it would rest after the arrival, and plays its reaction from there.
+                launch {
+                    delay((MascotMotion.CAMEO_ARRIVAL_SEC * 1000f).toLong())
+                    react(cameo.reaction, hopPx, reduceMotion = false)
+                }
+            }
             if (path.greeting.endInclusive > path.greeting.start) {
                 launch {
                     delay((path.greeting.start * 1000f).toLong())
