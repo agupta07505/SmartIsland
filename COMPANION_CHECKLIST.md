@@ -122,10 +122,12 @@ Phase 3 build notes (3.6 device check done): `MascotMotion` ports every path (la
 Phase 4 build notes: `MascotEventMapper` (pure; music/recording/timer/download-complete and failed) + `MascotDownloadText` (English, pt and zh keywords); controller cameo (`canCameo`), countdown/retreat, cross; `IslandCollapsedContent` steps the buddy's wing aside; the service posts torch, charging, low-battery, unlock, and watches notification changes and the last 5s of a timer; changing the Buddy side plays a crossing. 262 unit tests green, lint clean.
 
 ### Phase 5: Polish
-- [ ] 5.1 Gaze toward touch and optional pat (reuse the pill's one gesture handler; no second `pointerInput`; respects the slop and consumed-pointer rules already in place)
-- [ ] 5.2 Device matrix pass (punch hole, waterdrop, no cutout, left-corner camera, notch mode, landscape, lock screen, Battery Saver, 120 Hz)
-- [ ] 5.3 Backup and restore round-trip with new fields
-- [ ] 5.4 CHANGELOG entry, README feature row
+- [x] 5.1 Gaze toward touch and pat (the pill's one gesture handler tells the controller where a finger landed; a held touch on the buddy gives hearts, at most once per 30s; a sleepy buddy wakes instead of looking; verified on the phone: long-press on the buddy shows heart eyes and does not expand the pill) (reuse the pill's one gesture handler; no second `pointerInput`; respects the slop and consumed-pointer rules already in place)
+- [ ] 5.2 (partly done) Device matrix pass. Checked on this phone (punch hole at centre, 112dp pill, dark mode, 120 Hz, lock screen with the pill shown, unlocked home). **Still to check on other hardware or settings:** light mode, landscape, notch mode, no-cutout and waterdrop/left-corner cameras, Battery Saver, Reduce Motion (all covered by unit tests or code paths, not watched). Original line: Device matrix pass (punch hole, waterdrop, no cutout, left-corner camera, notch mode, landscape, lock screen, Battery Saver, 120 Hz)
+- [x] 5.3 Backup and restore round-trip with new fields
+- [x] 5.4 CHANGELOG entry, README feature row
+
+Phase 5 build notes: `MascotGaze`, `MascotAttention`, `MascotTrack.touches`, controller `attend`/`pat`; CHANGELOG and README entries. 268 unit tests green, lint clean.
 
 ## 6. Risks to watch during build
 - Window and touch region must use the same width helper (C3) or touches drift.

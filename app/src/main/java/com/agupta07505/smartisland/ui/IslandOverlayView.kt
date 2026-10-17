@@ -247,6 +247,9 @@ fun IslandOverlayView(
             side = settings.buddySideValue
         )
     }
+    // Read by the pill's one gesture handler, which outlives recompositions.
+    val currentBuddyTrack by rememberUpdatedState(buddyTrack)
+    val currentBuddyActive by rememberUpdatedState(buddyOnPill && !buddyTucked && !expanded)
     val compactGap = COMPACT_INDICATOR_GAP_DP.dp
     val miniPillWidth = pillWidthDp
     val circleSize = settings.height.dp
@@ -572,10 +575,22 @@ fun IslandOverlayView(
                         var slopAccumulatorX = 0f
                         var slopAccumulatorY = 0f
 
+                        // The buddy looks at where a finger lands and, held on its head, gets a pat.
+                        val touchXDp = down.position.x / displayMetrics.density
+                        val touchYDp = down.position.y / displayMetrics.density
+                        if (!wasExpandedAtStart && currentBuddyActive) {
+                            MascotRuntime.controller.attend(touchXDp, touchYDp)
+                        }
+
                         val holdJob = scope.launch {
                             kotlinx.coroutines.delay(HOLD_GESTURE_THRESHOLD_MS)
                             isHoldRegistered = true
                             triggerHapticVibration(context)
+                            if (!wasExpandedAtStart && currentBuddyActive &&
+                                currentBuddyTrack.touches(touchXDp, touchYDp, BUDDY_PAT_SLACK_DP)
+                            ) {
+                                MascotRuntime.controller.pat()
+                            }
                         }
 
                         val pointerId = down.id
@@ -1248,6 +1263,8 @@ private const val PILL_SWIPE_THRESHOLD_DP = 16f
 private const val DRAG_MAX_OFFSET_DP = 100f
 private const val COMPACT_INDICATOR_GAP_DP = 8f
 private const val HOLD_GESTURE_THRESHOLD_MS = 300L
+/** A held touch this close to the buddy (dp beyond its edge) pats it. */
+private const val BUDDY_PAT_SLACK_DP = 8f
 
 private fun triggerHapticVibration(context: android.content.Context) {
     runCatching {

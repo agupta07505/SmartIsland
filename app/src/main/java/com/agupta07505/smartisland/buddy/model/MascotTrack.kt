@@ -56,6 +56,10 @@ data class MascotTrack(
             return hole.endInclusive + (hole.start - rest)
         }
 
+    /** Whether a touch at ([xDp], [yDp]) is on the buddy at rest, with [slackDp] of room for a fingertip. */
+    fun touches(xDp: Float, yDp: Float, slackDp: Float): Boolean =
+        kotlin.math.abs(xDp - rest) <= size / 2f + slackDp && kotlin.math.abs(yDp - baseline) <= size / 2f + slackDp
+
     /** The same track [by] times larger. */
     fun scaled(by: Float) = MascotTrack(
         width * by, height * by, size * by, rest * by,

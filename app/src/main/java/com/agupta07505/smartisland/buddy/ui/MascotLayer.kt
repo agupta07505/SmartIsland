@@ -31,7 +31,14 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.buddy.model.MascotLook
 import com.agupta07505.smartisland.buddy.model.MascotMood
 import com.agupta07505.smartisland.buddy.model.MascotTrack
+import androidx.compose.animation.core.tween
+import com.agupta07505.smartisland.buddy.model.MascotReaction
 import com.agupta07505.smartisland.buddy.runtime.MascotBlink
+import com.agupta07505.smartisland.buddy.runtime.MascotGaze
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.agupta07505.smartisland.buddy.runtime.MascotController
 import com.agupta07505.smartisland.ui.rememberReduceMotion
 import kotlinx.coroutines.delay
@@ -77,6 +84,37 @@ fun MascotLayer(
             seen = event.id
             if (controller.now() - event.startSec > FRESH_REACTION_SEC) return@collectLatest
             pose.react(event.reaction, hopPx, reduceMotion)
+        }
+    }
+
+    // A touch on the pill: the eyes follow it, then come back. A sleepy buddy wakes instead. With Reduce
+    // Motion the eyes stay put.
+    LaunchedEffect(controller, reduceMotion, track, density) {
+        var seen: Long? = null
+        controller.attention.collectLatest { touch ->
+            if (touch.id == seen) return@collectLatest
+            seen = touch.id
+            if (pose.baseMood == MascotMood.Sleepy) {
+                pose.react(MascotReaction.WakeUp, hopPx, reduceMotion)
+                return@collectLatest
+            }
+            if (reduceMotion) return@collectLatest
+            val (gx, gy) = MascotGaze.pointerGaze(track.rest, track.baseline, touch.xDp, touch.yDp, track.size)
+            val sizePx = track.size * density
+            try {
+                coroutineScope {
+                    launch { pose.gazeX.animateTo(gx * sizePx, tween(MascotGaze.MOVE_MS)) }
+                    launch { pose.gazeY.animateTo(gy * sizePx, tween(MascotGaze.MOVE_MS)) }
+                }
+                delay(MascotGaze.HOLD_MS.toLong())
+            } finally {
+                withContext(NonCancellable) {
+                    coroutineScope {
+                        launch { pose.gazeX.animateTo(0f, tween(MascotGaze.BACK_MS)) }
+                        launch { pose.gazeY.animateTo(0f, tween(MascotGaze.BACK_MS)) }
+                    }
+                }
+            }
         }
     }
 

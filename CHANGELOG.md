@@ -6,6 +6,9 @@ The format is inspired by Keep a Changelog, and this project uses the GNU Genera
 
 ## [Unreleased]
 
+### Added
+- **Buddy**: a small mascot that rests beside the camera in the idle pill (Settings > Appearance > Buddy). A Kotlin port of the Vorssaint mascot (GPL-3.0-or-later). Minimal or Robot, four shapes, seven colors, left or right of the camera. It blinks, grows sleepy, strolls through the pill now and then (Off/Rare/Normal/Often), tucks away behind the camera after 30 seconds, and reacts to unlocking, charging, low battery, the torch, screen recording, timers (including a watch over the last 5 seconds), finished or failed transfers and music starting. Over a busy pill it comes out in its wing as a cameo. Eyes follow a touch; a long press on its head gets hearts. Respects Reduce Motion and Battery Saver. See `COMPANION_PLAN.md`.
+
 ### Changed
 - **Apple HIG UI revamp**: new neutral light/dark palette with the burnt-orange accent reserved for primary actions and selection; Apple-style type scale (17sp body, 11sp minimum); inset-grouped settings lists, large-title screens with a back bar, and a flat bottom tab bar.
 - **Accessibility**: 44dp minimum touch targets on sliders, chips and island buttons; status shown with icon plus text instead of color alone; TalkBack labels localized (en, pt, zh); `bounceClick` now exposes button semantics.

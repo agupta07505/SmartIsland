@@ -153,6 +153,7 @@ Designed to be 100% transparent, hackable, and privacy-conscious: all notificati
 | **Backup & Restore System** | Export and restore complete island notch coordinates, dimensions, custom color themes, app shortcuts, and rules to/from JSON via Android Storage Access Framework with bounds validation. |
 | **iPhone Notch Mode** | Top-edge docked notch styling, rounded bottom corners, and complete elimination of the secondary right companion circle for an authentic iPhone notch experience. |
 | **Developer Mode & Log Recording** | 7-tap version unlock, in-memory diagnostic buffer, process logcat extraction, live status badges, and 1-tap `.txt` report export via Storage Access Framework. |
+| **Buddy Mascot** | Optional resting companion beside the camera: blinks, naps, strolls, tucks away, and reacts to unlocks, charging, timers, transfers and music, with cameos over active notifications. Ported from Vorssaint (GPL-3.0-or-later). |
 | **Lock Screen Privacy Guard** | Opt-in lock screen display with customizable sensitive content hiding (App Icon Only vs Full Preview). |
 
 ---

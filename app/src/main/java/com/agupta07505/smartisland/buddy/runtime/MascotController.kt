@@ -14,6 +14,7 @@ import com.agupta07505.smartisland.buddy.model.MascotReaction
 import com.agupta07505.smartisland.buddy.model.MascotVisit
 import com.agupta07505.smartisland.buddy.model.MascotVisitKind
 import com.agupta07505.smartisland.buddy.motion.MascotMotion
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,6 +42,10 @@ class MascotController(private val clock: () -> Double) {
     private val _tucked = MutableStateFlow(false)
     /** Out of sight behind the camera after a long idle (or while it waits to arrive). The pill drops its wing. */
     val tucked: StateFlow<Boolean> = _tucked.asStateFlow()
+
+    private val _attention = MutableSharedFlow<MascotAttention>(extraBufferCapacity = 2, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    /** Touches on the pill the buddy looks at (only while it is at rest and not strolling). */
+    val attention: SharedFlow<MascotAttention> = _attention.asSharedFlow()
 
     private val gate = MascotReactionGate()
     private var nextId = 1L
@@ -117,6 +122,18 @@ class MascotController(private val clock: () -> Double) {
 
     /** After a long idle: a yawn, then away behind the camera. */
     fun requestTuck(): Boolean = startVisit(HIDE_AWAY, MascotMood.Sleepy)
+
+    /** A touch landed on the pill at ([xDp], [yDp]): the buddy looks at it. Ignored unless it is at rest. */
+    fun attend(xDp: Float, yDp: Float) {
+        if (!atRest || _visit.value != null || _tucked.value) return
+        _attention.tryEmit(MascotAttention(nextId++, xDp, yDp))
+    }
+
+    /** A pat on the head: hearts, at most once in a while (the gate keeps the same reaction 30s apart). */
+    fun pat() {
+        if (!atRest || _visit.value != null || _tucked.value) return
+        post(MascotReaction.Love)
+    }
 
     /** Out of sight at once, so a buddy about to arrive is not seen resting first. */
     fun hideForArrival() {
