@@ -102,6 +102,23 @@ object TimerStopwatchParser {
     private val SEC_DURATION_PATTERN = Pattern.compile("(\\d+)\\s*(?:s|sec|secs|seconds?)\\b", Pattern.CASE_INSENSITIVE)
     private val ZERO_TIME_PATTERN = Pattern.compile("\\b0+[:.]00(?::00)?\\b")
 
+    private val TIMER_FINISH_KEYWORDS = listOf(
+        "time's up", "times up", "time is up", "timer finished",
+        "timer expired", "timer ended", "timer done"
+    )
+
+    /** A whole 0:00, 00:00 or 0:00:00 reading, not the tail of 1:00:00 or 10:00. */
+    private val STANDALONE_ZERO_TIME_PATTERN = Pattern.compile("(?<![\\d:.])0+[:.]00(?:[:.]00)?(?![\\d:.])")
+
+    /**
+     * True when a timer's shown title or text says it has run out ("Time's up", or a standalone 00:00).
+     * Pure string check, so the alert classifier can promote a finished timer to Critical without Android.
+     */
+    fun isFinishedTimerText(title: String, text: String): Boolean {
+        val shown = "$title $text".lowercase()
+        return TIMER_FINISH_KEYWORDS.any { shown.contains(it) } || STANDALONE_ZERO_TIME_PATTERN.matcher(shown).find()
+    }
+
     /**
      * Checks if a notification is an Alarm clock notification (upcoming alarm or firing alarm).
      */
@@ -279,11 +296,7 @@ object TimerStopwatchParser {
 
         val fullText = extractFullText(notification)
 
-        val finishKeywords = listOf(
-            "time's up", "times up", "time is up", "timer finished",
-            "timer expired", "timer ended", "timer done"
-        )
-        if (finishKeywords.any { fullText.contains(it) }) return true
+        if (TIMER_FINISH_KEYWORDS.any { fullText.contains(it) }) return true
 
         val isZeroTime = ZERO_TIME_PATTERN.matcher(fullText).find()
         val flags = runCatching { notification.flags }.getOrDefault(0)

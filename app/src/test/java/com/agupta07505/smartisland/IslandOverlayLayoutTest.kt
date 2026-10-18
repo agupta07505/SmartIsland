@@ -155,11 +155,11 @@ class IslandOverlayLayoutTest {
         )
         org.junit.Assert.assertTrue(
             "Expanded offset in notch mode ($offsetStandard) must strictly exceed notch height ($notchHeight)",
-            offsetStandard >= notchHeight + 8f
+            offsetStandard >= notchHeight + com.agupta07505.smartisland.ui.NOTCH_MODE_EXPANDED_CLEARANCE_DP
         )
         org.junit.Assert.assertTrue(
             "Expanded offset in notch mode ($offsetStandard) must strictly exceed status bar ($statusBarHeightStandard)",
-            offsetStandard >= statusBarHeightStandard + 8f
+            offsetStandard >= statusBarHeightStandard + com.agupta07505.smartisland.ui.NOTCH_MODE_EXPANDED_CLEARANCE_DP
         )
         assertEquals(43f, offsetStandard, 0.01f)
 
@@ -172,7 +172,7 @@ class IslandOverlayLayoutTest {
         )
         org.junit.Assert.assertTrue(
             "Expanded offset on tall status bar ($offsetTall) must clear tall status bar ($statusBarHeightTall)",
-            offsetTall >= statusBarHeightTall + 8f
+            offsetTall >= statusBarHeightTall + com.agupta07505.smartisland.ui.NOTCH_MODE_EXPANDED_CLEARANCE_DP
         )
         assertEquals(48f, offsetTall, 0.01f)
 

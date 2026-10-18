@@ -8,6 +8,7 @@ package com.agupta07505.smartisland.alert
 
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.TimerStopwatchParser
 
 /**
  * Which tier of the island's rulebook an alert belongs to.
@@ -37,7 +38,10 @@ object AlertClassifier {
         return when (notification.mode) {
             IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.ScreenRecording,
             IslandMode.Stopwatch -> AlertTier.Persistent
-            IslandMode.Timer -> if (category == "alarm") AlertTier.Critical else AlertTier.Persistent
+            IslandMode.Timer ->
+                if (category == "alarm" || TimerStopwatchParser.isFinishedTimerText(notification.title, notification.text)) {
+                    AlertTier.Critical
+                } else AlertTier.Persistent
             IslandMode.Music, IslandMode.LiveActivity, IslandMode.Hotspot,
             IslandMode.DownloadUpload, IslandMode.Empty -> AlertTier.Background
             IslandMode.Battery ->

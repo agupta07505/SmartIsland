@@ -60,6 +60,21 @@ class AlertEngineTest {
     }
 
     @Test
+    fun aTimerThatReachesZeroIsPromotedToCritical() {
+        fun timerTier(title: String, text: String) =
+            AlertClassifier.classify(alert("t", pkg = "com.clock", mode = IslandMode.Timer, category = null, title = title, text = text))
+        assertEquals(AlertTier.Persistent, timerTier("Timer", "4:59"))
+        assertEquals(AlertTier.Persistent, timerTier("Timer", "1:00:00"))
+        assertEquals(AlertTier.Persistent, timerTier("Timer", "10:00"))
+        assertEquals(AlertTier.Critical, timerTier("Timer", "00:00"))
+        assertEquals(AlertTier.Critical, timerTier("Timer", "0:00:00"))
+        assertEquals(AlertTier.Critical, timerTier("Time's up", "Pasta"))
+        // Once Critical it outranks a call.
+        val ringing = alert("ringing", pkg = "com.clock", mode = IslandMode.Timer, category = null, title = "Timer", text = "0:00")
+        assertEquals(listOf("ringing", "call"), keys(AlertEngine().evaluate(listOf(call(), ringing), 0)))
+    }
+
+    @Test
     fun batteryIsCriticalOnlyAtFivePercentOrLessAndNotWhileCharging() {
         fun battery(title: String, text: String) =
             alert("b", pkg = "android", mode = IslandMode.Battery, category = "battery_low", title = title, text = text)

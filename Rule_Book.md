@@ -35,7 +35,7 @@ The island's width, height, corner radius, and offset animate using a 1D Spring-
 | **Critical (Smooth)**| 180 | 27.5 | 1.02 | No overshoot. |
 | **Loose** | 60 | 5 | 0.32 | Slow, floating, overshoots a lot. |
 
-*Note: If the OS "Reduce Motion" accessibility setting is on, all presets are ignored and the island snaps instantly.*
+*Note: Android has no separate "Reduce Motion" switch. `rememberReduceMotion()` (`ui/Motion.kt`) treats `Settings.Global.ANIMATOR_DURATION_SCALE == 0` as reduce motion, which is what Accessibility > "Remove animations" sets (as does Developer options > "Animator duration scale: Animation off"). When it is on, all presets are ignored: width, height, corner radius and offset snap instantly, content cross-fades shorten to 120ms, the kinetic glow is off, and looping decorations (`animateFloatCalm`) rest at their start value. The setting is read when the island composes, so a change applies the next time the overlay is created.*
 
 ### 2.3 Kinetic Glow Modifier
 A faint light-blue (`#3186FF`) glow flares during movement and fades as the spring settles. Drawn as contiguous bands behind the island.
@@ -104,7 +104,7 @@ Timing logic is self-contained in `AlertEngine` via `nowMs`:
 *   **Small State:** Live countdown.
 *   **Medium State:** Live countdown alongside controls (Pause/Resume, Stop).
 *   **Large State:** This feature does not use the Large State Island.
-*   **Action Rule:** Reaching 00:00 promotes it from Tier 1 to Critical (Tier 0).
+*   **Action Rule:** Reaching 00:00 promotes it from Tier 1 to Critical (Tier 0). `AlertClassifier` treats a Timer as finished when its category is `alarm`, or when its shown title/text says so (`TimerStopwatchParser.isFinishedTimerText`: "Time's up", "Timer finished/expired/ended/done", or a standalone `0:00` / `00:00` / `0:00:00`).
 
 ### 4.5 Idle Dashboard
 *   **Small State:** Hardware camera cutout mask only (Idle).
@@ -115,18 +115,21 @@ Timing logic is self-contained in `AlertEngine` via `nowMs`:
 
 ## 5. Robustness: Memory, Battery, and Crash Prevention
 
-*   **State Hoisting:** The UI layer is stateless and reacts purely to `GatekeeperViewModel.uiState`.
+*   **State Hoisting:** The UI layer is stateless and reacts purely to `IslandViewModel`'s state flows (`visibleNotifications`, `mode`, `expanded`, `selectedIndex`).
 *   **Recomposition Throttling:** `derivedStateOf` is mandatory for all scroll and velocity calculations.
-*   **Notification Listener Memory Leaks:** The `NotificationListenerService` uses a `Channel` or `Flow` with `.buffer(capacity = 10, onBufferOverflow = BufferOverflow.DROP_OLDEST)`.
-*   **Screen Off State:** Listening for `Intent.ACTION_SCREEN_OFF` immediately halts all `infiniteRepeatable` animations (music equalizers, recording dots) to preserve CPU/battery.
+*   **Notification Listener Memory Bounds:** There is no event `Channel` between the listener and the island, so nothing can queue up unbounded. `SmartIslandNotificationListenerService` handles each callback in a short coroutine on its own `serviceScope` (removals are debounced 350ms per key and a newer event for the same key cancels the pending one) and writes straight into `SmartIslandNotificationRepository`:
+    *   The alert list is a `MutableStateFlow` (conflated: collectors only ever see the latest list), capped at the newest 50 entries (`MAX_STORED_NOTIFICATIONS`).
+    *   One-shot signals (`autoExpandEvent`, `resetTimerEvent`, `commands`) are `MutableSharedFlow(extraBufferCapacity = 16)` written with `tryEmit`, so a burst beyond 16 unconsumed events drops the newest instead of suspending or growing.
+*   **Screen Off State:** On `Intent.ACTION_SCREEN_OFF`, `SmartIslandOverlayService` calls `overlayOwners.pause()`, which moves the overlay's lifecycle down to `CREATED`. That fires `ON_STOP`, and Compose's window recomposer pauses its frame clock, so every `infiniteRepeatable` animation (music equalizers, recording dots) and recomposition halts until `ACTION_SCREEN_ON` resumes it. `IslandViewModel` and the alert engine keep running, so the island is current the moment the screen wakes.
 
 ---
 
 ## 6. Testing & Debugging
 
-*   **Unit Tests:** Business logic is covered thoroughly in `AlertEngineTest` (21 tests). Run via `./gradlew testDebugUnitTest`. Always update tests before altering Engine behavior.
-*   **ADB Synthetic Intents:** Debug builds include `DebugAlertReceiver` to bypass the awkwardness of testing real messaging apps. 
+*   **Unit Tests:** Business logic is covered thoroughly in `AlertEngineTest` (22 tests). The arrival collision rule (§3.4) is covered in `IslandViewModelTest` (`testEphemeralAutoExpandIsIgnoredWhileACallHoldsTheMainPill`). Run via `./gradlew testDebugUnitTest`. Always update tests before altering Engine behavior.
+*   **ADB Synthetic Intents:** Debug builds include `DebugAlertReceiver` (declared in `app/src/debug/AndroidManifest.xml`, guarded by `android.permission.DUMP` so only the adb shell or the system can send to it) to bypass the awkwardness of testing real messaging apps. The component is `<applicationId>/<class>`: the applicationId is `com.niteeshbharadwaj.smartisland.personal` (no debug suffix) while the class keeps the source namespace `com.agupta07505.smartisland`.
     *   *Trigger format:* `adb shell "am broadcast -n com.niteeshbharadwaj.smartisland.personal/com.agupta07505.smartisland.debug.DebugAlertReceiver --es kind [TYPE] --es pkg [PKG] --es title [TITLE] --es text '[TEXT]'"`
+    *   *`kind`:* `message` (default) | `promo` | `call` | `alarm` | `nav` | `music` | `timer` | `stopwatch` | `record` | `live` | `battery` | `bluetooth` | `flash` | `clear` (removes every alert). Optional extras: `--es app [NAME]`, `--es key [KEY]`, `--es group [GROUP_ID]`, `--ez reply true|false`, `--ez expand true` (auto-expand on arrival).
 *   **Visual Debugging:** 
     *   Debug builds log `IslandMotion: preset=... peakSpeed=... glow=...`.
     *   Force a fixed glow radius for UI inspection via: `adb shell settings put global debug_island_glow_dp 18` (Clear with `settings delete global debug_island_glow_dp`).
@@ -137,7 +140,7 @@ Timing logic is self-contained in `AlertEngine` via `nowMs`:
 
 ### 7.1 Permissions Onboarding & Runtime Revocation
 The island relies on two critical permissions: `SYSTEM_ALERT_WINDOW` (Overlay) and `BIND_NOTIFICATION_LISTENER_SERVICE` (Notification Access). The engine must assume these can be revoked by the user or OS at any time.
-*   **Initialization Gate:** `GatekeeperViewModel` must poll `Settings.canDrawOverlays(context)` and `NotificationManagerCompat.getEnabledListenerPackages(context)` on every app foreground. If either is missing, route immediately to the setup onboarding flow.
+*   **Initialization Gate:** `IslandViewModel` must poll `Settings.canDrawOverlays(context)` and `NotificationManagerCompat.getEnabledListenerPackages(context)` on every app foreground. If either is missing, route immediately to the setup onboarding flow.
 *   **Graceful Degradation (Partial Revocation):**
     *   *If Notification Access is revoked mid-session but Overlay remains:* The `SmartIslandOverlayService` must instantly flush all Tier 1-4 notification alerts from the `SmartIslandNotificationRepository`. The island remains alive but only displays internal system tools (Voice Recorder, Timer).
     *   *If Overlay is revoked mid-session:* `SmartIslandOverlayService` must invoke `stopSelf()` immediately to prevent `SecurityException` crashes.
@@ -146,8 +149,8 @@ The island relies on two critical permissions: `SYSTEM_ALERT_WINDOW` (Overlay) a
 ### 7.2 Battery Optimization & OEM Task Killer Defenses
 Persistent overlay services are aggressively targeted by Android Doze and OEM-specific memory managers. The app must establish maximum system priority.
 *   **Foreground Service Mandate:** `SmartIslandOverlayService` must run as a Foreground Service (`ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE` or `TYPE_DISPLAY`). It must post a persistent, silent, minimized native notification to maintain process priority.
-*   **Doze Exemption:** During onboarding, the app must request `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. If the user declines, the app must display a permanent warning chip in the settings dashboard indicating that the island may arbitrarily disappear.
-*   **OEM-Specific Autostart Routing:** For devices running MIUI (Xiaomi), ColorOS (Oppo/OnePlus), and FuntouchOS (Vivo), the app must include an `OEMIntentFactory`. During onboarding, this routes the user directly to the vendor's hidden "Auto-Start" and "Lock in Background" settings panels.
+*   **Doze Exemption:** During onboarding, the app must request `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`. If the user declines, the app must display a permanent warning chip in the settings dashboard indicating that the island may arbitrarily disappear. (Implemented as the battery warning card at the top of the Settings tab in `SmartIslandHomeScreen`, shown while `PowerManager.isIgnoringBatteryOptimizations(packageName)` is false and re-checked on every resume; tapping it re-requests the exemption.)
+*   **OEM-Specific Autostart Routing:** For devices running MIUI (Xiaomi), ColorOS (Oppo/OnePlus), and FuntouchOS (Vivo), the app must include an `OemAutostartUtil` (`util/OemAutostartUtil.kt`, `openAutostartSettings`). During onboarding, this routes the user directly to the vendor's hidden "Auto-Start" and "Lock in Background" settings panels.
 
 ### 7.3 Process Death & State Recovery
 When the OS forcibly kills the process for memory reclamation, the system must rebuild the island seamlessly upon automatic restart without orphaned timers or missing alerts.
@@ -163,7 +166,7 @@ When the OS forcibly kills the process for memory reclamation, the system must r
 
 ### 8.1 Keyguard Interoperability & Notification Masking
 The `SmartIslandOverlayService` must draw over the lockscreen using `WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED`, but it must strictly adhere to the user's OS-level lockscreen privacy preferences.
-*   **State Detection:** `GatekeeperViewModel` must monitor device lock state via `KeyguardManager.isKeyguardLocked()` and update the `AlertEngine` dynamically.
+*   **State Detection:** `IslandViewModel` must monitor device lock state via `KeyguardManager.isKeyguardLocked()` and update the `AlertEngine` dynamically.
 *   **Visibility Rules (Applied only when locked):**
     *   `VISIBILITY_PUBLIC`: Display the alert normally (applies to Music, Timers, and unhidden messages).
     *   `VISIBILITY_PRIVATE`: The engine must strip the title and text payload. The UI must render only the app icon and a hardcoded fallback string (e.g., "1 New Message") for the Small and Medium states. Media controls and ongoing system tasks remain unmasked.
@@ -187,7 +190,7 @@ As a `TYPE_APPLICATION_OVERLAY`, the island runs the risk of occluding critical 
 ### 9.1 Native Cutout Anchoring (`WindowInsets`)
 The overlay must never use hardcoded top-padding or arbitrary screen-center calculations, as hardware cutouts vary drastically across OEMs (center-punch, corner-punch, teardrop, or under-display).
 *   **Hardware Masking:** `SmartIslandOverlayService` must attach a `View.OnApplyWindowInsetsListener` to the root view to query `WindowInsetsCompat.displayCutout`.
-*   **Bounding Rect Calculation:** The `GatekeeperViewModel` must read `displayCutout.getBoundingRects()` to determine the exact pixel dimensions and coordinates of the physical camera hole. The `IDLE` state pill is generated dynamically to encompass this precise bounding box.
+*   **Bounding Rect Calculation:** The `IslandViewModel` must read `displayCutout.getBoundingRects()` to determine the exact pixel dimensions and coordinates of the physical camera hole. The `IDLE` state pill is generated dynamically to encompass this precise bounding box.
 *   **Status Bar Avoidance:** The baseline Y-axis offset and maximum height of the small state must be calculated against the device's native status bar height to prevent the island from overlapping system icons (battery, wifi, time) when resting.
 
 ### 9.2 Screen Orientation Handling
@@ -209,7 +212,7 @@ This section defines the interaction matrix between the overlay and native Andro
 
 ### 10.1 Full-Screen & Immersive Mode Auto-Hiding
 The island must not obstruct full-screen video playback, camera viewfinders, or gaming. Because standard overlays cannot directly read the window flags of other applications, the system relies on system bar visibility.
-*   **State Detection:** If the app is granted Accessibility Service privileges, `GatekeeperViewModel` must monitor `WindowInsetsCompat.Type.systemBars()` for visibility changes. Alternatively, it must poll the display metrics to detect when the native status bar height reports as 0.
+*   **State Detection:** If the app is granted Accessibility Service privileges, `IslandViewModel` must monitor `WindowInsetsCompat.Type.systemBars()` for visibility changes. Alternatively, it must poll the display metrics to detect when the native status bar height reports as 0.
 *   **Suppression Rule:** When the foreground application enters true immersive mode (status bar is hidden), the `AlertEngine` must force a `SUPPRESSED` state. The island scales down, animates to zero opacity, and immediately drops all touch interception flags (`FLAG_NOT_TOUCHABLE`).
 *   **Restoration:** Upon exiting immersive mode (status bar becomes visible), the `AlertEngine` instantly restores the island to `IDLE` or resumes the highest-priority active alert.
 *   **Critical Override:** Tier 0 (Critical) alerts—such as a ringing alarm or an incoming phone call—bypass the suppression rule and will force the overlay to appear even during full-screen playback.

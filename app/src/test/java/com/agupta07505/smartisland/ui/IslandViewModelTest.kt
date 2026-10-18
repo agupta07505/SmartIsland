@@ -186,5 +186,49 @@ class IslandViewModelTest {
         assertEquals(1, viewModel.visibleNotifications.value.size)
         assertEquals(0, viewModel.selectedIndex.value)
     }
+
+    /** Rule_Book §3.4: a message that asks to auto-expand during a call waits as the companion bubble. */
+    @Test
+    fun testEphemeralAutoExpandIsIgnoredWhileACallHoldsTheMainPill() = runTest {
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
+        io.mockk.every { settingsRepo.settings } returns kotlinx.coroutines.flow.MutableStateFlow(
+            com.agupta07505.smartisland.data.SmartIslandSettings(autoExpandOnNotification = true)
+        )
+        val notifRepo = SmartIslandNotificationRepository()
+        val viewModel = IslandViewModel(settingsRepo, notifRepo)
+        testDispatcher.scheduler.runCurrent()
+
+        val call = IslandNotification(
+            key = "call_1",
+            packageName = "com.android.dialer",
+            appName = "Phone",
+            title = "Alice",
+            text = "Ongoing call",
+            category = "call",
+            mode = IslandMode.IncomingCall,
+            timeMillis = System.currentTimeMillis()
+        )
+        notifRepo.postNotification(call)
+        testDispatcher.scheduler.runCurrent()
+
+        val message = IslandNotification(
+            key = "msg_3",
+            packageName = "com.whatsapp",
+            appName = "WhatsApp",
+            title = "Bob",
+            text = "Are you free?",
+            mode = IslandMode.Notification,
+            timeMillis = System.currentTimeMillis()
+        )
+        notifRepo.postNotification(message, autoExpand = true)
+        testDispatcher.scheduler.runCurrent()
+        testDispatcher.scheduler.advanceTimeBy(1_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // The call keeps the main pill and stays collapsed; the message waits as the companion bubble.
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+        assertEquals(listOf("call_1", "msg_3"), viewModel.visibleNotifications.value.map { it.key })
+        assertEquals(0, viewModel.selectedIndex.value)
+    }
 }
 

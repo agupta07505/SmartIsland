@@ -376,6 +376,7 @@ fun SmartIslandHomeScreen(
                                 overlayGranted = overlayGranted,
                                 notificationGranted = notificationGranted,
                                 batteryIgnored = batteryIgnored,
+                                onBatteryWarningClick = { requestIgnoreBatteryOptimizations(context) },
                                 onNavigateTo = { section ->
                                     transitionDirection = 1
                                     activeDetailSection = section
@@ -569,12 +570,31 @@ private fun SettingsOverviewSection(
     overlayGranted: Boolean,
     notificationGranted: Boolean,
     batteryIgnored: Boolean,
+    onBatteryWarningClick: () -> Unit,
     onNavigateTo: (FeatureDetailSection) -> Unit
 ) {
     val canEnable = overlayGranted && notificationGranted && batteryIgnored
     val sectionIcon = Dimens.SeparatorInset
 
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)) {
+        // Rule_Book 7.2: stays up for as long as Android may still kill the island in the background.
+        if (!batteryIgnored) {
+            GroupedSection(dividerInset = sectionIcon) {
+                GroupedRow(
+                    title = stringResource(R.string.battery_warning_title),
+                    subtitle = stringResource(R.string.battery_warning_desc),
+                    icon = Icons.Rounded.Warning,
+                    onClick = onBatteryWarningClick,
+                    trailing = {
+                        StatusLabel(
+                            text = stringResource(R.string.battery_warning_action),
+                            kind = StatusKind.Warning
+                        )
+                    }
+                )
+            }
+        }
+
         GroupedSection(
             header = stringResource(R.string.category_behaviors_launcher),
             dividerInset = sectionIcon
@@ -845,16 +865,7 @@ private fun DetailScreenHost(
                             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         }
                     },
-                    onBatteryClick = {
-                        runCatching {
-                            context.startActivity(
-                                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                                    .setData(Uri.parse("package:${context.packageName}"))
-                            )
-                        }.onFailure {
-                            context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                        }
-                    },
+                    onBatteryClick = { requestIgnoreBatteryOptimizations(context) },
                     onRefreshPermissions = onRefreshPermissions
                 )
             }
@@ -907,6 +918,19 @@ private fun isAccessibilityServiceEnabled(context: Context): Boolean {
         }
     }
     return false
+}
+
+/** Asks Android to exempt the app from battery optimization, or opens the exemption list if it can't. */
+@SuppressLint("BatteryLife")
+private fun requestIgnoreBatteryOptimizations(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.parse("package:${context.packageName}"))
+        )
+    }.onFailure {
+        runCatching { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+    }
 }
 
 private fun isBatteryOptimizationIgnored(context: Context): Boolean {

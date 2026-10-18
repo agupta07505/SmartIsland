@@ -149,6 +149,9 @@
     <string name="perm_notification_desc">Reads incoming messages, calls, media metadata, and live tracking alerts</string>
     <string name="perm_battery_title">Battery Optimization Bypass</string>
     <string name="perm_battery_desc">Prevents Android and aggressive OEM task killers from terminating background services</string>
+    <string name="battery_warning_title">Battery optimization is on</string>
+    <string name="battery_warning_desc">Android may stop Smart Island in the background, so the island can disappear without warning. Tap to let it run unrestricted.</string>
+    <string name="battery_warning_action">Fix</string>
     <string name="perm_status_granted">Granted</string>
     <string name="perm_status_action_required">Action required</string>
     <string name="btn_open">Open</string>

@@ -1312,6 +1312,12 @@ internal const val MEDIUM_ISLAND_RADIUS_DP = 32f
 internal const val LARGE_ISLAND_RADIUS_DP = 40f
 internal const val LARGE_ISLAND_HEIGHT_DP = 300f
 
+/**
+ * In notch mode the expanded card starts below the lower of the status bar and the collapsed pill (whose
+ * height setting covers the hardware notch), plus this gap so it never touches the cutout or the status icons.
+ */
+internal const val NOTCH_MODE_EXPANDED_CLEARANCE_DP = 8f
+
 /** The idle shortcuts dashboard is Large; every active-task card is Medium. */
 internal fun expandedSizeClass(idleDashboard: Boolean): IslandSizeClass =
     if (idleDashboard) IslandSizeClass.Large else IslandSizeClass.Medium
@@ -1334,7 +1340,7 @@ internal fun calculateExpandedTopOffset(
     compactGapDp: Float = COMPACT_INDICATOR_GAP_DP
 ): Float {
     return if (enableNotchMode) {
-        maxOf(statusBarHeightDp, notchHeightDp) + 8f
+        maxOf(statusBarHeightDp, notchHeightDp) + NOTCH_MODE_EXPANDED_CLEARANCE_DP
     } else if (hasCompanion) {
         maxOf(statusBarHeightDp, circleSizeDp + compactGapDp)
     } else {
