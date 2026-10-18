@@ -13,7 +13,7 @@ package com.agupta07505.smartisland.buddy
  * The Vorssaint name, logo and icon are not licensed for reuse (its TRADEMARKS.md), so the feature is
  * called "Buddy" in the UI and uses this app's own artwork.
  *
- * Package layout (filled phase by phase, see COMPANION_CHECKLIST.md):
+ * Package layout (filled phase by phase):
  *   buddy/model, buddy/geometry, buddy/motion, buddy/runtime, buddy/ui
  * Code names use the `Mascot` prefix because "companion" already names the split-mode circle here.
  */

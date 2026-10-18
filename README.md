@@ -332,7 +332,6 @@ Smart Island is strictly privacy-first:
 ## Community & Support
 
 - **Telegram Community**: Join our group at [telegram.me/SmartIslandApp](https://telegram.me/SmartIslandApp) to discuss features, report issues, and interact with the team.
-- **Roadmap**: Review upcoming milestones and plans in [ROADMAP.md](ROADMAP.md).
 - **Changelog**: View complete release history in [CHANGELOG.md](CHANGELOG.md).
 - **Contributing**: Contributions are warmly welcomed! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
