@@ -218,7 +218,7 @@ fun IslandCollapsedContent(
                 IslandMode.Stopwatch -> {
                     StopwatchCollapsedGlyph(notification = notification, settings = settings)
                 }
-                IslandMode.Empty -> IdleWidgetSlot(idleWidget, right = false)
+                IslandMode.Empty -> if (idleWidget == null) StandbyTimeSlot() else IdleWidgetSlot(idleWidget, right = false)
             }
         }
 
@@ -309,7 +309,7 @@ fun IslandCollapsedContent(
                 IslandMode.Stopwatch -> {
                     StopwatchTimer(notification = notification, color = Color(settings.stopwatchColor))
                 }
-                IslandMode.Empty -> IdleWidgetSlot(idleWidget, right = true)
+                IslandMode.Empty -> if (idleWidget == null) StandbyBatterySlot() else IdleWidgetSlot(idleWidget, right = true)
             }
         }
         }
