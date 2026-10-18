@@ -280,7 +280,7 @@ fun IslandCollapsedContent(
                         com.agupta07505.smartisland.ui.expanded.MusicWaveform(
                             isPlaying = notification?.mediaIsPlaying == true,
                             color = Color(settings.musicVisualizerColor),
-                            barCount = 7,
+                            barCount = 5,
                             barWidth = 2.dp,
                             gap = 1.5.dp,
                             height = 16.dp

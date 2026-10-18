@@ -208,7 +208,10 @@ fun IslandOverlayView(
     val cutoutInfo = remember(configuration) { CameraCutoutDetector.detect(appContext) }
     val holeWidthDp = if (cutoutInfo.hasHardwareCutout) cutoutInfo.rawWidthDp else null
     val buddyTucked by MascotRuntime.controller.tucked.collectAsState()
-    val pillWidthDp = PillLayout.effectiveWidthDp(settings, holeWidthDp, notifications.size, buddyTucked).dp
+    val pillWidthDp = PillLayout.effectiveWidthDp(
+        settings, holeWidthDp, notifications.size, buddyTucked,
+        contentWingDp = if (activeMode == IslandMode.Music) PillLayout.MUSIC_WING_DP else 0f
+    ).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
     // A cameo or countdown watch brings the buddy out over a busy pill, in one wing (a countdown is
     // watched from the camera's left, over the timer's mark, whichever side it rests on).

@@ -785,7 +785,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val isSplitMode = (viewModel.notifications.value.size >= 2) && !settings.enableNotchMode
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
@@ -892,6 +892,11 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     /** What the overlay composable counts: the notifications actually shown (foreground music is filtered out). */
+    /** Extra room the active mode's right-hand pill content needs beside the camera hole. */
+    private fun contentWingDp(): Float =
+        if (::viewModel.isInitialized && viewModel.mode.value == com.agupta07505.smartisland.model.IslandMode.Music)
+            PillLayout.MUSIC_WING_DP else 0f
+
     private fun visibleCount(): Int = if (::viewModel.isInitialized) viewModel.visibleNotifications.value.size else 0
 
     /** The camera hole's true width in dp, or null on devices without a hardware cutout. */
@@ -903,7 +908,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
         val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false)
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density

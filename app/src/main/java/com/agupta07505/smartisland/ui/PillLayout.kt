@@ -19,6 +19,12 @@ object PillLayout {
     /** Breathing room between the buddy and the pill edge or the camera hole, per side. */
     const val BUDDY_MARGIN_DP = 6f
 
+    /**
+     * Free space needed on each side of the camera hole by the music pill's right-hand content
+     * (waveform + elapsed time + the slot's end padding). The pill grows symmetrically to provide it.
+     */
+    const val MUSIC_WING_DP = 62f
+
     /** The buddy's size for a pill of [pillHeightDp]: 6dp smaller than the pill, clamped to 18..24dp. */
     fun buddySizeDp(pillHeightDp: Float): Float = (pillHeightDp - 6f).coerceIn(18f, 24f)
 
@@ -36,12 +42,12 @@ object PillLayout {
         baseWidthDp: Float,
         pillHeightDp: Float,
         holeWidthDp: Float?,
-        buddyOnPill: Boolean
+        buddyOnPill: Boolean,
+        contentWingDp: Float = 0f
     ): Float {
-        if (!buddyOnPill) return baseWidthDp
-        val needed = buddySizeDp(pillHeightDp) + 2f * BUDDY_MARGIN_DP
         val freeWing = (baseWidthDp - (holeWidthDp ?: 0f)) / 2f
-        val shortfall = max(0f, needed - freeWing)
+        val buddyNeed = if (buddyOnPill) buddySizeDp(pillHeightDp) + 2f * BUDDY_MARGIN_DP else 0f
+        val shortfall = max(0f, max(buddyNeed, contentWingDp) - freeWing)
         return baseWidthDp + 2f * shortfall
     }
 
@@ -50,9 +56,11 @@ object PillLayout {
         settings: SmartIslandSettings,
         holeWidthDp: Float?,
         notificationCount: Int,
-        tucked: Boolean = false
+        tucked: Boolean = false,
+        contentWingDp: Float = 0f
     ): Float = effectiveWidthDp(
-        settings.width, settings.height, holeWidthDp, buddyOnPill(settings, notificationCount) && !tucked
+        settings.width, settings.height, holeWidthDp, buddyOnPill(settings, notificationCount) && !tucked,
+        contentWingDp
     )
 
     /**
