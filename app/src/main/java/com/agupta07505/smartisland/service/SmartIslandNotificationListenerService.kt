@@ -580,7 +580,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     }
                 },
                 mode = mode,
-                contentIntent = notification.contentIntent
+                contentIntent = notification.contentIntent,
+                groupId = notification.group
             ),
             autoExpand = if (!isInitialSync && shouldIslandOnly && settings.autoExpandOnNotification) {
                 val now = SystemClock.elapsedRealtime()

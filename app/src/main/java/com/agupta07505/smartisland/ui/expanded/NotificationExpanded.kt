@@ -36,6 +36,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DoneAll
+import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -71,7 +73,7 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
-import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.util.formatNotificationTimeOrNow
 
 @Composable
 fun NotificationExpanded(
@@ -111,82 +113,72 @@ fun NotificationExpanded(
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Header: app icon, sender (with the count for a folded group) and when it arrived.
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val largeIcon = notification?.largeIcon
-            val icon = notification?.icon
-            val mainIcon = largeIcon ?: icon
-            if (mainIcon != null) {
-                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
-                Box(modifier = Modifier.size(42.dp)) {
-                    Image(
-                        bitmap = mainIcon.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(clipShape)
-                    )
-                    if (largeIcon != null && icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(Color.Black, CircleShape)
-                                .padding(1.5.dp)
-                        ) {
-                            Image(
-                                bitmap = icon.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        }
-                    }
-                }
+            val headerIcon = notification?.icon ?: notification?.largeIcon
+            if (headerIcon != null) {
+                Image(
+                    bitmap = headerIcon.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(26.dp)
+                        .clip(CircleShape)
                         .background(Color(settings.notificationDotColor)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(notification?.appName?.firstOrNull()?.uppercase() ?: "S", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        notification?.appName?.firstOrNull()?.uppercase() ?: "S",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = notification?.title?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Notification",
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 17.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = notification?.text?.takeIf { it.isNotBlank() } ?: "New activity",
-                    color = IslandPalette.secondaryLabel,
-                    minLines = 2,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp
-                )
-            }
-
-            // Time text on top right using the internal helper in IslandCollapsedContent
+            val groupCount = notification?.groupCount ?: 1
             Text(
-                text = notification?.let { formatNotificationTime(it.timeMillis) } ?: "",
+                text = when {
+                    notification == null -> "Notification"
+                    groupCount > 1 -> "${notification.appName} • $groupCount Messages"
+                    else -> notification.title.takeIf { it.isNotBlank() } ?: notification.appName
+                },
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = notification?.let { formatNotificationTimeOrNow(it.timeMillis) } ?: "",
                 color = IslandPalette.secondaryLabel,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(start = 8.dp)
+                fontSize = 12.sp
             )
         }
+
+        // Body: the message in full, three lines at most. Tapping it opens the app (the page handles that).
+        Text(
+            text = buildString {
+                if (notification != null && notification.groupCount > 1 && notification.title.isNotBlank()) {
+                    append(notification.title).append(": ")
+                }
+                append(notification?.text?.takeIf { it.isNotBlank() } ?: "New activity")
+            },
+            color = Color.White.copy(alpha = 0.86f),
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 14.sp,
+            lineHeight = 19.sp
+        )
 
         // Bottom Section: Inline Quick Reply OR Action Buttons
         if (isReplying && notification != null) {
@@ -219,8 +211,10 @@ fun NotificationExpanded(
                         Toast.makeText(context, "Reply sent: $replyText", Toast.LENGTH_SHORT).show()
                     }
                     val repo = SmartIslandRepositories.notificationRepository(context)
-                    repo.removeNotification(notification.key)
-                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
+                    notification.memberKeys.ifEmpty { listOf(notification.key) }.forEach { key ->
+                        repo.removeNotification(key)
+                        repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
+                    }
                     isReplying = false
                     onReplyStateChanged(false)
                     keyboardController?.hide()
@@ -318,72 +312,111 @@ fun NotificationExpanded(
                 }
             }
         } else {
+            val actions = notification?.actionIntents.orEmpty()
+            val replyAction = actions.firstOrNull { it.isQuickReply || it.title.lowercase().contains("reply") }
+            val markReadAction = actions.firstOrNull { it !== replyAction && it.title.lowercase().contains("read") }
+            val otherActions = actions.filter { it !== replyAction && it !== markReadAction }
+            val allKeys = notification?.memberKeys?.ifEmpty { listOf(notification.key) }.orEmpty()
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left part of Bottom Section: Action Buttons Row
-                if (showActions && notification != null && notification.actionIntents.isNotEmpty()) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        notification.actionIntents.forEach { action ->
-                            val isReplyAction = action.isQuickReply || action.title.lowercase().contains("reply")
+                // Left: Reply (icon + text; opens the inline field), then any other action the app offers.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (showActions && notification != null && replyAction != null) {
+                        Row(
+                            modifier = Modifier
+                                .height(40.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(IslandPalette.fill)
+                                .bounceClick { isReplying = true }
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Reply,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Reply",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    if (showActions && notification != null) {
+                        otherActions.take(1).forEach { action ->
                             Box(
                                 modifier = Modifier
                                     .height(40.dp)
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(IslandPalette.fill) // light grey background matching the Telegram button
+                                    .background(IslandPalette.fill)
                                     .bounceClick {
-                                        if (isReplyAction) {
-                                            isReplying = true
+                                        if (action.pendingIntent != null) {
+                                            triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
                                         } else {
-                                            if (action.pendingIntent != null) {
-                                                triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
-                                            } else {
-                                                Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
-                                            }
-                                            val repo = SmartIslandRepositories.notificationRepository(context)
-                                            repo.removeNotification(notification.key)
-                                            repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
-                                            onCollapse()
+                                            Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
                                         }
+                                        val repo = SmartIslandRepositories.notificationRepository(context)
+                                        allKeys.forEach { key ->
+                                            repo.removeNotification(key)
+                                            repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
+                                        }
+                                        onCollapse()
                                     }
-                                    .padding(horizontal = 12.dp),
+                                    .padding(horizontal = 14.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = action.title,
-                                    color = IslandPalette.label, // dark grey text
+                                    color = Color.White,
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     }
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // Down Arrow Button on bottom right
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .bounceClick { onOpenNotification() }
-                        .padding(10.dp)
-                        .clip(CircleShape)
-                        .background(IslandPalette.fill),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = stringResource(R.string.a11y_open_app),
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
+                // Right: Mark as read, icon only. Uses the app's own "mark as read" action when it has one,
+                // then clears the alert (every message of a folded group) from the island and the shade.
+                if (notification != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(IslandPalette.fill)
+                            .bounceClick {
+                                if (markReadAction?.pendingIntent != null) {
+                                    triggerAction(context, notification.packageName, markReadAction.pendingIntent, markReadAction.title, notification.contentIntent)
+                                }
+                                val repo = SmartIslandRepositories.notificationRepository(context)
+                                allKeys.forEach { key ->
+                                    repo.removeNotification(key)
+                                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
+                                }
+                                onCollapse()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DoneAll,
+                            contentDescription = stringResource(R.string.a11y_mark_as_read),
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

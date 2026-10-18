@@ -14,3 +14,7 @@ import java.util.Locale
 fun formatNotificationTime(timeMillis: Long): String {
     return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timeMillis))
 }
+
+/** "Now" for something under a minute old, the clock time after that. */
+fun formatNotificationTimeOrNow(timeMillis: Long, nowMillis: Long = System.currentTimeMillis()): String =
+    if (nowMillis - timeMillis in 0..60_000L) "Now" else formatNotificationTime(timeMillis)

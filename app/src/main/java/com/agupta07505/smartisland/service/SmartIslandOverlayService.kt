@@ -894,8 +894,9 @@ class SmartIslandOverlayService : AccessibilityService() {
     /** What the overlay composable counts: the notifications actually shown (foreground music is filtered out). */
     /** Extra room the active mode's right-hand pill content needs beside the camera hole. */
     private fun contentWingDp(): Float =
-        if (::viewModel.isInitialized && viewModel.mode.value == com.agupta07505.smartisland.model.IslandMode.Music)
-            PillLayout.MUSIC_WING_DP else 0f
+        if (::viewModel.isInitialized)
+            PillLayout.contentWingDp(viewModel.visibleNotifications.value.getOrNull(viewModel.selectedIndex.value))
+        else 0f
 
     private fun visibleCount(): Int = if (::viewModel.isInitialized) viewModel.visibleNotifications.value.size else 0
 

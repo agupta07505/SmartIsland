@@ -108,6 +108,7 @@ fun OverlayIsland(
         isInputActive = isInputActive,
         onReplyStateChanged = { viewModel.setInputActive(it) },
         isFullWidth = isFullWidth,
+        onUserInteraction = { viewModel.onUserInteraction() },
         modifier = modifier
     )
 }

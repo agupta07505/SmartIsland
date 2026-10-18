@@ -635,6 +635,7 @@
     <string name="a11y_pause">Pause</string>
     <string name="a11y_previous">Previous track</string>
     <string name="a11y_next">Next track</string>
+    <string name="a11y_mark_as_read">Mark as read</string>
     <string name="a11y_repeat">Repeat</string>
     <string name="a11y_stop_playback">Stop playback and close</string>
     <string name="a11y_unlike">Remove from liked songs</string>

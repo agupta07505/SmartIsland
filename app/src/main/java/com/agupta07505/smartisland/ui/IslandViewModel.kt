@@ -22,7 +22,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import com.agupta07505.smartisland.alert.AlertClassifier
+import com.agupta07505.smartisland.alert.AlertEngine
+import com.agupta07505.smartisland.alert.AlertPriority
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -43,15 +48,27 @@ class IslandViewModel(
     val notifications = notificationRepo.notifications
     val foregroundPackage = MutableStateFlow<String?>(null)
 
+    // The rules engine decides what the island shows: it drops passive alerts, orders by priority,
+    // folds messages from one app into a counted entry, and times messages out after seven seconds.
+    private val alertEngine = AlertEngine()
+    private val alertTick = MutableStateFlow(0)
+    private var alertExpiryJob: Job? = null
+    private var alertHoldJob: Job? = null
+
     val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
         notifications,
         foregroundPackage,
-        settings
-    ) { list, fgPkg, s ->
-        list.filterNot { notif ->
+        settings,
+        alertTick
+    ) { list, fgPkg, s, _ ->
+        val allowed = list.filterNot { notif ->
             (!s.enableBatteryMode && notif.mode == IslandMode.Battery) ||
             (!fgPkg.isNullOrEmpty() && notif.mode == IslandMode.Music && notif.packageName == fgPkg)
         }
+        val now = System.currentTimeMillis()
+        val evaluation = alertEngine.evaluate(allowed, now)
+        scheduleAlertExpiry(evaluation.nextExpiryAtMs, now)
+        evaluation.visible
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -92,7 +109,21 @@ class IslandViewModel(
                         notif.packageName == foregroundPackage.value
                     if (isFgMusic) return@collect
 
-                    val index = notifications.value.indexOfFirst { it.key == key }
+                    // Collision: a message that arrives during a call, an alarm or another live task never
+                    // takes the primary island; it waits behind it as a secondary alert.
+                    if (AlertClassifier.classify(notif) == AlertPriority.Passive) return@collect
+                    // The engine's list can lag the raw one by a beat: wait for this alert to show up in it.
+                    val visible = withTimeoutOrNull(ALERT_VISIBLE_WAIT_MS) {
+                        visibleNotifications.first { list -> list.any { it.key == key || key in it.memberKeys } }
+                    } ?: visibleNotifications.value
+                    val primary = visible.firstOrNull()
+                    if (primary != null &&
+                        AlertClassifier.classify(notif) == AlertPriority.Communication &&
+                        AlertClassifier.classify(primary).let { it == AlertPriority.Critical || it == AlertPriority.Live }
+                    ) return@collect
+
+                    // Indexes the paged island list, where a folded entry stands for several keys.
+                    val index = visible.indexOfFirst { it.key == key || key in it.memberKeys }
                     if (index >= 0) {
                         selectedIndex.value = index
                         val isDemo = key.startsWith("demo_")
@@ -107,12 +138,25 @@ class IslandViewModel(
             runSuspendCatchingLogged(TAG, "Timer-reset collector failed") {
                 notificationRepo.resetTimerEvent.collect {
                     resetAutoCollapseTimer()
+                    onUserInteraction()
                 }
             }
         }
         viewModelScope.launch {
             runSuspendCatchingLogged(TAG, "Expanded-state collector failed") {
                 expanded.collect { isExpanded ->
+                    // While the card is open the seven-second clock is held; it restarts when it closes.
+                    alertHoldJob?.cancel()
+                    if (isExpanded) {
+                        alertHoldJob = viewModelScope.launch {
+                            while (true) {
+                                alertEngine.touch(System.currentTimeMillis())
+                                delay(ALERT_HOLD_INTERVAL_MS)
+                            }
+                        }
+                    } else {
+                        onUserInteraction()
+                    }
                     if (isExpanded) {
                         if (!isInputActive.value) {
                             startAutoCollapseTimer()
@@ -144,6 +188,22 @@ class IslandViewModel(
     fun collapse() {
         isInputActive.value = false
         expanded.value = false
+    }
+
+    /** The user touched the island: pending messages get their full seven seconds again. */
+    fun onUserInteraction() {
+        alertEngine.touch(System.currentTimeMillis())
+        alertTick.update { it + 1 }
+    }
+
+    private fun scheduleAlertExpiry(expiresAtMs: Long?, nowMs: Long) {
+        alertExpiryJob?.cancel()
+        alertExpiryJob = null
+        if (expiresAtMs == null) return
+        alertExpiryJob = viewModelScope.launch {
+            delay((expiresAtMs - nowMs).coerceAtLeast(0L) + ALERT_EXPIRY_SLACK_MS)
+            alertTick.update { it + 1 }
+        }
     }
 
     fun setInputActive(active: Boolean) {
@@ -195,8 +255,12 @@ class IslandViewModel(
         val index = selectedIndex.value
         if (index in list.indices) {
             val notification = list[index]
-            notificationRepo.removeNotification(notification.key)
-            notificationRepo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
+            // A folded entry dismisses every message it stands for.
+            val keys = notification.memberKeys.ifEmpty { listOf(notification.key) }
+            keys.forEach { key ->
+                notificationRepo.removeNotification(key)
+                notificationRepo.sendCommand(SmartIslandCommand.CancelNotification(key))
+            }
         }
         collapse()
     }
@@ -214,6 +278,9 @@ class IslandViewModel(
         private const val TAG = "IslandViewModel"
         private const val AUTO_COLLAPSE_DELAY_MS = 5000L
         private const val MUSIC_COLLAPSE_DELAY_MS = 10_000L
+        private const val ALERT_HOLD_INTERVAL_MS = 1_000L
+        private const val ALERT_EXPIRY_SLACK_MS = 20L
+        private const val ALERT_VISIBLE_WAIT_MS = 500L
 
         fun provideFactory(
             settingsRepo: SmartIslandSettingsRepository,

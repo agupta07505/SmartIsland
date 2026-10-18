@@ -182,7 +182,7 @@ fun IslandExpandedContent(
         fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
             return when (notif?.mode) {
                 IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
-                IslandMode.Notification -> height.coerceIn(95.dp, 145.dp)
+                IslandMode.Notification -> height.coerceIn(130.dp, 185.dp)
                 IslandMode.Music -> height.coerceIn(150.dp, 260.dp)
                 IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
                 IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)

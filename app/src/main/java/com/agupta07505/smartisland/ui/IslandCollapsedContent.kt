@@ -117,7 +117,34 @@ fun IslandCollapsedContent(
     val translationXLeft = translationProgress * maxTranslationPx
     val translationXRight = -translationProgress * maxTranslationPx
 
-    Box(modifier = modifier.fillMaxSize()) {
+    // A new message folded into the group gives the whole pill a small spring "pulse" (1.05x and back)
+    // instead of redrawing it.
+    val groupCount = notification?.groupCount ?: 1
+    val pulse = remember { androidx.compose.animation.core.Animatable(1f) }
+    var lastGroupCount by remember { mutableStateOf(groupCount) }
+    LaunchedEffect(groupCount) {
+        if (groupCount > lastGroupCount) {
+            pulse.animateTo(1.05f, androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 900f))
+            pulse.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 400f))
+        }
+        lastGroupCount = groupCount
+    }
+    val appContext = androidx.compose.ui.platform.LocalContext.current
+    val holeDp = remember(appContext) {
+        com.agupta07505.smartisland.util.CameraCutoutDetector.detect(appContext)
+            .let { if (it.hasHardwareCutout) it.rawWidthDp else 28f }
+    }
+
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = pulse.value
+                scaleY = pulse.value
+            }
+    ) {
+        // What is left of the right-hand wing for text, after the hole, the end padding, the dot and the gap.
+        val alertTextMax = ((maxWidth - holeDp.dp) / 2f - RIGHT_SLOT_PADDING_END_DP.dp - 14.dp).coerceAtLeast(24.dp)
         // Left Slot (Icon / Glyphs)
         Box(
             modifier = Modifier
@@ -130,7 +157,12 @@ fun IslandCollapsedContent(
             contentAlignment = Alignment.Center
         ) {
             when (mode) {
-                IslandMode.Notification -> NotificationGlyph(notification = notification, settings = settings)
+                IslandMode.Notification ->
+                    if (notification != null && notification.groupCount > 1) {
+                        StackedAlertBadges(notification = notification, color = Color(settings.notificationDotColor))
+                    } else {
+                        NotificationGlyph(notification = notification, settings = settings)
+                    }
                 IslandMode.IncomingCall -> {
                     val icon = notification?.largeIcon ?: notification?.icon
                     if (icon != null) {
@@ -251,12 +283,16 @@ fun IslandCollapsedContent(
         ) {
             when (mode) {
                 IslandMode.Notification -> {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(settings.notificationDotColor))
-                    )
+                    if (notification != null && (notification.title.isNotBlank() || notification.text.isNotBlank())) {
+                        AlertPillText(notification = notification, maxTextWidth = alertTextMax)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color(settings.notificationDotColor))
+                        )
+                    }
                 }
                 IslandMode.IncomingCall -> {
                     if (notification?.isCallRinging == true) {

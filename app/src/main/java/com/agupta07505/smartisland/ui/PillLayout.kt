@@ -26,6 +26,30 @@ object PillLayout {
      */
     const val MUSIC_WING_DP = 40f
 
+    /** The widest the pill grows to for an alert's text; beyond this the text scrolls and fades. */
+    const val MAX_ALERT_PILL_WIDTH_DP = 280f
+
+    /** Room the end padding, the dot and the gap between them take on the right-hand side. */
+    private const val ALERT_FIXED_WING_DP = 12f + 8f + 6f
+    private const val ALERT_TEXT_DP_PER_CHAR = 6.2f
+    private const val ALERT_MAX_CHARS = 42
+
+    /**
+     * Free space the active alert's right-hand pill content needs on each side of the camera hole, so
+     * the pill can grow symmetrically around it (0 when the mode needs none).
+     */
+    fun contentWingDp(active: com.agupta07505.smartisland.model.IslandNotification?): Float = when {
+        active == null -> 0f
+        active.mode == com.agupta07505.smartisland.model.IslandMode.Music -> MUSIC_WING_DP
+        active.mode == com.agupta07505.smartisland.model.IslandMode.Notification &&
+            (active.title.isNotBlank() || active.text.isNotBlank()) -> {
+            val (strong, soft) = alertPillLabel(active)
+            val chars = (strong.length + (if (soft.isBlank()) 0 else 2 + soft.length)).coerceAtMost(ALERT_MAX_CHARS)
+            ALERT_FIXED_WING_DP + chars * ALERT_TEXT_DP_PER_CHAR
+        }
+        else -> 0f
+    }
+
     /** The buddy's size for a pill of [pillHeightDp]: 6dp smaller than the pill, clamped to 18..24dp. */
     fun buddySizeDp(pillHeightDp: Float): Float = (pillHeightDp - 6f).coerceIn(18f, 24f)
 
@@ -49,7 +73,9 @@ object PillLayout {
         val freeWing = (baseWidthDp - (holeWidthDp ?: 0f)) / 2f
         val buddyNeed = if (buddyOnPill) buddySizeDp(pillHeightDp) + 2f * BUDDY_MARGIN_DP else 0f
         val shortfall = max(0f, max(buddyNeed, contentWingDp) - freeWing)
-        return baseWidthDp + 2f * shortfall
+        val width = baseWidthDp + 2f * shortfall
+        // An alert's text can ask for a lot of room; the pill stops at a fixed width and the text scrolls.
+        return if (contentWingDp > 0f) width.coerceAtMost(max(baseWidthDp, MAX_ALERT_PILL_WIDTH_DP)) else width
     }
 
     /** A buddy tucked behind the camera needs no wing, so the pill goes back to its base width. */

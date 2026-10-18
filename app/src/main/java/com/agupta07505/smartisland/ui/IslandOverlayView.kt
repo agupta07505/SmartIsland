@@ -115,7 +115,9 @@ fun IslandOverlayView(
     isInputActive: Boolean = false,
     onReplyStateChanged: (Boolean) -> Unit = {},
     onDismissAllNotifications: () -> Unit = {},
-    isFullWidth: Boolean = true
+    isFullWidth: Boolean = true,
+    /** The user touched the island; pending messages get their full seven seconds again. */
+    onUserInteraction: () -> Unit = {}
 ) {
     // Fix #1: rememberUpdatedState ensures the lambda is always fresh
     // even though pointerInput(Unit) never restarts its coroutine
@@ -210,7 +212,7 @@ fun IslandOverlayView(
     val buddyTucked by MascotRuntime.controller.tucked.collectAsState()
     val pillWidthDp = PillLayout.effectiveWidthDp(
         settings, holeWidthDp, notifications.size, buddyTucked,
-        contentWingDp = if (activeMode == IslandMode.Music) PillLayout.MUSIC_WING_DP else 0f
+        contentWingDp = PillLayout.contentWingDp(activeNotification)
     ).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
     // A cameo or countdown watch brings the buddy out over a busy pill, in one wing (a countdown is
@@ -303,6 +305,8 @@ fun IslandOverlayView(
 
     var isAutoHidden by remember { mutableStateOf(false) }
     var userInteractionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+    val currentOnInteraction by rememberUpdatedState(onUserInteraction)
+    LaunchedEffect(userInteractionTimestamp) { currentOnInteraction() }
 
     // Reset auto-hide whenever active notifications change or selection changes
     LaunchedEffect(notifications.map { it.key }, selectedIndex) {
@@ -525,9 +529,9 @@ fun IslandOverlayView(
             )
         }
 
-        // The Large dashboard is pitch black so it merges with the camera cutout, whatever the pill colour.
+        // The Large dashboard and message cards are pitch black so they merge with the camera cutout, whatever the pill colour.
         val shellColor by androidx.compose.animation.animateColorAsState(
-            targetValue = if (expanded && sizeClass == IslandSizeClass.Large) Color.Black
+            targetValue = if (expanded && (sizeClass == IslandSizeClass.Large || activeMode == IslandMode.Notification)) Color.Black
             else pillBackgroundColor.copy(alpha = settings.opacity),
             animationSpec = androidx.compose.animation.core.tween(180),
             label = "islandShellColor"
@@ -1330,7 +1334,7 @@ internal enum class CompactNotificationShape { MiniPill, Circle }
 internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
     return when (mode) {
         IslandMode.Music -> 168.dp
-        IslandMode.Notification -> 135.dp
+        IslandMode.Notification -> 165.dp
         IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
         IslandMode.LiveActivity, IslandMode.Navigation -> 180.dp
         IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
