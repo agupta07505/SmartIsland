@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 40
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
       UPSTREAM: https://github.com/agupta07505/SmartIsland.git
     steps:
       - name: Check out dev
