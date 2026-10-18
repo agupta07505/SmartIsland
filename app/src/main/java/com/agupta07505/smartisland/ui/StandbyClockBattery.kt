@@ -79,7 +79,7 @@ internal fun StandbyBatterySlot() {
         else -> Color.White
     }
     IslandText(
-        text = (if (charging) "\u26A1" else "") + "$level%",
+        text = "$level%",
         color = color,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
