@@ -85,10 +85,20 @@ import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalDensity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** What one slot of the collapsed pill shows; [key] identifies "the same alert" across updates. */
+private data class CollapsedSlot(val mode: IslandMode, val notification: IslandNotification?) {
+    val key: Pair<IslandMode, String?> = mode to when (mode) {
+        // Every message from one app shares a slot, so a growing group refreshes instead of fading.
+        IslandMode.Notification -> notification?.packageName
+        else -> notification?.key
+    }
+}
 
 @Composable
 fun IslandCollapsedContent(
@@ -156,6 +166,22 @@ fun IslandCollapsedContent(
                 },
             contentAlignment = Alignment.Center
         ) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = CollapsedSlot(mode, notification),
+                // Updates to the same alert (or more messages from the same app) refresh in place; only a
+                // different alert or mode crossfades, e.g. a message taking over a music pill and handing it back.
+                contentKey = { it.key },
+                transitionSpec = {
+                    val spec = androidx.compose.animation.core.spring<Float>(
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                    )
+                    androidx.compose.animation.fadeIn(spec) togetherWith androidx.compose.animation.fadeOut(spec)
+                },
+                contentAlignment = Alignment.Center,
+                label = "collapsedSlot"
+            ) { slot ->
+            val mode = slot.mode
+            val notification = slot.notification
             when (mode) {
                 IslandMode.Notification ->
                     if (notification != null && notification.groupCount > 1) {
@@ -268,6 +294,7 @@ fun IslandCollapsedContent(
                 }
                 IslandMode.Empty -> Unit
             }
+            }
         }
 
         // Right Slot (Visualizer / Indicators)
@@ -281,6 +308,22 @@ fun IslandCollapsedContent(
                 },
             contentAlignment = Alignment.Center
         ) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = CollapsedSlot(mode, notification),
+                // Updates to the same alert (or more messages from the same app) refresh in place; only a
+                // different alert or mode crossfades, e.g. a message taking over a music pill and handing it back.
+                contentKey = { it.key },
+                transitionSpec = {
+                    val spec = androidx.compose.animation.core.spring<Float>(
+                        stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                    )
+                    androidx.compose.animation.fadeIn(spec) togetherWith androidx.compose.animation.fadeOut(spec)
+                },
+                contentAlignment = Alignment.Center,
+                label = "collapsedSlot"
+            ) { slot ->
+            val mode = slot.mode
+            val notification = slot.notification
             when (mode) {
                 IslandMode.Notification -> {
                     if (notification != null && (notification.title.isNotBlank() || notification.text.isNotBlank())) {
@@ -368,6 +411,7 @@ fun IslandCollapsedContent(
                     StopwatchTimer(notification = notification, color = Color(settings.stopwatchColor))
                 }
                 IslandMode.Empty -> Unit
+            }
             }
         }
     }

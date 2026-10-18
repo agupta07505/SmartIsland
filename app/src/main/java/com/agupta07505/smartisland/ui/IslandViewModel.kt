@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import com.agupta07505.smartisland.alert.AlertClassifier
 import com.agupta07505.smartisland.alert.AlertEngine
-import com.agupta07505.smartisland.alert.AlertPriority
+import com.agupta07505.smartisland.alert.AlertTier
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -93,9 +93,15 @@ class IslandViewModel(
     init {
         viewModelScope.launch {
             runSuspendCatchingLogged(TAG, "Notifications collector failed") {
+                var lastPrimaryKey: String? = null
                 visibleNotifications.collect { list ->
+                    // A new main pill (a higher tier arrived, or the old one ended) takes the island back from any
+                    // swap the user made; otherwise their choice stands.
+                    val primaryKey = list.firstOrNull()?.key
+                    val primaryChanged = primaryKey != lastPrimaryKey
+                    lastPrimaryKey = primaryKey
                     selectedIndex.update { currentSelected ->
-                        currentSelected.coerceIn(0, (list.size - 1).coerceAtLeast(0))
+                        if (primaryChanged) 0 else currentSelected.coerceIn(0, (list.size - 1).coerceAtLeast(0))
                     }
                 }
             }
@@ -111,15 +117,15 @@ class IslandViewModel(
 
                     // Collision: a message that arrives during a call, an alarm or another live task never
                     // takes the primary island; it waits behind it as a secondary alert.
-                    if (AlertClassifier.classify(notif) == AlertPriority.Passive) return@collect
+                    if (AlertClassifier.classify(notif) == AlertTier.Passive) return@collect
                     // The engine's list can lag the raw one by a beat: wait for this alert to show up in it.
                     val visible = withTimeoutOrNull(ALERT_VISIBLE_WAIT_MS) {
                         visibleNotifications.first { list -> list.any { it.key == key || key in it.memberKeys } }
                     } ?: visibleNotifications.value
                     val primary = visible.firstOrNull()
                     if (primary != null &&
-                        AlertClassifier.classify(notif) == AlertPriority.Communication &&
-                        AlertClassifier.classify(primary).let { it == AlertPriority.Critical || it == AlertPriority.Live }
+                        AlertClassifier.classify(notif) == AlertTier.Ephemeral &&
+                        AlertClassifier.classify(primary).let { it == AlertTier.Critical || it == AlertTier.Persistent }
                     ) return@collect
 
                     // Indexes the paged island list, where a folded entry stands for several keys.

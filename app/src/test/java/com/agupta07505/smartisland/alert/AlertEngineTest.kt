@@ -33,10 +33,45 @@ class AlertEngineTest {
         actionIntents = if (reply) listOf(IslandNotificationAction("Reply", null, isQuickReply = true)) else emptyList()
     )
 
+    private fun call(key: String = "call") =
+        alert(key, pkg = "com.android.dialer", mode = IslandMode.IncomingCall, category = "call")
+
+    private fun music(key: String = "music") =
+        alert(key, pkg = "com.spotify.music", mode = IslandMode.Music, category = "transport")
+
+    private fun timer(key: String = "timer") =
+        alert(key, pkg = "com.clock", mode = IslandMode.Timer, category = null)
+
+    private fun keys(e: AlertEngine.Evaluation) = e.visible.map { it.key }
+
+    // ---- Tiers ----
+
+    @Test
+    fun tiersFollowTheRulebook() {
+        fun tier(mode: IslandMode, category: String? = null) = AlertClassifier.classify(alert("k", mode = mode, category = category))
+        listOf(IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.ScreenRecording, IslandMode.Timer, IslandMode.Stopwatch)
+            .forEach { assertEquals(it.name, AlertTier.Persistent, tier(it)) }
+        listOf(IslandMode.Music, IslandMode.LiveActivity, IslandMode.Hotspot, IslandMode.DownloadUpload)
+            .forEach { assertEquals(it.name, AlertTier.Background, tier(it)) }
+        listOf(IslandMode.Battery, IslandMode.Bluetooth, IslandMode.Flashlight)
+            .forEach { assertEquals(it.name, AlertTier.Ephemeral, tier(it, "battery_low")) }
+        assertEquals(AlertTier.Ephemeral, tier(IslandMode.Notification, "msg"))
+        assertEquals(AlertTier.Critical, tier(IslandMode.Timer, "alarm"))
+    }
+
+    @Test
+    fun batteryIsCriticalOnlyAtFivePercentOrLessAndNotWhileCharging() {
+        fun battery(title: String, text: String) =
+            alert("b", pkg = "android", mode = IslandMode.Battery, category = "battery_low", title = title, text = text)
+        assertEquals(AlertTier.Critical, AlertClassifier.classify(battery("Low Battery", "5%")))
+        assertEquals(AlertTier.Critical, AlertClassifier.classify(battery("Low Battery", "3%")))
+        assertEquals(AlertTier.Ephemeral, AlertClassifier.classify(battery("Low Battery", "6%")))
+        assertEquals(AlertTier.Ephemeral, AlertClassifier.classify(battery("Charging", "4%")))
+    }
+
     @Test
     fun passiveAlertsNeverReachTheIsland() {
-        val engine = AlertEngine()
-        val result = engine.evaluate(
+        val result = AlertEngine().evaluate(
             listOf(
                 alert("promo", category = "promo"),
                 alert("likes", pkg = "com.instagram.android", category = "social"),
@@ -50,53 +85,141 @@ class AlertEngineTest {
 
     @Test
     fun aSocialAlertWithAReplyBoxIsStillAMessage() {
-        val engine = AlertEngine()
-        val result = engine.evaluate(listOf(alert("dm", pkg = "com.instagram.android", category = "social", reply = true)), 0)
-        assertEquals(listOf("dm"), result.visible.map { it.key })
+        val result = AlertEngine().evaluate(listOf(alert("dm", pkg = "com.instagram.android", category = "social", reply = true)), 0)
+        assertEquals(listOf("dm"), keys(result))
     }
 
     @Test
     fun uncategorisedAlertsAreShownRatherThanHidden() {
-        val engine = AlertEngine()
-        assertEquals(1, engine.evaluate(listOf(alert("x", pkg = "com.some.app", category = null)), 0).visible.size)
+        assertEquals(1, AlertEngine().evaluate(listOf(alert("x", pkg = "com.some.app", category = null)), 0).visible.size)
+    }
+
+    // ---- Priority and the two slots ----
+
+    @Test
+    fun aPersistentTaskKeepsTheMainPillWhenAMessageArrives() {
+        val result = AlertEngine().evaluate(listOf(alert("msg", time = 10), call()), 0)
+        assertEquals(listOf("call", "msg"), keys(result))
     }
 
     @Test
-    fun aCallKeepsThePrimaryIslandWhenAMessageArrivesDuringIt() {
-        val engine = AlertEngine()
-        val call = alert("call", pkg = "com.android.dialer", mode = IslandMode.IncomingCall, category = "call")
-        val message = alert("msg", time = 10)
-        val result = engine.evaluate(listOf(message, call), 0)
-        assertEquals(listOf("call", "msg"), result.visible.map { it.key })
-    }
-
-    @Test
-    fun criticalAlertsOutrankCallsAndMessages() {
-        val engine = AlertEngine()
+    fun criticalOutranksPersistentWhichOutranksMessages() {
         val alarm = alert("alarm", pkg = "com.clock", category = "alarm")
-        val call = alert("call", pkg = "com.android.dialer", mode = IslandMode.IncomingCall, category = "call")
-        val result = engine.evaluate(listOf(alert("msg"), call, alarm), 0)
-        assertEquals(listOf("alarm", "call", "msg"), result.visible.map { it.key })
+        val result = AlertEngine().evaluate(listOf(alert("msg"), call(), alarm), 0)
+        assertEquals(listOf("alarm", "call"), keys(result))
     }
 
     @Test
-    fun batteryIsCriticalOnlyAtFivePercentOrLessAndNotWhileCharging() {
-        fun battery(title: String, text: String) =
-            alert("b", pkg = "android", mode = IslandMode.Battery, category = "battery_low", title = title, text = text)
-        assertEquals(AlertPriority.Critical, AlertClassifier.classify(battery("Low Battery", "5%")))
-        assertEquals(AlertPriority.Critical, AlertClassifier.classify(battery("Low Battery", "3%")))
-        assertEquals(AlertPriority.Live, AlertClassifier.classify(battery("Low Battery", "6%")))
-        assertEquals(AlertPriority.Live, AlertClassifier.classify(battery("Charging", "4%")))
+    fun aMessageHijacksMusicForSevenSecondsThenMusicReturns() {
+        val engine = AlertEngine()
+        val raw = listOf(music(), alert("msg"))
+        engine.evaluate(listOf(music()), 0)
+        val during = engine.evaluate(raw, 1_000)
+        assertEquals(listOf("msg", "music"), keys(during))
+        assertEquals(8_000L, during.nextExpiryAtMs)
+        assertEquals(listOf("msg", "music"), keys(engine.evaluate(raw, 7_999)))
+        assertEquals(listOf("music"), keys(engine.evaluate(raw, 8_000)))
     }
+
+    @Test
+    fun onlyTwoStatesAreShownAndTheLowestPriorityIsHidden() {
+        val engine = AlertEngine()
+        val raw = listOf(music(), timer(), call())
+        engine.evaluate(raw, 0)
+        // call (main), timer (companion); music is hidden but still alive in the shade.
+        assertEquals(listOf("call", "timer"), keys(engine.evaluate(raw, 100)))
+        // When the call ends, the hidden music takes the freed slot.
+        assertEquals(listOf("timer", "music"), keys(engine.evaluate(listOf(music(), timer()), 200)))
+    }
+
+    @Test
+    fun theMostRecentlyStartedPersistentTaskTakesTheMainPill() {
+        val engine = AlertEngine()
+        engine.evaluate(listOf(timer("timer")), 0)
+        val rec = alert("rec", pkg = "com.rec", mode = IslandMode.ScreenRecording, category = null)
+        assertEquals(listOf("rec", "timer"), keys(engine.evaluate(listOf(timer("timer"), rec), 5_000)))
+    }
+
+    @Test
+    fun anIncomingCallBeatsOlderAndNewerPersistentTasks() {
+        val engine = AlertEngine()
+        engine.evaluate(listOf(call("call")), 0)
+        val timerLater = engine.evaluate(listOf(call("call"), timer("timer")), 5_000)
+        assertEquals("call", timerLater.visible.first().key)
+    }
+
+    @Test
+    fun backgroundTasksStayOrderedNewestFirst() {
+        val engine = AlertEngine()
+        val hotspot = alert("hot", pkg = "x", mode = IslandMode.Hotspot, category = null)
+        engine.evaluate(listOf(music()), 0)
+        assertEquals(listOf("hot", "music"), keys(engine.evaluate(listOf(music(), hotspot), 3_000)))
+    }
+
+    // ---- Ephemeral timing ----
+
+    @Test
+    fun aMessageLeavesTheIslandAfterExactlySevenSeconds() {
+        val engine = AlertEngine()
+        val raw = listOf(alert("m"))
+        val first = engine.evaluate(raw, 1_000)
+        assertEquals(8_000L, first.nextExpiryAtMs)
+        assertEquals(1, engine.evaluate(raw, 7_999).visible.size)
+        assertTrue(engine.evaluate(raw, 8_000).visible.isEmpty())
+        // Once gone it stays gone, even though the notification is still in the shade.
+        assertTrue(engine.evaluate(raw, 20_000).visible.isEmpty())
+    }
+
+    @Test
+    fun touchingTheIslandRestartsTheClock() {
+        val engine = AlertEngine()
+        val raw = listOf(alert("m"))
+        engine.evaluate(raw, 0)
+        engine.touch(5_000)
+        assertEquals(12_000L, engine.evaluate(raw, 11_999).nextExpiryAtMs)
+        assertEquals(1, engine.evaluate(raw, 11_999).visible.size)
+        assertTrue(engine.evaluate(raw, 12_000).visible.isEmpty())
+    }
+
+    @Test
+    fun batteryBluetoothAndFlashlightInterruptForFiveSeconds() {
+        listOf(IslandMode.Battery, IslandMode.Bluetooth, IslandMode.Flashlight).forEach { mode ->
+            val engine = AlertEngine()
+            val raw = listOf(alert("x", pkg = "android", mode = mode, category = "battery_low", title = "State", text = "50%"))
+            assertEquals(mode.name, 1, engine.evaluate(raw, 0).visible.size)
+            assertEquals(mode.name, 1, engine.evaluate(raw, 4_999).visible.size)
+            assertTrue(mode.name, engine.evaluate(raw, 5_000).visible.isEmpty())
+        }
+    }
+
+    @Test
+    fun aNewBatteryStateInterruptsAgainButAPercentTickDoesNot() {
+        val engine = AlertEngine()
+        fun battery(title: String, text: String) =
+            listOf(alert("b", pkg = "android", mode = IslandMode.Battery, category = "battery_charging", title = title, text = text))
+        engine.evaluate(battery("Charging", "80%"), 0)
+        assertTrue(engine.evaluate(battery("Charging", "81%"), 6_000).visible.isEmpty())
+        assertEquals(1, engine.evaluate(battery("Low Battery", "15%"), 7_000).visible.size)
+    }
+
+    @Test
+    fun criticalBatteryPersistsAndOutranksACall() {
+        val engine = AlertEngine()
+        val low = alert("b", pkg = "android", mode = IslandMode.Battery, category = "battery_low", title = "Low Battery", text = "5%")
+        engine.evaluate(listOf(low, call()), 0)
+        val later = engine.evaluate(listOf(low, call()), 3_600_000)
+        assertEquals(listOf("b", "call"), keys(later))
+        assertNull(later.nextExpiryAtMs)
+    }
+
+    // ---- Grouping ----
 
     @Test
     fun messagesFromTheSameAppAreFoldedIntoOneCountedEntry() {
-        val engine = AlertEngine()
-        val result = engine.evaluate(
+        val result = AlertEngine().evaluate(
             listOf(alert("a", time = 1), alert("b", time = 2), alert("c", time = 3, text = "latest")),
             0
         )
-        assertEquals(1, result.visible.size)
         val group = result.visible.single()
         assertEquals(3, group.groupCount)
         assertEquals("c", group.key)
@@ -106,8 +229,7 @@ class AlertEngineTest {
 
     @Test
     fun differentAppsOrGroupsAreNotFolded() {
-        val engine = AlertEngine()
-        val result = engine.evaluate(
+        val result = AlertEngine().evaluate(
             listOf(
                 alert("w1", pkg = "com.whatsapp", time = 1),
                 alert("s1", pkg = "com.Slack", time = 2),
@@ -115,32 +237,9 @@ class AlertEngineTest {
             ),
             0
         )
-        assertEquals(3, result.visible.size)
+        // Three separate entries, but the island shows at most two.
+        assertEquals(2, result.visible.size)
         assertTrue(result.visible.all { it.groupCount == 1 })
-    }
-
-    @Test
-    fun aMessageLeavesTheIslandAfterExactlySevenSeconds() {
-        val engine = AlertEngine()
-        val raw = listOf(alert("m"))
-        val first = engine.evaluate(raw, 1_000)
-        assertEquals(1, first.visible.size)
-        assertEquals(8_000L, first.nextExpiryAtMs)
-        assertEquals(1, engine.evaluate(raw, 7_999).visible.size)
-        assertTrue(engine.evaluate(raw, 8_000).visible.isEmpty())
-        // Once gone it stays gone, even though the notification is still in the shade.
-        assertTrue(engine.evaluate(raw, 20_000).visible.isEmpty())
-    }
-
-    @Test
-    fun touchingTheIslandRestartsTheSevenSeconds() {
-        val engine = AlertEngine()
-        val raw = listOf(alert("m"))
-        engine.evaluate(raw, 0)
-        engine.touch(5_000)
-        assertEquals(1, engine.evaluate(raw, 11_999).visible.size)
-        assertEquals(12_000L, engine.evaluate(raw, 11_999).nextExpiryAtMs)
-        assertTrue(engine.evaluate(raw, 12_000).visible.isEmpty())
     }
 
     @Test
@@ -156,25 +255,11 @@ class AlertEngineTest {
     }
 
     @Test
-    fun liveTasksAndAlarmsPersistUntilTheyAreRemoved() {
-        val engine = AlertEngine()
-        val raw = listOf(
-            alert("call", pkg = "com.android.dialer", mode = IslandMode.IncomingCall, category = "call"),
-            alert("alarm", pkg = "com.clock", category = "alarm")
-        )
-        engine.evaluate(raw, 0)
-        val later = engine.evaluate(raw, 3_600_000)
-        assertEquals(listOf("alarm", "call"), later.visible.map { it.key })
-        assertNull(later.nextExpiryAtMs)
-    }
-
-    @Test
     fun anExpiredMessageStopsBeingRememberedOnceItLeavesTheShade() {
         val engine = AlertEngine()
         engine.evaluate(listOf(alert("m")), 0)
         assertTrue(engine.evaluate(listOf(alert("m")), 8_000).visible.isEmpty())
         engine.evaluate(emptyList(), 9_000)
-        // The same key posted again later is a fresh alert.
         assertEquals(1, engine.evaluate(listOf(alert("m")), 10_000).visible.size)
     }
 }

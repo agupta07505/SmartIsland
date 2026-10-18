@@ -457,7 +457,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Notifications-state collector failed") {
-                viewModel.notifications.collectLatest {
+                viewModel.visibleNotifications.collectLatest {
                     if (destroyed || !viewModel.settings.value.enabled) {
                         return@collectLatest
                     }
@@ -671,7 +671,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     val isExpanded = viewModel.expanded.value
                     val isGone = view.visibility == android.view.View.GONE
                     val settingsVal = viewModel.settings.value
-                    val notificationsCount = viewModel.notifications.value.size
+                    val notificationsCount = viewModel.visibleNotifications.value.size
                     val isIdleHidden = PillLayout.windowIdleHidden(settingsVal, notificationsCount)
                     android.util.Log.d(TAG, "onComputeInternalInsets callback: isExpanded=$isExpanded isGone=$isGone isIdleHidden=$isIdleHidden")
                     if (isGone || isIdleHidden) {
@@ -775,7 +775,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         viewModel.isLocked.value = isLocked
         
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val isIdleHidden = PillLayout.windowIdleHidden(settings, viewModel.notifications.value.size)
+        val isIdleHidden = PillLayout.windowIdleHidden(settings, viewModel.visibleNotifications.value.size)
         val isHidden = (!settings.showOnLockScreen && isLocked) || (isLandscape && !settings.showInLandscape) || isIdleHidden
 
         val targetVisibility = if (isHidden) android.view.View.GONE else android.view.View.VISIBLE
@@ -783,7 +783,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             view.visibility = targetVisibility
         }
 
-        val isSplitMode = (viewModel.notifications.value.size >= 2) && !settings.enableNotchMode
+        val isSplitMode = (viewModel.visibleNotifications.value.size >= 2) && !settings.enableNotchMode
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
         val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
         val circleSizePx = settings.height * density
@@ -818,7 +818,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         // The idle dashboard (Large) blurs what is behind the island (Android 12+; no-op where the
         // compositor has background blur disabled). The overlay is full-screen only while expanded.
         val blurRadiusPx = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            expanded && viewModel.notifications.value.isEmpty() && !isInput
+            expanded && viewModel.visibleNotifications.value.isEmpty() && !isInput
         ) (BACKDROP_BLUR_RADIUS_DP * density).toInt() else 0
         val blurFlag = if (blurRadiusPx > 0) WindowManager.LayoutParams.FLAG_BLUR_BEHIND else 0
         val currentFlags = focusFlags or blurFlag or
@@ -907,7 +907,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
         val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
-        val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.notifications.value.size >= 2 else false)
+        val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.visibleNotifications.value.size >= 2 else false)
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
         val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
         val circleSizePx = settings.height * density
@@ -1035,7 +1035,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     private fun openCurrentNotificationInFloatingWindow() {
-        val list = viewModel.notifications.value
+        val list = viewModel.visibleNotifications.value
         val index = viewModel.selectedIndex.value
         if (list.isNotEmpty() && index in list.indices) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {

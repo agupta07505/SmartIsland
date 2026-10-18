@@ -17,7 +17,8 @@ import com.agupta07505.smartisland.model.IslandNotificationAction
  *     --es kind message --es pkg com.whatsapp --es app WhatsApp --es title Sam --es text "hi" [--ez reply true]
  *   ... --es kind clear
  *
- * kind: message | promo | call | alarm | nav | clear.  Optional: key, group, --ez expand true.
+ * kind: message | promo | call | alarm | nav | music | timer | stopwatch | record | live | battery | bluetooth |
+ * flash | clear.  Optional: key, group, --ez expand true.
  */
 class DebugAlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,6 +37,14 @@ class DebugAlertReceiver : BroadcastReceiver() {
             "call" -> IslandMode.IncomingCall to "call"
             "alarm" -> IslandMode.Notification to "alarm"
             "nav" -> IslandMode.Navigation to "navigation"
+            "music" -> IslandMode.Music to "transport"
+            "timer" -> IslandMode.Timer to null
+            "stopwatch" -> IslandMode.Stopwatch to null
+            "record" -> IslandMode.ScreenRecording to null
+            "live" -> IslandMode.LiveActivity to null
+            "battery" -> IslandMode.Battery to "battery_low"
+            "bluetooth" -> IslandMode.Bluetooth to null
+            "flash" -> IslandMode.Flashlight to null
             "promo" -> IslandMode.Notification to "promo"
             else -> IslandMode.Notification to "msg"
         }
@@ -54,6 +63,7 @@ class DebugAlertReceiver : BroadcastReceiver() {
                 category = category,
                 mode = mode,
                 actionIntents = actions,
+                mediaIsPlaying = kind == "music",
                 groupId = intent.getStringExtra("group")
             ),
             autoExpand = intent.getBooleanExtra("expand", false)
