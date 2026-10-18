@@ -188,7 +188,7 @@ fun IslandOverlayView(
     val activeMode = activeNotification?.mode ?: IslandMode.Empty
 
     val initialEstimatedHeight = remember(activeMode, notifications.isEmpty()) {
-        if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
+        if (notifications.isEmpty()) 290.dp else defaultEstimatedHeightForMode(activeMode)
     }
     var expandedHeight by remember { mutableStateOf(initialEstimatedHeight) }
     // Size classes: Medium (active task) is ~340dp wide, Large (idle shortcuts dashboard) ~350dp, both
@@ -199,7 +199,7 @@ fun IslandOverlayView(
 
     LaunchedEffect(activeMode, notifications.isEmpty()) {
         if (!expanded) {
-            expandedHeight = if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
+            expandedHeight = if (notifications.isEmpty()) 290.dp else defaultEstimatedHeightForMode(activeMode)
         }
     }
 
@@ -522,6 +522,13 @@ fun IslandOverlayView(
             )
         }
 
+        // The Large dashboard is pitch black so it merges with the camera cutout, whatever the pill colour.
+        val shellColor by androidx.compose.animation.animateColorAsState(
+            targetValue = if (expanded && sizeClass == IslandSizeClass.Large) Color.Black
+            else pillBackgroundColor.copy(alpha = settings.opacity),
+            animationSpec = androidx.compose.animation.core.tween(180),
+            label = "islandShellColor"
+        )
         val mainShape = if (settings.enableNotchMode && !currentExpanded) {
             RoundedCornerShape(
                 topStart = 0.dp,
@@ -561,7 +568,7 @@ fun IslandOverlayView(
                     } else Modifier
                 )
                 .clip(mainShape)
-                .background(pillBackgroundColor.copy(alpha = settings.opacity))
+                .background(shellColor)
                 .pointerInput(displayMetrics.density, isInputActive) {
                     if (isInputActive) return@pointerInput
                     awaitEachGesture {
@@ -1326,7 +1333,7 @@ internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
         IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
         IslandMode.Bluetooth, IslandMode.Flashlight, IslandMode.ScreenRecording,
         IslandMode.Timer, IslandMode.Stopwatch -> 115.dp
-        IslandMode.Empty, null -> 135.dp
+        IslandMode.Empty, null -> 290.dp
     }
 }
 

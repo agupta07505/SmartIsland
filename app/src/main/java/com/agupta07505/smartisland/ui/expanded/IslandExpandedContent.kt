@@ -88,16 +88,13 @@ fun IslandExpandedContent(
         }
         val density = LocalDensity.current
         Box(
-            contentAlignment = Alignment.Center,
             modifier = modifier
                 .fillMaxWidth()
-                .heightIn(min = if (launcherApps.isNullOrEmpty()) 0.dp else LARGE_IDLE_HEIGHT)
                 .wrapContentHeight(unbounded = true)
                 .onSizeChanged {
                     val measuredHeight = with(density) { it.height.toDp() }
                     if (measuredHeight > 0.dp) {
-                        val minHeight = if (launcherApps.isNullOrEmpty()) 80.dp else LARGE_IDLE_HEIGHT
-                        val clamped = measuredHeight.coerceIn(minHeight, LARGE_IDLE_MAX_HEIGHT)
+                        val clamped = measuredHeight.coerceIn(LARGE_IDLE_MIN_HEIGHT, LARGE_IDLE_MAX_HEIGHT)
                         onHeightMeasured(clamped)
                     }
                 }
@@ -119,7 +116,12 @@ fun IslandExpandedContent(
                         )
                 )
             }
-            EmptyExpanded(settings = settings, apps = launcherApps, onLaunchApp = onLaunchApp)
+            IdleDashboard(
+                apps = launcherApps,
+                onLaunchApp = onLaunchApp,
+                onCollapse = onCollapse,
+                onInputStateChanged = onReplyStateChanged
+            )
         }
         return
     }
@@ -355,10 +357,11 @@ fun IslandExpandedContent(
                                 onCollapse = onCollapse,
                                 settings = settings
                             )
-                            IslandMode.Empty -> EmptyExpanded(
-                                settings = settings,
+                            IslandMode.Empty -> IdleDashboard(
                                 apps = launcherApps,
-                                onLaunchApp = onLaunchApp
+                                onLaunchApp = onLaunchApp,
+                                onCollapse = onCollapse,
+                                onInputStateChanged = onReplyStateChanged
                             )
                         }
                         }
@@ -366,109 +369,6 @@ fun IslandExpandedContent(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyExpanded(
-    settings: SmartIslandSettings,
-    apps: List<LaunchableApp>?,
-    onLaunchApp: (String) -> Unit
-) {
-    val context = LocalContext.current
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(unbounded = true)
-            .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 12.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        val hasConfiguration = settings.shortcutPackages.isNotEmpty() || settings.showRecentApps
-        AnimatedContent(
-            targetState = apps,
-            transitionSpec = { islandContentTransition() },
-            label = "shortcutsContent"
-        ) { loadedApps ->
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-
-        if (loadedApps == null) {
-            // Keep the configured launcher visually clean while PackageManager and
-            // UsageStats are queried. In particular, do not flash the setup state.
-            Spacer(Modifier.height(84.dp))
-        } else if (loadedApps.isEmpty() && !hasConfiguration) {
-            Text(stringResource(R.string.shortcuts_title), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-            Text(
-                stringResource(R.string.shortcuts_desc),
-                color = IslandPalette.secondaryLabel,
-                fontSize = 13.sp
-            )
-            Text(
-                stringResource(R.string.quick_launch_open_settings),
-                color = Color(0xFF67E8F9),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .clickable { onLaunchApp(context.packageName) }
-            )
-        } else if (loadedApps.isEmpty()) {
-            Text(
-                stringResource(R.string.quick_launch_apps_unavailable),
-                color = IslandPalette.secondaryLabel,
-                fontSize = 13.sp
-            )
-        } else {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                loadedApps.chunked(4).forEach { rowApps ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        rowApps.forEach { app ->
-                            ShortcutApp(app = app, onClick = { onLaunchApp(app.packageName) })
-                        }
-                        repeat(4 - rowApps.size) { Box(Modifier.size(width = 64.dp, height = 1.dp)) }
-                    }
-                }
-            }
-        }
-        }
-        }
-    }
-}
-
-@Composable
-private fun ShortcutApp(app: LaunchableApp, onClick: () -> Unit) {
-    val context = LocalContext.current
-    val icon = remember(app.packageName) {
-        runCatching {
-            context.packageManager.getApplicationIcon(app.packageName)
-                .toBitmap(width = 96, height = 96)
-                .asImageBitmap()
-        }.getOrNull()
-    }
-    Column(
-        modifier = Modifier
-            .size(width = 64.dp, height = 76.dp)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (icon != null) {
-            Image(
-                bitmap = icon,
-                contentDescription = app.label,
-                modifier = Modifier.size(44.dp)
-            )
-        }
-        Text(
-            text = app.label,
-            color = Color.White,
-            fontSize = 11.sp,
-            maxLines = 1
-        )
     }
 }
 
@@ -571,8 +471,8 @@ private fun NotificationBackdrop(
 
 private const val ISLAND_CONTENT_SPRING_DAMPING = 0.86f
 private const val ISLAND_CONTENT_SPRING_STIFFNESS = 224f
-internal val LARGE_IDLE_HEIGHT = 300.dp
-internal val LARGE_IDLE_MAX_HEIGHT = 300.dp
+internal val LARGE_IDLE_MIN_HEIGHT = 120.dp
+internal val LARGE_IDLE_MAX_HEIGHT = 320.dp
 
 /**
  * Cross-fade with a short vertical slide, sized by the same light spring the island shell uses, so
