@@ -13,7 +13,9 @@ import com.agupta07505.smartisland.buddy.MascotRuntime
 import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import com.agupta07505.smartisland.ui.PillLayout
+import com.agupta07505.smartisland.ui.suppressedFade
 import com.agupta07505.smartisland.util.CameraCutoutDetector
+import com.agupta07505.smartisland.util.PermissionRecoveryNotifier
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.KeyguardManager
@@ -85,6 +87,8 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var collapseJob: kotlinx.coroutines.Job? = null
     private var lastParams: WindowManager.LayoutParams? = null
     private var lastBlurRadiusPx = 0
+    // Screen-capture FLAG_SECURE, immersive suppression, face-unlock clearance, secure-app guess (Rule_Book 8.2, 10.1).
+    private var guards: OverlayGuardController? = null
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
@@ -247,6 +251,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     Intent.ACTION_SCREEN_ON -> {
                         overlayOwners.resume()
                         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
+                        guards?.biometric?.onScreenOn(isLockScreenActive)
                         updateWindowLayoutParams(
                             isWindowExpanded,
                             viewModel.settings.value
@@ -257,6 +262,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                         unlockWatchJob?.cancel()
                         overlayOwners.pause()
                         isLockScreenActive = true
+                        guards?.biometric?.onScreenOff()
                         updateWindowLayoutParams(
                             isWindowExpanded,
                             viewModel.settings.value
@@ -295,6 +301,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     openedPackage != "com.android.systemui"
                 ) {
                     viewModel.foregroundPackage.value = openedPackage
+                    guards?.onForegroundPackage(openedPackage)
                     val hasNonMusicNotifications = notificationRepository.notifications.value.any {
                         it.packageName == openedPackage && it.mode != com.agupta07505.smartisland.model.IslandMode.Music
                     }
@@ -350,6 +357,21 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         viewModel = initializedViewModel
         startMascotObservers()
+        guards = OverlayGuardController(
+            context = this,
+            windowManager = windowManager,
+            viewModel = viewModel,
+            notificationRepository = notificationRepository,
+            scope = serviceScope,
+            onWindowFlagsChanged = {
+                if (!destroyed) updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
+            },
+            onForegroundSecure = { secure ->
+                // Rule_Book 8.2 Secure App Passthrough: connect to IslandViewModel.setForegroundSecure(secure)
+                // once that setter lands; until then the guess is only logged.
+                android.util.Log.d(TAG, "Foreground secure app: $secure")
+            }
+        )
         
         systemEventReceiver = SystemEventReceiver(notificationRepository, settingsProvider = { viewModel.settings.value })
         val filter = IntentFilter().apply {
@@ -481,6 +503,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         isSystemConnected = true
+        PermissionRecoveryNotifier.cancelIfRestored(this)
         if (destroyed || !::viewModel.isInitialized) return
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Service reconnect failed") {
@@ -522,7 +545,13 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     override fun onDestroy() {
         if (destroyed) return
+        // The island was meant to be on, so the accessibility service (its overlay) was revoked or killed.
+        if (::viewModel.isInitialized && viewModel.settings.value.enabled) {
+            PermissionRecoveryNotifier.notify(this, PermissionRecoveryNotifier.Reason.OverlayStopped)
+        }
         destroyed = true
+        guards?.stop()
+        guards = null
         isSystemConnected = false
         serviceScope.cancel()
 
@@ -558,10 +587,12 @@ class SmartIslandOverlayService : AccessibilityService() {
         if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         ensureForegroundStarted()
         ensureCollapsedWindow()
+        guards?.start()
         updateWindowLayoutParams(isWindowExpanded, settings)
     }
 
     private fun stopOverlaySession() {
+        guards?.stop()
         removeCollapsedWindow()
         stopForegroundSafely()
         if (::viewModel.isInitialized) {
@@ -614,6 +645,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
                     val fullWidth by isTouchableRegionSupported.collectAsState()
+                    val suppressed by this@SmartIslandOverlayService.viewModel.isSuppressed.collectAsState()
                     OverlayIsland(
                         viewModel = this@SmartIslandOverlayService.viewModel,
                         statusBarHeight = statusBarHeight,
@@ -624,7 +656,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                             performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
                             viewModel.collapse()
                         },
-                        isFullWidth = fullWidth
+                        isFullWidth = fullWidth,
+                        modifier = androidx.compose.ui.Modifier.suppressedFade(suppressed)
                     )
                 }
 
@@ -773,6 +806,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         val isLocked = keyguardManager?.isKeyguardLocked == true
         isLockScreenActive = isLocked
         viewModel.isLocked.value = isLocked
+        if (!isLocked) guards?.biometric?.onUnlocked()
         
         val isLandscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val isIdleHidden = PillLayout.windowIdleHidden(settings, viewModel.visibleNotifications.value.size)
@@ -821,7 +855,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             expanded && viewModel.visibleNotifications.value.isEmpty() && !isInput
         ) (BACKDROP_BLUR_RADIUS_DP * density).toInt() else 0
         val blurFlag = if (blurRadiusPx > 0) WindowManager.LayoutParams.FLAG_BLUR_BEHIND else 0
-        val currentFlags = focusFlags or blurFlag or
+        val currentFlags = focusFlags or blurFlag or (guards?.extraWindowFlags() ?: 0) or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -932,7 +966,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         } else {
             (groupWidthPx + 32f * density).toInt()
         }
-        val currentFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        val currentFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or (guards?.extraWindowFlags() ?: 0) or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or

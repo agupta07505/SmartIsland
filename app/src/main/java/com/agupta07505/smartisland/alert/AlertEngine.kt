@@ -86,6 +86,7 @@ object AlertClassifier {
  *    Bluetooth, flashlight), restart on a touch ([touch]) and, for those three, restart when their state
  *    changes (a new title).
  *  - Messages from the same app group fold into one counted entry; a new message restarts the group's clock.
+ *  - While [immersive] only Critical alerts and an incoming call show; while [biometricHold] nothing does.
  *
  * It is deliberately free of Android and coroutines: the caller owns the clock and the scheduling.
  */
@@ -100,6 +101,19 @@ class AlertEngine(
     private val stateOf = HashMap<String, String>()
     private val expired = HashSet<String>()
     private var lastTouchAt = Long.MIN_VALUE
+
+    /**
+     * A full-screen app has hidden the status bar (Rule_Book 10.1): the island is SUPPRESSED and only what
+     * [breaksSuppression] allows (alarms, a ringing timer, critical battery, an incoming call) still shows.
+     * Everything else keeps its clocks running, so a message that arrives mid-video times out unseen.
+     */
+    var immersive: Boolean = false
+
+    /**
+     * The face-unlock window on the lock screen (Rule_Book 8.2): the island holds IDLE (the hardware mask
+     * only) so it never sits on top of the system's camera indicator. Nothing shows, not even a critical alert.
+     */
+    var biometricHold: Boolean = false
 
     /** The user interacted with the island: every ephemeral alert starts its timeout over. */
     fun touch(nowMs: Long) {
@@ -176,8 +190,17 @@ class AlertEngine(
             ephemeral.sortedByDescending { it.first }.map { it.second } +
             background.sortedByDescending { firstSeenAt.getValue(it.key) }
 
-        return Evaluation(ordered.take(MAX_ACTIVE), nextExpiry)
+        val shown = when {
+            biometricHold -> emptyList()
+            immersive -> ordered.filter(::breaksSuppression)
+            else -> ordered
+        }
+        return Evaluation(shown.take(MAX_ACTIVE), nextExpiry)
     }
+
+    /** Tier 0 alerts and an incoming call bypass immersive suppression; they are a prefix of the order. */
+    private fun breaksSuppression(notification: IslandNotification): Boolean =
+        notification.mode == IslandMode.IncomingCall || AlertClassifier.classify(notification) == AlertTier.Critical
 
     private fun groupOf(notification: IslandNotification): String =
         notification.packageName + "|" + (notification.groupId ?: "")

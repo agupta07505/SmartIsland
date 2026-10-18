@@ -359,6 +359,9 @@ fun DeveloperOptionsSection(
             }
         }
 
+        // ADB mode: hide status-bar clutter beside the island (Rule_Book 10.2)
+        IconBlacklistCard()
+
         // Card 3: Live System & Diagnostic Summary
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

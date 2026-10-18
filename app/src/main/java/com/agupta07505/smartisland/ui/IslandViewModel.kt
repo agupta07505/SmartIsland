@@ -196,6 +196,32 @@ class IslandViewModel(
         expanded.value = false
     }
 
+    private val immersiveState = MutableStateFlow(false)
+
+    /** A full-screen app has hidden the status bar (Rule_Book 10.1). */
+    val isImmersive: StateFlow<Boolean> = immersiveState
+
+    /** SUPPRESSED: immersive with nothing allowed through, so the island fades out and lets touches pass. */
+    val isSuppressed: StateFlow<Boolean> = combine(immersiveState, visibleNotifications) { immersive, list ->
+        immersive && list.isEmpty()
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Fed by the overlay service's system-bar probe; only alarms and incoming calls show while true. */
+    fun setImmersive(immersive: Boolean) {
+        if (alertEngine.immersive == immersive) return
+        alertEngine.immersive = immersive
+        immersiveState.value = immersive
+        alertTick.update { it + 1 }
+    }
+
+    /** The lock screen's face-unlock window (Rule_Book 8.2): the island holds IDLE while true. */
+    fun setBiometricClearance(active: Boolean) {
+        if (alertEngine.biometricHold == active) return
+        alertEngine.biometricHold = active
+        if (active) collapse()
+        alertTick.update { it + 1 }
+    }
+
     /** The user touched the island: pending messages get their full seven seconds again. */
     fun onUserInteraction() {
         alertEngine.touch(System.currentTimeMillis())
