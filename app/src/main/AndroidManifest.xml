@@ -56,6 +56,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Invisible: asks the keyguard to unlock before a gated island action runs (Rule_Book 8.3). -->
+        <activity
+            android:name=".ui.UnlockTrampolineActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name=".service.SmartIslandOverlayService"
             android:exported="true"

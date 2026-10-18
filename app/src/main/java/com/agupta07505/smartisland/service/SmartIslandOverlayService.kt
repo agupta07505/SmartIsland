@@ -14,6 +14,15 @@ import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.runtime.MascotMoment
 import com.agupta07505.smartisland.ui.PillLayout
 import com.agupta07505.smartisland.util.CameraCutoutDetector
+import com.agupta07505.smartisland.util.AlertWidthBudget
+import com.agupta07505.smartisland.util.CutoutBox
+import com.agupta07505.smartisland.util.CutoutInsets
+import com.agupta07505.smartisland.util.DisplayBounds
+import com.agupta07505.smartisland.util.GatedAction
+import com.agupta07505.smartisland.util.KeyguardGate
+import com.agupta07505.smartisland.util.PermissionGate
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
 import android.app.KeyguardManager
@@ -85,6 +94,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var collapseJob: kotlinx.coroutines.Job? = null
     private var lastParams: WindowManager.LayoutParams? = null
     private var lastBlurRadiusPx = 0
+    @Volatile private var permissionLost = false
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
@@ -247,6 +257,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                     Intent.ACTION_SCREEN_ON -> {
                         overlayOwners.resume()
                         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
+                        viewModel.setLocked(isLockScreenActive)
                         updateWindowLayoutParams(
                             isWindowExpanded,
                             viewModel.settings.value
@@ -264,6 +275,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                     }
                     Intent.ACTION_USER_PRESENT -> {
                         isLockScreenActive = false
+                        // Unmasks private alerts; the pill and the card crossfade to their text (Rule_Book §8.1).
+                        viewModel.setLocked(false)
                         announceUnlock()
                         updateWindowLayoutParams(
                             isWindowExpanded,
@@ -315,8 +328,67 @@ class SmartIslandOverlayService : AccessibilityService() {
         // Wrapped: a throw here would make Android disable the service automatically.
         runCatchingLogged(TAG, "onConfigurationChanged failed") {
             if (destroyed || !::viewModel.isInitialized) return@runCatchingLogged
+            viewModel.setLandscape(newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
             updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
         }
+    }
+
+    /**
+     * The overlay can no longer be drawn (Rule_Book §7.1): the accessibility grant behind
+     * `TYPE_ACCESSIBILITY_OVERLAY` was revoked, so any further window call would throw. Tears the overlay down
+     * and stops the service before that can happen. [reason] is for the log; this is also the single place to
+     * raise a "Restore Smart Island permissions" notification from.
+     */
+    private fun onPermissionLost(reason: String) {
+        if (destroyed || permissionLost) return
+        permissionLost = true
+        android.util.Log.w(TAG, "Overlay permission lost: $reason; stopping the overlay")
+        removeCollapsedWindow()
+        stopForegroundSafely()
+        if (::viewModel.isInitialized) viewModel.collapse()
+        runCatchingLogged(TAG, "stopSelf failed") { stopSelf() }
+    }
+
+    /**
+     * Runs a WindowManager call. A SecurityException or BadTokenException while the grant is really gone means
+     * the permission was revoked; any other failure (an early call before the service connects, an OEM quirk)
+     * is only logged, as before.
+     */
+    private inline fun guardWindowCall(what: String, block: () -> Unit): Boolean = try {
+        block()
+        true
+    } catch (e: Exception) {
+        android.util.Log.e(TAG, what, e)
+        val revoked = (e is SecurityException || e is WindowManager.BadTokenException) &&
+            !PermissionGate.isOverlayServiceEnabled(this)
+        if (revoked) onPermissionLost(what)
+        false
+    }
+
+    /** Pushes the overlay window's own cutout insets (Rule_Book §9.1) into the shared detection, in screen px. */
+    private fun attachCutoutInsetsListener(view: android.view.View) {
+        ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+            runCatchingLogged(TAG, "Reading cutout insets failed") { recordCutoutInsets(v, insets) }
+            ViewCompat.onApplyWindowInsets(v, insets)
+        }
+    }
+
+    private fun recordCutoutInsets(view: android.view.View, insets: WindowInsetsCompat) {
+        val rects = insets.displayCutout?.boundingRects.orEmpty()
+        if (rects.isEmpty()) return
+        val origin = IntArray(2)
+        view.getLocationOnScreen(origin)
+        val bounds = DisplayBounds.bounds(this)
+        CutoutInsets.update(
+            rects.map { CutoutBox(it.left + origin[0], it.top + origin[1], it.right + origin[0], it.bottom + origin[1]) },
+            bounds.width(),
+            bounds.height()
+        )
+    }
+
+    /** Sensitive actions wait for the keyguard to be dismissed (Rule_Book §8.3); the island collapses meanwhile. */
+    private fun gated(action: GatedAction, block: () -> Unit) {
+        KeyguardGate.run(this, action, onCollapse = { if (::viewModel.isInitialized) viewModel.collapse() }, block = block)
     }
 
     override fun onCreate() {
@@ -349,6 +421,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             return
         }
         viewModel = initializedViewModel
+        viewModel.setLandscape(resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         startMascotObservers()
         
         systemEventReceiver = SystemEventReceiver(notificationRepository, settingsProvider = { viewModel.settings.value })
@@ -390,6 +463,16 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
+        viewModel.setLocked(isLockScreenActive)
+
+        // New cutout insets move or resize the idle pill, so the window follows.
+        serviceScope.launch {
+            CutoutInsets.snapshot.collect {
+                if (!destroyed && ::viewModel.isInitialized) {
+                    updateWindowLayoutParams(isWindowExpanded, viewModel.settings.value)
+                }
+            }
+        }
 
         // A buddy that tucks away or comes back changes how wide the pill is, so the window and touch region follow.
         serviceScope.launch {
@@ -496,6 +579,9 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         isSystemConnected = false
+        runCatchingLogged(TAG, "Unbind permission check failed") {
+            if (!PermissionGate.isOverlayServiceEnabled(this)) onPermissionLost("overlay access revoked (unbound)")
+        }
         // Return true so Android system knows to re-bind the accessibility service automatically
         return true
     }
@@ -555,7 +641,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     }
 
     private fun startOverlaySession(settings: SmartIslandSettings) {
-        if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
+        if (destroyed || permissionLost || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         ensureForegroundStarted()
         ensureCollapsedWindow()
         updateWindowLayoutParams(isWindowExpanded, settings)
@@ -617,9 +703,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                     OverlayIsland(
                         viewModel = this@SmartIslandOverlayService.viewModel,
                         statusBarHeight = statusBarHeight,
-                        onOpenNotification = { notification -> openNotification(notification) },
-                        onLaunchApp = { packageName -> launchApp(packageName) },
-                        onOpenFloatingWindow = { openCurrentNotificationInFloatingWindow() },
+                        onOpenNotification = { notification -> gated(GatedAction.OpenApp) { openNotification(notification) } },
+                        onLaunchApp = { packageName -> gated(GatedAction.OpenApp) { launchApp(packageName) } },
+                        onOpenFloatingWindow = { gated(GatedAction.OpenApp) { openCurrentNotificationInFloatingWindow() } },
                         onOpenNotificationShade = {
                             performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
                             viewModel.collapse()
@@ -629,10 +715,14 @@ class SmartIslandOverlayService : AccessibilityService() {
                 }
 
                 setupTouchableRegion(this)
+                attachCutoutInsetsListener(this)
             }
-            runCatchingLogged(TAG, "windowManager.addView failed") {
+            val added = guardWindowCall("windowManager.addView failed") {
                 windowManager.addView(islandView, collapsedParams(viewModel.settings.value))
-            } ?: run {
+            }
+            if (added) {
+                islandView?.let { ViewCompat.requestApplyInsets(it) }
+            } else {
                 islandView = null
             }
         } catch (e: Exception) {
@@ -689,7 +779,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
                         
                         val density = resources.displayMetrics.density
-                        val screenWidth = resources.displayMetrics.widthPixels
+                        val screenWidth = DisplayBounds.widthPx(this@SmartIslandOverlayService)
                         val isSplitMode = notificationsCount >= 2 && !settingsVal.enableNotchMode
                         val isCircleLeft = settingsVal.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
 
@@ -767,7 +857,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         if (destroyed || !::windowManager.isInitialized || !::viewModel.isInitialized) return
         val view = islandView ?: return
         val density = resources.displayMetrics.density
-        val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
+        val screenWidthPx = DisplayBounds.widthPx(this).toFloat()
         
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
         val isLocked = keyguardManager?.isKeyguardLocked == true
@@ -785,7 +875,7 @@ class SmartIslandOverlayService : AccessibilityService() {
 
         val isSplitMode = (viewModel.visibleNotifications.value.size >= 2) && !settings.enableNotchMode
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp(), AlertWidthBudget.maxAlertPillWidthDp(this, settings)) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
@@ -869,8 +959,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         lastBlurRadiusPx = blurRadiusPx
         lastParams = params
-        runCatchingLogged(TAG, "Failed to update view layout") { 
-            windowManager.updateViewLayout(view, params) 
+        guardWindowCall("Failed to update view layout") {
+            windowManager.updateViewLayout(view, params)
         }
     }
 
@@ -906,10 +996,10 @@ class SmartIslandOverlayService : AccessibilityService() {
 
     private fun collapsedParams(settings: SmartIslandSettings): WindowManager.LayoutParams {
         val density = resources.displayMetrics.density
-        val screenWidthPx = resources.displayMetrics.widthPixels.toFloat()
+        val screenWidthPx = DisplayBounds.widthPx(this).toFloat()
         val isSplitMode = if (settings.enableNotchMode) false else (if (::viewModel.isInitialized) viewModel.visibleNotifications.value.size >= 2 else false)
         val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp()) * density
+        val mainWidthPx = PillLayout.effectiveWidthDp(settings, cutoutHoleWidthDp(), visibleCount(), MascotRuntime.controller.tucked.value, contentWingDp(), AlertWidthBudget.maxAlertPillWidthDp(this, settings)) * density
         val circleSizePx = settings.height * density
         val compactGapPx = 8f * density
         val edgePaddingPx = 8f * density
@@ -1046,9 +1136,9 @@ class SmartIslandOverlayService : AccessibilityService() {
             val notification = list[index]
             val options = ActivityOptions.makeBasic()
             runCatchingLogged(TAG, "Failed to set launch bounds") {
-                val displayMetrics = resources.displayMetrics
-                val screenWidth = displayMetrics.widthPixels
-                val screenHeight = displayMetrics.heightPixels
+                val displayBounds = DisplayBounds.bounds(this)
+                val screenWidth = displayBounds.width()
+                val screenHeight = displayBounds.height()
                 val w = (screenWidth * 0.90f).toInt()
                 val h = (screenHeight * 0.65f).toInt()
                 val left = (screenWidth - w) / 2

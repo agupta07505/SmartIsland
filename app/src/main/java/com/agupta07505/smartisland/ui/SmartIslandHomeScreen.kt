@@ -191,7 +191,9 @@ private enum class FeatureDetailSection {
 @Composable
 fun SmartIslandHomeScreen(
     repository: SmartIslandSettingsRepository? = null,
-    notificationRepository: INotificationRepository? = null
+    notificationRepository: INotificationRepository? = null,
+    /** Bumped by MainActivity when a foreground check finds a required permission missing (Rule_Book §7.1). */
+    permissionRouteRequest: Int = 0
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -262,6 +264,14 @@ fun SmartIslandHomeScreen(
     var previewMode by remember { mutableStateOf(IslandMode.Music) }
 
     val canEnable = overlayGranted && notificationGranted && batteryIgnored
+
+    // A required grant went missing while the app was away: go straight back to the permissions setup.
+    LaunchedEffect(permissionRouteRequest) {
+        if (permissionRouteRequest > 0 && activeDetailSection != FeatureDetailSection.PermissionsCenter) {
+            transitionDirection = 1
+            activeDetailSection = FeatureDetailSection.PermissionsCenter
+        }
+    }
 
     BackHandler(enabled = activeDetailSection != null) {
         transitionDirection = -1

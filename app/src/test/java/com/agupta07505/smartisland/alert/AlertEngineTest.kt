@@ -3,6 +3,8 @@ package com.agupta07505.smartisland.alert
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import com.agupta07505.smartisland.model.LockscreenVisibility
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -19,7 +21,8 @@ class AlertEngineTest {
         text: String = "hi",
         time: Long = 0L,
         groupId: String? = null,
-        reply: Boolean = false
+        reply: Boolean = false,
+        visibility: Int = LockscreenVisibility.PUBLIC
     ) = IslandNotification(
         key = key,
         packageName = pkg,
@@ -30,6 +33,7 @@ class AlertEngineTest {
         category = category,
         mode = mode,
         groupId = groupId,
+        lockscreenVisibility = visibility,
         actionIntents = if (reply) listOf(IslandNotificationAction("Reply", null, isQuickReply = true)) else emptyList()
     )
 
@@ -261,5 +265,73 @@ class AlertEngineTest {
         assertTrue(engine.evaluate(listOf(alert("m")), 8_000).visible.isEmpty())
         engine.evaluate(emptyList(), 9_000)
         assertEquals(1, engine.evaluate(listOf(alert("m")), 10_000).visible.size)
+    }
+
+    // ---- Lockscreen privacy ----
+
+    @Test
+    fun aSecretMessageHoldsNoSlotWhileLocked() {
+        val engine = AlertEngine()
+        val secret = alert("s", visibility = LockscreenVisibility.SECRET)
+        val locked = engine.evaluate(listOf(secret, music()), 0, isLocked = true)
+        assertEquals(listOf("music"), keys(locked))
+        // Unlocked, it takes its slot (and its seven seconds) from then on.
+        val unlocked = engine.evaluate(listOf(secret, music()), 1_000, isLocked = false)
+        assertEquals(listOf("s", "music"), keys(unlocked))
+        assertEquals(8_000L, unlocked.nextExpiryAtMs)
+    }
+
+    @Test
+    fun aPrivateMessageIsStrippedToTheAppAndAFallbackWhileLocked() {
+        val private = alert("p", title = "Sam", text = "meet at 6", visibility = LockscreenVisibility.PRIVATE)
+        val masked = AlertEngine().evaluate(listOf(private), 0, isLocked = true).visible.single()
+        assertTrue(masked.isMasked)
+        assertEquals("1 New Message", masked.title)
+        assertEquals("", masked.text)
+        assertNull(masked.largeIcon)
+        assertEquals("com.whatsapp", masked.appName)
+        // Unlocked, the same alert shows in full.
+        val shown = AlertEngine().evaluate(listOf(private), 0, isLocked = false).visible.single()
+        assertFalse(shown.isMasked)
+        assertEquals("meet at 6", shown.text)
+    }
+
+    @Test
+    fun aMaskedGroupCountsItsMessages() {
+        val raw = listOf(
+            alert("a", time = 1, visibility = LockscreenVisibility.PUBLIC),
+            alert("b", time = 2, visibility = LockscreenVisibility.PRIVATE),
+            alert("c", time = 3, text = "latest", visibility = LockscreenVisibility.PUBLIC)
+        )
+        val group = AlertEngine().evaluate(raw, 0, isLocked = true).visible.single()
+        assertEquals(3, group.groupCount)
+        assertTrue(group.isMasked)
+        assertEquals("3 New Messages", group.title)
+        assertEquals("", group.text)
+    }
+
+    @Test
+    fun mediaToolsAndPublicMessagesAreNeverMasked() {
+        val tools = listOf(
+            music().copy(lockscreenVisibility = LockscreenVisibility.SECRET),
+            timer().copy(lockscreenVisibility = LockscreenVisibility.PRIVATE)
+        )
+        val result = AlertEngine().evaluate(tools, 0, isLocked = true)
+        assertEquals(setOf("music", "timer"), keys(result).toSet())
+        assertTrue(result.visible.none { it.isMasked })
+        val public = AlertEngine().evaluate(listOf(alert("m", text = "hi")), 0, isLocked = true).visible.single()
+        assertFalse(public.isMasked)
+        assertEquals("hi", public.text)
+    }
+
+    @Test
+    fun effectiveVisibilityOnlyEverTightens() {
+        val pub = LockscreenVisibility.PUBLIC
+        val priv = LockscreenVisibility.PRIVATE
+        val secret = LockscreenVisibility.SECRET
+        assertEquals(pub, LockscreenPrivacy.effectiveVisibility(pub, null, osShowsNotifications = true))
+        assertEquals(priv, LockscreenPrivacy.effectiveVisibility(pub, priv, osShowsNotifications = true))
+        assertEquals(priv, LockscreenPrivacy.effectiveVisibility(priv, pub, osShowsNotifications = true))
+        assertEquals(secret, LockscreenPrivacy.effectiveVisibility(pub, null, osShowsNotifications = false))
     }
 }

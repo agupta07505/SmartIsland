@@ -78,4 +78,36 @@ class CameraCutoutDetectorTest {
         assertEquals(0f, result.rawWidthDp, 0f)
         assertEquals(0f, result.rawCenterOffsetDp, 0f)
     }
+
+    // ---- Insets and landscape anchoring ----
+
+    @Test
+    fun theTopCutoutIsTheHighestRealRect() {
+        val boxes = listOf(CutoutBox(0, 900, 80, 1000), CutoutBox(490, 0, 590, 80), CutoutBox(10, 0, 10, 0))
+        assertEquals(CutoutBox(490, 0, 590, 80), CameraCutoutDetector.topCutout(boxes))
+        assertEquals(null, CameraCutoutDetector.topCutout(emptyList()))
+    }
+
+    @Test
+    fun inLandscapeTheHoleOnASideBezelIsTheAnchor() {
+        // 2400 x 1080 landscape, hole on the left edge, vertically centred.
+        val left = CameraCutoutDetector.lateralAnchor(listOf(CutoutBox(0, 490, 80, 590)), screenWidthPx = 2400)
+        assertEquals(LateralSide.Left, left?.side)
+        assertEquals(540f, left!!.centerYPx, 0.01f)
+        val right = CameraCutoutDetector.lateralAnchor(listOf(CutoutBox(2320, 490, 2400, 590)), screenWidthPx = 2400)
+        assertEquals(LateralSide.Right, right?.side)
+        // A top-centre hole (portrait) is not lateral.
+        assertEquals(null, CameraCutoutDetector.lateralAnchor(listOf(CutoutBox(490, 0, 590, 80)), screenWidthPx = 1080))
+    }
+
+    @Test
+    fun recordedInsetsOnlyApplyToTheDisplaySizeTheyWereMeasuredOn() {
+        CutoutInsets.update(listOf(CutoutBox(490, 0, 590, 80)), 1080, 2400)
+        assertEquals(listOf(CutoutBox(490, 0, 590, 80)), CutoutInsets.boxesFor(1080, 2400))
+        // Rotated: stale until new insets arrive.
+        assertEquals(null, CutoutInsets.boxesFor(2400, 1080))
+        // An empty report (a window away from the cutout) keeps what was known.
+        CutoutInsets.update(emptyList(), 1080, 2400)
+        assertEquals(listOf(CutoutBox(490, 0, 590, 80)), CutoutInsets.boxesFor(1080, 2400))
+    }
 }

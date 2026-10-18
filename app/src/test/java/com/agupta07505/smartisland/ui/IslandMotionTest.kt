@@ -131,4 +131,24 @@ class IslandMotionTest {
         assertTrue(peak(SpringPreset.Loose) > 1.2f)
         assertTrue(abs(peak(SpringPreset.Critical) - 1f) < 0.01f)
     }
+
+    // ---- Ghost-animation prevention ----
+
+    @Test
+    fun restoredAlertsSnapUntilTheListenerHasSyncedAndSettled() {
+        // No sync yet: snap, but never for longer than the cap.
+        assertTrue(RestoreSnap.shouldSnap(nowMs = 1_000, firstFrameAtMs = 0, syncedAtMs = null))
+        assertFalse(RestoreSnap.shouldSnap(nowMs = RestoreSnap.MAX_WAIT_MS, firstFrameAtMs = 0, syncedAtMs = null))
+        // Synced 300ms after the first frame: snap for SETTLE_MS after the sync, then spring.
+        assertTrue(RestoreSnap.shouldSnap(nowMs = 800, firstFrameAtMs = 0, syncedAtMs = 300))
+        assertFalse(RestoreSnap.shouldSnap(nowMs = 300 + RestoreSnap.SETTLE_MS, firstFrameAtMs = 0, syncedAtMs = 300))
+    }
+
+    @Test
+    fun aListenerThatSyncedLongBeforeTheOverlayOnlySnapsTheFirstFrames() {
+        // The process was alive and the overlay restarted: the window counts from its first frame.
+        assertEquals(10_000L + RestoreSnap.SETTLE_MS, RestoreSnap.snapUntil(firstFrameAtMs = 10_000, syncedAtMs = 2_000))
+        // A reconnect late in the session never brings snapping back.
+        assertEquals(RestoreSnap.MAX_WAIT_MS, RestoreSnap.snapUntil(firstFrameAtMs = 0, syncedAtMs = 60_000))
+    }
 }

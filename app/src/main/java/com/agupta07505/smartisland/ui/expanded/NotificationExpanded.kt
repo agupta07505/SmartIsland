@@ -74,6 +74,14 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.formatNotificationTimeOrNow
+import com.agupta07505.smartisland.util.GatedAction
+import com.agupta07505.smartisland.util.KeyguardGate
+import com.agupta07505.smartisland.ui.LOCK_CROSSFADE_MS
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 
 @Composable
 fun NotificationExpanded(
@@ -88,7 +96,8 @@ fun NotificationExpanded(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
-    var isReplying by remember(notification?.key) { mutableStateOf(false) }
+    // Opens straight into the reply field when "Reply" was tapped on the lockscreen and the user then unlocked.
+    var isReplying by remember(notification?.key) { mutableStateOf(KeyguardGate.consumeReplyRequest(notification?.key)) }
     var replyText by remember(notification?.key) { mutableStateOf("") }
 
     LaunchedEffect(isReplying) {
@@ -145,19 +154,29 @@ fun NotificationExpanded(
                 }
             }
             val groupCount = notification?.groupCount ?: 1
-            Text(
-                text = when {
-                    notification == null -> "Notification"
-                    groupCount > 1 -> "${notification.appName} • $groupCount Messages"
-                    else -> notification.title.takeIf { it.isNotBlank() } ?: notification.appName
-                },
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+            val headerText = when {
+                notification == null -> "Notification"
+                groupCount > 1 -> "${notification.appName} • $groupCount Messages"
+                // A masked alert's header is the app, never the sender (Rule_Book §8.1).
+                notification.isMasked -> notification.appName
+                else -> notification.title.takeIf { it.isNotBlank() } ?: notification.appName
+            }
+            AnimatedContent(
+                targetState = headerText to (notification?.isMasked == true),
+                contentKey = { it.second },
+                transitionSpec = { fadeIn(tween(LOCK_CROSSFADE_MS)) togetherWith fadeOut(tween(LOCK_CROSSFADE_MS)) },
+                label = "notificationHeaderMask",
                 modifier = Modifier.weight(1f)
-            )
+            ) { (shown, _) ->
+                Text(
+                    text = shown,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
             Text(
                 text = notification?.let { formatNotificationTimeOrNow(it.timeMillis) } ?: "",
                 color = IslandPalette.secondaryLabel,
@@ -166,19 +185,31 @@ fun NotificationExpanded(
         }
 
         // Body: the message in full, three lines at most. Tapping it opens the app (the page handles that).
-        Text(
-            text = buildString {
+        val bodyText = when {
+            // Locked and private: only the fallback ("1 New Message"), crossfading to the text on unlock.
+            notification?.isMasked == true -> notification.title
+            else -> buildString {
                 if (notification != null && notification.groupCount > 1 && notification.title.isNotBlank()) {
                     append(notification.title).append(": ")
                 }
                 append(notification?.text?.takeIf { it.isNotBlank() } ?: "New activity")
-            },
-            color = Color.White.copy(alpha = 0.86f),
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            fontSize = 14.sp,
-            lineHeight = 19.sp
-        )
+            }
+        }
+        AnimatedContent(
+            targetState = bodyText to (notification?.isMasked == true),
+            contentKey = { it.second },
+            transitionSpec = { fadeIn(tween(LOCK_CROSSFADE_MS)) togetherWith fadeOut(tween(LOCK_CROSSFADE_MS)) },
+            label = "notificationBodyMask"
+        ) { (shown, _) ->
+            Text(
+                text = shown,
+                color = Color.White.copy(alpha = 0.86f),
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 14.sp,
+                lineHeight = 19.sp
+            )
+        }
 
         // Bottom Section: Inline Quick Reply OR Action Buttons
         if (isReplying && notification != null) {
@@ -334,7 +365,17 @@ fun NotificationExpanded(
                                 .height(40.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(IslandPalette.fill)
-                                .bounceClick { isReplying = true }
+                                .bounceClick {
+                                    // Locked: collapse, ask to unlock, and reopen the reply field only after it.
+                                    if (KeyguardGate.isLocked(context)) {
+                                        val replyKey = notification.key
+                                        KeyguardGate.run(context, GatedAction.Reply, onCollapse) {
+                                            KeyguardGate.requestReply(replyKey)
+                                        }
+                                    } else {
+                                        isReplying = true
+                                    }
+                                }
                                 .padding(horizontal = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -361,17 +402,19 @@ fun NotificationExpanded(
                                     .clip(RoundedCornerShape(20.dp))
                                     .background(IslandPalette.fill)
                                     .bounceClick {
-                                        if (action.pendingIntent != null) {
-                                            triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
-                                        } else {
-                                            Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
+                                        KeyguardGate.run(context, GatedAction.AppAction, onCollapse) {
+                                            if (action.pendingIntent != null) {
+                                                triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
+                                            } else {
+                                                Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
+                                            }
+                                            val repo = SmartIslandRepositories.notificationRepository(context)
+                                            allKeys.forEach { key ->
+                                                repo.removeNotification(key)
+                                                repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
+                                            }
+                                            onCollapse()
                                         }
-                                        val repo = SmartIslandRepositories.notificationRepository(context)
-                                        allKeys.forEach { key ->
-                                            repo.removeNotification(key)
-                                            repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
-                                        }
-                                        onCollapse()
                                     }
                                     .padding(horizontal = 14.dp),
                                 contentAlignment = Alignment.Center
@@ -398,15 +441,17 @@ fun NotificationExpanded(
                             .clip(CircleShape)
                             .background(IslandPalette.fill)
                             .bounceClick {
-                                if (markReadAction?.pendingIntent != null) {
-                                    triggerAction(context, notification.packageName, markReadAction.pendingIntent, markReadAction.title, notification.contentIntent)
+                                KeyguardGate.run(context, GatedAction.MarkAsRead, onCollapse) {
+                                    if (markReadAction?.pendingIntent != null) {
+                                        triggerAction(context, notification.packageName, markReadAction.pendingIntent, markReadAction.title, notification.contentIntent)
+                                    }
+                                    val repo = SmartIslandRepositories.notificationRepository(context)
+                                    allKeys.forEach { key ->
+                                        repo.removeNotification(key)
+                                        repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
+                                    }
+                                    onCollapse()
                                 }
-                                val repo = SmartIslandRepositories.notificationRepository(context)
-                                allKeys.forEach { key ->
-                                    repo.removeNotification(key)
-                                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(key))
-                                }
-                                onCollapse()
                             },
                         contentAlignment = Alignment.Center
                     ) {

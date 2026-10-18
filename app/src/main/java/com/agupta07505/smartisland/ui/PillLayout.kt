@@ -29,6 +29,17 @@ object PillLayout {
     /** The widest the pill grows to for an alert's text; beyond this the text scrolls and fades. */
     const val MAX_ALERT_PILL_WIDTH_DP = 280f
 
+    /**
+     * Room kept free for the status bar's left-hand side (clock, plus the app icons that stay visible without
+     * `sysui_icon_blacklist`) and right-hand side (Wi-Fi, signal, battery) when the pill's width is budgeted
+     * dynamically. Deliberately generous: overlapping the clock is worse than scrolling the text sooner.
+     */
+    const val STATUS_LEFT_RESERVE_DP = 72f
+    const val STATUS_RIGHT_RESERVE_DP = 88f
+
+    /** Air the idle pill keeps around the camera hole on each side, so the pill always encloses it. */
+    const val HOLE_MARGIN_DP = 4f
+
     /** Room the end padding, the dot and the gap between them take on the right-hand side. */
     private const val ALERT_FIXED_WING_DP = 12f + 8f + 6f
     private const val ALERT_TEXT_DP_PER_CHAR = 6.2f
@@ -50,6 +61,25 @@ object PillLayout {
         else -> 0f
     }
 
+    /**
+     * The widest an alert pill may grow (Rule_Book §10.2). With `WRITE_SECURE_SETTINGS` ([iconsManaged]) the
+     * native notification icons are hidden and the pill may use [capDp] (280dp by default). Without it, the pill
+     * is kept inside the free space between the status bar's clock and its system icons: it is centred at
+     * [pillCenterOffsetDp] from the middle of a [screenWidthDp] screen and may not reach within
+     * [STATUS_LEFT_RESERVE_DP] / [STATUS_RIGHT_RESERVE_DP] of either edge. Never more than [capDp].
+     */
+    fun maxAlertPillWidthDp(
+        screenWidthDp: Float,
+        pillCenterOffsetDp: Float,
+        iconsManaged: Boolean,
+        capDp: Float = MAX_ALERT_PILL_WIDTH_DP
+    ): Float {
+        if (iconsManaged || screenWidthDp <= 0f) return capDp
+        val center = screenWidthDp / 2f + pillCenterOffsetDp
+        val half = minOf(center - STATUS_LEFT_RESERVE_DP, screenWidthDp - center - STATUS_RIGHT_RESERVE_DP)
+        return (2f * half).coerceIn(0f, capDp)
+    }
+
     /** The buddy's size for a pill of [pillHeightDp]: 6dp smaller than the pill, clamped to 18..24dp. */
     fun buddySizeDp(pillHeightDp: Float): Float = (pillHeightDp - 6f).coerceIn(18f, 24f)
 
@@ -61,21 +91,25 @@ object PillLayout {
      * Width of the collapsed pill. It is [baseWidthDp] unless the buddy is resting and the free space
      * between the camera hole and each pill edge is smaller than the buddy needs; then both sides grow
      * by exactly the shortfall (symmetric, so the hole stays centred). [holeWidthDp] is the true hole
-     * width, or null when the device has no hardware cutout.
+     * width, or null when the device has no hardware cutout; the pill is never narrower than the hole plus
+     * [HOLE_MARGIN_DP] each side. An alert's text stops growing the pill at [maxAlertWidthDp] (see
+     * [maxAlertPillWidthDp]), though never below [baseWidthDp].
      */
     fun effectiveWidthDp(
         baseWidthDp: Float,
         pillHeightDp: Float,
         holeWidthDp: Float?,
         buddyOnPill: Boolean,
-        contentWingDp: Float = 0f
+        contentWingDp: Float = 0f,
+        maxAlertWidthDp: Float = MAX_ALERT_PILL_WIDTH_DP
     ): Float {
         val freeWing = (baseWidthDp - (holeWidthDp ?: 0f)) / 2f
         val buddyNeed = if (buddyOnPill) buddySizeDp(pillHeightDp) + 2f * BUDDY_MARGIN_DP else 0f
         val shortfall = max(0f, max(buddyNeed, contentWingDp) - freeWing)
-        val width = baseWidthDp + 2f * shortfall
+        val enclosing = holeWidthDp?.let { it + 2f * HOLE_MARGIN_DP } ?: 0f
+        val width = max(baseWidthDp + 2f * shortfall, enclosing)
         // An alert's text can ask for a lot of room; the pill stops at a fixed width and the text scrolls.
-        return if (contentWingDp > 0f) width.coerceAtMost(max(baseWidthDp, MAX_ALERT_PILL_WIDTH_DP)) else width
+        return if (contentWingDp > 0f) width.coerceAtMost(max(max(baseWidthDp, enclosing), maxAlertWidthDp)) else width
     }
 
     /** A buddy tucked behind the camera needs no wing, so the pill goes back to its base width. */
@@ -84,10 +118,11 @@ object PillLayout {
         holeWidthDp: Float?,
         notificationCount: Int,
         tucked: Boolean = false,
-        contentWingDp: Float = 0f
+        contentWingDp: Float = 0f,
+        maxAlertWidthDp: Float = MAX_ALERT_PILL_WIDTH_DP
     ): Float = effectiveWidthDp(
         settings.width, settings.height, holeWidthDp, buddyOnPill(settings, notificationCount) && !tucked,
-        contentWingDp
+        contentWingDp, maxAlertWidthDp
     )
 
     /**

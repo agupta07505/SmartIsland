@@ -16,6 +16,9 @@ import com.agupta07505.smartisland.buddy.runtime.MascotEvents
 import com.agupta07505.smartisland.buddy.model.MascotTrack
 import com.agupta07505.smartisland.buddy.ui.MascotLayer
 import com.agupta07505.smartisland.util.CameraCutoutDetector
+import com.agupta07505.smartisland.util.AlertWidthBudget
+import com.agupta07505.smartisland.util.CutoutInsets
+import com.agupta07505.smartisland.data.IslandRestoreState
 import com.agupta07505.smartisland.R
 import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.data.SmartIslandCommand
@@ -161,20 +164,33 @@ fun IslandOverlayView(
     // no bounce, so it never overshoots back into the content). Stiffness = (2π / response)².
     // With system animations off, geometry snaps and fades shorten to 120ms.
     val reduceMotion = rememberReduceMotion()
+    // Ghost-animation prevention (Rule_Book §7.3): right after a (re)start the alerts the listener restored land
+    // on their static bounds instead of springing open from nothing. See RestoreSnap for the window.
+    val restoreSyncedAt by IslandRestoreState.syncedAtMs.collectAsState()
+    val firstFrameAt = remember { System.currentTimeMillis() }
+    var restoreSnap by remember { mutableStateOf(true) }
+    LaunchedEffect(restoreSyncedAt) {
+        val wait = RestoreSnap.snapUntil(firstFrameAt, restoreSyncedAt) - System.currentTimeMillis()
+        if (wait > 0) {
+            restoreSnap = true
+            kotlinx.coroutines.delay(wait)
+        }
+        restoreSnap = false
+    }
     val appleEase = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
     // A physical preset (Bouncy, Snappy, Critical, Loose) replaces both with one spring of its own
     // stiffness and damping, the same going out and coming back; Standard keeps the tuning above.
     val springPreset = SpringPreset.fromId(settings.springPreset)
     fun dpSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.Dp> =
         when {
-            reduceMotion -> androidx.compose.animation.core.snap()
+            reduceMotion || restoreSnap -> androidx.compose.animation.core.snap()
             springPreset.isPhysical -> spring(dampingRatio = springPreset.dampingRatio, stiffness = springPreset.stiffness)
             opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
             else -> spring(dampingRatio = 1f, stiffness = 305f)
         }
     fun floatSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
         when {
-            reduceMotion -> androidx.compose.animation.core.snap()
+            reduceMotion || restoreSnap -> androidx.compose.animation.core.snap()
             springPreset.isPhysical -> spring(dampingRatio = springPreset.dampingRatio, stiffness = springPreset.stiffness)
             opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
             else -> spring(dampingRatio = 1f, stiffness = 305f)
@@ -215,12 +231,19 @@ fun IslandOverlayView(
 
     // One shared width: the base width, widened only as far as a resting buddy needs (see PillLayout).
     val appContext = androidx.compose.ui.platform.LocalContext.current
-    val cutoutInfo = remember(configuration) { CameraCutoutDetector.detect(appContext) }
+    // The overlay window's own cutout insets (fed by the service) refine the detection as soon as they arrive.
+    val cutoutSnapshot by CutoutInsets.snapshot.collectAsState()
+    val cutoutInfo = remember(configuration, cutoutSnapshot) { CameraCutoutDetector.detect(appContext) }
     val holeWidthDp = if (cutoutInfo.hasHardwareCutout) cutoutInfo.rawWidthDp else null
     val buddyTucked by MascotRuntime.controller.tucked.collectAsState()
+    // Same budget the service sizes the window with (Rule_Book §10.2).
+    val maxAlertWidthDp = remember(configuration, settings.xOffset) {
+        AlertWidthBudget.maxAlertPillWidthDp(appContext, settings)
+    }
     val pillWidthDp = PillLayout.effectiveWidthDp(
         settings, holeWidthDp, notifications.size, buddyTucked,
-        contentWingDp = PillLayout.contentWingDp(activeNotification)
+        contentWingDp = PillLayout.contentWingDp(activeNotification),
+        maxAlertWidthDp = maxAlertWidthDp
     ).dp
     val buddyOnPill = PillLayout.buddyOnPill(settings, notifications.size)
     // A cameo or countdown watch brings the buddy out over a busy pill, in one wing (a countdown is

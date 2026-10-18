@@ -7,6 +7,11 @@
 package com.agupta07505.smartisland.ui
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -48,6 +53,9 @@ internal fun alertPillLabel(notification: IslandNotification): Pair<String, Stri
     } else {
         notification.title.ifBlank { notification.appName } to notification.text
     }
+
+/** How long a masked alert's text takes to fade in on unlock. */
+internal const val LOCK_CROSSFADE_MS = 220
 
 /** The green "unread" dot at the pill's right end. */
 private val AlertDotColor = Color(0xFF34D399)
@@ -92,16 +100,24 @@ internal fun AlertPillText(notification: IslandNotification, maxTextWidth: Dp, s
         }
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            maxLines = 1,
-            softWrap = false,
-            modifier = Modifier
-                .widthIn(max = maxTextWidth)
-                .fadingRightEdge(14.dp)
-                .basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1_200, velocity = 28.dp)
-        )
+        // Unlocking reveals a masked alert's text with a crossfade (Rule_Book §8.1); other updates swap in place.
+        AnimatedContent(
+            targetState = label to notification.isMasked,
+            contentKey = { it.second },
+            transitionSpec = { fadeIn(tween(LOCK_CROSSFADE_MS)) togetherWith fadeOut(tween(LOCK_CROSSFADE_MS)) },
+            label = "alertPillMask"
+        ) { (shown, _) ->
+            Text(
+                text = shown,
+                fontSize = 12.sp,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier
+                    .widthIn(max = maxTextWidth)
+                    .fadingRightEdge(14.dp)
+                    .basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1_200, velocity = 28.dp)
+            )
+        }
         if (showDot) {
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(AlertDotColor))
         }

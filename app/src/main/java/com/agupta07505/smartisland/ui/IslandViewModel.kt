@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import com.agupta07505.smartisland.alert.AlertClassifier
 import com.agupta07505.smartisland.alert.AlertEngine
 import com.agupta07505.smartisland.alert.AlertTier
+import com.agupta07505.smartisland.alert.ExpansionPolicy
+import com.agupta07505.smartisland.util.KeyguardGate
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -55,18 +57,28 @@ class IslandViewModel(
     private var alertExpiryJob: Job? = null
     private var alertHoldJob: Job? = null
 
+    /** Keyguard state, kept current by the overlay service; while true the engine applies lockscreen privacy. */
+    val isLocked = MutableStateFlow(false)
+
+    /** Landscape: alerts stay in the small pill or companion bubble, the Medium card never opens (§9.2). */
+    val isLandscape = MutableStateFlow(false)
+
+    /** A `FLAG_SECURE` window is in the foreground: Ephemeral alerts do not auto-expand over it (§8.2). */
+    val foregroundSecure = MutableStateFlow(false)
+
     val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
         notifications,
         foregroundPackage,
         settings,
-        alertTick
-    ) { list, fgPkg, s, _ ->
+        alertTick,
+        isLocked
+    ) { list, fgPkg, s, _, locked ->
         val allowed = list.filterNot { notif ->
             (!s.enableBatteryMode && notif.mode == IslandMode.Battery) ||
             (!fgPkg.isNullOrEmpty() && notif.mode == IslandMode.Music && notif.packageName == fgPkg)
         }
         val now = System.currentTimeMillis()
-        val evaluation = alertEngine.evaluate(allowed, now)
+        val evaluation = alertEngine.evaluate(allowed, now, isLocked = locked)
         scheduleAlertExpiry(evaluation.nextExpiryAtMs, now)
         evaluation.visible
     }.stateIn(
@@ -77,7 +89,6 @@ class IslandViewModel(
 
     val expanded = MutableStateFlow(false)
     val selectedIndex = MutableStateFlow(0)
-    val isLocked = MutableStateFlow(false)
     val isInputActive = MutableStateFlow(false)
 
     val mode: StateFlow<IslandMode> = combine(visibleNotifications, selectedIndex) { list, idx ->
@@ -122,10 +133,14 @@ class IslandViewModel(
                     val visible = withTimeoutOrNull(ALERT_VISIBLE_WAIT_MS) {
                         visibleNotifications.first { list -> list.any { it.key == key || key in it.memberKeys } }
                     } ?: visibleNotifications.value
+                    // Collision, landscape and secure-window rules all live in ExpansionPolicy.
                     val primary = visible.firstOrNull()
-                    if (primary != null &&
-                        AlertClassifier.classify(notif) == AlertTier.Ephemeral &&
-                        AlertClassifier.classify(primary).let { it == AlertTier.Critical || it == AlertTier.Persistent }
+                    if (!ExpansionPolicy.allowAutoExpand(
+                            arriving = AlertClassifier.classify(notif),
+                            primary = primary?.let { AlertClassifier.classify(it) },
+                            isLandscape = isLandscape.value,
+                            foregroundIsSecure = foregroundSecure.value
+                        )
                     ) return@collect
 
                     // Indexes the paged island list, where a folded entry stands for several keys.
@@ -136,6 +151,18 @@ class IslandViewModel(
                         if (settings.value.autoExpandOnNotification || isDemo) {
                             expand()
                         }
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
+            runSuspendCatchingLogged(TAG, "Reply-after-unlock collector failed") {
+                // "Reply" tapped on the lockscreen: once unlocked, the card reopens with its reply field open.
+                KeyguardGate.replyRequests.collect { key ->
+                    val index = visibleNotifications.value.indexOfFirst { it.key == key || key in it.memberKeys }
+                    if (index >= 0) {
+                        selectedIndex.value = index
+                        expand()
                     }
                 }
             }
@@ -188,7 +215,27 @@ class IslandViewModel(
     }
 
     fun expand() {
+        if (!canExpandNow()) return
         expanded.value = true
+    }
+
+    /** Landscape blocks the Medium card while alerts are on the island; the idle dashboard still opens. */
+    private fun canExpandNow(): Boolean =
+        ExpansionPolicy.canExpand(hasAlerts = visibleNotifications.value.isNotEmpty(), isLandscape = isLandscape.value)
+
+    fun setLocked(locked: Boolean) {
+        isLocked.value = locked
+    }
+
+    /** Called by the overlay service on every orientation change; turning sideways closes an open alert card. */
+    fun setLandscape(landscape: Boolean) {
+        isLandscape.value = landscape
+        if (expanded.value && !canExpandNow()) collapse()
+    }
+
+    /** Set by the foreground secure-window detector (Rule_Book §8.2). */
+    fun setForegroundSecure(secure: Boolean) {
+        foregroundSecure.value = secure
     }
 
     fun collapse() {
@@ -224,6 +271,11 @@ class IslandViewModel(
         val now = System.currentTimeMillis()
         if (now - lastToggleTimeMs < 350L) return
         lastToggleTimeMs = now
+        if (!expanded.value && !canExpandNow()) {
+            // A tap in landscape keeps the alert small, but still counts as an interaction.
+            onUserInteraction()
+            return
+        }
         expanded.update { !it }
     }
 
