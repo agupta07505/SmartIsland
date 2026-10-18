@@ -91,7 +91,7 @@ internal fun ClockBatteryHeader() {
         )
         if (level >= 0) {
             Text(
-                text = (if (charging) "\u26A1 " else "") + "$level%",
+                text = "$level%",
                 color = batteryColor,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
