@@ -1810,4 +1810,336 @@ private fun ShortcutApp(
             .then(gestureModifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (isFolder)
+        if (isFolder) {
+            FolderTile(PinnedApps.members(app.packageName))
+        } else if (icon != null) {
+            Image(
+                bitmap = icon,
+                contentDescription = app.label,
+                modifier = Modifier.size(44.dp)
+            )
+        }
+        Text(
+            text = if (isFolder) stringResource(R.string.pinned_folder_label) else app.label,
+            color = LocalIslandPalette.current.text,
+            fontSize = 10.sp,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun FolderTile(members: List<String>) {
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(LocalIslandPalette.current.text.copy(alpha = 0.14f))
+            .padding(4.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            members.take(PinnedApps.MAX_FOLDER).chunked(2).forEach { rowMembers ->
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    rowMembers.forEach { memberPkg ->
+                        val mini = remember(memberPkg) {
+                            runCatching {
+                                context.packageManager.getApplicationIcon(memberPkg)
+                                    .toBitmap(width = 48, height = 48)
+                                    .asImageBitmap()
+                            }.getOrNull()
+                        }
+                        if (mini != null) {
+                            Image(bitmap = mini, contentDescription = null, modifier = Modifier.size(17.dp))
+                        } else {
+                            Spacer(Modifier.size(17.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppActionPanel(
+    app: LaunchableApp,
+    actions: List<AppShortcutAction>,
+    onAction: (AppShortcutAction) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val palette = LocalIslandPalette.current
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(palette.surface.copy(alpha = 0.97f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+            .padding(horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ShortcutApp(app = app, onClick = onDismiss)
+        actions.forEach { action ->
+            AppActionChip(action = action, onClick = { onAction(action) }, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun AppActionChip(action: AppShortcutAction, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val palette = LocalIslandPalette.current
+    val icon: ImageVector
+    val label: Int
+    when (action) {
+        AppShortcutAction.AppInfo -> { icon = Icons.Outlined.Info; label = R.string.shortcut_action_app_info }
+        AppShortcutAction.FloatingWindow -> { icon = Icons.Outlined.PictureInPictureAlt; label = R.string.shortcut_action_floating_window }
+        AppShortcutAction.SplitScreen -> { icon = Icons.Outlined.VerticalSplit; label = R.string.shortcut_action_split_screen }
+    }
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = palette.accentCyan, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(label),
+            color = palette.text,
+            fontSize = 11.sp,
+            lineHeight = 13.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
+    }
+}
+
+@Composable
+private fun NotificationBackdrop(
+    notification: IslandNotification,
+    settings: SmartIslandSettings,
+    modifier: Modifier = Modifier
+) {
+    val artwork = notification.largeIcon ?: notification.icon
+    // The blur is baked into a small picture once (drawn back up with bilinear filtering) instead of a live render effect
+    // on the picture, which re-ran its blur on every frame of the card's grow animation.
+    val blurRadiusDp = if (settings.expandedBlurEnabled) settings.expandedBlurRadius else null
+    val imageBitmap = remember(artwork, blurRadiusDp) {
+        if (artwork != null && !artwork.isRecycled) {
+            runCatching {
+                (com.agupta07505.smartisland.util.MediaArt.blurredBackdrop(artwork, blurRadiusDp) ?: artwork).asImageBitmap()
+            }.getOrNull()
+        } else null
+    }
+
+    val accentColor = cardAccentColor(notification, settings)
+    val palette = LocalIslandPalette.current
+    // A picture keeps its own look (black dim, white text) on either theme; only the picture-less glow follows the palette.
+    val scrimColor = palette.scrim
+
+    Box(modifier = modifier) {
+        if (imageBitmap != null) {
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer { alpha = 0.38f }
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.35f * cardScrimScale(settings)),
+                                Color.Black.copy(alpha = 0.85f * cardScrimScale(settings))
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.22f),
+                                Color.Transparent
+                            ),
+                            center = Offset(0f, 0f),
+                            radius = 700f
+                        )
+                    )
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.35f),
+                                accentColor.copy(alpha = 0.12f),
+                                Color.Transparent
+                            ),
+                            center = Offset(0f, 0f),
+                            radius = 750f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                scrimColor.copy(alpha = if (palette.isLight) 0.45f else 0.65f)
+                            )
+                        )
+                    )
+            )
+        }
+    }
+}
+
+/** What decides a card's height; when it changes, the height measured earlier no longer holds. */
+internal fun notificationHeightSignature(n: IslandNotification): Int =
+    if (liveCardTextDoesNotChangeHeight(n.mode)) {
+        // A live card's text ticks (a clock, a progress, a call timer), which made its signature change every second
+        // and its measured height forgotten again and again.
+        listOf(n.mode, n.media.size, n.actionIntents.map { it.title }).hashCode()
+    } else {
+        listOf(n.mode, n.title, n.text, n.bigText, n.readerText, n.media.size, n.callStatusText, n.actionIntents.map { it.title }).hashCode()
+    }
+
+/** Modes whose text changes while the card is open without changing its height (timers, recorders, a call, navigation, downloads). */
+internal fun liveCardTextDoesNotChangeHeight(mode: IslandMode?): Boolean = when (mode) {
+    IslandMode.Timer, IslandMode.Stopwatch, IslandMode.ScreenRecording, IslandMode.AudioRecording,
+    IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.DownloadUpload -> true
+    else -> false
+}
+
+private const val NEIGHBOUR_PROBE_DELAY_MS = 350L
+
+@Composable
+private fun NeighbourHeightProbe(
+    notification: IslandNotification,
+    bottomPadding: Dp,
+    settings: SmartIslandSettings,
+    launcherApps: List<LaunchableApp>?,
+    onHeight: (Dp) -> Unit
+) {
+    // Throw-away copies of the state a card shares with the island: the reader-scroll tracker (the card's removal
+    // resets it, which would make the shown card's fling look finished and let a finger that only stops it count as a
+    // tap) and the reply drafts (a pending draft would open a reply box and ask for the keyboard in a card nobody
+    // sees).
+    val isolatedReaderScroll = remember { com.agupta07505.smartisland.util.ReaderScrollTracker() }
+    val isolatedReplyDrafts = remember { com.agupta07505.smartisland.model.ReplyDrafts() }
+    androidx.compose.ui.layout.SubcomposeLayout { constraints ->
+        if (constraints.maxWidth == androidx.compose.ui.unit.Constraints.Infinity) {
+            return@SubcomposeLayout layout(0, 0) {}
+        }
+        val fixedWidth = androidx.compose.ui.unit.Constraints(
+            minWidth = constraints.maxWidth,
+            maxWidth = constraints.maxWidth,
+            minHeight = 0,
+            maxHeight = androidx.compose.ui.unit.Constraints.Infinity
+        )
+        subcompose(Unit) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalCardShown provides false,
+                LocalReaderScroll provides isolatedReaderScroll,
+                LocalReplyDrafts provides isolatedReplyDrafts
+            ) {
+                ExpandedCardPage(
+                    notification = notification,
+                    bottomPadding = bottomPadding,
+                    settings = settings,
+                    launcherApps = launcherApps,
+                    onOpenNotification = {},
+                    onLaunchApp = {},
+                    onCollapse = {},
+                    onReplyStateChanged = {},
+                    onTextExpandedChanged = {},
+                    onHeightChanged = onHeight
+                )
+            }
+        }.forEach { it.measure(fixedWidth) }
+        layout(0, 0) {}
+    }
+}
+
+
+@Composable
+private fun ClockBatteryHeader() {
+    val context = LocalContext.current
+    val palette = LocalIslandPalette.current
+
+    // Hora: atualiza no comeco de cada minuto (respeita formato 12h/24h do sistema)
+    var timeText by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val format = android.text.format.DateFormat.getTimeFormat(context)
+        while (true) {
+            val now = System.currentTimeMillis()
+            timeText = format.format(java.util.Date(now))
+            kotlinx.coroutines.delay(60_000L - (now % 60_000L) + 50L)
+        }
+    }
+
+    // Bateria: broadcast sticky, atualiza em tempo real enquanto a ilha esta expandida
+    var level by remember { mutableStateOf(-1) }
+    var charging by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        fun apply(intent: Intent?) {
+            intent ?: return
+            val l = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+            if (l >= 0 && scale > 0) level = (l * 100) / scale
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                status == BatteryManager.BATTERY_STATUS_FULL
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) = apply(intent)
+        }
+        val sticky = ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        apply(sticky)
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+
+    val batteryColor = when {
+        charging -> palette.success
+        level in 0..15 -> palette.danger
+        else -> palette.text
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = timeText,
+            color = palette.text,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        if (level >= 0) {
+            Text(
+                text = (if (charging) "\u26A1 " else "") + "$level%",
+                color = batteryColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
