@@ -114,6 +114,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val BuddyPalette = stringPreferencesKey("buddy_palette")
         val BuddySide = stringPreferencesKey("buddy_side")
         val BuddyVisits = stringPreferencesKey("buddy_visits")
+        val SpringPreset = stringPreferencesKey("spring_preset")
+        val KineticGlow = booleanPreferencesKey("kinetic_glow")
         val BuddyReacts = booleanPreferencesKey("buddy_reacts")
         val BuddyHidesWhenIdle = booleanPreferencesKey("buddy_hides_when_idle")
     }
@@ -262,6 +264,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 buddyPalette = MascotPalette.fromId(prefs[Keys.BuddyPalette]).id,
                 buddySide = MascotSide.fromId(prefs[Keys.BuddySide]).id,
                 buddyVisits = MascotVisitFrequency.fromId(prefs[Keys.BuddyVisits]).id,
+                springPreset = com.agupta07505.smartisland.ui.SpringPreset.fromId(prefs[Keys.SpringPreset]).id,
+                kineticGlow = prefs[Keys.KineticGlow] ?: defaults.kineticGlow,
                 buddyReacts = prefs[Keys.BuddyReacts] ?: defaults.buddyReacts,
                 buddyHidesWhenIdle = prefs[Keys.BuddyHidesWhenIdle] ?: defaults.buddyHidesWhenIdle
             )
@@ -535,6 +539,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setBuddyPalette(value: String) = editSafely { it[Keys.BuddyPalette] = MascotPalette.fromId(value).id }
     suspend fun setBuddySide(value: String) = editSafely { it[Keys.BuddySide] = MascotSide.fromId(value).id }
     suspend fun setBuddyVisits(value: String) = editSafely { it[Keys.BuddyVisits] = MascotVisitFrequency.fromId(value).id }
+    suspend fun setSpringPreset(value: String) = editSafely { it[Keys.SpringPreset] = com.agupta07505.smartisland.ui.SpringPreset.fromId(value).id }
+    suspend fun setKineticGlow(value: Boolean) = editSafely { it[Keys.KineticGlow] = value }
     suspend fun setBuddyReacts(value: Boolean) = editSafely { it[Keys.BuddyReacts] = value }
     suspend fun setBuddyHidesWhenIdle(value: Boolean) = editSafely { it[Keys.BuddyHidesWhenIdle] = value }
     suspend fun toggleNotificationCooldownExcludedPackage(packageName: String) = editSafely { prefs ->
@@ -680,6 +686,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         prefs[Keys.BuddyPalette] = MascotPalette.fromId(settings.buddyPalette).id
         prefs[Keys.BuddySide] = MascotSide.fromId(settings.buddySide).id
         prefs[Keys.BuddyVisits] = MascotVisitFrequency.fromId(settings.buddyVisits).id
+        prefs[Keys.SpringPreset] = com.agupta07505.smartisland.ui.SpringPreset.fromId(settings.springPreset).id
+        prefs[Keys.KineticGlow] = settings.kineticGlow
         prefs[Keys.BuddyReacts] = settings.buddyReacts
         prefs[Keys.BuddyHidesWhenIdle] = settings.buddyHidesWhenIdle
     }

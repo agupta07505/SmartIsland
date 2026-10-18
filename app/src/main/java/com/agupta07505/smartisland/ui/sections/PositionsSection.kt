@@ -786,6 +786,7 @@ fun PositionsSection(
                 }
             }
         }
+        MotionSettings(settings = settings, repository = repository)
     }
 }
 

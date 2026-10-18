@@ -111,7 +111,17 @@ internal fun IdleDashboard(
 
     val controls = listOf(
         QuickControl("Wi-Fi", Icons.Rounded.Wifi, wifiOn, WifiBlue, Color.White, null) {
-            startSettingsActivity(context, Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY))
+            // The in-app Internet panel exists from Android 10; before that, the plain Wi-Fi settings page.
+            startSettingsActivity(
+                context,
+                Intent(
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        Settings.Panel.ACTION_INTERNET_CONNECTIVITY
+                    } else {
+                        Settings.ACTION_WIFI_SETTINGS
+                    }
+                )
+            )
             onCollapse()
         },
         QuickControl("Flashlight", Icons.Rounded.FlashlightOn, torch.on, FlashAmber, Color(0xFF1A1300),

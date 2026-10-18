@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Debug builds only: lets adb post synthetic island alerts (see DebugAlertReceiver). -->
+<!-- Debug builds only: lets adb post synthetic island alerts (see DebugAlertReceiver). Only callers holding
+         DUMP (the adb shell, the system) may send to it. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <receiver
             android:name="com.agupta07505.smartisland.debug.DebugAlertReceiver"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
     </application>
 </manifest>

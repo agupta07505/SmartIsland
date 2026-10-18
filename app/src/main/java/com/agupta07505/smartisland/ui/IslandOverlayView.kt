@@ -67,6 +67,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -159,15 +162,20 @@ fun IslandOverlayView(
     // With system animations off, geometry snaps and fades shorten to 120ms.
     val reduceMotion = rememberReduceMotion()
     val appleEase = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+    // A physical preset (Bouncy, Snappy, Critical, Loose) replaces both with one spring of its own
+    // stiffness and damping, the same going out and coming back; Standard keeps the tuning above.
+    val springPreset = SpringPreset.fromId(settings.springPreset)
     fun dpSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.Dp> =
         when {
             reduceMotion -> androidx.compose.animation.core.snap()
+            springPreset.isPhysical -> spring(dampingRatio = springPreset.dampingRatio, stiffness = springPreset.stiffness)
             opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
             else -> spring(dampingRatio = 1f, stiffness = 305f)
         }
     fun floatSpec(opening: Boolean): androidx.compose.animation.core.FiniteAnimationSpec<Float> =
         when {
             reduceMotion -> androidx.compose.animation.core.snap()
+            springPreset.isPhysical -> spring(dampingRatio = springPreset.dampingRatio, stiffness = springPreset.stiffness)
             opening -> spring(dampingRatio = 0.86f, stiffness = 224f)
             else -> spring(dampingRatio = 1f, stiffness = 305f)
         }
@@ -378,6 +386,58 @@ fun IslandOverlayView(
     val safeHeight = height.coerceAtLeast(0.dp)
     val safeRadius = radius.coerceAtLeast(0.dp)
 
+    // Kinetic glow: the island's speed is read off the animated size on Compose's frame clock (dp per second,
+    // the larger of the width and height speeds) and the glow's blur follows KineticGlow.blurRadius(speed).
+    // While the island is still this coroutine is suspended and costs nothing; it samples once per frame only
+    // while the size is changing, and the glow is cleared once the size has held still for a few frames.
+    var glowRadiusDp by remember { mutableStateOf(0f) }
+    LaunchedEffect(settings.kineticGlow, reduceMotion, springPreset) {
+        if (!settings.kineticGlow || reduceMotion) {
+            glowRadiusDp = 0f
+            return@LaunchedEffect
+        }
+        // Debug builds only: `adb shell settings put global debug_island_glow_dp 20` holds the glow at a fixed
+        // radius so its rendering can be inspected without catching a 0.3s animation on camera.
+        if (com.agupta07505.smartisland.BuildConfig.DEBUG) {
+            val held = android.provider.Settings.Global.getString(context.contentResolver, "debug_island_glow_dp")?.toFloatOrNull()
+            if (held != null) {
+                glowRadiusDp = held
+                return@LaunchedEffect
+            }
+        }
+        // `width` and `height` are the live animated values; reading them here tracks every frame.
+        var lastWidth = width.value
+        var lastHeight = height.value
+        while (true) {
+            androidx.compose.runtime.snapshotFlow { width.value != lastWidth || height.value != lastHeight }
+                .first { it }
+            var lastNanos = androidx.compose.runtime.withFrameNanos { it }
+            lastWidth = width.value
+            lastHeight = height.value
+            var stillFrames = 0
+            var peakSpeed = 0f
+            while (stillFrames < KINETIC_GLOW_SETTLE_FRAMES) {
+                val nanos = androidx.compose.runtime.withFrameNanos { it }
+                val w = width.value
+                val h = height.value
+                val dt = (nanos - lastNanos) / 1_000_000_000f
+                if (dt > 0f) {
+                    val speed = maxOf(kotlin.math.abs(w - lastWidth), kotlin.math.abs(h - lastHeight)) / dt
+                    glowRadiusDp = KineticGlow.blurRadius(speed)
+                    stillFrames = if (w == lastWidth && h == lastHeight) stillFrames + 1 else 0
+                    if (com.agupta07505.smartisland.BuildConfig.DEBUG && speed > peakSpeed) {
+                        peakSpeed = speed
+                        android.util.Log.d("IslandMotion", "preset=${springPreset.id} peakSpeed=%.0f dp/s glow=%.1f dp".format(peakSpeed, glowRadiusDp))
+                    }
+                }
+                lastNanos = nanos
+                lastWidth = w
+                lastHeight = h
+            }
+            glowRadiusDp = 0f
+        }
+    }
+
     // Tactile spring scale bounce animation only when user switches between active notifications
     val switchScaleAnim = remember { androidx.compose.animation.core.Animatable(1f) }
     var isInitialComposition by remember { mutableStateOf(true) }
@@ -557,6 +617,11 @@ fun IslandOverlayView(
                     translationY = yOffset.toPx() + dragOffset
                     scaleX = switchScaleAnim.value
                     scaleY = switchScaleAnim.value
+                }
+                .drawBehind {
+                    if (glowRadiusDp > 0f) {
+                        drawKineticGlow(glowRadiusDp.dp.toPx(), safeRadius.toPx())
+                    }
                 }
                 .then(
                     if (settings.enableShadow && settings.shadowElevation > 0f && !isHiding) {
@@ -1299,6 +1364,7 @@ internal fun calculateSecondaryExpandedOffset(
     }
 }
 private const val SWIPE_THRESHOLD_DP = 35f
+private const val KINETIC_GLOW_SETTLE_FRAMES = 6
 private const val PILL_SWIPE_THRESHOLD_DP = 16f
 private const val DRAG_MAX_OFFSET_DP = 100f
 private const val COMPACT_INDICATOR_GAP_DP = 8f
@@ -1502,5 +1568,29 @@ internal fun executeSwipeAction(
         SwipeAction.None -> {
             // Disabled / No action
         }
+    }
+}
+
+/** Light blue, the reference's primary colour. */
+private val KineticGlowColor = Color(0xFF3186FF)
+
+/**
+ * Draws the glow as contiguous soft bands around the island's rounded rectangle, from its edge outward, each
+ * fainter than the one inside it (a quadratic falloff), so it works the same on every Android version (no
+ * hardware shadow-layer limits) and shows no gaps or rings. The island body is drawn on top.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawKineticGlow(radiusPx: Float, cornerPx: Float) {
+    val steps = 14
+    val band = radiusPx / steps
+    for (i in steps downTo 1) {
+        val centre = band * (i - 0.5f)
+        val falloff = 1f - (i - 0.5f) / steps
+        drawRoundRect(
+            color = KineticGlowColor.copy(alpha = 0.40f * falloff * falloff),
+            topLeft = androidx.compose.ui.geometry.Offset(-centre, -centre),
+            size = androidx.compose.ui.geometry.Size(size.width + 2 * centre, size.height + 2 * centre),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerPx + centre, cornerPx + centre),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = band * 1.05f)
+        )
     }
 }

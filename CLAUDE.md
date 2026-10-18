@@ -12,3 +12,8 @@ How the island picks the main pill, the companion bubble and what expires (tiers
 message grouping) is documented in [docs/ALERT_RULES.md](docs/ALERT_RULES.md). Read it before changing
 `alert/AlertEngine.kt`, `IslandViewModel`, `PillLayout` or how the overlay service sizes the window; keep the
 doc and `AlertEngineTest` in step with any behaviour change.
+
+## Motion
+
+Spring presets and the kinetic glow are documented in [docs/MOTION.md](docs/MOTION.md); change the maths in
+`ui/IslandMotion.kt` with its tests, not inline in the overlay view.

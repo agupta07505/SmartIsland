@@ -13,6 +13,7 @@ import com.agupta07505.smartisland.buddy.model.MascotShape
 import com.agupta07505.smartisland.buddy.model.MascotSide
 import com.agupta07505.smartisland.buddy.model.MascotStyle
 import com.agupta07505.smartisland.buddy.model.MascotVisitFrequency
+import com.agupta07505.smartisland.ui.SpringPreset
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -90,6 +91,10 @@ data class SmartIslandSettings(
     val buddyPalette: String = MascotPalette.Pearl.id,
     val buddySide: String = MascotSide.Left.id,
     val buddyVisits: String = MascotVisitFrequency.Normal.id,
+    /** [com.agupta07505.smartisland.ui.SpringPreset] id: how the island's size springs behave. */
+    val springPreset: String = SpringPreset.Standard.id,
+    /** Whether a faint glow flares while the island is moving fast ([com.agupta07505.smartisland.ui.KineticGlow]). */
+    val kineticGlow: Boolean = true,
     val buddyReacts: Boolean = true,
     val buddyHidesWhenIdle: Boolean = true
 ) {
@@ -199,6 +204,8 @@ data class SmartIslandSettings(
         settingsObj.put("buddyPalette", buddyPalette)
         settingsObj.put("buddySide", buddySide)
         settingsObj.put("buddyVisits", buddyVisits)
+        settingsObj.put("springPreset", springPreset)
+        settingsObj.put("kineticGlow", kineticGlow)
         settingsObj.put("buddyReacts", buddyReacts)
         settingsObj.put("buddyHidesWhenIdle", buddyHidesWhenIdle)
 
@@ -359,6 +366,8 @@ data class SmartIslandSettings(
                 buddyPalette = MascotPalette.fromId(obj.optString("buddyPalette", defaults.buddyPalette)).id,
                 buddySide = MascotSide.fromId(obj.optString("buddySide", defaults.buddySide)).id,
                 buddyVisits = MascotVisitFrequency.fromId(obj.optString("buddyVisits", defaults.buddyVisits)).id,
+                springPreset = SpringPreset.fromId(obj.optString("springPreset", defaults.springPreset)).id,
+                kineticGlow = obj.optBoolean("kineticGlow", defaults.kineticGlow),
                 buddyReacts = obj.optBoolean("buddyReacts", defaults.buddyReacts),
                 buddyHidesWhenIdle = obj.optBoolean("buddyHidesWhenIdle", defaults.buddyHidesWhenIdle)
             )
