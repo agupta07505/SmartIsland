@@ -1,0 +1,118 @@
+# Atualiza automaticamente com as novidades do autor (branch dev) e gera o APK com o relógio/bateria.
+# Roda todo dia e também manualmente em Actions > Auto Update & Build > Run workflow.
+name: Auto Update & Build
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-update
+  cancel-in-progress: false
+
+jobs:
+  update-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM: https://github.com/agupta07505/SmartIsland.git
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        id: up
+        run: |
+          git config user.name "auto-update"
+          git config user.email "auto-update@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM"
+          git fetch upstream dev
+          KEY="$(git rev-parse upstream/dev)-$(git rev-parse HEAD)"
+          LAST="$(gh release view latest-build --json body -q .body 2>/dev/null | grep -o 'key:[0-9a-f-]*' | head -1 | cut -d: -f2 || true)"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          if [ "$KEY" = "$LAST" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Nada novo desde o último build."
+          fi
+
+      - name: Merge upstream changes (not pushed)
+        id: merge
+        if: steps.up.outputs.skip != 'true'
+        run: |
+          if git merge --no-commit --no-ff upstream/dev > /tmp/merge.log 2>&1; then
+            # Mantém os workflows do seu fork; não usa os do autor.
+            git reset -q HEAD -- .github/workflows || true
+            git checkout -- .github/workflows || true
+            git clean -fdq .github/workflows || true
+            if git rev-parse -q --verify MERGE_HEAD > /dev/null; then
+              git commit -qm "Merge upstream dev (local, not pushed)"
+            fi
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          else
+            cat /tmp/merge.log
+            git merge --abort || true
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            echo "::warning::Conflito ao juntar as novidades do autor. Compilando sem elas."
+          fi
+
+      - name: Set up JDK 17
+        if: steps.up.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Restore fixed signing key
+        if: steps.up.outputs.skip != 'true'
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > ~/.android/debug.keystore || true
+            if ! keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey > /dev/null 2>&1; then
+              echo "::warning::Chave do secret invalida. Usando chave aleatoria."
+              rm -f ~/.android/debug.keystore
+            fi
+          else
+            echo "::warning::Secret DEBUG_KEYSTORE_B64 ausente. Usando chave aleatoria: desinstale o app antes de instalar."
+          fi
+
+      - name: Build debug APK
+        if: steps.up.outputs.skip != 'true'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK artifact
+        if: steps.up.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartIsland-custom-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+      - name: Publish APK in Releases
+        if: steps.up.outputs.skip != 'true'
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk SmartIsland-custom.apk
+          {
+            echo "APK automatico (relogio e bateria no menu expandido)."
+            echo ""
+            echo "Novidades do autor: ${{ steps.merge.outputs.status }}"
+            echo ""
+            echo "key:${{ steps.up.outputs.key }}"
+          } > notes.md
+          gh release delete latest-build --cleanup-tag --yes || true
+          gh release create latest-build SmartIsland-custom.apk \
+            --target dev --prerelease \
+            --title "Build automatico" --notes-file notes.md
