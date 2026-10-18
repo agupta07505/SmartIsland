@@ -468,7 +468,7 @@ class IslandViewModel(
     val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
         visibleUnordered,
         popupKey
-    ) { list, popup -> IslandPriority.order(list, popup) }.stateIn(
+    ) { list, popup -> IslandPriority.order(list, popup) + StandbyCard.card }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = emptyList()

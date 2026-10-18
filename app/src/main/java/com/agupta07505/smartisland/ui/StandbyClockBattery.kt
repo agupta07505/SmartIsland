@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.IslandNotification
 
 /**
  * Hora (slot esquerdo) e bateria (slot direito) da pilula em repouso, quando nenhum widget ocioso esta na pilula.
@@ -81,5 +83,21 @@ internal fun StandbyBatterySlot() {
         color = color,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold
+    )
+}
+
+/**
+ * Cartao fixo de hora e bateria: fica sempre no fim da lista de eventos da ilha. Sem notificacao ele ocupa a pilula;
+ * com notificacao, deslizar para o lado troca entre ela e este cartao.
+ */
+internal object StandbyCard {
+    val card = IslandNotification(
+        key = "smartisland_standby_clock",
+        packageName = "smartisland.standby",
+        appName = "Smart Island",
+        title = "",
+        text = "",
+        timeMillis = 0L,
+        mode = IslandMode.Empty
     )
 }
