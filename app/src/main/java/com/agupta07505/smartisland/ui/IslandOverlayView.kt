@@ -144,7 +144,7 @@ fun IslandOverlayView(
     val density = LocalDensity.current
     val screenWidth = configuration.screenWidthDp.dp
     val screenCenter = screenWidth / 2f
-    val expandedWidth = calculateExpandedWidth(
+    val maxExpandedWidth = calculateExpandedWidth(
         isLandscape = isLandscape,
         screenWidthDp = configuration.screenWidthDp.toFloat(),
         screenHeightDp = configuration.screenHeightDp.toFloat()
@@ -191,6 +191,11 @@ fun IslandOverlayView(
         if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
     }
     var expandedHeight by remember { mutableStateOf(initialEstimatedHeight) }
+    // Size classes: Medium (active task) is ~340dp wide, Large (idle shortcuts dashboard) ~350dp, both
+    // capped to the screen. Medium heights stay content-measured; Large is ~300dp when it holds apps.
+    val sizeClass = expandedSizeClass(idleDashboard = notifications.isEmpty())
+    val expandedWidth = expandedWidthFor(sizeClass, maxExpandedWidth)
+    val expandedRadius = expandedCornerRadiusFor(sizeClass)
 
     LaunchedEffect(activeMode, notifications.isEmpty()) {
         if (!expanded) {
@@ -328,7 +333,7 @@ fun IslandOverlayView(
         if (it) expandedTopOffset else 0.dp
     }
     val radius by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandRadius") {
-        if (it) 34.dp else if (isHiding) 0.dp else settings.cornerRadius.dp
+        if (it) expandedRadius else if (isHiding) 0.dp else settings.cornerRadius.dp
     }
     val animatedXOffset by transition.animateDp(transitionSpec = { dpSpec(targetState) }, label = "islandXOffset") {
         if (it) 0.dp else collapsedMainOffset
@@ -1219,6 +1224,27 @@ internal fun calculateExpandedWidth(
         screenWidthDp * ratio
     }
 }
+
+internal enum class IslandSizeClass { Medium, Large }
+
+internal const val MEDIUM_ISLAND_WIDTH_DP = 340f
+internal const val LARGE_ISLAND_WIDTH_DP = 350f
+internal const val MEDIUM_ISLAND_RADIUS_DP = 32f
+internal const val LARGE_ISLAND_RADIUS_DP = 40f
+internal const val LARGE_ISLAND_HEIGHT_DP = 300f
+
+/** The idle shortcuts dashboard is Large; every active-task card is Medium. */
+internal fun expandedSizeClass(idleDashboard: Boolean): IslandSizeClass =
+    if (idleDashboard) IslandSizeClass.Large else IslandSizeClass.Medium
+
+internal fun expandedWidthFor(sizeClass: IslandSizeClass, maxWidth: Dp): Dp {
+    val target = if (sizeClass == IslandSizeClass.Large) LARGE_ISLAND_WIDTH_DP else MEDIUM_ISLAND_WIDTH_DP
+    return target.dp.coerceAtMost(maxWidth)
+}
+
+/** Corner radius scales with the island: 32dp for Medium, 40dp for Large. */
+internal fun expandedCornerRadiusFor(sizeClass: IslandSizeClass): Dp =
+    (if (sizeClass == IslandSizeClass.Large) LARGE_ISLAND_RADIUS_DP else MEDIUM_ISLAND_RADIUS_DP).dp
 
 internal fun calculateExpandedTopOffset(
     enableNotchMode: Boolean,

@@ -10,11 +10,22 @@
 package com.agupta07505.smartisland.ui.expanded
 
 import com.agupta07505.smartisland.ui.IslandPalette
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -77,13 +88,16 @@ fun IslandExpandedContent(
         }
         val density = LocalDensity.current
         Box(
+            contentAlignment = Alignment.Center,
             modifier = modifier
                 .fillMaxWidth()
+                .heightIn(min = if (launcherApps.isNullOrEmpty()) 0.dp else LARGE_IDLE_HEIGHT)
                 .wrapContentHeight(unbounded = true)
                 .onSizeChanged {
                     val measuredHeight = with(density) { it.height.toDp() }
                     if (measuredHeight > 0.dp) {
-                        val clamped = measuredHeight.coerceIn(80.dp, 180.dp)
+                        val minHeight = if (launcherApps.isNullOrEmpty()) 80.dp else LARGE_IDLE_HEIGHT
+                        val clamped = measuredHeight.coerceIn(minHeight, LARGE_IDLE_MAX_HEIGHT)
                         onHeightMeasured(clamped)
                     }
                 }
@@ -248,7 +262,12 @@ fun IslandExpandedContent(
                             )
                         }
 
-                        when (notification.mode) {
+                        AnimatedContent(
+                            targetState = notification.mode,
+                            transitionSpec = { islandContentTransition() },
+                            label = "islandModeContent"
+                        ) { mode ->
+                        when (mode) {
                             IslandMode.Notification -> NotificationExpanded(
                                 notification = notification,
                                 bottomPadding = bottomPadding,
@@ -342,6 +361,7 @@ fun IslandExpandedContent(
                                 onLaunchApp = onLaunchApp
                             )
                         }
+                        }
                     }
                 }
             }
@@ -363,8 +383,13 @@ private fun EmptyExpanded(
             .padding(start = 18.dp, top = 16.dp, end = 18.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        val loadedApps = apps
         val hasConfiguration = settings.shortcutPackages.isNotEmpty() || settings.showRecentApps
+        AnimatedContent(
+            targetState = apps,
+            transitionSpec = { islandContentTransition() },
+            label = "shortcutsContent"
+        ) { loadedApps ->
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center) {
 
         if (loadedApps == null) {
             // Keep the configured launcher visually clean while PackageManager and
@@ -409,6 +434,8 @@ private fun EmptyExpanded(
                     }
                 }
             }
+        }
+        }
         }
     }
 }
@@ -541,3 +568,18 @@ private fun NotificationBackdrop(
     }
 }
 
+
+private const val ISLAND_CONTENT_SPRING_DAMPING = 0.86f
+private const val ISLAND_CONTENT_SPRING_STIFFNESS = 224f
+internal val LARGE_IDLE_HEIGHT = 300.dp
+internal val LARGE_IDLE_MAX_HEIGHT = 300.dp
+
+/**
+ * Cross-fade with a short vertical slide, sized by the same light spring the island shell uses, so
+ * resizing never clips content mid-transition.
+ */
+private fun <S> AnimatedContentTransitionScope<S>.islandContentTransition(): ContentTransform =
+    ((fadeIn(spring(ISLAND_CONTENT_SPRING_DAMPING, ISLAND_CONTENT_SPRING_STIFFNESS)) +
+        slideInVertically(spring(ISLAND_CONTENT_SPRING_DAMPING, ISLAND_CONTENT_SPRING_STIFFNESS)) { it / 12 }) togetherWith
+        (fadeOut(spring(1f, 305f)) + slideOutVertically(spring(1f, 305f)) { -it / 12 })) using
+        SizeTransform(clip = false)

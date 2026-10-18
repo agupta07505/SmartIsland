@@ -84,6 +84,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var isWindowExpanded: Boolean = false
     private var collapseJob: kotlinx.coroutines.Job? = null
     private var lastParams: WindowManager.LayoutParams? = null
+    private var lastBlurRadiusPx = 0
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
@@ -814,7 +815,13 @@ class SmartIslandOverlayService : AccessibilityService() {
         }
         val isInput = viewModel.isInputActive.value && expanded
         val focusFlags = if (isInput) 0 else WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-        val currentFlags = focusFlags or
+        // The idle dashboard (Large) blurs what is behind the island (Android 12+; no-op where the
+        // compositor has background blur disabled). The overlay is full-screen only while expanded.
+        val blurRadiusPx = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            expanded && viewModel.notifications.value.isEmpty() && !isInput
+        ) (BACKDROP_BLUR_RADIUS_DP * density).toInt() else 0
+        val blurFlag = if (blurRadiusPx > 0) WindowManager.LayoutParams.FLAG_BLUR_BEHIND else 0
+        val currentFlags = focusFlags or blurFlag or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -834,6 +841,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             lp.width == w &&
             lp.height == h &&
             lp.flags == currentFlags &&
+            lastBlurRadiusPx == blurRadiusPx &&
             lp.x == currentX &&
             lp.y == currentY &&
             lp.softInputMode == currentSoftInputMode
@@ -855,7 +863,11 @@ class SmartIslandOverlayService : AccessibilityService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                blurBehindRadius = blurRadiusPx
+            }
         }
+        lastBlurRadiusPx = blurRadiusPx
         lastParams = params
         runCatchingLogged(TAG, "Failed to update view layout") { 
             windowManager.updateViewLayout(view, params) 
@@ -1121,6 +1133,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             private set
 
         private const val TAG = "SmartIslandOverlayService"
+        private const val BACKDROP_BLUR_RADIUS_DP = 24f
         private const val NOTIFICATION_ID = 8105
         private const val WINDOWING_MODE_FREEFORM = 5
         private const val OVERLAY_CHANNEL_ID = "smart_island_overlay"
