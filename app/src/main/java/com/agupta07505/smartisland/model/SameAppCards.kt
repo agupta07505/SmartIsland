@@ -50,7 +50,8 @@ fun secondaryCardIndex(cards: List<IslandNotification>, currentIndex: Int, expan
 }
 
 @Suppress("UNUSED_PARAMETER")
-private fun showsInCutout(card: IslandNotification, cards: List<IslandNotification>, currentIndex: Int): Boolean = true
+private fun showsInCutout(card: IslandNotification, cards: List<IslandNotification>, currentIndex: Int): Boolean =
+    card.mode != IslandMode.Empty
 
 /**
  * How many cutouts compete for space. One app is ONE entry; the exception is the sibling picker (expanded, with a
