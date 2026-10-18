@@ -87,6 +87,7 @@ object AlertClassifier {
  *    changes (a new title).
  *  - Messages from the same app group fold into one counted entry; a new message restarts the group's clock.
  *  - While [immersive] only Critical alerts and an incoming call show; while [biometricHold] nothing does.
+ *  - While locked, secret messages are dropped and private ones are masked (see [LockscreenPrivacy]).
  *
  * It is deliberately free of Android and coroutines: the caller owns the clock and the scheduling.
  */
@@ -120,7 +121,11 @@ class AlertEngine(
         lastTouchAt = nowMs
     }
 
-    fun evaluate(raw: List<IslandNotification>, nowMs: Long): Evaluation {
+    /**
+     * [isLocked] applies the lockscreen privacy rules ([LockscreenPrivacy]): secret messages are left out and
+     * private ones come back stripped to the app icon and a count.
+     */
+    fun evaluate(raw: List<IslandNotification>, nowMs: Long, isLocked: Boolean = false): Evaluation {
         val live = raw.mapTo(HashSet()) { it.key }
         firstSeenAt.keys.retainAll(live)
         stateOf.keys.retainAll(live)
@@ -132,6 +137,8 @@ class AlertEngine(
         val messages = LinkedHashMap<String, MutableList<IslandNotification>>()
         val transients = ArrayList<IslandNotification>()
         for (notification in raw) {
+            // A secret alert holds no slot (and starts no clock) until the phone is unlocked.
+            if (isLocked && LockscreenPrivacy.isHiddenWhenLocked(notification)) continue
             val tier = AlertClassifier.classify(notification)
             if (tier == AlertTier.Passive) continue
             firstSeenAt.getOrPut(notification.key) { nowMs }
@@ -195,7 +202,8 @@ class AlertEngine(
             immersive -> ordered.filter(::breaksSuppression)
             else -> ordered
         }
-        return Evaluation(shown.take(MAX_ACTIVE), nextExpiry)
+        val visible = shown.take(MAX_ACTIVE)
+        return Evaluation(if (isLocked) visible.map(LockscreenPrivacy::mask) else visible, nextExpiry)
     }
 
     /** Tier 0 alerts and an incoming call bypass immersive suppression; they are a prefix of the order. */
@@ -210,6 +218,8 @@ class AlertEngine(
         if (members.size == 1) return latest
         return latest.copy(
             groupCount = members.size,
+            // The most private member decides how much of the group the lockscreen may show.
+            lockscreenVisibility = members.minOf { it.lockscreenVisibility },
             memberKeys = members.map { it.key },
             groupIcons = members.sortedBy { it.timeMillis }
                 .mapNotNull { it.largeIcon ?: it.icon }

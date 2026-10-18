@@ -230,5 +230,74 @@ class IslandViewModelTest {
         assertEquals(listOf("call_1", "msg_3"), viewModel.visibleNotifications.value.map { it.key })
         assertEquals(0, viewModel.selectedIndex.value)
     }
-}
 
+    private fun autoExpandViewModel(): Pair<IslandViewModel, SmartIslandNotificationRepository> {
+        val settingsRepo = mockk<SmartIslandSettingsRepository>(relaxed = true)
+        io.mockk.every { settingsRepo.settings } returns kotlinx.coroutines.flow.MutableStateFlow(
+            com.agupta07505.smartisland.data.SmartIslandSettings(autoExpandOnNotification = true)
+        )
+        val notifRepo = SmartIslandNotificationRepository()
+        return IslandViewModel(settingsRepo, notifRepo) to notifRepo
+    }
+
+    private fun message(key: String) = IslandNotification(
+        key = key,
+        packageName = "com.whatsapp",
+        appName = "WhatsApp",
+        title = "Alice",
+        text = "Hello!",
+        mode = IslandMode.Notification,
+        timeMillis = System.currentTimeMillis()
+    )
+
+    @Test
+    fun aSecureForegroundAppKeepsAMessageInTheSmallPill() = runTest {
+        val (viewModel, notifRepo) = autoExpandViewModel()
+        viewModel.setForegroundSecure(true)
+        testDispatcher.scheduler.runCurrent()
+
+        notifRepo.postNotification(message("secure_1"), autoExpand = true)
+        testDispatcher.scheduler.runCurrent()
+
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+        assertEquals(1, viewModel.visibleNotifications.value.size)
+    }
+
+    @Test
+    fun inLandscapeAlertsNeitherAutoExpandNorOpenOnTap() = runTest {
+        val (viewModel, notifRepo) = autoExpandViewModel()
+        viewModel.setLandscape(true)
+        testDispatcher.scheduler.runCurrent()
+
+        notifRepo.postNotification(message("land_1"), autoExpand = true)
+        testDispatcher.scheduler.runCurrent()
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+
+        viewModel.toggleExpanded()
+        testDispatcher.scheduler.runCurrent()
+        org.junit.Assert.assertFalse(viewModel.expanded.value)
+
+        // Back to portrait, a tap opens it again.
+        viewModel.setLandscape(false)
+        viewModel.expand()
+        testDispatcher.scheduler.runCurrent()
+        assertTrue(viewModel.expanded.value)
+    }
+
+    @Test
+    fun aLockedPhoneMasksAPrivateMessage() = runTest {
+        val (viewModel, notifRepo) = autoExpandViewModel()
+        viewModel.setLocked(true)
+        notifRepo.postNotification(
+            message("lock_1").copy(lockscreenVisibility = com.agupta07505.smartisland.model.LockscreenVisibility.PRIVATE)
+        )
+        testDispatcher.scheduler.runCurrent()
+        val masked = viewModel.visibleNotifications.value.single()
+        assertTrue(masked.isMasked)
+        assertEquals("1 New Message", masked.title)
+
+        viewModel.setLocked(false)
+        testDispatcher.scheduler.runCurrent()
+        assertEquals("Alice", viewModel.visibleNotifications.value.single().title)
+    }
+}

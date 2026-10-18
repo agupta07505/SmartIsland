@@ -64,3 +64,30 @@ object KineticGlow {
         return if (s > SPEED_THRESHOLD) min(MAX_BLUR_DP, s * BLUR_PER_SPEED) else 0f
     }
 }
+
+/**
+ * Ghost-animation prevention (Rule_Book §7.3). When the overlay comes up after a (re)start with alerts already
+ * restored, the island must not spring open from nothing: it snaps straight to the static bounds of what it
+ * shows. Geometry snaps while the notification listener's initial sync is still in flight (at most
+ * [MAX_WAIT_MS] after the first frame) and for [SETTLE_MS] after whichever of the first frame or that sync
+ * came last; after that the normal springs apply.
+ */
+object RestoreSnap {
+    /** Longest the overlay waits, snapping, for a sync that may never come (no notification access). */
+    const val MAX_WAIT_MS = 5_000L
+
+    /** How long after the first frame (or the sync) restored alerts still land without a spring. */
+    const val SETTLE_MS = 600L
+
+    /**
+     * [firstFrameAtMs] is when the overlay first composed, [syncedAtMs] when the listener finished its initial
+     * sync (null while it has not). Returns true while geometry should snap.
+     */
+    fun shouldSnap(nowMs: Long, firstFrameAtMs: Long, syncedAtMs: Long?): Boolean =
+        nowMs < snapUntil(firstFrameAtMs, syncedAtMs)
+
+    /** The moment snapping stops, for scheduling the switch back to springs. */
+    fun snapUntil(firstFrameAtMs: Long, syncedAtMs: Long?): Long =
+        if (syncedAtMs == null) firstFrameAtMs + MAX_WAIT_MS
+        else minOf(maxOf(firstFrameAtMs, syncedAtMs) + SETTLE_MS, firstFrameAtMs + MAX_WAIT_MS)
+}

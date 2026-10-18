@@ -74,4 +74,38 @@ class PillLayoutTest {
         assertFalse(PillLayout.windowIdleHidden(s, 0))
         assertFalse(PillLayout.pillIdleHiding(s, 0))
     }
+
+    // ---- Cutout enclosure and the dynamic width budget ----
+
+    @Test
+    fun theIdlePillAlwaysEnclosesTheCameraHole() {
+        val s = base.copy(width = 76f)
+        // A 90dp-wide hole needs 90 + 2 * 4dp.
+        assertEquals(98f, PillLayout.effectiveWidthDp(s, holeWidthDp = 90f, notificationCount = 0), 0.001f)
+    }
+
+    @Test
+    fun withoutSecureSettingsTheAlertWidthStaysClearOfTheStatusIcons() {
+        // 411dp screen, centred pill: min(205.5 - 72, 205.5 - 88) * 2 = 235dp.
+        assertEquals(235f, PillLayout.maxAlertPillWidthDp(411f, 0f, iconsManaged = false), 0.001f)
+        // Offset towards the system icons shrinks the room on that side.
+        assertEquals(215f, PillLayout.maxAlertPillWidthDp(411f, 10f, iconsManaged = false), 0.001f)
+        // A wide screen is still capped.
+        assertEquals(280f, PillLayout.maxAlertPillWidthDp(900f, 0f, iconsManaged = false), 0.001f)
+        // A custom cap is honoured.
+        assertEquals(200f, PillLayout.maxAlertPillWidthDp(900f, 0f, iconsManaged = false, capDp = 200f), 0.001f)
+    }
+
+    @Test
+    fun withSecureSettingsTheAlertPillUsesTheFullCap() {
+        assertEquals(PillLayout.MAX_ALERT_PILL_WIDTH_DP, PillLayout.maxAlertPillWidthDp(411f, 0f, iconsManaged = true), 0f)
+    }
+
+    @Test
+    fun aLongAlertStopsAtTheDynamicBudgetButNeverBelowTheBaseWidth() {
+        val wide = PillLayout.effectiveWidthDp(base, holeWidthDp = 30f, notificationCount = 1, contentWingDp = 400f, maxAlertWidthDp = 235f)
+        assertEquals(235f, wide, 0.001f)
+        val tightBudget = PillLayout.effectiveWidthDp(base, holeWidthDp = 30f, notificationCount = 1, contentWingDp = 400f, maxAlertWidthDp = 50f)
+        assertEquals(base.width, tightBudget, 0.001f)
+    }
 }
