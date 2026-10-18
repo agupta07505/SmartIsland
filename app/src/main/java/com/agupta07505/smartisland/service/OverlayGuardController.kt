@@ -109,10 +109,12 @@ class OverlayGuardController(
     private var started = false
 
     fun start() {
+        // The probe window can only be added once the accessibility service is connected; a session started
+        // before that fails to add it, so every (re)start retries. It is a no-op once the probe is attached.
+        immersive.start()
         if (started) return
         started = true
         screenCapture.start()
-        immersive.start()
         jobs += scope.launch {
             notificationRepository.notifications
                 .map { list -> list.any { it.mode == IslandMode.ScreenRecording } }

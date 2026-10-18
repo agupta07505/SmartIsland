@@ -16,6 +16,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
+import com.agupta07505.smartisland.BuildConfig
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +54,7 @@ class ImmersiveModeMonitor(
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 view.setOnApplyWindowInsetsListener { _, insets ->
-                    onStatusBarVisible(insets.isVisible(WindowInsets.Type.statusBars()))
+                    onStatusBarVisible(statusBarVisible(insets))
                     insets
                 }
             } else {
@@ -75,6 +76,20 @@ class ImmersiveModeMonitor(
         runCatchingLogged(TAG, "Immersive probe could not be removed") {
             if (view.isAttachedToWindow) windowManager.removeViewImmediate(view)
         }
+    }
+
+    /**
+     * Some ROMs (One UI) leave the status-bar source out of the insets sent to overlays layered above it, and
+     * `isVisible` then reads false forever. A missing source tells nothing, so only a status bar that is
+     * present but hidden counts as immersive.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+    private fun statusBarVisible(insets: WindowInsets): Boolean {
+        val type = WindowInsets.Type.statusBars()
+        val present = insets.getInsetsIgnoringVisibility(type).top > 0
+        val visible = insets.isVisible(type)
+        if (BuildConfig.DEBUG) android.util.Log.d(TAG, "status bar present=$present visible=$visible")
+        return !present || visible
     }
 
     private fun onStatusBarVisible(visible: Boolean) {
