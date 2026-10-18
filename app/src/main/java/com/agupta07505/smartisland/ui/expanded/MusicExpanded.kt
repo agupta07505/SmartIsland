@@ -34,8 +34,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -261,129 +259,89 @@ fun MusicExpanded(
     val artwork = notification?.largeIcon ?: metadataArtwork ?: notification?.icon
     val accent = Color(settings.musicVisualizerColor)
 
-    // The card owns its touches: only the header opens the app. Buttons, slider and the empty
+    // Repeat is not part of the MediaController transport API: players expose it either as a custom
+    // playback action or as a notification action. Look for either; with neither, the button is dimmed.
+    val repeatCustomAction = controller?.playbackState?.customActions.orEmpty().firstOrNull {
+        val label = (it.action.orEmpty() + " " + it.name?.toString().orEmpty()).lowercase()
+        label.contains("repeat") || label.contains("loop")
+    }
+    val repeatAvailable = repeatCustomAction != null ||
+        notification?.actionIntents.orEmpty().any { a ->
+            a.title.lowercase().let { it.contains("repeat") || it.contains("loop") }
+        }
+    var repeatOn by remember(notification?.key) { mutableStateOf(false) }
+
+    // The card owns its touches: only the metadata row opens the app. Buttons, scrubber and the empty
     // space between them never launch it, and each interaction restarts the auto-collapse timer.
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .background(Color.Black)
     ) {
-        // Matte backdrop: the artwork is blurred, desaturated and darkened so a small or square cover
-        // never shows compression on a wide card and text stays readable on any art.
-        val blurSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-        if (artwork != null) {
-            Image(
-                bitmap = artwork.asImageBitmap(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.8f) }),
-                modifier = Modifier
-                    .matchParentSize()
-                    .graphicsLayer {
-                        // Over-scale so the blurred edges stay outside the card.
-                        scaleX = 1.25f
-                        scaleY = 1.25f
-                    }
-                    .then(if (blurSupported) Modifier.blur(28.dp) else Modifier)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(Brush.linearGradient(listOf(accent.copy(alpha = 0.45f), Color(0xFF111111))))
-            )
-        }
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = if (blurSupported) 0.26f else 0.55f),
-                            Color.Black.copy(alpha = if (blurSupported) 0.52f else 0.7f)
-                        )
-                    )
-                )
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
-                .padding(start = 24.dp, top = 12.dp, end = 24.dp, bottom = 14.dp)
+                .padding(start = 20.dp, top = 14.dp, end = 20.dp, bottom = 12.dp)
         ) {
-            // Header: the one region that opens the source app.
+            // Top row: cover, track + artist, waveform. This is the one region that opens the source app.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 36.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .clickable(role = Role.Button, onClick = onOpenApp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val appIcon = notification?.icon
-                if (appIcon != null) {
-                    Image(
-                        bitmap = appIcon.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(5.dp))
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Text(
-                    text = notification?.appName ?: "",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Row(
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(IslandPalette.fill)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accent.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
                 ) {
+                    if (artwork != null) {
+                        Image(
+                            bitmap = artwork.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.music_open_app),
+                        text = notification?.title?.takeIf { it.isNotBlank() } ?: "Song",
                         color = Color.White,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(13.dp)
+                    Text(
+                        text = notification?.text?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Artist",
+                        color = IslandPalette.secondaryLabel,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
+                MusicWaveform(
+                    isPlaying = localIsPlaying,
+                    color = Color.White,
+                    barCount = 12,
+                    barWidth = 2.5.dp,
+                    gap = 2.dp,
+                    height = 28.dp
+                )
             }
-
-            Text(
-                text = notification?.title?.takeIf { it.isNotBlank() } ?: "Song",
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = notification?.text?.takeIf { it.isNotBlank() } ?: notification?.appName ?: "Artist",
-                color = IslandPalette.secondaryLabel,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodySmall
-            )
 
             val seekDescription = stringResource(R.string.a11y_playback_position)
             WavyMusicSeekBar(
@@ -409,10 +367,10 @@ fun MusicExpanded(
                     }
                 },
                 trackColor = Color.White.copy(alpha = 0.28f),
-                waveHeight = 5.dp,
+                waveHeight = 4.dp,
                 trackThickness = 3.dp,
                 thumbRadius = 6.dp,
-                touchHeight = 32.dp,
+                touchHeight = 28.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics { contentDescription = seekDescription }
@@ -425,18 +383,32 @@ fun MusicExpanded(
                 Text(formatDuration(durationMs), color = IslandPalette.secondaryLabel, style = MaterialTheme.typography.labelSmall)
             }
 
+            // Controls, in order: Repeat, Previous, Play/Pause, Next, End.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MusicControl(
-                    icon = if (localIsLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    description = stringResource(if (localIsLiked) R.string.a11y_unlike else R.string.a11y_like),
-                    tint = if (localIsLiked) IslandPalette.danger else Color.White,
+                    icon = if (repeatOn) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                    description = stringResource(R.string.a11y_repeat),
+                    tint = when {
+                        !repeatAvailable -> Color.White.copy(alpha = 0.25f)
+                        repeatOn -> accent
+                        else -> Color.White.copy(alpha = 0.6f)
+                    },
                     onClick = {
                         SmartIslandRepositories.notificationRepository(context).resetTimer()
-                        toggleLike()
+                        if (repeatAvailable) {
+                            repeatOn = !repeatOn
+                            if (repeatCustomAction != null && controller != null) {
+                                runCatchingLogged("MusicExpanded", "Failed to toggle repeat") {
+                                    controller.transportControls.sendCustomAction(repeatCustomAction, null)
+                                }
+                            } else {
+                                notification.trySendFirstAction(context, "repeat", "loop")
+                            }
+                        }
                     }
                 )
                 MusicControl(
@@ -489,6 +461,10 @@ fun MusicExpanded(
                         }
                     }
                 )
+                // End: (1) stops playback through the session's transport controls, (2) asks the player
+                // to close (a notification "stop/close/dismiss" action when there is no session; a third
+                // party app cannot be force-killed from here), and (3) removes the island's entry and
+                // collapses it. See `stopSong` above, which is where to add anything further.
                 MusicControl(
                     icon = Icons.Rounded.Close,
                     description = stringResource(R.string.a11y_stop_playback),

@@ -156,15 +156,16 @@ fun IslandCollapsedContent(
                         Image(
                             bitmap = artwork.asImageBitmap(),
                             contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(7.dp))
                         )
                     } else {
                         Box(
                             modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(7.dp))
                                 .background(Color(settings.musicVisualizerColor)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -271,10 +272,27 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.Music -> {
-                    AudioVisualizer(
-                        isPlaying = notification?.mediaIsPlaying == true,
-                        color = Color(settings.musicVisualizerColor)
-                    )
+                    val positionMs = com.agupta07505.smartisland.ui.expanded.rememberMediaPositionMs(notification)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        com.agupta07505.smartisland.ui.expanded.MusicWaveform(
+                            isPlaying = notification?.mediaIsPlaying == true,
+                            color = Color(settings.musicVisualizerColor),
+                            barCount = 7,
+                            barWidth = 2.dp,
+                            gap = 1.5.dp,
+                            height = 16.dp
+                        )
+                        Text(
+                            text = com.agupta07505.smartisland.ui.expanded.formatDuration(positionMs),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
+                        )
+                    }
                 }
                 IslandMode.Battery -> {
                     val pctText = notification?.text ?: "49%"

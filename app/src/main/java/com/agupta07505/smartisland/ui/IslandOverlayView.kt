@@ -1326,7 +1326,7 @@ internal enum class CompactNotificationShape { MiniPill, Circle }
 
 internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
     return when (mode) {
-        IslandMode.Music -> 205.dp
+        IslandMode.Music -> 168.dp
         IslandMode.Notification -> 135.dp
         IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
         IslandMode.LiveActivity, IslandMode.Navigation -> 180.dp
