@@ -21,9 +21,10 @@ object PillLayout {
 
     /**
      * Free space needed on each side of the camera hole by the music pill's right-hand content
-     * (waveform + elapsed time + the slot's end padding). The pill grows symmetrically to provide it.
+     * (the waveform + the slot's end padding + a little air). The pill grows symmetrically to
+     * provide it when a narrow pill or a wide hole leaves less than that.
      */
-    const val MUSIC_WING_DP = 62f
+    const val MUSIC_WING_DP = 40f
 
     /** The buddy's size for a pill of [pillHeightDp]: 6dp smaller than the pill, clamped to 18..24dp. */
     fun buddySizeDp(pillHeightDp: Float): Float = (pillHeightDp - 6f).coerceIn(18f, 24f)

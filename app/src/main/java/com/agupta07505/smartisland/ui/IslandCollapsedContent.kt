@@ -272,27 +272,14 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.Music -> {
-                    val positionMs = com.agupta07505.smartisland.ui.expanded.rememberMediaPositionMs(notification)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        com.agupta07505.smartisland.ui.expanded.MusicWaveform(
-                            isPlaying = notification?.mediaIsPlaying == true,
-                            color = Color(settings.musicVisualizerColor),
-                            barCount = 5,
-                            barWidth = 2.dp,
-                            gap = 1.5.dp,
-                            height = 16.dp
-                        )
-                        Text(
-                            text = com.agupta07505.smartisland.ui.expanded.formatDuration(positionMs),
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
+                    com.agupta07505.smartisland.ui.expanded.MusicWaveform(
+                        isPlaying = notification?.mediaIsPlaying == true,
+                        color = Color(settings.musicVisualizerColor),
+                        barCount = 7,
+                        barWidth = 2.dp,
+                        gap = 1.5.dp,
+                        height = 16.dp
+                    )
                 }
                 IslandMode.Battery -> {
                     val pctText = notification?.text ?: "49%"
