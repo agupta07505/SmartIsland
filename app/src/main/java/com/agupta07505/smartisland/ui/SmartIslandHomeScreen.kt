@@ -191,7 +191,8 @@ private enum class FeatureDetailSection {
 @Composable
 fun SmartIslandHomeScreen(
     repository: SmartIslandSettingsRepository? = null,
-    notificationRepository: INotificationRepository? = null
+    notificationRepository: INotificationRepository? = null,
+    openPermissionsOnStart: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -254,8 +255,10 @@ fun SmartIslandHomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    var selectedTab by remember { mutableStateOf(StudioTab.Studio) }
-    var activeDetailSection by remember { mutableStateOf<FeatureDetailSection?>(null) }
+    var selectedTab by remember { mutableStateOf(if (openPermissionsOnStart) StudioTab.Settings else StudioTab.Studio) }
+    var activeDetailSection by remember {
+        mutableStateOf(if (openPermissionsOnStart) FeatureDetailSection.PermissionsCenter else null)
+    }
     var transitionDirection by remember { mutableStateOf(1) } // 1 = forward, -1 = backward
 
     // Active preview mode for interactive live preview

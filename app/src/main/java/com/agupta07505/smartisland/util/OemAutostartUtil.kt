@@ -38,4 +38,32 @@ object OemAutostartUtil {
             false
         }
     }
+
+    /**
+     * Onboarding's "Lock in background / Auto-start" step (Rule_Book 7.2): tries each vendor panel from
+     * [OemIntentFactory] in turn, then App info. Returns true when something opened.
+     */
+    fun openBackgroundLockSettings(context: Context, deviceType: String? = null): Boolean {
+        return try {
+            val device = OemDeviceRules.resolveEffectiveDevice(deviceType)
+            val label = runCatching { context.applicationInfo.loadLabel(context.packageManager).toString() }
+                .getOrNull()
+            for (target in OemIntentFactory.backgroundTargets(device)) {
+                val intent = Intent().setComponent(ComponentName(target.packageName, target.className))
+                if (target.passPackage) {
+                    intent.putExtra(OemIntentFactory.EXTRA_PACKAGE_NAME, context.packageName)
+                    if (label != null) intent.putExtra(OemIntentFactory.EXTRA_PACKAGE_LABEL, label)
+                }
+                if (context.safeStartActivity(intent, errorMessage = null)) return true
+            }
+            context.safeStartActivity(appDetailsIntent(context), errorMessage = null)
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun appDetailsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+        }
 }

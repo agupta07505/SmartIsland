@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Smart Island (2026)
+  © Animesh Gupta — github.com/agupta07505
+  Licensed under the GNU GPL v3 License
+  Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+-->
+<!-- Strings for permission recovery, onboarding extras and ADB icon hiding (Rule_Book 7.1, 7.2, 10.2). -->
+<resources>
+    <!-- Restore-permissions notification (Rule_Book 7.1) -->
+    <string name="recovery_channel_name">Permission alerts</string>
+    <string name="recovery_channel_desc">Tells you when Smart Island stopped because a permission was turned off</string>
+    <string name="recovery_title">Restore Smart Island Permissions</string>
+    <string name="recovery_text_overlay">Smart Island stopped because its accessibility overlay was turned off. Tap to turn it back on.</string>
+    <string name="recovery_text_notifications">Smart Island lost notification access. Tap to grant it again.</string>
+
+    <!-- Onboarding extras (Rule_Book 7.2, 10.2) -->
+    <string name="onboarding_extras_header">Recommended setup</string>
+    <string name="perm_status_recommended">Recommended</string>
+    <string name="oem_background_title">Lock in Background &amp; Auto-start</string>
+    <string name="oem_background_desc">%1$s closes apps it thinks are idle. Turn on Auto-start for Smart Island, then open Recents, long-press Smart Island and tap Lock so it is never cleared.</string>
+    <string name="btn_open_settings">Open Settings</string>
+    <string name="popup_notifications_title">Turn Off Pop-up Notifications</string>
+    <string name="popup_notifications_desc">So only the island shows new alerts, turn off "Pop on screen" (heads-up) and Bubbles for your messaging apps in Android\'s notification settings.</string>
+    <string name="recovery_alerts_title">Permission Alerts</string>
+    <string name="recovery_alerts_desc">Lets Smart Island notify you if a permission is turned off and the island stops.</string>
+
+    <!-- ADB icon blacklist (Rule_Book 10.2) -->
+    <string name="icon_blacklist_title">Hide Status Bar Clutter</string>
+    <string name="icon_blacklist_desc">Hides system status-bar icons such as alarm, Bluetooth, NFC and rotate so they do not crowd the island. Battery, clock, Wi-Fi and signal stay. Needs a one-time ADB grant.</string>
+    <string name="icon_blacklist_grant_hint">Not granted. Connect to a computer and run:</string>
+    <string name="icon_blacklist_copied">Command copied</string>
+    <string name="icon_blacklist_failed">Could not change the status bar setting</string>
+    <string name="btn_copy_command">Copy Command</string>
+</resources>

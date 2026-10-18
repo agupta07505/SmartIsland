@@ -20,6 +20,7 @@ import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.ui.SmartIslandHomeScreen
 import com.agupta07505.smartisland.ui.SmartIslandTheme
+import com.agupta07505.smartisland.util.PermissionRecoveryNotifier
 import com.agupta07505.smartisland.util.SystemServiceRecovery
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -38,11 +39,15 @@ class MainActivity : ComponentActivity() {
         SystemServiceRecovery.requestRecovery(this)
         requestBluetoothPermissionIfNeeded()
 
+        // Launched from the "Restore Smart Island Permissions" notification.
+        val openPermissions = intent?.getBooleanExtra(PermissionRecoveryNotifier.EXTRA_OPEN_PERMISSIONS, false) == true
+
         setContent {
             SmartIslandTheme {
                 SmartIslandHomeScreen(
                     repository = settingsRepository,
-                    notificationRepository = notificationRepository
+                    notificationRepository = notificationRepository,
+                    openPermissionsOnStart = openPermissions
                 )
             }
         }

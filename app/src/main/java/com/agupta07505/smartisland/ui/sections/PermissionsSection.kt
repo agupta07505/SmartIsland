@@ -225,6 +225,9 @@ fun PermissionsSection(
             onClick = onBatteryClick
         )
 
+        // Recommended: OEM background lock, pop-up notifications off, permission alerts (Rule_Book 7.2, 10.2)
+        OnboardingExtrasSection()
+
         // Overlay System Warning Card
         val warningIconColor = if (isOverlayWarningDisabled) MaterialTheme.semantic.success else MaterialTheme.colorScheme.onSurfaceVariant
         val warningBgColor = if (isOverlayWarningDisabled) MaterialTheme.semantic.success.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant

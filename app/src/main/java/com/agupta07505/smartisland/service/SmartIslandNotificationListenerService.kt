@@ -10,6 +10,7 @@ package com.agupta07505.smartisland.service
 import com.agupta07505.smartisland.util.isCallEnded
 import com.agupta07505.smartisland.util.isDownloadComplete
 import com.agupta07505.smartisland.util.isScreenRecordingComplete
+import com.agupta07505.smartisland.util.PermissionRecoveryNotifier
 import com.agupta07505.smartisland.util.runCatchingLogged
 import com.agupta07505.smartisland.util.runSuspendCatchingLogged
 import com.agupta07505.smartisland.util.toIslandMode
@@ -322,6 +323,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         isSystemConnected = true
+        PermissionRecoveryNotifier.cancelIfRestored(this)
         runCatchingLogged(TAG, "onListenerConnected callback failed") {
             android.util.Log.d(TAG, "onListenerConnected")
             serviceScope.launch {
@@ -366,6 +368,12 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     override fun onListenerDisconnected() {
         isSystemConnected = false
         super.onListenerDisconnected()
+        // Disconnected because notification access was revoked (not a transient unbind): offer the way back.
+        runCatchingLogged(TAG, "Recovery check failed") {
+            if (currentSettings.enabled && !PermissionRecoveryNotifier.isNotificationListenerEnabled(this)) {
+                PermissionRecoveryNotifier.notify(this, PermissionRecoveryNotifier.Reason.NotificationAccessRevoked)
+            }
+        }
         runCatchingLogged(TAG, "Notification-listener self-rebind failed") {
             requestRebind(
                 android.content.ComponentName(
