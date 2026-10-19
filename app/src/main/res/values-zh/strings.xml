@@ -624,7 +624,6 @@
     <string name="a11y_reset">重置</string>
     <string name="a11y_stop_recording">停止录制</string>
     <string name="a11y_bluetooth_settings">蓝牙设置</string>
-    <string name="a11y_stop">停止</string>
     <string name="a11y_bluetooth">蓝牙</string>
     <string name="a11y_battery_saver">省电模式</string>
     <string name="a11y_low_battery">电量低</string>

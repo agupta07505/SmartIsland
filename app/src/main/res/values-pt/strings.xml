@@ -624,7 +624,6 @@
     <string name="a11y_reset">Redefinir</string>
     <string name="a11y_stop_recording">Parar gravação</string>
     <string name="a11y_bluetooth_settings">Configurações de Bluetooth</string>
-    <string name="a11y_stop">Parar</string>
     <string name="a11y_bluetooth">Bluetooth</string>
     <string name="a11y_battery_saver">Economia de bateria</string>
     <string name="a11y_low_battery">Bateria fraca</string>

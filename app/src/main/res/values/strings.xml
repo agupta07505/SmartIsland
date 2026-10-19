@@ -627,7 +627,6 @@
     <string name="a11y_reset">Reset</string>
     <string name="a11y_stop_recording">Stop Recording</string>
     <string name="a11y_bluetooth_settings">Bluetooth settings</string>
-    <string name="a11y_stop">Stop</string>
     <string name="a11y_bluetooth">Bluetooth</string>
     <string name="a11y_battery_saver">Battery Saver</string>
     <string name="a11y_low_battery">Low Battery</string>
