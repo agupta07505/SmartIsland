@@ -236,7 +236,7 @@ fun DeveloperOptionsSection(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(if (settings.recordLogs) MaterialTheme.semantic.danger else Color(0xFF94A3B8))
+                                .background(if (settings.recordLogs) MaterialTheme.semantic.danger else MaterialTheme.colorScheme.onSurfaceVariant)
                         )
                         Text(
                             text = if (settings.recordLogs) stringResource(R.string.status_recording_active)

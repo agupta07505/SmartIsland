@@ -26,6 +26,12 @@ object PillLayout {
      */
     const val MUSIC_WING_DP = 40f
 
+    /**
+     * Free space the stopwatch's live MM:SS.cc readout needs on each side of the camera hole (Rule_Book §4.11):
+     * about 44dp of tabular 11sp digits, the slot's 12dp end padding and a little air.
+     */
+    const val STOPWATCH_WING_DP = 60f
+
     /** The widest the pill grows to for an alert's text; beyond this the text scrolls and fades. */
     const val MAX_ALERT_PILL_WIDTH_DP = 280f
 
@@ -52,6 +58,7 @@ object PillLayout {
     fun contentWingDp(active: com.agupta07505.smartisland.model.IslandNotification?): Float = when {
         active == null -> 0f
         active.mode == com.agupta07505.smartisland.model.IslandMode.Music -> MUSIC_WING_DP
+        active.mode == com.agupta07505.smartisland.model.IslandMode.Stopwatch -> STOPWATCH_WING_DP
         active.mode == com.agupta07505.smartisland.model.IslandMode.Notification &&
             (active.title.isNotBlank() || active.text.isNotBlank()) -> {
             val (strong, soft) = alertPillLabel(active)

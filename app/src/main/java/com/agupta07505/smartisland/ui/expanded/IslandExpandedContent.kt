@@ -40,6 +40,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -172,49 +173,26 @@ fun IslandExpandedContent(
 
     Column(modifier = modifier.fillMaxWidth().wrapContentHeight()) {
 
-        // Interpolate height between pages based on swipe progress
-        // FIX: Clamp battery/call heights to match music/notification style to avoid
-        // glitch where battery/call expand more (taller) than other modes.
-        val currentPage = pagerState.currentPage
-        val offsetFraction = pagerState.currentPageOffsetFraction
-        val currentNotification = notifications.getOrNull(currentPage)
-
-        fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
-            return when (notif?.mode) {
-                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
-                IslandMode.Notification -> height.coerceIn(130.dp, 185.dp)
-                IslandMode.Music -> height.coerceIn(150.dp, 260.dp)
-                IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
-                IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
-                IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
-                IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
-                IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
-                IslandMode.Flashlight -> height.coerceIn(72.dp, 130.dp)
-                IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
-                IslandMode.Timer -> height.coerceIn(72.dp, 130.dp)
-                IslandMode.Stopwatch -> height.coerceIn(72.dp, 130.dp)
-                else -> height.coerceIn(80.dp, 160.dp)
+        // Interpolate height between pages based on swipe progress. The swipe offset changes every frame of a
+        // drag; derivedStateOf (Rule_Book §5) recomposes this card only when the resulting height changes, so
+        // swiping between two cards of the same height costs no recomposition at all.
+        val targetHeight by remember(notifications) {
+            derivedStateOf {
+                val currentPage = pagerState.currentPage
+                val offsetFraction = pagerState.currentPageOffsetFraction
+                val currentNotification = notifications.getOrNull(currentPage)
+                val currentPageHeight = pageHeightOrEstimate(currentNotification, pageHeights)
+                val nextPage = if (offsetFraction > 0f) {
+                    (currentPage + 1).coerceAtMost(notifications.lastIndex)
+                } else if (offsetFraction < 0f) {
+                    (currentPage - 1).coerceAtLeast(0)
+                } else {
+                    currentPage
+                }
+                val nextHeight = pageHeightOrEstimate(notifications.getOrNull(nextPage), pageHeights)
+                val fraction = kotlin.math.abs(offsetFraction)
+                (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 300.dp)
             }
-        }
-
-        val currentPageHeightRaw = currentNotification?.let { pageHeights[it.key] }
-        val currentPageHeight = currentPageHeightRaw?.let { clampHeightForMode(currentNotification, it) }
-            ?: com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(currentNotification?.mode)
-
-        val targetHeight = run {
-            val nextPage = if (offsetFraction > 0f) {
-                (currentPage + 1).coerceAtMost(notifications.lastIndex)
-            } else if (offsetFraction < 0f) {
-                (currentPage - 1).coerceAtLeast(0)
-            } else {
-                currentPage
-            }
-            val nextNotification = notifications.getOrNull(nextPage)
-            val nextHeightRaw = nextNotification?.let { pageHeights[it.key] }
-            val nextHeight = (nextHeightRaw?.let { clampHeightForMode(nextNotification, it) }
-                ?: com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(nextNotification?.mode))
-            val fraction = kotlin.math.abs(offsetFraction)
-            (currentPageHeight + (nextHeight - currentPageHeight) * fraction).coerceIn(72.dp, 300.dp)
         }
 
         LaunchedEffect(targetHeight) {
@@ -468,6 +446,30 @@ private fun NotificationBackdrop(
     }
 }
 
+
+/**
+ * A page's measured height clamped to its mode's range (so battery/call cards never come out taller than the
+ * music/notification ones), or the mode's estimate until the page has been measured.
+ */
+private fun pageHeightOrEstimate(notif: IslandNotification?, measured: Map<String, Dp>): Dp {
+    val height = notif?.let { measured[it.key] }
+        ?: return com.agupta07505.smartisland.ui.defaultEstimatedHeightForMode(notif?.mode)
+    return when (notif?.mode) {
+        IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
+        IslandMode.Notification -> height.coerceIn(130.dp, 185.dp)
+        IslandMode.Music -> height.coerceIn(150.dp, 260.dp)
+        IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
+        IslandMode.Navigation -> height.coerceIn(135.dp, 195.dp)
+        IslandMode.DownloadUpload -> height.coerceIn(120.dp, 195.dp)
+        IslandMode.Hotspot -> height.coerceIn(120.dp, 195.dp)
+        IslandMode.Bluetooth -> height.coerceIn(72.dp, 130.dp)
+        IslandMode.Flashlight -> height.coerceIn(72.dp, 130.dp)
+        IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
+        IslandMode.Timer -> height.coerceIn(72.dp, 130.dp)
+        IslandMode.Stopwatch -> height.coerceIn(72.dp, 130.dp)
+        else -> height.coerceIn(80.dp, 160.dp)
+    }
+}
 
 private const val ISLAND_CONTENT_SPRING_DAMPING = 0.86f
 private const val ISLAND_CONTENT_SPRING_STIFFNESS = 224f

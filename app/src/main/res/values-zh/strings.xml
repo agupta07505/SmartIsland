@@ -16,8 +16,8 @@
     <string name="made_by">由 Animesh Gupta 用 ❤️ 制作</string>
 
     <!-- Navigation Tabs -->
-    <string name="tab_studio">首页</string>
-    <string name="tab_position">布局</string>
+    <string name="tab_home">首页</string>
+    <string name="tab_layout">布局</string>
     <string name="tab_settings">设置</string>
     <string name="tab_features">功能</string>
     <string name="tab_system">系统与关于</string>
@@ -623,6 +623,8 @@
     <string name="a11y_lap">计圈</string>
     <string name="a11y_reset">重置</string>
     <string name="a11y_stop_recording">停止录制</string>
+    <string name="a11y_bluetooth_settings">蓝牙设置</string>
+    <string name="a11y_stop">停止</string>
     <string name="a11y_bluetooth">蓝牙</string>
     <string name="a11y_battery_saver">省电模式</string>
     <string name="a11y_low_battery">电量低</string>

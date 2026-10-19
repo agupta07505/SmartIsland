@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.ui.Dimens
 import com.agupta07505.smartisland.ui.semantic
 
@@ -68,9 +69,11 @@ fun GroupedSection(
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (header != null) {
+            // Rule_Book §11.1: section headers are small, all-caps and muted gray.
             Text(
-                text = header,
+                text = header.uppercase(),
                 style = MaterialTheme.typography.bodySmall,
+                letterSpacing = 0.4.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(start = Dimens.RowHorizontal, end = Dimens.RowHorizontal, bottom = 6.dp)

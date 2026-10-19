@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,7 +114,8 @@ fun ScreenRecordingExpanded(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f, fill = false)
         ) {
             Box(
                 modifier = Modifier
@@ -139,7 +142,8 @@ fun ScreenRecordingExpanded(
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -152,7 +156,8 @@ fun ScreenRecordingExpanded(
                         text = timerText,
                         color = recColor,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum")
                     )
                 }
             }
@@ -174,6 +179,8 @@ fun ScreenRecordingExpanded(
                         triggerAction(context, notification.packageName, stopAction.pendingIntent, stopAction.title, notification.contentIntent)
                     }
                     notification?.key?.let { repository.removeNotification(it) }
+                    // Rule_Book §4.13: stopping collapses the island.
+                    onCollapse()
                 }
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.Center
@@ -184,12 +191,12 @@ fun ScreenRecordingExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Stop,
-                    contentDescription = stringResource(R.string.a11y_stop_recording),
+                    contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Stop",
+                    text = stringResource(R.string.a11y_stop_recording),
                     color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold

@@ -267,6 +267,15 @@ class TimerStopwatchParserTest {
     }
 
     @Test
+    fun testFormatStopwatchMillis() {
+        assertEquals("00:00.00", TimerStopwatchParser.formatStopwatchMillis(0L))
+        assertEquals("00:12.34", TimerStopwatchParser.formatStopwatchMillis(12_345L))
+        assertEquals("59:59.99", TimerStopwatchParser.formatStopwatchMillis(3_599_999L))
+        assertEquals("1:00:00", TimerStopwatchParser.formatStopwatchMillis(3_600_000L))
+        assertEquals("00:00.00", TimerStopwatchParser.formatStopwatchMillis(-50L))
+    }
+
+    @Test
     fun testAlarmNotificationNotDetectedAsTimerOrStopwatch() {
         val extras = createBaseExtras()
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Alarm"
