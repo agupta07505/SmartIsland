@@ -55,6 +55,7 @@ ui_map.md
 
 # Local Claude Code instructions
 CLAUDE.local.md
+.claude/
 
 # macOS
 .DS_Store
