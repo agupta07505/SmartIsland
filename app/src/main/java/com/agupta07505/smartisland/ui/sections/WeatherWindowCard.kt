@@ -1,5 +1,8 @@
 package com.agupta07505.smartisland.ui.sections
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,9 +51,21 @@ internal fun WeatherWindowCard(modifier: Modifier = Modifier) {
         }
     }
 
+    // Make the whole card clickable to open the Overcast app; fallback to Play Store if not installed.
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth().clickable {
+            val pkg = "com.sameerasw.overcast"
+            val pmIntent = context.packageManager.getLaunchIntentForPackage(pkg)
+            val intent = pmIntent ?: Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))
+            try {
+                // If using application context, ensure new task flag.
+                if (pmIntent == null) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (_: Exception) {
+                // best-effort; ignore failures
+            }
+        }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -93,6 +108,7 @@ internal fun WeatherWindowCard(modifier: Modifier = Modifier) {
 
             Row {
                 Column {
+                    // Use MaterialTheme.typography so the font chosen in the app's theme is respected.
                     Text(
                         text = temperature,
                         style = MaterialTheme.typography.titleMedium,
