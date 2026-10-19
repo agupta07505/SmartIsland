@@ -98,7 +98,11 @@ object NotificationCooldownManager {
             mode == IslandMode.Hotspot ||
             mode == IslandMode.Battery ||
             mode == IslandMode.Flashlight ||
-            mode == IslandMode.ScreenRecording
+            mode == IslandMode.ScreenRecording ||
+            // A ringing alarm and a recorder's per-second updates must never be throttled away.
+            mode == IslandMode.Alarm ||
+            mode == IslandMode.VoiceRecording ||
+            mode == IslandMode.PrivacyIndicator
     }
 
     /**

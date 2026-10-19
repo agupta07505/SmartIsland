@@ -14,7 +14,11 @@ class KeyguardGateTest {
             assertTrue(it.name, it.requiresUnlock(isLocked = true))
             assertFalse(it.name, it.requiresUnlock(isLocked = false))
         }
-        listOf(GatedAction.MediaControl, GatedAction.TimerControl).forEach {
+        // Calls, ringing alarms and recorders must work straight from the lockscreen (Rule_Book 4.7, 4.10, 4.3).
+        listOf(
+            GatedAction.MediaControl, GatedAction.TimerControl, GatedAction.CallControl,
+            GatedAction.AlarmControl, GatedAction.RecorderControl
+        ).forEach {
             assertFalse(it.name, it.requiresUnlock(isLocked = true))
         }
     }

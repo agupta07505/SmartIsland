@@ -108,4 +108,20 @@ class PillLayoutTest {
         val tightBudget = PillLayout.effectiveWidthDp(base, holeWidthDp = 30f, notificationCount = 1, contentWingDp = 400f, maxAlertWidthDp = 50f)
         assertEquals(base.width, tightBudget, 0.001f)
     }
+
+    @Test
+    fun thePrivacyLabelAndTheAlarmClockGetRoomBesideTheHole() {
+        fun privacy(category: String) = com.agupta07505.smartisland.model.IslandNotification(
+            key = "system_privacy_indicator", packageName = "p", appName = "", title = "", text = "", timeMillis = 0L,
+            category = category, mode = com.agupta07505.smartisland.model.IslandMode.PrivacyIndicator
+        )
+        val camera = PillLayout.contentWingDp(privacy("privacy_camera"))
+        val both = PillLayout.contentWingDp(privacy("privacy_camera_microphone"))
+        assertTrue(camera > 0f)
+        assertTrue(both > camera)
+        val alarm = privacy("alarm").copy(mode = com.agupta07505.smartisland.model.IslandMode.Alarm)
+        assertTrue(PillLayout.contentWingDp(alarm) > 0f)
+        // The pill still stops at the alert cap.
+        assertTrue(PillLayout.effectiveWidthDp(base, holeWidthDp = 30f, notificationCount = 1, contentWingDp = both) <= PillLayout.MAX_ALERT_PILL_WIDTH_DP)
+    }
 }

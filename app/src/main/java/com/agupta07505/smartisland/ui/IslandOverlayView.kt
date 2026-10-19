@@ -1250,23 +1250,7 @@ private fun SecondaryBubbleContent(
             NavigationCollapsedGlyph(notification = notification, settings = settings)
         }
         IslandMode.IncomingCall -> {
-            val icon = notification.largeIcon ?: notification.icon
-            if (icon != null) {
-                Image(
-                    bitmap = icon.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Icon(
-                    Icons.Rounded.Call,
-                    contentDescription = null,
-                    tint = Color(settings.callColor),
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            com.agupta07505.smartisland.ui.expanded.CallAvatar(notification = notification, size = 20.dp, settings = settings)
         }
         IslandMode.Music -> {
             val artwork = notification.largeIcon ?: notification.icon
@@ -1304,6 +1288,10 @@ private fun SecondaryBubbleContent(
         IslandMode.Stopwatch -> {
             StopwatchCollapsedGlyph(notification = notification, settings = settings)
         }
+        // Rule_Book §4.10, §4.3, §4.15/4.16: pulsing bell, breathing red dot, green / orange / split privacy dot.
+        IslandMode.Alarm -> com.agupta07505.smartisland.ui.expanded.AlarmCollapsedGlyph()
+        IslandMode.VoiceRecording -> com.agupta07505.smartisland.ui.expanded.VoiceRecordingDot(notification)
+        IslandMode.PrivacyIndicator -> com.agupta07505.smartisland.ui.expanded.PrivacyIndicatorDot(notification)
         IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
             NotificationGlyph(notification = notification, settings = settings)
         }
@@ -1435,6 +1423,7 @@ internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
         IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
         IslandMode.Bluetooth, IslandMode.Flashlight, IslandMode.ScreenRecording,
         IslandMode.Timer, IslandMode.Stopwatch -> 115.dp
+        IslandMode.Alarm, IslandMode.VoiceRecording, IslandMode.PrivacyIndicator -> 130.dp
         IslandMode.Empty, null -> 290.dp
     }
 }

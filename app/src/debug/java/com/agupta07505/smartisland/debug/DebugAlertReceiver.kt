@@ -7,6 +7,7 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import com.agupta07505.smartisland.util.PrivacyIndicatorAlert
 
 /**
  * Debug-only test hook: posts a synthetic alert straight into the island's repository so the alert rules
@@ -17,8 +18,8 @@ import com.agupta07505.smartisland.model.IslandNotificationAction
  *     --es kind message --es pkg com.whatsapp --es app WhatsApp --es title Sam --es text "hi" [--ez reply true]
  *   ... --es kind clear
  *
- * kind: message | promo | call | alarm | nav | music | timer | stopwatch | record | live | battery | bluetooth |
- * flash | clear.  Optional: key, group, --ez expand true.
+ * kind: message | promo | call | ongoing_call | alarm | nav | music | timer | stopwatch | record | voice | camera |
+ * mic | camera_mic | live | battery | bluetooth | flash | clear.  Optional: key, group, --ez expand true.
  */
 class DebugAlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -33,9 +34,15 @@ class DebugAlertReceiver : BroadcastReceiver() {
         val now = System.currentTimeMillis()
         val key = intent.getStringExtra("key") ?: "dbg_${pkg}_$now"
         val reply = intent.getBooleanExtra("reply", kind == "message")
+        // The privacy indicator is one merged alert under its own key, like the real monitor's.
+        val alertKey = if (kind == "camera" || kind == "mic" || kind == "camera_mic") PrivacyIndicatorAlert.KEY else key
         val (mode, category) = when (kind) {
-            "call" -> IslandMode.IncomingCall to "call"
-            "alarm" -> IslandMode.Notification to "alarm"
+            "call", "ongoing_call" -> IslandMode.IncomingCall to "call"
+            "alarm" -> IslandMode.Alarm to "alarm"
+            "voice" -> IslandMode.VoiceRecording to null
+            "camera" -> IslandMode.PrivacyIndicator to PrivacyIndicatorAlert.CATEGORY_CAMERA
+            "mic" -> IslandMode.PrivacyIndicator to PrivacyIndicatorAlert.CATEGORY_MICROPHONE
+            "camera_mic" -> IslandMode.PrivacyIndicator to PrivacyIndicatorAlert.CATEGORY_BOTH
             "nav" -> IslandMode.Navigation to "navigation"
             "music" -> IslandMode.Music to "transport"
             "timer" -> IslandMode.Timer to null
@@ -50,11 +57,27 @@ class DebugAlertReceiver : BroadcastReceiver() {
         }
         val actions = buildList {
             if (reply) add(IslandNotificationAction("Reply", null, isQuickReply = true, remoteInputKey = "key_text_reply"))
-            if (kind == "call") add(IslandNotificationAction("Answer", null))
+            if (kind == "call") {
+                add(IslandNotificationAction("Decline", null))
+                add(IslandNotificationAction("Answer", null))
+            }
+            if (kind == "ongoing_call") {
+                add(IslandNotificationAction("Mute", null))
+                add(IslandNotificationAction("Speaker", null))
+                add(IslandNotificationAction("Hang up", null))
+            }
+            if (kind == "alarm") {
+                add(IslandNotificationAction("Snooze", null))
+                add(IslandNotificationAction("Stop", null))
+            }
+            if (kind == "voice") {
+                add(IslandNotificationAction("Pause", null))
+                add(IslandNotificationAction("Stop", null))
+            }
         }
         repo.postNotification(
             IslandNotification(
-                key = key,
+                key = alertKey,
                 packageName = pkg,
                 appName = app,
                 title = intent.getStringExtra("title") ?: "Sam",

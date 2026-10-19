@@ -353,7 +353,7 @@ class IslandModeMappingTest {
     }
 
     @Test
-    fun testAlarmNotificationMapsToNotification() {
+    fun testRingingAlarmNotificationMapsToAlarmNotTimer() {
         val notification = mockk<Notification>()
         notification.flags = Notification.FLAG_ONGOING_EVENT
         notification.category = Notification.CATEGORY_ALARM
@@ -374,6 +374,53 @@ class IslandModeMappingTest {
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Alarm"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "07:00 AM"
 
-        assertEquals(IslandMode.Notification, notification.toIslandMode(sbn))
+        // A ringing alarm (Snooze + Dismiss) is never a Timer; it is the Alarm state (Rule_Book 4.10).
+        assertEquals(IslandMode.Alarm, notification.toIslandMode(sbn))
+    }
+
+    // ---- Rule_Book 4.3 voice recorder and 4.10 ringing alarm ----
+
+    private fun action(title: String): Notification.Action {
+        val action = mockk<Notification.Action>()
+        action.title = title
+        return action
+    }
+
+    @Test
+    fun aSamsungVoiceRecorderIsAVoiceRecordingNotAScreenRecording() {
+        val notification = mockk<Notification>()
+        notification.category = Notification.CATEGORY_SERVICE
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = arrayOf(action("Pause"), action("Stop"))
+        val extras = createBaseExtras()
+        notification.extras = extras
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Recording"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "00:12"
+        val sbn = mockk<StatusBarNotification>()
+        every { sbn.packageName } returns "com.sec.android.app.voicenote"
+        every { sbn.notification } returns notification
+
+        assertEquals(IslandMode.VoiceRecording, notification.toIslandMode(sbn, deviceType = "SAMSUNG"))
+    }
+
+    @Test
+    fun aRingingAlarmMapsToAlarmAndAnUpcomingOneDoesNot() {
+        fun clock(title: String, vararg actions: String): Pair<Notification, StatusBarNotification> {
+            val notification = mockk<Notification>()
+            notification.category = Notification.CATEGORY_ALARM
+            notification.flags = Notification.FLAG_ONGOING_EVENT
+            notification.actions = actions.map(::action).toTypedArray()
+            val extras = createBaseExtras()
+            notification.extras = extras
+            every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns title
+            val sbn = mockk<StatusBarNotification>()
+            every { sbn.packageName } returns "com.google.android.deskclock"
+            every { sbn.notification } returns notification
+            return notification to sbn
+        }
+        val (ringing, ringingSbn) = clock("Alarm", "Snooze", "Stop")
+        assertEquals(IslandMode.Alarm, ringing.toIslandMode(ringingSbn, deviceType = "GOOGLE_PIXEL"))
+        val (upcoming, upcomingSbn) = clock("Upcoming alarm", "Dismiss now")
+        assertEquals(IslandMode.Notification, upcoming.toIslandMode(upcomingSbn, deviceType = "GOOGLE_PIXEL"))
     }
 }

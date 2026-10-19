@@ -67,5 +67,7 @@ data class IslandNotificationAction(
     val title: String,
     val pendingIntent: PendingIntent?,
     val isQuickReply: Boolean = false,
-    val remoteInputKey: String? = null
+    val remoteInputKey: String? = null,
+    /** `Notification.Action.getSemanticAction()` (0 when the app gave none); see `SemanticAction`. */
+    val semanticAction: Int = 0
 )

@@ -58,8 +58,27 @@ object PillLayout {
             val chars = (strong.length + (if (soft.isBlank()) 0 else 2 + soft.length)).coerceAtMost(ALERT_MAX_CHARS)
             ALERT_FIXED_WING_DP + chars * ALERT_TEXT_DP_PER_CHAR
         }
+        // "Camera in use" / "Microphone in use" / "Camera & mic in use" (Rule_Book §4.15, §4.16).
+        active.mode == com.agupta07505.smartisland.model.IslandMode.PrivacyIndicator -> {
+            val sensors = com.agupta07505.smartisland.util.PrivacyIndicatorAlert.sensorsOf(active)
+            val chars = when {
+                sensors.both -> PRIVACY_BOTH_CHARS
+                sensors.microphone -> PRIVACY_MICROPHONE_CHARS
+                else -> PRIVACY_CAMERA_CHARS
+            }
+            LABEL_END_PADDING_DP + chars * ALERT_TEXT_DP_PER_CHAR
+        }
+        // The current time beside the ringing bell ("10:45 PM") (Rule_Book §4.10).
+        active.mode == com.agupta07505.smartisland.model.IslandMode.Alarm ->
+            LABEL_END_PADDING_DP + ALARM_TIME_CHARS * ALERT_TEXT_DP_PER_CHAR
         else -> 0f
     }
+
+    private const val LABEL_END_PADDING_DP = 12f
+    private const val PRIVACY_CAMERA_CHARS = 13
+    private const val PRIVACY_MICROPHONE_CHARS = 17
+    private const val PRIVACY_BOTH_CHARS = 19
+    private const val ALARM_TIME_CHARS = 8
 
     /**
      * The widest an alert pill may grow (Rule_Book §10.2). With `WRITE_SECURE_SETTINGS` ([iconsManaged]) the

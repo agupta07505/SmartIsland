@@ -8,15 +8,16 @@ package com.agupta07505.smartisland.alert
 
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.RingingAlarm
 import com.agupta07505.smartisland.util.TimerStopwatchParser
 
 /**
  * Which tier of the island's rulebook an alert belongs to.
  *
- *  - [Critical]: alarms, a ringing timer, battery at 5% or less. Persists until the user acts, and
- *    outranks everything.
- *  - [Persistent] (Tier 1): calls, navigation, recording, timers, stopwatches. Persists until ended and
- *    owns the island; nothing displaces it for good.
+ *  - [Critical]: alarms (a ringing [IslandMode.Alarm], or any `alarm`-category alert), a ringing timer, battery
+ *    at 5% or less. Persists until the user acts, and outranks everything.
+ *  - [Persistent] (Tier 1): calls, navigation, screen and voice recording, timers, stopwatches, the camera /
+ *    microphone privacy indicator. Persists until ended and owns the island; nothing displaces it for good.
  *  - [Background] (Tier 2): music, live activities, hotspot, transfers. Persists while active, and steps
  *    aside (to the companion bubble, or out of sight) for a Persistent task or an Ephemeral interruption.
  *  - [Ephemeral] (Tier 3): messages and other alerts, battery, Bluetooth, flashlight. Interrupts for a few
@@ -37,7 +38,8 @@ object AlertClassifier {
         val category = notification.category?.lowercase()
         return when (notification.mode) {
             IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.ScreenRecording,
-            IslandMode.Stopwatch -> AlertTier.Persistent
+            IslandMode.Stopwatch, IslandMode.VoiceRecording, IslandMode.PrivacyIndicator -> AlertTier.Persistent
+            IslandMode.Alarm -> AlertTier.Critical
             IslandMode.Timer ->
                 if (category == "alarm" || TimerStopwatchParser.isFinishedTimerText(notification.title, notification.text)) {
                     AlertTier.Critical
@@ -54,7 +56,9 @@ object AlertClassifier {
     private fun classifyNotification(notification: IslandNotification, category: String?): AlertTier = when {
         // The in-app preview always shows what you ask for.
         notification.key.startsWith("demo_") -> AlertTier.Ephemeral
-        category == "alarm" -> AlertTier.Critical
+        // An alarm is Critical only while it can still ring: "Upcoming" / "Snoozed until 7:10" is a passing note.
+        category == "alarm" ->
+            if (RingingAlarm.saysNotRinging(notification.title, notification.text)) AlertTier.Ephemeral else AlertTier.Critical
         category == "call" -> AlertTier.Persistent
         // A reply box means a person is waiting, even from an app that also posts "social" noise.
         notification.actionIntents.any { it.isQuickReply } -> AlertTier.Ephemeral
@@ -86,7 +90,8 @@ object AlertClassifier {
  *    Bluetooth, flashlight), restart on a touch ([touch]) and, for those three, restart when their state
  *    changes (a new title).
  *  - Messages from the same app group fold into one counted entry; a new message restarts the group's clock.
- *  - While [immersive] only Critical alerts and an incoming call show; while [biometricHold] nothing does.
+ *  - While [immersive] only Critical alerts and an incoming call show; while [biometricHold] only a ringing
+ *    call or alarm does.
  *  - While locked, secret messages are dropped and private ones are masked (see [LockscreenPrivacy]).
  *
  * It is deliberately free of Android and coroutines: the caller owns the clock and the scheduling.
@@ -112,7 +117,9 @@ class AlertEngine(
 
     /**
      * The face-unlock window on the lock screen (Rule_Book 8.2): the island holds IDLE (the hardware mask
-     * only) so it never sits on top of the system's camera indicator. Nothing shows, not even a critical alert.
+     * only) so it never sits on top of the system's camera indicator. Nothing shows, not even a critical alert,
+     * except what woke the screen and must be answered from the lockscreen: a ringing call or a ringing alarm
+     * (§4.7, §4.10; see [breaksBiometricHold]).
      */
     var biometricHold: Boolean = false
 
@@ -198,7 +205,7 @@ class AlertEngine(
             background.sortedByDescending { firstSeenAt.getValue(it.key) }
 
         val shown = when {
-            biometricHold -> emptyList()
+            biometricHold -> ordered.filter(::breaksBiometricHold)
             immersive -> ordered.filter(::breaksSuppression)
             else -> ordered
         }
@@ -228,6 +235,14 @@ class AlertEngine(
     }
 
     companion object {
+        /**
+         * A ringing call or a ringing alarm shows (and stays touchable) through the face-unlock hold: Accept,
+         * Decline, Snooze and Stop must work from the lockscreen at once (Rule_Book §4.7, §4.10, §8.2).
+         */
+        fun breaksBiometricHold(notification: IslandNotification): Boolean =
+            (notification.mode == IslandMode.IncomingCall && notification.isCallRinging) ||
+                notification.mode == IslandMode.Alarm
+
         /** Messages: exactly seven seconds. */
         const val DEFAULT_COMMUNICATION_TIMEOUT_MS = 7_000L
 

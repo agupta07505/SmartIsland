@@ -33,6 +33,14 @@ class OverlayGuardsTest {
     }
 
     @Test
+    fun aRingingCallKeepsTheIslandTouchableThroughTheFaceUnlockHold() {
+        assertFalse(OverlayWindowGuards.untouchable(suppressed = false, biometricHold = false, ringingOnIsland = false))
+        assertTrue(OverlayWindowGuards.untouchable(suppressed = false, biometricHold = true, ringingOnIsland = false))
+        assertFalse(OverlayWindowGuards.untouchable(suppressed = false, biometricHold = true, ringingOnIsland = true))
+        assertTrue(OverlayWindowGuards.untouchable(suppressed = true, biometricHold = false, ringingOnIsland = true))
+    }
+
+    @Test
     fun anyCaptureSignalCountsAsCapture() {
         assertFalse(ScreenCaptureMonitor.isCaptureActive(recordingApi = false, presentationDisplay = false, recorderAlert = false))
         assertTrue(ScreenCaptureMonitor.isCaptureActive(recordingApi = true, presentationDisplay = false, recorderAlert = false))

@@ -9,6 +9,7 @@ package com.agupta07505.smartisland.service
 
 import android.content.Context
 import android.view.WindowManager
+import com.agupta07505.smartisland.alert.AlertEngine
 import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.ui.IslandViewModel
@@ -30,6 +31,13 @@ object OverlayWindowGuards {
     fun extraFlags(secure: Boolean, untouchable: Boolean): Int =
         (if (secure) WindowManager.LayoutParams.FLAG_SECURE else 0) or
             (if (untouchable) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0)
+
+    /**
+     * Touches pass through while SUPPRESSED, or during the face-unlock hold unless a ringing call or alarm is on
+     * the island (its Accept / Decline / Snooze / Stop must work from the lockscreen, Rule_Book §4.7, §4.10).
+     */
+    fun untouchable(suppressed: Boolean, biometricHold: Boolean, ringingOnIsland: Boolean): Boolean =
+        suppressed || (biometricHold && !ringingOnIsland)
 }
 
 /**
@@ -153,7 +161,11 @@ class OverlayGuardController(
 
     fun extraWindowFlags(): Int = OverlayWindowGuards.extraFlags(
         secure = screenCapture.isCapturing.value,
-        untouchable = viewModel.isSuppressed.value || biometric.active
+        untouchable = OverlayWindowGuards.untouchable(
+            suppressed = viewModel.isSuppressed.value,
+            biometricHold = biometric.active,
+            ringingOnIsland = viewModel.visibleNotifications.value.any(AlertEngine::breaksBiometricHold)
+        )
     )
 
     fun onForegroundPackage(packageName: String?) = foregroundSecure.onForegroundPackage(packageName)

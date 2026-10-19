@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 /**
  * What an island control does, for the lockscreen gate (Rule_Book §8.3). Sensitive actions (they reveal or
  * act on a message, or leave the lockscreen for an app) need the phone unlocked; safe ones (play/pause, stop
- * a timer) work from the lockscreen.
+ * a timer, answer or end a call, silence an alarm, pause a recording) work from the lockscreen.
  */
 enum class GatedAction(val needsUnlock: Boolean) {
     Reply(true),
@@ -27,7 +27,13 @@ enum class GatedAction(val needsUnlock: Boolean) {
     OpenApp(true),
     AppAction(true),
     MediaControl(false),
-    TimerControl(false);
+    TimerControl(false),
+    /** Accept / Decline / Mute / Speaker / End on a call card (Rule_Book §4.7: usable without unlock). */
+    CallControl(false),
+    /** Snooze / Stop on a ringing alarm (§4.10): an alarm must be silenced from the lockscreen. */
+    AlarmControl(false),
+    /** Pause / Resume / Stop on a voice recording (§4.3). */
+    RecorderControl(false);
 
     /** Whether this action must wait for the keyguard to be dismissed when the phone is [isLocked]. */
     fun requiresUnlock(isLocked: Boolean): Boolean = isLocked && needsUnlock

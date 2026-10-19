@@ -21,5 +21,11 @@ enum class IslandMode {
     Flashlight,
     ScreenRecording,
     Timer,
-    Stopwatch
+    Stopwatch,
+    /** A ringing alarm (Rule_Book §4.10): Critical. */
+    Alarm,
+    /** A voice recorder app is recording (Rule_Book §4.3): Persistent. */
+    VoiceRecording,
+    /** Camera and/or microphone in use (Rule_Book §4.15, §4.16), one merged alert: Persistent. */
+    PrivacyIndicator
 }

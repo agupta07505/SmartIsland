@@ -190,23 +190,8 @@ fun IslandCollapsedContent(
                         NotificationGlyph(notification = notification, settings = settings)
                     }
                 IslandMode.IncomingCall -> {
-                    val icon = notification?.largeIcon ?: notification?.icon
-                    if (icon != null) {
-                        Image(
-                            bitmap = icon.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Icon(
-                            Icons.Rounded.Call,
-                            contentDescription = null,
-                            tint = Color(settings.callColor),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                    // Caller avatar, with the app badge for a VoIP call (Rule_Book §4.7).
+                    com.agupta07505.smartisland.ui.expanded.CallAvatar(notification = notification, size = 22.dp, settings = settings)
                 }
                 IslandMode.Music -> {
                     val artwork = notification?.largeIcon ?: notification?.icon
@@ -292,6 +277,9 @@ fun IslandCollapsedContent(
                 IslandMode.Stopwatch -> {
                     StopwatchCollapsedGlyph(notification = notification, settings = settings)
                 }
+                IslandMode.Alarm -> com.agupta07505.smartisland.ui.expanded.AlarmCollapsedGlyph()
+                IslandMode.VoiceRecording -> com.agupta07505.smartisland.ui.expanded.VoiceRecordingDot(notification)
+                IslandMode.PrivacyIndicator -> com.agupta07505.smartisland.ui.expanded.PrivacyIndicatorCollapsedGlyph(notification)
                 IslandMode.Empty -> Unit
             }
             }
@@ -338,17 +326,8 @@ fun IslandCollapsedContent(
                     }
                 }
                 IslandMode.IncomingCall -> {
-                    if (notification?.isCallRinging == true) {
-                        Text(
-                            text = "Ringing...",
-                            color = Color(settings.callColor),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else {
-                        val time = notification?.timeMillis ?: System.currentTimeMillis()
-                        CallTimer(postTimeMillis = time, color = Color(settings.callColor))
-                    }
+                    // Pulsing call icon while ringing; the live duration once answered.
+                    com.agupta07505.smartisland.ui.expanded.CallCollapsedRight(notification = notification, settings = settings)
                 }
                 IslandMode.Music -> {
                     com.agupta07505.smartisland.ui.expanded.MusicWaveform(
@@ -410,6 +389,9 @@ fun IslandCollapsedContent(
                 IslandMode.Stopwatch -> {
                     StopwatchTimer(notification = notification, color = Color(settings.stopwatchColor))
                 }
+                IslandMode.Alarm -> com.agupta07505.smartisland.ui.expanded.AlarmCollapsedRight()
+                IslandMode.VoiceRecording -> com.agupta07505.smartisland.ui.expanded.VoiceRecordingCollapsedRight(notification)
+                IslandMode.PrivacyIndicator -> com.agupta07505.smartisland.ui.expanded.PrivacyIndicatorCollapsedRight(notification)
                 IslandMode.Empty -> Unit
             }
             }

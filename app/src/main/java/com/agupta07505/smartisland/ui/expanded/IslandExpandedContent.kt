@@ -181,7 +181,9 @@ fun IslandExpandedContent(
 
         fun clampHeightForMode(notif: IslandNotification?, height: Dp): Dp {
             return when (notif?.mode) {
-                IslandMode.Battery, IslandMode.IncomingCall -> height.coerceIn(72.dp, 125.dp)
+                IslandMode.Battery -> height.coerceIn(72.dp, 125.dp)
+                // Ringing: header + caller row; answered: plus the Mute / Speaker / End Call row.
+                IslandMode.IncomingCall -> height.coerceIn(72.dp, 200.dp)
                 IslandMode.Notification -> height.coerceIn(130.dp, 185.dp)
                 IslandMode.Music -> height.coerceIn(150.dp, 260.dp)
                 IslandMode.LiveActivity -> height.coerceIn(140.dp, 205.dp)
@@ -193,6 +195,7 @@ fun IslandExpandedContent(
                 IslandMode.ScreenRecording -> height.coerceIn(72.dp, 130.dp)
                 IslandMode.Timer -> height.coerceIn(72.dp, 130.dp)
                 IslandMode.Stopwatch -> height.coerceIn(72.dp, 130.dp)
+                IslandMode.Alarm, IslandMode.VoiceRecording, IslandMode.PrivacyIndicator -> height.coerceIn(100.dp, 170.dp)
                 else -> height.coerceIn(80.dp, 160.dp)
             }
         }
@@ -357,6 +360,21 @@ fun IslandExpandedContent(
                                 onCollapse = onCollapse,
                                 settings = settings
                             )
+                            IslandMode.Alarm -> AlarmExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse
+                            )
+                            IslandMode.VoiceRecording -> VoiceRecordingExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse
+                            )
+                            IslandMode.PrivacyIndicator -> PrivacyIndicatorExpanded(
+                                notification = notification,
+                                bottomPadding = bottomPadding,
+                                onCollapse = onCollapse
+                            )
                             IslandMode.Empty -> IdleDashboard(
                                 apps = launcherApps,
                                 onLaunchApp = onLaunchApp,
@@ -397,6 +415,9 @@ private fun NotificationBackdrop(
         IslandMode.ScreenRecording -> Color(settings.screenRecordingColor)
         IslandMode.Timer -> Color(settings.timerColor)
         IslandMode.Stopwatch -> Color(settings.stopwatchColor)
+        IslandMode.Alarm -> IslandPalette.warning
+        IslandMode.VoiceRecording -> IslandPalette.danger
+        IslandMode.PrivacyIndicator -> PrivacyColors.camera
         else -> Color(settings.notificationDotColor)
     }
 
