@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import com.agupta07505.smartisland.model.WeatherLook
 import com.agupta07505.smartisland.model.weatherLook
 import com.agupta07505.smartisland.ui.IslandText as Text
+import com.agupta07505.smartisland.util.AgendaPrefs
 import com.agupta07505.smartisland.util.CalendarReader
 import com.agupta07505.smartisland.util.IdleWeather
 import kotlinx.coroutines.Dispatchers
@@ -112,11 +113,11 @@ internal fun ClockBatteryHeader() {
 
 private data class AgendaEvent(val title: String, val beginMs: Long, val endMs: Long, val allDay: Boolean)
 
-/** Proximos eventos (ate 36 h) dos calendarios do aparelho, inclusive o Google Agenda sincronizado. */
-private fun readAgenda(context: Context, nowMs: Long): List<AgendaEvent> {
+/** Proximos eventos (ate a distancia escolhida no app) dos calendarios do aparelho, inclusive o Google Agenda sincronizado. */
+private fun readAgenda(context: Context, nowMs: Long, windowHours: Int): List<AgendaEvent> {
     val uri = android.provider.CalendarContract.Instances.CONTENT_URI.buildUpon().also {
         android.content.ContentUris.appendId(it, nowMs)
-        android.content.ContentUris.appendId(it, nowMs + 36L * 60 * 60 * 1000)
+        android.content.ContentUris.appendId(it, nowMs + windowHours * 60L * 60 * 1000)
     }.build()
     val projection = arrayOf(
         android.provider.CalendarContract.Instances.TITLE,
@@ -160,11 +161,12 @@ internal fun StandbyAgendaPanel() {
     val palette = LocalIslandPalette.current
 
     var permission by remember { mutableStateOf(CalendarReader.hasPermission(context)) }
+    val windowHours = remember { AgendaPrefs.windowHours(context) }
     var events by remember { mutableStateOf<List<AgendaEvent>?>(null) }
     LaunchedEffect(Unit) {
         permission = CalendarReader.hasPermission(context)
         events = if (permission) {
-            withContext(Dispatchers.IO) { readAgenda(context, System.currentTimeMillis()) }
+            withContext(Dispatchers.IO) { readAgenda(context, System.currentTimeMillis(), windowHours) }
         } else {
             emptyList()
         }
@@ -177,11 +179,22 @@ internal fun StandbyAgendaPanel() {
     }
     val today = remember { java.util.Calendar.getInstance() }
 
+    val dayFormat = remember { java.text.SimpleDateFormat("EEE d/M", java.util.Locale.getDefault()) }
+    fun dayStart(ms: Long): Long = java.util.Calendar.getInstance().apply {
+        timeInMillis = ms
+        set(java.util.Calendar.HOUR_OF_DAY, 0)
+        set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0)
+        set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
     fun dayLabel(ms: Long): String {
-        val c = java.util.Calendar.getInstance().apply { timeInMillis = ms }
-        val sameDay = c.get(java.util.Calendar.YEAR) == today.get(java.util.Calendar.YEAR) &&
-            c.get(java.util.Calendar.DAY_OF_YEAR) == today.get(java.util.Calendar.DAY_OF_YEAR)
-        return if (sameDay) "Hoje" else "Amanh\u00e3"
+        val days = Math.round((dayStart(ms) - dayStart(today.timeInMillis)) / 86_400_000.0).toInt()
+        return when {
+            days <= 0 -> "Hoje"
+            days == 1 -> "Amanh\u00e3"
+            else -> dayFormat.format(java.util.Date(ms))
+        }
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -216,7 +229,7 @@ internal fun StandbyAgendaPanel() {
             )
             list == null -> Spacer(Modifier.height(40.dp))
             list.isEmpty() -> Text(
-                text = "Nenhum compromisso nas pr\u00f3ximas horas",
+                text = "Nenhum compromisso nas pr\u00f3ximas ${AgendaPrefs.label(windowHours)}",
                 color = palette.textTertiary,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = 8.dp)
