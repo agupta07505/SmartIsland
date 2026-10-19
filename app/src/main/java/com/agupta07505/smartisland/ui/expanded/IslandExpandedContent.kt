@@ -1231,6 +1231,10 @@ private fun EmptyExpanded(
         verticalArrangement = Arrangement.Center
     ) {
         ClockBatteryHeader()
+        if (!settings.enableAppShortcuts) {
+            StandbyAgendaPanel()
+            return@Column
+        }
         val loadedApps = apps
         if (loadedApps == null) {
             // Keep the configured launcher visually clean while PackageManager and
@@ -1258,7 +1262,7 @@ private fun EmptyExpanded(
             // A little extra under every page: room for the page dots, which would be cut off at the window's bottom edge.
             val pageHeight = maxOf(
                 LAUNCHER_TILE_HEIGHT * rows + LAUNCHER_ROW_GAP * (rows - 1),
-                utilitiesPageHeight(utilityRows),
+                if (utilityLayout.isNotEmpty()) utilitiesPageHeight(utilityRows) else 0.dp,
                 if (pinnedOrder.any(PinnedApps::isFolder)) LAUNCHER_FOLDER_PANEL_HEIGHT else 0.dp
             ) + LAUNCHER_PAGE_EXTRA
             // The plus tile (pin more apps) takes the first empty slot, but never makes the window taller: it is only shown when the
@@ -1268,6 +1272,7 @@ private fun EmptyExpanded(
                 LAUNCHER_TILE_HEIGHT * plusRows + LAUNCHER_ROW_GAP * (plusRows - 1) + LAUNCHER_PAGE_EXTRA <= pageHeight
             LauncherPager(
                 recentsEnabled = settings.showRecentApps,
+                utilitiesEnabled = utilityLayout.isNotEmpty(),
                 pageHeight = pageHeight,
                 modifier = Modifier.fillMaxWidth()
             ) { page ->
@@ -1352,6 +1357,7 @@ private fun LauncherPager(
     recentsEnabled: Boolean,
     pageHeight: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
+    utilitiesEnabled: Boolean = true,
     content: @Composable (LauncherPage) -> Unit
 ) {
     var page by remember { mutableStateOf(LauncherPage.Apps) }
@@ -1364,7 +1370,7 @@ private fun LauncherPager(
     val shownPage = if (page == LauncherPage.Recents && !recentsEnabled) LauncherPage.Apps else page
     val onSwipe by androidx.compose.runtime.rememberUpdatedState<(LauncherSwipe) -> Unit> { direction ->
         val target = launcherPageAfter(shownPage, direction, recentsEnabled, lastAppsLevelPage)
-        if (target != shownPage) {
+        if (target != shownPage && (utilitiesEnabled || target != LauncherPage.Utilities)) {
             if (shownPage != LauncherPage.Utilities) lastAppsLevelPage = shownPage
             swipe = direction
             page = target
@@ -1414,7 +1420,7 @@ private fun LauncherPager(
         ) { target ->
             Box(Modifier.fillMaxSize()) { content(target) }
         }
-        LauncherPageDots(shownPage, recentsEnabled)
+        LauncherPageDots(shownPage, recentsEnabled, utilitiesEnabled)
         // Outside the swiping page, so it stays in the window's top-right corner while pages scroll.
         if (shownPage == LauncherPage.Utilities) UtilitiesSettingsButton()
     }
@@ -1424,7 +1430,7 @@ private val LAUNCHER_SWIPE_THRESHOLD = 40.dp
 private const val LAUNCHER_SCROLL_MS = 280
 
 @Composable
-private fun BoxScope.LauncherPageDots(page: LauncherPage, recentsEnabled: Boolean) {
+private fun BoxScope.LauncherPageDots(page: LauncherPage, recentsEnabled: Boolean, utilitiesEnabled: Boolean = true) {
     val palette = LocalIslandPalette.current
     @Composable
     fun Dot(active: Boolean) = Box(
@@ -1433,12 +1439,14 @@ private fun BoxScope.LauncherPageDots(page: LauncherPage, recentsEnabled: Boolea
             .clip(androidx.compose.foundation.shape.CircleShape)
             .background(palette.text.copy(alpha = if (active) 0.7f else 0.25f))
     )
-    Column(
-        modifier = Modifier.align(Alignment.CenterEnd),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Dot(page != LauncherPage.Utilities)
-        Dot(page == LauncherPage.Utilities)
+    if (utilitiesEnabled) {
+        Column(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Dot(page != LauncherPage.Utilities)
+            Dot(page == LauncherPage.Utilities)
+        }
     }
     if (recentsEnabled && page != LauncherPage.Utilities) {
         Row(
