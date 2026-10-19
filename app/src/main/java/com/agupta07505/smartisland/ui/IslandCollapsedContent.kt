@@ -1130,29 +1130,9 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
         } == true
     }
 
-    var elapsedSeconds by remember(notification?.key, startTime) {
-        mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
-    }
-
-    LaunchedEffect(notification?.key, startTime, isPaused) {
-        if (!isPaused) {
-            while (true) {
-                elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
-                kotlinx.coroutines.delay(500L)
-            }
-        }
-    }
-
-    val text = remember(elapsedSeconds) {
-        com.agupta07505.smartisland.util.TimerStopwatchParser.formatTime(elapsedSeconds)
-    }
-
-    Text(
-        text = text,
-        color = color,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold
-    )
+    // Live MM:SS.cc on the frame clock (Rule_Book §4.11); PillLayout gives the pill room for it.
+    val elapsed = rememberFrameElapsedMillis(startTime, running = !isPaused)
+    StopwatchReadout(elapsedMs = elapsed, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 }
 
 @Composable

@@ -16,8 +16,8 @@
     <string name="made_by">Feito com ❤️ por Animesh Gupta</string>
 
     <!-- Navigation Tabs -->
-    <string name="tab_studio">Início</string>
-    <string name="tab_position">Layout</string>
+    <string name="tab_home">Início</string>
+    <string name="tab_layout">Layout</string>
     <string name="tab_settings">Configurações</string>
     <string name="tab_features">Recursos</string>
     <string name="tab_system">Sistema e Sobre</string>
@@ -623,6 +623,7 @@
     <string name="a11y_lap">Volta</string>
     <string name="a11y_reset">Redefinir</string>
     <string name="a11y_stop_recording">Parar gravação</string>
+    <string name="a11y_bluetooth_settings">Configurações de Bluetooth</string>
     <string name="a11y_bluetooth">Bluetooth</string>
     <string name="a11y_battery_saver">Economia de bateria</string>
     <string name="a11y_low_battery">Bateria fraca</string>

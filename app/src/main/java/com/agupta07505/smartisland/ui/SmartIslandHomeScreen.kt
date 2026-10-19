@@ -167,9 +167,10 @@ import com.agupta07505.smartisland.util.SystemServiceRecovery
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.launch
 
+/** Bottom tabs, named as labelled (Rule_Book §11.2). */
 private enum class StudioTab {
-    Studio,
-    Position,
+    Home,
+    Layout,
     Settings
 }
 
@@ -257,7 +258,7 @@ fun SmartIslandHomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    var selectedTab by remember { mutableStateOf(if (openPermissionsOnStart) StudioTab.Settings else StudioTab.Studio) }
+    var selectedTab by remember { mutableStateOf(if (openPermissionsOnStart) StudioTab.Settings else StudioTab.Home) }
     var activeDetailSection by remember {
         mutableStateOf(if (openPermissionsOnStart) FeatureDetailSection.PermissionsCenter else null)
     }
@@ -333,14 +334,14 @@ fun SmartIslandHomeScreen(
                 ) {
                     LargeTitleHeader(
                         title = when (selectedTab) {
-                            StudioTab.Studio -> stringResource(R.string.app_name)
-                            StudioTab.Position -> stringResource(R.string.tab_position)
+                            StudioTab.Home -> stringResource(R.string.app_name)
+                            StudioTab.Layout -> stringResource(R.string.tab_layout)
                             StudioTab.Settings -> stringResource(R.string.tab_settings)
                         }
                     )
 
                     when (selectedTab) {
-                        StudioTab.Studio -> {
+                        StudioTab.Home -> {
                             // 1. Master Power Switch Card
                             MasterPowerCard(
                                 enabled = settings.enabled,
@@ -372,7 +373,7 @@ fun SmartIslandHomeScreen(
 
                         }
 
-                        StudioTab.Position -> {
+                        StudioTab.Layout -> {
                             PositionsSection(
                                 settings = settings,
                                 repository = resolvedRepository,
@@ -738,8 +739,8 @@ private fun StudioBottomNavigationBar(
     onTabSelected: (StudioTab) -> Unit
 ) {
     val tabs = listOf(
-        Triple(StudioTab.Studio, Icons.Rounded.FlashOn, R.string.tab_studio),
-        Triple(StudioTab.Position, Icons.Rounded.Tune, R.string.tab_position),
+        Triple(StudioTab.Home, Icons.Rounded.FlashOn, R.string.tab_home),
+        Triple(StudioTab.Layout, Icons.Rounded.Tune, R.string.tab_layout),
         Triple(StudioTab.Settings, Icons.Rounded.Settings, R.string.tab_settings)
     )
     Column {

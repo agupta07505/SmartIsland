@@ -40,6 +40,25 @@ object HotspotUtil {
         return 0
     }
 
+    private val SSID_PATTERN = Regex(
+        """(?:network\s*name|hotspot\s*name|wi-?fi\s*name|ssid)\s*[:：]\s*([^•·|\n]+)""",
+        RegexOption.IGNORE_CASE
+    )
+    private val TURN_OFF_PATTERN = Regex("""(?i)\b(turn\s*off|switch\s*off|disable|stop)\b""")
+
+    /**
+     * The hotspot's network name when the tethering notification spells it out ("Network name: Pixel_1234").
+     * Apps cannot read the soft-AP configuration without system permissions, so this is the only source;
+     * null means the card falls back to its generic subtitle.
+     */
+    fun parseSsid(title: String?, text: String?): String? {
+        val fullText = "${title.orEmpty()}\n${text.orEmpty()}"
+        return SSID_PATTERN.find(fullText)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /** True for a notification action that switches the hotspot off ("Turn off", "Stop", "Disable"). */
+    fun isTurnOffAction(actionTitle: String): Boolean = TURN_OFF_PATTERN.containsMatchIn(actionTitle)
+
     /**
      * Opens the device's Hotspot & Tethering configuration page.
      * Uses contentIntent if available, otherwise attempts platform and OEM specific tethering intents.

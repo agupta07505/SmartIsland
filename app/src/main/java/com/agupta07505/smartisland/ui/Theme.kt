@@ -56,6 +56,9 @@ private val LightSemantic = SemanticColors(
     bar = Color(0xF2F9F9F9)
 )
 
+// Rule_Book §11.1 palette: #000000 / #F2F2F7 backgrounds, #1C1C1E elevated rows, #8E8E93 secondary text and
+// #FF3B30 destructive. Dark mode uses those values as-is (each clears 4.5:1 on #1C1C1E). On light surfaces
+// #8E8E93 and #FF3B30 only reach ~3.3:1 and ~3.6:1, so light mode keeps darker variants for body-size text.
 private val DarkSemantic = SemanticColors(
     groupedBackground = Color(0xFF000000),
     groupedRow = Color(0xFF1C1C1E),
@@ -63,9 +66,12 @@ private val DarkSemantic = SemanticColors(
     fill = Color(0xFF2C2C2E),
     success = Color(0xFF30D158),
     warning = Color(0xFFFF9F0A),
-    danger = Color(0xFFFF453A),
+    danger = Color(0xFFFF3B30),
     bar = Color(0xF21C1C1E)
 )
+
+/** Secondary label gray (§11.1), dark mode. */
+private val DarkSecondaryLabel = Color(0xFF8E8E93)
 
 val LocalSemanticColors = staticCompositionLocalOf { LightSemantic }
 
@@ -107,11 +113,11 @@ private val DarkColorScheme = darkColorScheme(
     onPrimary = Color(0xFF2B0B02),
     primaryContainer = Color(0xFF45170A),
     onPrimaryContainer = Color(0xFFFFDBCF),
-    secondary = Color(0xFF98989F),
+    secondary = DarkSecondaryLabel,
     onSecondary = Color(0xFF000000),
     secondaryContainer = Color(0xFF2C2C2E),
     onSecondaryContainer = Color(0xFFF2F2F7),
-    tertiary = Color(0xFF98989F),
+    tertiary = DarkSecondaryLabel,
     onTertiary = Color(0xFF000000),
     tertiaryContainer = Color(0xFF2C2C2E),
     onTertiaryContainer = Color(0xFFF2F2F7),
@@ -120,7 +126,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = DarkSemantic.groupedRow,
     onSurface = Color(0xFFFFFFFF),
     surfaceVariant = DarkSemantic.fill,
-    onSurfaceVariant = Color(0xFF98989F), // 5.9:1 on the row surface
+    onSurfaceVariant = DarkSecondaryLabel, // 5.2:1 on the row surface, 6.4:1 on black
     outline = DarkSemantic.separator,
     outlineVariant = Color(0xFF2C2C2E),
     error = DarkSemantic.danger,

@@ -108,4 +108,19 @@ class PillLayoutTest {
         val tightBudget = PillLayout.effectiveWidthDp(base, holeWidthDp = 30f, notificationCount = 1, contentWingDp = 400f, maxAlertWidthDp = 50f)
         assertEquals(base.width, tightBudget, 0.001f)
     }
+
+    @Test
+    fun stopwatchPillMakesRoomForTheCentisecondReadout() {
+        val stopwatch = com.agupta07505.smartisland.model.IslandNotification(
+            packageName = "com.google.android.deskclock",
+            appName = "Clock",
+            title = "Stopwatch",
+            text = "",
+            timeMillis = 0L,
+            mode = com.agupta07505.smartisland.model.IslandMode.Stopwatch
+        )
+        assertEquals(PillLayout.STOPWATCH_WING_DP, PillLayout.contentWingDp(stopwatch), 0f)
+        // Free wing (112 - 30) / 2 = 41dp, needs 60dp: both sides grow by 19dp.
+        assertEquals(150f, PillLayout.effectiveWidthDp(base, 30f, 1, contentWingDp = PillLayout.contentWingDp(stopwatch)), 0.001f)
+    }
 }

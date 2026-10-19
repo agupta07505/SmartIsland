@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -80,11 +81,33 @@ fun HotspotExpanded(
             .ifBlank { "Sharing mobile data" }
     }
 
+    // The network name only when the tethering notification shows it; apps cannot read the soft-AP config.
+    val ssid = remember(notification.title, notification.text) {
+        HotspotUtil.parseSsid(notification.title, notification.text)
+    }
+
+    val turnOffAction = remember(notification.actionIntents) {
+        notification.actionIntents.firstOrNull { it.pendingIntent != null && HotspotUtil.isTurnOffAction(it.title) }
+    }
+
     val extraActionIntents = remember(notification.actionIntents) {
         notification.actionIntents.filterNot { action ->
             val titleLower = action.title.lowercase()
-            titleLower.contains("hotspot") || titleLower.contains("setting")
+            titleLower.contains("hotspot") || titleLower.contains("setting") || HotspotUtil.isTurnOffAction(action.title)
         }
+    }
+
+    // Rule_Book §4.8: the toggle turns the hotspot off and drops the island to IDLE. Apps cannot switch tethering
+    // off themselves, so this fires the notification's own "Turn off" action when it has one, otherwise opens the
+    // tethering settings for the user to finish there.
+    val turnOffHotspot: () -> Unit = {
+        if (turnOffAction != null) {
+            triggerAction(context, notification.packageName, turnOffAction.pendingIntent, turnOffAction.title, notification.contentIntent)
+        } else {
+            HotspotUtil.openHotspotSettings(context)
+        }
+        SmartIslandRepositories.notificationRepository(context).removeNotification(notification.key)
+        onCollapse()
     }
 
     Column(
@@ -132,7 +155,7 @@ fun HotspotExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = cleanSubtitle,
+                    text = ssid?.let { "Network: $it" } ?: cleanSubtitle,
                     color = IslandPalette.secondaryLabel,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -230,19 +253,27 @@ fun HotspotExpanded(
                     .height(40.dp)
                     .clip(RoundedCornerShape(20.dp))
                     .background(IslandPalette.fill)
-                    .bounceClick {
-                        HotspotUtil.openHotspotSettings(context, notification.contentIntent)
-                        onCollapse()
-                    }
+                    .bounceClick(turnOffHotspot)
                     .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Hotspot Settings",
-                    color = IslandPalette.label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PowerSettingsNew,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (turnOffAction != null) "Turn Off Hotspot" else "Turn Off in Settings",
+                        color = IslandPalette.label,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             extraActionIntents.forEach { action ->

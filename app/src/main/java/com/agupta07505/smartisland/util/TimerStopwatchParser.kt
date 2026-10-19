@@ -486,4 +486,17 @@ object TimerStopwatchParser {
             String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
         }
     }
+
+    /**
+     * Stopwatch readout with centiseconds, MM:SS.cc (Rule_Book §4.11). Past an hour the centiseconds give way to
+     * H:MM:SS so the text keeps roughly the same width in the pill.
+     */
+    fun formatStopwatchMillis(elapsedMs: Long): String {
+        val safeMs = elapsedMs.coerceAtLeast(0L)
+        if (safeMs >= 3_600_000L) return formatTime(safeMs / 1000L)
+        val minutes = safeMs / 60_000L
+        val seconds = (safeMs % 60_000L) / 1000L
+        val centis = (safeMs % 1000L) / 10L
+        return String.format(java.util.Locale.US, "%02d:%02d.%02d", minutes, seconds, centis)
+    }
 }

@@ -10,6 +10,10 @@ package com.agupta07505.smartisland.ui.expanded
 import com.agupta07505.smartisland.ui.animateFloatCalm
 import com.agupta07505.smartisland.ui.IslandPalette
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -60,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.components.DottedRing
+import com.agupta07505.smartisland.util.BatteryEstimate
 import com.agupta07505.smartisland.util.runCatchingLogged
 
 @Composable
@@ -74,8 +79,9 @@ fun BatteryExpanded(
     val progress = (pct / 100f).coerceIn(0f, 1f)
 
     val titleLower = notification.title.lowercase()
+    val isCharging = notification.category == "battery_charging"
     val isBatterySaver = titleLower.contains("saver") || notification.category == "battery_saver"
-    val isLowBattery = titleLower.contains("low") || notification.category == "battery_low" || pct <= 20f
+    val isLowBattery = !isCharging && (titleLower.contains("low") || notification.category == "battery_low" || pct <= 20f)
 
     val batteryColor = when {
         isLowBattery -> IslandPalette.danger
@@ -114,32 +120,15 @@ fun BatteryExpanded(
         label = "dottedRingRotation"
     )
 
-    val timeText = remember(pct, isBatterySaver, isLowBattery) {
-        if (isBatterySaver) {
-            "Power Saver active"
-        } else if (isLowBattery) {
-            "Connect charger"
-        } else {
-            val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
-            val remainingMs = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                runCatchingLogged("BatteryExpanded", "computeChargeTimeRemaining failed") {
-                    batteryManager?.computeChargeTimeRemaining() ?: -1L
-                } ?: -1L
-            } else {
-                -1L
-            }
-            if (remainingMs > 0L) {
-                val totalMins = remainingMs / 60000L
-                val h = totalMins / 60L
-                val m = totalMins % 60L
-                if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
-            } else {
-                val totalMins = ((100f - pct) * 1.5f).toInt()
-                val h = totalMins / 60
-                val m = totalMins % 60
-                if (h > 0) "${h} h ${m} m until full" else "${m} m until full"
-            }
-        }
+    // Status subtext and the time estimate (Rule_Book §4.12), e.g. "Fast Charging · 35 m until full" or
+    // "Discharging · 4 h 10 m left". The line is dropped entirely when there is nothing to add to the title.
+    val statusLine = remember(pct, notification.title, isCharging) {
+        val isFull = notification.title.contains("full", ignoreCase = true) || (isCharging && pct >= 100f)
+        val (status, timeText) = readBatteryStatus(context, isCharging, isFull, pct)
+        listOfNotNull(
+            status.label.takeUnless { it.equals(notification.title, ignoreCase = true) },
+            timeText
+        ).joinToString(" · ").ifBlank { null }
     }
 
     Row(
@@ -218,12 +207,14 @@ fun BatteryExpanded(
                     fontSize = 20.sp,
                     lineHeight = 22.sp
                 )
-                Text(
-                    text = timeText,
-                    color = IslandPalette.secondaryLabel,
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
+                if (statusLine != null) {
+                    Text(
+                        text = statusLine,
+                        color = IslandPalette.secondaryLabel,
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                }
             }
         }
 
@@ -282,4 +273,53 @@ fun BatteryExpanded(
             )
         }
     }
+}
+
+/**
+ * Charging speed from the sticky battery broadcast plus a time estimate: until full while charging (the OS value,
+ * else a rough 1.5 min per percent), until empty while discharging (from charge and draw), or null when unknown.
+ */
+private fun readBatteryStatus(
+    context: Context,
+    isCharging: Boolean,
+    isFull: Boolean,
+    pct: Float
+): Pair<BatteryEstimate.Status, String?> {
+    val sticky = runCatchingLogged("BatteryExpanded", "Reading battery broadcast failed") {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        }
+    }
+    val status = BatteryEstimate.status(
+        charging = isCharging,
+        full = isFull,
+        maxMicroAmps = sticky?.getIntExtra("max_charging_current", -1) ?: -1,
+        maxMicroVolts = sticky?.getIntExtra("max_charging_voltage", -1) ?: -1
+    )
+    val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+    val timeText = when (status) {
+        BatteryEstimate.Status.Full -> null
+        BatteryEstimate.Status.FastCharging, BatteryEstimate.Status.Charging -> {
+            val remainingMs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                runCatchingLogged("BatteryExpanded", "computeChargeTimeRemaining failed") {
+                    batteryManager?.computeChargeTimeRemaining()
+                } ?: -1L
+            } else -1L
+            val minutes = if (remainingMs > 0L) remainingMs / 60_000L else ((100f - pct) * 1.5f).toLong()
+            if (minutes > 0L) "${BatteryEstimate.formatMinutes(minutes)} until full" else null
+        }
+        BatteryEstimate.Status.Discharging -> {
+            fun property(id: Int): Long = runCatchingLogged("BatteryExpanded", "Battery property $id failed") {
+                batteryManager?.getIntProperty(id)?.takeIf { it != Int.MIN_VALUE }?.toLong()
+            } ?: 0L
+            BatteryEstimate.minutesUntilEmpty(
+                chargeCounterMicroAh = property(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER),
+                currentNowMicroA = property(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+            )?.let { "${BatteryEstimate.formatMinutes(it)} left" }
+        }
+    }
+    return status to timeText
 }
