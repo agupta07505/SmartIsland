@@ -14,9 +14,14 @@ import android.content.Intent
 import android.os.BatteryManager
 import android.os.PowerManager
 import com.agupta07505.smartisland.data.SmartIslandNotificationRepository
+import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.HotspotUtil
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SystemEventReceiverTest {
@@ -183,5 +188,73 @@ class SystemEventReceiverTest {
 
         // Now it SHOULD be removed
         verify(exactly = 1) { repo.removeNotification("system_bluetooth") }
+    }
+
+    private fun apStateIntent(state: Int): Intent {
+        val intent = mockk<Intent>()
+        every { intent.action } returns HotspotUtil.ACTION_WIFI_AP_STATE_CHANGED
+        every { intent.getIntExtra(HotspotUtil.EXTRA_WIFI_AP_STATE, -1) } returns state
+        return intent
+    }
+
+    @Test
+    fun testHotspotOnWithoutANotificationShowsTheHotspotAndOffRemovesIt() {
+        val repo = SmartIslandNotificationRepository()
+        val receiver = SystemEventReceiver(repo)
+        val context = mockk<Context>()
+
+        receiver.onReceive(context, apStateIntent(HotspotUtil.WIFI_AP_STATE_ENABLING))
+        assertTrue(repo.notifications.value.isEmpty())
+
+        receiver.onReceive(context, apStateIntent(HotspotUtil.WIFI_AP_STATE_ENABLED))
+        val shown = repo.notifications.value.single()
+        assertEquals(HotspotUtil.SYSTEM_HOTSPOT_KEY, shown.key)
+        assertEquals(IslandMode.Hotspot, shown.mode)
+
+        receiver.onReceive(context, apStateIntent(HotspotUtil.WIFI_AP_STATE_DISABLED))
+        assertTrue(repo.notifications.value.isEmpty())
+    }
+
+    @Test
+    fun testHotspotOffAlsoRemovesTheSystemTetheringNotification() {
+        val repo = SmartIslandNotificationRepository()
+        val receiver = SystemEventReceiver(repo)
+        val context = mockk<Context>()
+        val tethering = IslandNotification(
+            key = "0|com.android.settings|1|tether|1000",
+            packageName = "com.android.settings",
+            appName = "Settings",
+            title = "Hotspot on",
+            text = "1 device connected",
+            timeMillis = 0L,
+            mode = IslandMode.Hotspot
+        )
+        repo.postNotification(tethering)
+
+        // The OS notification already shows it: no second hotspot pill.
+        receiver.onReceive(context, apStateIntent(HotspotUtil.WIFI_AP_STATE_ENABLED))
+        assertEquals(listOf(tethering.key), repo.notifications.value.map { it.key })
+
+        receiver.onReceive(context, apStateIntent(HotspotUtil.WIFI_AP_STATE_FAILED))
+        assertTrue(repo.notifications.value.isEmpty())
+    }
+
+    @Test
+    fun testTheTetheringNotificationReplacesTheIslandsOwnHotspotAlert() {
+        val repo = SmartIslandNotificationRepository()
+        val receiver = SystemEventReceiver(repo)
+        receiver.onReceive(mockk<Context>(), apStateIntent(HotspotUtil.WIFI_AP_STATE_ENABLED))
+        repo.postNotification(
+            IslandNotification(
+                key = "tether",
+                packageName = "com.android.settings",
+                appName = "Settings",
+                title = "Hotspot on",
+                text = "2 devices connected",
+                timeMillis = 0L,
+                mode = IslandMode.Hotspot
+            )
+        )
+        assertEquals(listOf("tether"), repo.notifications.value.map { it.key })
     }
 }

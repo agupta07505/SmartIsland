@@ -234,9 +234,9 @@ fun Notification.toIslandMode(
         return IslandMode.IncomingCall
     }
 
-    // 4. Turn-by-Turn Map Navigation
+    // 4. Turn-by-Turn Map Navigation, and live Uber / Ola / Rapido rides (Tier 1 like navigation, Rule_Book 4.14)
     if (navigationEnabled && sbn != null) {
-        if (NavigationParser.parse(sbn) != null) {
+        if (NavigationParser.parseRide(sbn) != null || NavigationParser.parse(sbn) != null) {
             return IslandMode.Navigation
         }
     }

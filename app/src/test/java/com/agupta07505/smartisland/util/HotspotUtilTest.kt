@@ -28,4 +28,14 @@ class HotspotUtilTest {
         assertEquals(3, HotspotUtil.parseDeviceCount("Personal Hotspot", "Connected devices: 3"))
         assertEquals(1, HotspotUtil.parseDeviceCount("Hotspot", "1 connected"))
     }
+
+    @Test
+    fun testApStateMapsTheBroadcastStates() {
+        assertEquals(HotspotApState.On, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_ENABLED))
+        assertEquals(HotspotApState.Off, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_DISABLED))
+        assertEquals(HotspotApState.Off, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_FAILED))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_ENABLING))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_DISABLING))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(-1))
+    }
 }

@@ -90,8 +90,30 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
     private var lastAutoExpandTimeMs = 0L
     private val timerAnchors by lazy { TimerAnchorStore(this) }
 
+    /** A listener callback waiting to reach the repository; see [ListenerEventBuffer]. */
+    private sealed interface ListenerEvent {
+        val sbn: StatusBarNotification
+
+        class Posted(override val sbn: StatusBarNotification, val rankingMap: RankingMap?) : ListenerEvent
+        class Removed(override val sbn: StatusBarNotification, val reason: Int?) : ListenerEvent
+    }
+
+    // Bounded (10, oldest post dropped first) and drained by one consumer, so bursts cannot pile up (Rule_Book 5).
+    private val listenerEvents = ListenerEventBuffer<ListenerEvent>(
+        keyOf = { it.sbn.key },
+        isRemoval = { it is ListenerEvent.Removed }
+    )
+
     override fun onCreate() {
         super.onCreate()
+        listenerEvents.consumeIn(serviceScope) { event ->
+            runSuspendCatchingLogged(TAG, "Listener event handling failed") {
+                when (event) {
+                    is ListenerEvent.Posted -> processPosted(event.sbn, event.rankingMap)
+                    is ListenerEvent.Removed -> processRemoved(event.sbn, event.reason)
+                }
+            }
+        }
         serviceScope.launch {
             runSuspendCatchingLogged(TAG, "Settings collector failed") {
                 repository.settings.collect { settings ->
@@ -166,6 +188,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         pendingRemovals.clear()
         pendingSuppressionJobs.values.forEach { it.cancel() }
         pendingSuppressionJobs.clear()
+        listenerEvents.clear()
         suppressedKeys.clear()
         iconCache.evictAll()
         serviceScope.cancel()
@@ -245,19 +268,47 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         // Cancel any pending removal job for this key to keep island copy
         pendingRemovals.remove(sbn.key)?.cancel()
 
-        serviceScope.launch {
-            runSuspendCatchingLogged(TAG, "NotificationPosted async failed") {
-                if (shouldSuppressFromIsland(sbn, rankingMap)) return@runSuspendCatchingLogged
-
-                val settings = repository.settings.first()
-                currentSettings = settings
-                if (!settings.enabled) return@runSuspendCatchingLogged
-
-                android.util.Log.d(TAG, "Processing island-only async: key=${sbn.key}")
-                handleNotificationPosted(sbn, settings)
-            }
+        // Bounded and ordered from here on (Rule_Book 5): a burst cannot pile up, and this key's events stay in order.
+        listenerEvents.offer(ListenerEvent.Posted(sbn, rankingMap))
         }
+    }
+
+    /** The queued half of [onNotificationPosted]; runs on the single [listenerEvents] consumer. */
+    private suspend fun processPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
+        if (shouldSuppressFromIsland(sbn, rankingMap)) return
+
+        val settings = repository.settings.first()
+        currentSettings = settings
+        if (!settings.enabled) return
+
+        android.util.Log.d(TAG, "Processing island-only async: key=${sbn.key}")
+        handleNotificationPosted(sbn, settings)
+    }
+
+    /**
+     * The queued half of a removal, after its 350ms debounce. [reason] is null when the OEM only called the
+     * reason-less overload.
+     */
+    private fun processRemoved(sbn: StatusBarNotification, reason: Int?) {
+        val now = SystemClock.elapsedRealtime()
+        val lastSuppressedTime = suppressedKeys[sbn.key] ?: 0L
+        val isRecentInitialSuppression = (now - lastSuppressedTime) < INITIAL_SUPPRESSION_WINDOW_MS
+
+        // Cancelling a group summary makes the system auto-cancel its children with
+        // REASON_GROUP_SUMMARY_CANCELED; that is our own doing, not the user dismissing them.
+        val cancelledByUs = reason == null || reason == REASON_LISTENER_CANCEL || reason == REASON_GROUP_SUMMARY_CANCELED
+        if (cancelledByUs && isRecentInitialSuppression) {
+            // Smart Island just suppressed this notification from system shade < 1.5s ago.
+            // Keep the island copy alive during initial suppression.
+            android.util.Log.d(TAG, "Recent listener-cancel (<1.5s), keeping island: ${sbn.key} reason=$reason")
+            return
         }
+
+        // Removed by posting app, user, framework timeout, or after initial suppression window.
+        android.util.Log.d(TAG, "Genuinely removed, cleaning up: ${sbn.key}")
+        clearSuppressed(sbn.key)
+        timerAnchors.remove(sbn.key)
+        notificationRepository.removeNotification(sbn.key)
     }
 
     /**
@@ -275,26 +326,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             runSuspendCatchingLogged(TAG, "NotificationRemoved handling failed") {
                 delay(350L)
                 if (sbn.packageName == packageName) return@runSuspendCatchingLogged
-
-                val now = SystemClock.elapsedRealtime()
-                val lastSuppressedTime = suppressedKeys[sbn.key] ?: 0L
-                val isRecentInitialSuppression = (now - lastSuppressedTime) < INITIAL_SUPPRESSION_WINDOW_MS
-
-                // Cancelling a group summary makes the system auto-cancel its children with
-                // REASON_GROUP_SUMMARY_CANCELED; that is our own doing, not the user dismissing them.
-                val cancelledByUs = reason == REASON_LISTENER_CANCEL || reason == REASON_GROUP_SUMMARY_CANCELED
-                if (cancelledByUs && isRecentInitialSuppression) {
-                    // Smart Island just suppressed this notification from system shade < 1.5s ago.
-                    // Keep the island copy alive during initial suppression.
-                    android.util.Log.d(TAG, "Recent listener-cancel (<1.5s), keeping island: ${sbn.key}")
-                    return@runSuspendCatchingLogged
-                }
-
-                // Removed by posting app, user, framework timeout, or after initial suppression window.
-                android.util.Log.d(TAG, "Genuinely removed, cleaning up: ${sbn.key}")
-                clearSuppressed(sbn.key)
-                timerAnchors.remove(sbn.key)
-                notificationRepository.removeNotification(sbn.key)
+                // Joins the same ordered queue as posts; a removal is never dropped from it.
+                listenerEvents.offer(ListenerEvent.Removed(sbn, reason))
             }
             pendingRemovals.remove(sbn.key)
         }
@@ -313,20 +346,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             runSuspendCatchingLogged(TAG, "NotificationRemoved (no reason) handling failed") {
                 delay(350L)
                 if (sbn.packageName == packageName) return@runSuspendCatchingLogged
-
-                val now = SystemClock.elapsedRealtime()
-                val lastSuppressedTime = suppressedKeys[sbn.key] ?: 0L
-                val isRecentInitialSuppression = (now - lastSuppressedTime) < INITIAL_SUPPRESSION_WINDOW_MS
-
-                if (isRecentInitialSuppression) {
-                    android.util.Log.d(TAG, "Suppressed key recently (<1.5s), keeping island: ${sbn.key}")
-                    return@runSuspendCatchingLogged
-                }
-
-                android.util.Log.d(TAG, "Removing from island repo: ${sbn.key}")
-                clearSuppressed(sbn.key)
-                timerAnchors.remove(sbn.key)
-                notificationRepository.removeNotification(sbn.key)
+                listenerEvents.offer(ListenerEvent.Removed(sbn, reason = null))
             }
             pendingRemovals.remove(sbn.key)
         }
@@ -593,7 +613,19 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val notifTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
             ?: (if (mode == IslandMode.Stopwatch) "Stopwatch" else if (mode == IslandMode.Timer) "Timer" else "")
-        val notifText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+        // A ride's BigTextStyle text holds the driver, vehicle and plate (Rule_Book 4.14); the short text often doesn't.
+        val isRide = mode == IslandMode.Navigation && com.agupta07505.smartisland.util.NavigationParser.isRideApp(sbn.packageName)
+        val rideText = if (isRide) {
+            val big = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+            val short = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+            when {
+                big.isEmpty() -> null
+                short.isEmpty() || big.contains(short) -> big
+                else -> "$big • $short"
+            }
+        } else null
+        val notifText = rideText
+            ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
             ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
             ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
             ?: extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()

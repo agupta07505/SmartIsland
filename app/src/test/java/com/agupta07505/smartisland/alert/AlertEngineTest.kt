@@ -168,6 +168,34 @@ class AlertEngineTest {
     }
 
     @Test
+    fun aRideIsPersistentAndRanksAboveMapsDirections() {
+        val ride = alert("ride", pkg = "com.ubercab", mode = IslandMode.Navigation, category = null)
+        val maps = alert("maps", pkg = "com.google.android.apps.maps", mode = IslandMode.Navigation, category = "navigation")
+        assertEquals(AlertTier.Persistent, AlertClassifier.classify(ride))
+        assertTrue(AlertClassifier.isRide(ride))
+        assertFalse(AlertClassifier.isRide(maps))
+        // A Rapido ride still classified as a live activity is not a ride for ordering.
+        assertFalse(AlertClassifier.isRide(alert("la", pkg = "com.rapido.passenger", mode = IslandMode.LiveActivity)))
+
+        val engine = AlertEngine()
+        engine.evaluate(listOf(ride), 0)
+        // Maps directions started later would normally take the main pill; the ride keeps it.
+        assertEquals(listOf("ride", "maps"), keys(engine.evaluate(listOf(ride, maps), 1_000)))
+        // Either way round.
+        val fresh = AlertEngine()
+        fresh.evaluate(listOf(maps), 0)
+        assertEquals(listOf("ride", "maps"), keys(fresh.evaluate(listOf(maps, ride), 1_000)))
+    }
+
+    @Test
+    fun anIncomingCallStillBeatsARide() {
+        val ride = alert("ride", pkg = "com.olacabs.customer", mode = IslandMode.Navigation, category = null)
+        val engine = AlertEngine()
+        engine.evaluate(listOf(call()), 0)
+        assertEquals(listOf("call", "ride"), keys(engine.evaluate(listOf(ride, call()), 1_000)))
+    }
+
+    @Test
     fun backgroundTasksStayOrderedNewestFirst() {
         val engine = AlertEngine()
         val hotspot = alert("hot", pkg = "x", mode = IslandMode.Hotspot, category = null)

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Layout tab groups (Rule_Book 11.3), Home tab (11.2) and ride-sharing cards (4.14). -->
+<resources>
+    <string name="layout_header_form_factor">Form Factor</string>
+    <string name="layout_header_quick_presets">Quick Presets</string>
+    <string name="layout_header_geometry">Geometry &amp; Sizing</string>
+    <string name="layout_header_aesthetics">Aesthetics</string>
+    <string name="layout_header_behavior">Behavior</string>
+    <string name="layout_header_motion">Motion Physics</string>
+    <string name="layout_form_factor_pill">Pill</string>
+    <string name="layout_form_factor_notch">Notch</string>
+    <string name="layout_companion_side">Companion Bubble</string>
+    <string name="layout_companion_left">Left</string>
+    <string name="layout_companion_right">Right</string>
+    <string name="layout_y_offset_locked">Locked to 0 dp in Notch mode</string>
+    <string name="layout_drop_shadow">Drop Shadow</string>
+    <string name="home_permissions_needed_header">Setup</string>
+    <string name="ride_driver_fallback">Your driver</string>
+</resources>

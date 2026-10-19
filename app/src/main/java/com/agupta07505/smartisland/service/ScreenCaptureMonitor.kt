@@ -12,6 +12,7 @@ import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.view.Display
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
 import com.agupta07505.smartisland.util.runCatchingLogged
@@ -25,7 +26,8 @@ import java.util.function.Consumer
  *  - Android 15+: [WindowManager.addScreenRecordingCallback] (needs DETECT_SCREEN_RECORDING). It reports
  *    whether any of this app's windows is in a recording. The island window turns secure and drops out of
  *    it, but the invisible system-bar probe ([ImmersiveModeMonitor]) stays in, so the state holds steady.
- *  - Casting / mirroring: a presentation display (Cast, Wi-Fi display, HDMI) is attached.
+ *  - Casting / mirroring: a presentation display (Cast, Wi-Fi display, HDMI) or a public virtual display (a
+ *    MediaProjection mirror) is attached; see [CaptureDisplays]. The display listener catches it being added.
  *  - A screen-recorder alert on the island ([com.agupta07505.smartisland.model.IslandMode.ScreenRecording]),
  *    fed through [setRecorderAlertActive]. This covers older Android and third-party recorders.
  */
@@ -91,13 +93,26 @@ class ScreenCaptureMonitor(
     private fun refreshDisplays() {
         val manager = displayManager ?: return
         val cast = runCatchingLogged(TAG, "Display query failed") {
-            manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+            val presentation = manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION).isNotEmpty()
+            // A MediaProjection mirror is a virtual display; ordinary apps only see the public ones.
+            presentation || manager.displays.any { display ->
+                CaptureDisplays.isCaptureDisplay(
+                    isDefault = display.displayId == Display.DEFAULT_DISPLAY,
+                    flags = display.flags,
+                    type = displayType(display)
+                )
+            }
         } ?: false
         if (presentationDisplay.value != cast) {
             presentationDisplay.value = cast
             publish()
         }
     }
+
+    /** `Display.getType()` is hidden; null when this build does not expose it. */
+    private fun displayType(display: Display): Int? = runCatching {
+        Display::class.java.getMethod("getType").invoke(display) as? Int
+    }.getOrNull()
 
     @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun registerRecordingCallback() {
@@ -138,5 +153,34 @@ class ScreenCaptureMonitor(
         /** Any one signal means the screen may be leaving the device. */
         fun isCaptureActive(recordingApi: Boolean, presentationDisplay: Boolean, recorderAlert: Boolean): Boolean =
             recordingApi || presentationDisplay || recorderAlert
+    }
+}
+
+/**
+ * Which attached displays mean the screen is leaving the device (Rule_Book 8.2). Pure, so it is unit-testable.
+ * Apps cannot register `MediaProjectionManager` callbacks, but a projection that mirrors the screen shows up as
+ * a display: Cast and Wi-Fi display as presentation or Wi-Fi displays, screen recorders and mirroring tools as
+ * virtual ones. A private virtual display (owned by one app, e.g. for its own rendering) is not a mirror of
+ * this screen, and Android only lists one to its owner anyway. Built-in second screens (a foldable's cover
+ * display) are internal displays and never count.
+ */
+object CaptureDisplays {
+    // Display.FLAG_* (public).
+    const val FLAG_PRIVATE = 1 shl 2
+    const val FLAG_PRESENTATION = 1 shl 3
+
+    // Display.TYPE_* (hidden, read through reflection).
+    const val TYPE_INTERNAL = 1
+    const val TYPE_EXTERNAL = 2
+    const val TYPE_WIFI = 3
+    const val TYPE_OVERLAY = 4
+    const val TYPE_VIRTUAL = 5
+
+    /** [type] is null when the hidden type could not be read; then only the presentation flag counts. */
+    fun isCaptureDisplay(isDefault: Boolean, flags: Int, type: Int?): Boolean {
+        if (isDefault) return false
+        if (flags and FLAG_PRESENTATION != 0) return true
+        if (flags and FLAG_PRIVATE != 0) return false
+        return type == TYPE_WIFI || type == TYPE_VIRTUAL || type == TYPE_OVERLAY || type == TYPE_EXTERNAL
     }
 }

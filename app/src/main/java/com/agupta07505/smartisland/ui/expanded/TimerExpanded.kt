@@ -125,8 +125,9 @@ fun TimerExpanded(
         }
     }
 
-    LaunchedEffect(notification?.key, targetTime, isPaused) {
-        if (!isPaused) {
+    val screenOn = com.agupta07505.smartisland.ui.LocalScreenOn.current
+    LaunchedEffect(notification?.key, targetTime, isPaused, screenOn) {
+        if (!isPaused && screenOn) {
             while (true) {
                 val now = System.currentTimeMillis()
                 val rem = if (targetTime > now) {

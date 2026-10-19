@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -90,6 +91,9 @@ fun OverlayIsland(
         }
     }
 
+    // Screen off halts every looping animation and ticker below (Rule_Book 4.3, 5).
+    val screenOn by viewModel.isScreenOn.collectAsState()
+    CompositionLocalProvider(LocalScreenOn provides screenOn) {
     IslandOverlayView(
         settings = settings,
         expanded = expanded,
@@ -111,4 +115,5 @@ fun OverlayIsland(
         onUserInteraction = { viewModel.onUserInteraction() },
         modifier = modifier
     )
+    }
 }

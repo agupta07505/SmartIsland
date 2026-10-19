@@ -37,6 +37,7 @@ import androidx.core.app.ServiceCompat
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.provider.Settings
@@ -260,6 +261,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 when (intent.action) {
                     Intent.ACTION_SCREEN_ON -> {
                         overlayOwners.resume()
+                        viewModel.setScreenOn(true)
                         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
                         guards?.biometric?.onScreenOn(isLockScreenActive)
                         viewModel.setLocked(isLockScreenActive)
@@ -271,6 +273,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         unlockWatchJob?.cancel()
+                        // Two layers (Rule_Book 4.3, 5): the paused lifecycle stops the frame clock, and the
+                        // screen-off state takes every looping animation and ticker out of the composition.
+                        viewModel.setScreenOn(false)
                         overlayOwners.pause()
                         isLockScreenActive = true
                         guards?.biometric?.onScreenOff()
@@ -428,6 +433,9 @@ class SmartIslandOverlayService : AccessibilityService() {
             return
         }
         viewModel = initializedViewModel
+        viewModel.setScreenOn(
+            (getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)?.isInteractive != false
+        )
         viewModel.setLandscape(resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         startMascotObservers()
         guards = OverlayGuardController(
@@ -476,6 +484,19 @@ class SmartIslandOverlayService : AccessibilityService() {
                 registerReceiver(systemEventReceiver, filter)
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(systemEventReceiver, bluetoothFilter, bluetoothBroadcastPermission(), null)
+            }
+            systemEventReceiverRegistered = true
+        }
+        // Hotspot on/off (Rule_Book 4.8), with or without a tethering notification. The broadcast is protected,
+        // so only the system can send it; it comes from the Wi-Fi stack, hence exported. It is sticky, so
+        // registering delivers the current state at once.
+        runCatchingLogged(TAG, "registerReceiver hotspot failed") {
+            val hotspotFilter = IntentFilter(com.agupta07505.smartisland.util.HotspotUtil.ACTION_WIFI_AP_STATE_CHANGED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(systemEventReceiver, hotspotFilter, Context.RECEIVER_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(systemEventReceiver, hotspotFilter)
             }
             systemEventReceiverRegistered = true
         }
@@ -686,7 +707,13 @@ class SmartIslandOverlayService : AccessibilityService() {
     private fun ensureForegroundStarted() {
         if (foregroundStarted || destroyed) return
         runCatchingLogged(TAG, "startForeground failed") {
-            startForeground(NOTIFICATION_ID, buildNotification())
+            // Rule_Book 7.2: typed foreground service, matching the manifest's foregroundServiceType="specialUse".
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                buildNotification(),
+                overlayForegroundServiceType(Build.VERSION.SDK_INT)
+            )
             foregroundStarted = true
         }
     }
@@ -1217,17 +1244,27 @@ class SmartIslandOverlayService : AccessibilityService() {
         setViewTreeSavedStateRegistryOwner(overlayOwners)
     }
 
+    /**
+     * Silent, minimized channel for the foreground notification (Rule_Book 7.2): no sound, vibration, light or
+     * badge, and IMPORTANCE_MIN so it folds into the shade's silent section. Android never raises or lowers an
+     * existing channel's importance for us, so the old IMPORTANCE_LOW channel is replaced, not updated.
+     */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 OVERLAY_CHANNEL_ID,
                 OVERLAY_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
                 description = "Keeps the Smart Island overlay running"
                 setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
             }
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            nm?.deleteNotificationChannel(LEGACY_OVERLAY_CHANNEL_ID)
             nm?.createNotificationChannel(channel)
         }
     }
@@ -1249,7 +1286,8 @@ class SmartIslandOverlayService : AccessibilityService() {
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
             .setShowWhen(false)
             .build()
     }
@@ -1259,11 +1297,23 @@ class SmartIslandOverlayService : AccessibilityService() {
         var isSystemConnected: Boolean = false
             private set
 
+        /**
+         * The type passed to startForeground (Rule_Book 7.2). Android 14+ requires an explicit type, which must
+         * be the manifest's `specialUse`; Android 10-13 have no such constant, so they take the manifest's types.
+         * Before Android 10 the type is ignored.
+         */
+        internal fun overlayForegroundServiceType(sdkInt: Int): Int = when {
+            sdkInt >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            sdkInt >= Build.VERSION_CODES.Q -> ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST
+            else -> 0
+        }
+
         private const val TAG = "SmartIslandOverlayService"
         private const val BACKDROP_BLUR_RADIUS_DP = 24f
         private const val NOTIFICATION_ID = 8105
         private const val WINDOWING_MODE_FREEFORM = 5
-        private const val OVERLAY_CHANNEL_ID = "smart_island_overlay"
+        private const val OVERLAY_CHANNEL_ID = "smart_island_overlay_silent"
+        private const val LEGACY_OVERLAY_CHANNEL_ID = "smart_island_overlay"
         private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
         private const val AUTO_COLLAPSE_DELAY_MS = 220L
         private const val UNLOCK_WATCH_INTERVAL_MS = 250L

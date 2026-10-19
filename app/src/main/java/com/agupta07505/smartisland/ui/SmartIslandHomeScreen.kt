@@ -127,10 +127,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import android.os.Build
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -281,6 +293,10 @@ fun SmartIslandHomeScreen(
         activeDetailSection = null
     }
 
+    // The page is recorded once into this layer so the glass tab bar can draw it, blurred, behind itself.
+    val pageBackdrop = rememberGraphicsLayer()
+    var pageTopInRoot by remember { mutableFloatStateOf(0f) }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -290,14 +306,24 @@ fun SmartIslandHomeScreen(
                     onTabSelected = { tab ->
                         transitionDirection = if (tab.ordinal > selectedTab.ordinal) 1 else -1
                         selectedTab = tab
-                    }
+                    },
+                    backdrop = pageBackdrop,
+                    backdropTopInRoot = { pageTopInRoot }
                 )
             }
         }
     ) { scaffoldPadding ->
+        // The page runs on under the translucent tab bar; its bottom padding keeps the last row reachable.
+        val barPadding = scaffoldPadding.calculateBottomPadding()
         AnimatedContent(
             targetState = activeDetailSection,
-            modifier = Modifier.padding(scaffoldPadding),
+            modifier = Modifier
+                .padding(top = scaffoldPadding.calculateTopPadding())
+                .onGloballyPositioned { pageTopInRoot = it.positionInRoot().y }
+                .drawWithContent {
+                    pageBackdrop.record { this@drawWithContent.drawContent() }
+                    drawLayer(pageBackdrop)
+                },
             transitionSpec = {
                 if (transitionDirection == 1) {
                     (slideInHorizontally(initialOffsetX = { it }) + fadeIn())
@@ -327,7 +353,7 @@ fun SmartIslandHomeScreen(
                             start = horizontalPad,
                             end = horizontalPad,
                             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                            bottom = 32.dp
+                            bottom = 32.dp + barPadding
                         ),
                     verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)
                 ) {
@@ -438,6 +464,10 @@ fun SmartIslandHomeScreen(
     }
 }
 
+/**
+ * Rule_Book 11.2: the master switch sits alone in its own full-width grouped item at the top. When a
+ * permission is missing, the way to fix it is a separate group below, never a row inside the switch's group.
+ */
 @Composable
 private fun MasterPowerCard(
     enabled: Boolean,
@@ -456,7 +486,9 @@ private fun MasterPowerCard(
             enabled = canEnable || enabled,
             onCheckedChange = onCheckedChange
         )
-        if (!canEnable) {
+    }
+    if (!canEnable) {
+        GroupedSection(header = stringResource(R.string.home_permissions_needed_header).uppercase()) {
             GroupedRow(
                 title = stringResource(R.string.btn_grant_required_permissions),
                 onClick = onSetupPermissionsClick,
@@ -496,27 +528,28 @@ private fun SimulationLabCard(
         )
     }
 
+    // Rule_Book 11.2: a tight squircle grid, 4 columns (3 on narrow phones), standard Material symbols.
     GroupedSection(
-        header = stringResource(R.string.simulation_lab_title),
+        header = stringResource(R.string.simulation_lab_title).uppercase(),
         footer = stringResource(R.string.simulation_lab_desc)
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(10.dp)
         ) {
-            val columns = if (maxWidth >= 480.dp) 3 else 2
+            val columns = if (maxWidth >= 320.dp) 4 else 3
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 modes.chunked(columns).forEach { rowItems ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         rowItems.forEach { item ->
-                            ModeChipButton(
+                            ModeTile(
                                 label = stringResource(item.labelRes),
                                 icon = item.icon,
                                 isSelected = activeMode == item.mode,
@@ -531,18 +564,36 @@ private fun SimulationLabCard(
                 }
             }
         }
-        GroupedRow(
-            title = stringResource(R.string.btn_clear_all_test_notifications),
-            destructive = true,
-            showChevron = false,
-            onClick = onClearAll
-        )
+    }
+
+    // Destructive action in its own full-width group, in semantic red (Rule_Book 11.2).
+    GroupedSection {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onClearAll)
+                .heightIn(min = Dimens.MinTouch)
+                .padding(horizontal = Dimens.RowHorizontal, vertical = Dimens.RowVertical),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.btn_clear_all_test_notifications),
+                style = MaterialTheme.typography.bodyLarge,
+                color = DestructiveRed
+            )
+        }
     }
 }
 
-/** Selectable mode chip: 48dp tall, selection shown by fill, weight and a checkmark (not color alone). */
+/** iOS system red, the one destructive color the Home tab uses (Rule_Book 11.2). */
+private val DestructiveRed = Color(0xFFFF3B30)
+
+/**
+ * Squircle preview tile: icon over a short label. Static gray when idle; when active, the accent at 15% behind a
+ * solid-accent icon and label, in semibold, so selection never relies on color alone.
+ */
 @Composable
-private fun ModeChipButton(
+private fun ModeTile(
     label: String,
     icon: ImageVector,
     isSelected: Boolean,
@@ -550,27 +601,28 @@ private fun ModeChipButton(
     modifier: Modifier = Modifier
 ) {
     val accent = MaterialTheme.colorScheme.primary
-    Row(
+    Column(
         modifier = modifier
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(Dimens.ControlRadius))
-            .background(if (isSelected) accent.copy(alpha = 0.14f) else MaterialTheme.semantic.fill)
+            .heightIn(min = 72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isSelected) accent.copy(alpha = 0.15f) else MaterialTheme.semantic.fill)
             .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)
     ) {
         Icon(
-            imageVector = if (isSelected) Icons.Rounded.CheckCircle else icon,
+            imageVector = icon,
             contentDescription = null,
-            tint = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp)
+            tint = if (isSelected) accent else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(24.dp)
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isSelected) accent else MaterialTheme.colorScheme.onSurface,
+            color = if (isSelected) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -731,21 +783,46 @@ private fun SettingsOverviewSection(
     }
 }
 
-/** Flat tab bar: no indicator pill, accent for the selected tab, secondary label for the rest. */
+/**
+ * Translucent glass tab bar (Rule_Book 11.2): the page scrolls on underneath it. On Android 12+ the bar draws
+ * [backdrop] (the page, recorded by the caller) blurred behind a semi-transparent tint; earlier versions have no
+ * RenderEffect, so the tint is simply more opaque. No indicator pill; the selected tab is in the accent color.
+ * [backdropTopInRoot] is where the recorded page starts, so the blur lines up with what is really underneath.
+ */
 @Composable
 private fun StudioBottomNavigationBar(
     selectedTab: StudioTab,
-    onTabSelected: (StudioTab) -> Unit
+    onTabSelected: (StudioTab) -> Unit,
+    backdrop: GraphicsLayer? = null,
+    backdropTopInRoot: () -> Float = { 0f }
 ) {
     val tabs = listOf(
         Triple(StudioTab.Studio, Icons.Rounded.FlashOn, R.string.tab_studio),
         Triple(StudioTab.Position, Icons.Rounded.Tune, R.string.tab_position),
         Triple(StudioTab.Settings, Icons.Rounded.Settings, R.string.tab_settings)
     )
-    Column {
+    val canBlur = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val tint = MaterialTheme.semantic.bar.copy(alpha = if (canBlur) GLASS_TINT_ALPHA_BLURRED else GLASS_TINT_ALPHA_FLAT)
+    val blurLayer = rememberGraphicsLayer()
+    var barTopInRoot by remember { mutableFloatStateOf(0f) }
+    Column(
+        modifier = Modifier
+            .onGloballyPositioned { barTopInRoot = it.positionInRoot().y }
+            .drawBehind {
+                if (canBlur) {
+                    val radius = GLASS_BLUR_RADIUS.toPx()
+                    blurLayer.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+                    blurLayer.record {
+                        translate(top = backdropTopInRoot() - barTopInRoot) { drawLayer(backdrop) }
+                    }
+                    drawLayer(blurLayer)
+                }
+                drawRect(tint)
+            }
+    ) {
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.semantic.separator)
         NavigationBar(
-            containerColor = MaterialTheme.semantic.bar,
+            containerColor = Color.Transparent,
             tonalElevation = 0.dp
         ) {
             tabs.forEach { (tab, icon, labelRes) ->
@@ -773,6 +850,10 @@ private fun StudioBottomNavigationBar(
         }
     }
 }
+
+private val GLASS_BLUR_RADIUS = 24.dp
+private const val GLASS_TINT_ALPHA_BLURRED = 0.72f
+private const val GLASS_TINT_ALPHA_FLAT = 0.94f
 
 @SuppressLint("BatteryLife")
 @Composable

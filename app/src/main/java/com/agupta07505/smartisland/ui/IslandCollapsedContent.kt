@@ -630,8 +630,9 @@ internal fun CallTimer(postTimeMillis: Long, color: Color) {
     var elapsedSeconds by remember(postTimeMillis) {
         mutableStateOf(((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L))
     }
-    LaunchedEffect(postTimeMillis) {
-        while (true) {
+    val screenOn = LocalScreenOn.current
+    LaunchedEffect(postTimeMillis, screenOn) {
+        while (screenOn) {
             elapsedSeconds = ((System.currentTimeMillis() - postTimeMillis) / 1000).coerceAtLeast(0L)
             kotlinx.coroutines.delay(1000)
         }
@@ -760,6 +761,20 @@ private fun LiveActivityCollapsedRight(notification: IslandNotification?, settin
 
 @Composable
 internal fun NavigationCollapsedGlyph(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
+    // A ride shows its app icon, not an arrow (Rule_Book 4.14).
+    val rideIcon = notification?.icon
+    if (notification != null && rideIcon != null &&
+        com.agupta07505.smartisland.util.NavigationParser.isRideApp(notification.packageName)
+    ) {
+        Image(
+            bitmap = rideIcon.asImageBitmap(),
+            contentDescription = notification.appName,
+            modifier = Modifier
+                .size(18.dp)
+                .clip(CircleShape)
+        )
+        return
+    }
     val navColor = Color(settings.liveActivityColor)
     val turnDirection = remember(notification) {
         val title = notification?.title.orEmpty()
@@ -799,6 +814,10 @@ internal fun NavigationCollapsedGlyph(notification: IslandNotification?, setting
 private fun NavigationCollapsedRight(notification: IslandNotification?, settings: SmartIslandSettings = SmartIslandSettings.Default) {
     val distanceText = remember(notification) {
         if (notification == null) return@remember "200 m"
+        // A ride's badge is its ETA ("3 min", "Here"), not a turn distance (Rule_Book 4.14).
+        com.agupta07505.smartisland.util.NavigationParser
+            .parseRide(notification.packageName, notification.title, notification.text, bigText = null)
+            ?.let { return@remember it.etaBadge }
         val title = notification.title
         val text = notification.text
         val pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
@@ -1093,8 +1112,9 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
         }
     }
 
-    LaunchedEffect(notification?.key, targetTime, isPaused) {
-        if (!isPaused) {
+    val screenOn = LocalScreenOn.current
+    LaunchedEffect(notification?.key, targetTime, isPaused, screenOn) {
+        if (!isPaused && screenOn) {
             while (true) {
                 val now = System.currentTimeMillis()
                 val rem = if (targetTime > now) {
@@ -1134,8 +1154,9 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
         mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
     }
 
-    LaunchedEffect(notification?.key, startTime, isPaused) {
-        if (!isPaused) {
+    val screenOn = LocalScreenOn.current
+    LaunchedEffect(notification?.key, startTime, isPaused, screenOn) {
+        if (!isPaused && screenOn) {
             while (true) {
                 elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
                 kotlinx.coroutines.delay(500L)
@@ -1180,8 +1201,9 @@ fun BluetoothCollapsedRight(
         )
     } else {
         var showBattery by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            while (true) {
+        val screenOn = LocalScreenOn.current
+        LaunchedEffect(screenOn) {
+            while (screenOn) {
                 kotlinx.coroutines.delay(3000L)
                 showBattery = !showBattery
             }

@@ -8,6 +8,7 @@ package com.agupta07505.smartisland.alert
 
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.NavigationParser
 import com.agupta07505.smartisland.util.TimerStopwatchParser
 
 /**
@@ -15,7 +16,7 @@ import com.agupta07505.smartisland.util.TimerStopwatchParser
  *
  *  - [Critical]: alarms, a ringing timer, battery at 5% or less. Persists until the user acts, and
  *    outranks everything.
- *  - [Persistent] (Tier 1): calls, navigation, recording, timers, stopwatches. Persists until ended and
+ *  - [Persistent] (Tier 1): calls, navigation and rides, recording, timers, stopwatches. Persists until ended and
  *    owns the island; nothing displaces it for good.
  *  - [Background] (Tier 2): music, live activities, hotspot, transfers. Persists while active, and steps
  *    aside (to the companion bubble, or out of sight) for a Persistent task or an Ephemeral interruption.
@@ -63,6 +64,13 @@ object AlertClassifier {
         else -> AlertTier.Ephemeral
     }
 
+    /**
+     * A live Uber / Ola / Rapido ride (Rule_Book 4.14). Persistent like navigation, and it ranks above Maps
+     * directions (and every other Persistent task but a call) when both are active.
+     */
+    fun isRide(notification: IslandNotification): Boolean =
+        notification.mode == IslandMode.Navigation && NavigationParser.isRideApp(notification.packageName)
+
     private fun isCriticalBattery(notification: IslandNotification): Boolean {
         if (notification.title.contains("charging", ignoreCase = true)) return false
         val percent = Regex("(\\d{1,3})\\s*%").find(notification.text)?.groupValues?.get(1)?.toIntOrNull()
@@ -79,7 +87,7 @@ object AlertClassifier {
  *  - Passive alerts are dropped.
  *  - At most [MAX_ACTIVE] states are returned: the first is the main pill, the second the companion bubble.
  *    A third is hidden (it stays alive in the shade and comes back when a slot frees up).
- *  - Order: Critical, then Persistent (a call first, then the most recently started), then Ephemeral
+ *  - Order: Critical, then Persistent (a call first, then a ride, then the most recently started), then Ephemeral
  *    (newest first), then Background (newest first). So a call keeps the island over a message, and a
  *    message hijacks a music pill for its few seconds, after which the music returns.
  *  - Ephemeral alerts leave after [communicationTimeoutMs] (messages) or [transientTimeoutMs] (battery,
@@ -192,6 +200,7 @@ class AlertEngine(
         val ordered = critical.sortedByDescending { firstSeenAt.getValue(it.key) } +
             persistent.sortedWith(
                 compareByDescending<IslandNotification> { it.mode == IslandMode.IncomingCall }
+                    .thenByDescending { AlertClassifier.isRide(it) }
                     .thenByDescending { firstSeenAt.getValue(it.key) }
             ) +
             ephemeral.sortedByDescending { it.first }.map { it.second } +
