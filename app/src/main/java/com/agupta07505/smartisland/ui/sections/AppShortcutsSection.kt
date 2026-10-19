@@ -680,6 +680,8 @@ fun AppShortcutsSection(
         }
 
         UtilitiesEditorCard(settings = settings, repository = repository)
+        CalendarSettingsCard()
+        AgendaWindowCard()
     }
 
     if (showAppSelectionDialog) {
