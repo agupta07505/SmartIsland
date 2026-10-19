@@ -92,4 +92,40 @@ class OverlayGuardsTest {
         clearance.onScreenOff()
         assertFalse(clearance.active)
     }
+
+    @Test
+    fun castingAndMirroringDisplaysCountAsCaptureButBuiltInScreensDoNot() {
+        // The phone's own screen, and a foldable's cover screen, never count.
+        assertFalse(CaptureDisplays.isCaptureDisplay(isDefault = true, flags = CaptureDisplays.FLAG_PRESENTATION, type = CaptureDisplays.TYPE_INTERNAL))
+        assertFalse(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = 0, type = CaptureDisplays.TYPE_INTERNAL))
+        // Cast / Wi-Fi display / HDMI as presentation displays, even when the hidden type cannot be read.
+        assertTrue(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = CaptureDisplays.FLAG_PRESENTATION, type = null))
+        assertTrue(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = 0, type = CaptureDisplays.TYPE_WIFI))
+        // A public MediaProjection mirror (virtual display) is a capture; a private one is someone's own canvas.
+        assertTrue(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = 0, type = CaptureDisplays.TYPE_VIRTUAL))
+        assertFalse(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = CaptureDisplays.FLAG_PRIVATE, type = CaptureDisplays.TYPE_VIRTUAL))
+        // Unknown type and no presentation flag: not enough to black the island out.
+        assertFalse(CaptureDisplays.isCaptureDisplay(isDefault = false, flags = 0, type = null))
+    }
+
+    @Test
+    fun foregroundServiceTypeMatchesTheManifestOnEveryApiLevel() {
+        assertEquals(
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            SmartIslandOverlayService.overlayForegroundServiceType(34)
+        )
+        assertEquals(
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            SmartIslandOverlayService.overlayForegroundServiceType(36)
+        )
+        assertEquals(
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST,
+            SmartIslandOverlayService.overlayForegroundServiceType(29)
+        )
+        assertEquals(
+            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST,
+            SmartIslandOverlayService.overlayForegroundServiceType(33)
+        )
+        assertEquals(0, SmartIslandOverlayService.overlayForegroundServiceType(26))
+    }
 }

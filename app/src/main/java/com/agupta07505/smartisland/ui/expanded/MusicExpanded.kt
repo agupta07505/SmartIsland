@@ -122,7 +122,8 @@ fun MusicExpanded(
         mutableStateOf(getEstimatedPosition(controller, positionMs))
     }
 
-    if (localIsPlaying) {
+    // The 30ms scrubber ticker stops with the screen (Rule_Book 5) and re-reads the position when it wakes.
+    if (localIsPlaying && com.agupta07505.smartisland.ui.LocalScreenOn.current) {
         LaunchedEffect(controller, positionMs) {
             while (true) {
                 if (System.currentTimeMillis() - lastSeekTimeMs > 1500L) {

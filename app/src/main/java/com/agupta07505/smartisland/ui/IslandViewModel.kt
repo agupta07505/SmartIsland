@@ -66,6 +66,14 @@ class IslandViewModel(
     /** A `FLAG_SECURE` window is in the foreground: Ephemeral alerts do not auto-expand over it (§8.2). */
     val foregroundSecure = MutableStateFlow(false)
 
+    private val screenOnState = MutableStateFlow(true)
+
+    /**
+     * Whether the screen is on, kept current by the overlay service from ACTION_SCREEN_ON / ACTION_SCREEN_OFF.
+     * The overlay gates every looping animation and ticker on it (Rule_Book 4.3, 5).
+     */
+    val isScreenOn: StateFlow<Boolean> = screenOnState
+
     val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
         notifications,
         foregroundPackage,
@@ -231,6 +239,10 @@ class IslandViewModel(
     fun setLandscape(landscape: Boolean) {
         isLandscape.value = landscape
         if (expanded.value && !canExpandNow()) collapse()
+    }
+
+    fun setScreenOn(on: Boolean) {
+        screenOnState.value = on
     }
 
     /** Set by the foreground secure-window detector (Rule_Book §8.2). */

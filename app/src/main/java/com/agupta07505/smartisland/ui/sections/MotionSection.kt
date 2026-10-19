@@ -6,6 +6,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -20,13 +21,18 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.ui.Dimens
 import com.agupta07505.smartisland.ui.SpringPreset
 import com.agupta07505.smartisland.ui.components.GroupedRow
 import com.agupta07505.smartisland.ui.components.GroupedSection
 import com.agupta07505.smartisland.ui.components.SwitchRow
 import kotlinx.coroutines.launch
 
-/** How the island's size springs, and whether it glows while it moves fast. */
+/**
+ * How the island's size springs, and whether it glows while it moves fast (Rule_Book 11.3 Motion Physics):
+ * the presets are one grouped list with an accent checkmark on the active one, and the kinetic glow toggle
+ * sits alone in its own group at the bottom.
+ */
 @Composable
 fun MotionSettings(
     settings: SmartIslandSettings,
@@ -34,9 +40,9 @@ fun MotionSettings(
 ) {
     val scope = rememberCoroutineScope()
     val selected = SpringPreset.fromId(settings.springPreset)
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SectionSpacing)) {
         GroupedSection(
-            header = stringResource(R.string.motion_header),
+            header = stringResource(R.string.layout_header_motion).uppercase(),
             footer = stringResource(R.string.motion_footer)
         ) {
             SpringPreset.entries.forEach { preset ->

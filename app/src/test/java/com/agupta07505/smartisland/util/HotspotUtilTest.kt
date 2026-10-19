@@ -51,4 +51,14 @@ class HotspotUtilTest {
         assertFalse(HotspotUtil.isTurnOffAction("Settings"))
         assertFalse(HotspotUtil.isTurnOffAction("Stopwatch"))
     }
+
+    @Test
+    fun testApStateMapsTheBroadcastStates() {
+        assertEquals(HotspotApState.On, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_ENABLED))
+        assertEquals(HotspotApState.Off, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_DISABLED))
+        assertEquals(HotspotApState.Off, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_FAILED))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_ENABLING))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(HotspotUtil.WIFI_AP_STATE_DISABLING))
+        assertEquals(HotspotApState.Changing, HotspotUtil.apState(-1))
+    }
 }

@@ -8,7 +8,6 @@ package com.agupta07505.smartisland.ui.expanded
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -24,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.ui.animateFloatCalm
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
@@ -44,7 +44,8 @@ internal fun MusicWaveform(
     height: Dp = 24.dp
 ) {
     val transition = rememberInfiniteTransition(label = "musicWaveform")
-    val phase by transition.animateFloat(
+    // Calm: rests when animations are off or the screen is off (Rule_Book 5).
+    val phase by transition.animateFloatCalm(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(tween(durationMillis = 1400, easing = LinearEasing), RepeatMode.Restart),
