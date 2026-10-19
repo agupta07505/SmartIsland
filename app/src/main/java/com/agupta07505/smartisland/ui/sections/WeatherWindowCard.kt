@@ -1,59 +1,50 @@
 package com.agupta07505.smartisland.ui.sections
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.Image
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.model.WeatherPrefs
+import com.agupta07505.smartisland.model.WeatherSnapshot
 import com.agupta07505.smartisland.ui.glass.Card
-import kotlinx.coroutines.launch
-
-/**
- * Cartão de clima usado pelo menu expandido — mostra clima atual + resumo curto.
- * A implementação abaixo é auto-contida e busca dados via WeatherProvider (esqueleto).
- * Substitua WeatherProvider.fetchCurrentWeather por integração Overcast / OpenWeatherMap.
- */
-
-data class SimpleWeather(
-    val location: String,
-    val tempC: Int?,
-    val desc: String?,
-    val iconUrl: String? = null
-)
-
-object WeatherProvider {
-    // TODO: implementar fetch real (Overcast / OpenWeatherMap). Retorna dados de exemplo por enquanto.
-    suspend fun fetchCurrentWeather(): SimpleWeather {
-        // placeholder: implementar chamada HTTP ao serviço (Overcast ou OWM) e mapear para SimpleWeather
-        return SimpleWeather(location = "—", tempC = null, desc = "Carregando…", iconUrl = null)
-    }
-}
+import com.agupta07505.smartisland.util.IdleWeather
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun WeatherWindowCard(modifier: Modifier = Modifier) {
-    val scope = rememberCoroutineScope()
-    var weather by remember { mutableStateOf<SimpleWeather?>(null) }
+    val context = LocalContext.current
+    var snapshot by remember { mutableStateOf<WeatherSnapshot?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         loading = true
-        scope.launch {
-            try {
-                val w = WeatherProvider.fetchCurrentWeather()
-                weather = w
-            } catch (t: Throwable) {
-                weather = SimpleWeather(location = "Erro", tempC = null, desc = "Não disponível")
-            } finally {
-                loading = false
-            }
+        error = null
+        try {
+            val prefs = WeatherPrefs()
+            val cached = IdleWeather.cachedFor(context, prefs)
+            snapshot = cached ?: withContext(Dispatchers.IO) { IdleWeather.fetch(context, prefs) }
+            if (snapshot == null) error = "Sem previsão disponível"
+        } catch (_: Throwable) {
+            error = "Não disponível"
+        } finally {
+            loading = false
         }
     }
 
@@ -68,24 +59,68 @@ internal fun WeatherWindowCard(modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            if (loading && weather == null) {
-                Text(text = "Carregando...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                val w = weather ?: SimpleWeather("—", null, "—")
-                Row {
-                    // ícone (se disponível)
-                    if (w.iconUrl != null) {
-                        // Placeholder: Image loader (coil/Glide) pode ser usado aqui, 
-                        // por enquanto deixar espaço para ícone.
-                    }
-                    Column {
-                        Text(text = w.location, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
-                        Text(text = if (w.tempC != null) "${w.tempC}°C • ${w.desc ?: ""}" else (w.desc ?: "-"),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+
+            if (loading && snapshot == null) {
+                Text(
+                    text = "Carregando clima...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                return@Card
+            }
+
+            val weather = snapshot
+            if (weather == null) {
+                Text(
+                    text = error ?: "Não disponível",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                return@Card
+            }
+
+            val temperature = if (weather.temperatureC.isNaN()) "--" else "${weather.temperatureC.roundToInt()}°C"
+            val label = when (weather.weatherCode) {
+                0 -> "Céu limpo"
+                1, 2 -> "Parcialmente nublado"
+                3 -> "Nublado"
+                45, 48 -> "Neblina"
+                51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82 -> "Chuva"
+                71, 73, 75, 77, 85, 86 -> "Neve"
+                95, 96, 99 -> "Trovoada"
+                else -> "Clima"
+            }
+
+            Row {
+                Column {
+                    Text(
+                        text = temperature,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Agora",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = weather.windKmh.takeIf { it >= 0f }?.let { "Vento ${it.toInt()} km/h" } ?: "Vento --",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
     }
 }
+
+private fun Float.roundToInt(): Int = kotlin.math.round(this).toInt()
