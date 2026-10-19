@@ -33,6 +33,11 @@
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
+    <!-- Privileged/system builds only: names the app using the camera / mic (Rule_Book 4.15, 4.16).
+         Without it the privacy indicator falls back to camera availability and recording callbacks. -->
+    <uses-permission
+        android:name="android.permission.WATCH_APPOPS"
+        tools:ignore="ProtectedPermissions" />
 
     <queries>
         <intent>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Smart Island (2026)
+  © Animesh Gupta — github.com/agupta07505
+  Licensed under the GNU GPL v3 License
+  Island alert copy: privacy indicator (Rule_Book 4.15, 4.16), ringing alarm (4.10), calls (4.7), voice recorder (4.3).
+-->
+<resources>
+    <!-- Privacy indicator -->
+    <string name="island_camera_in_use">Camera in use</string>
+    <string name="island_microphone_in_use">Microphone in use</string>
+    <string name="island_camera_and_microphone_in_use">Camera &amp; mic in use</string>
+    <string name="island_app_using_camera">%1$s is using your camera</string>
+    <string name="island_app_using_microphone">%1$s is using your microphone</string>
+    <string name="island_unknown_app_using_camera">An app is using your camera</string>
+    <string name="island_unknown_app_using_microphone">An app is using your microphone</string>
+    <string name="island_privacy_title">Privacy</string>
+    <string name="island_privacy_dashboard">Privacy dashboard</string>
+
+    <!-- Ringing alarm -->
+    <string name="island_alarm_ringing">Alarm Ringing</string>
+    <string name="island_alarm_snooze">Snooze</string>
+    <string name="island_alarm_stop">Stop</string>
+
+    <!-- Calls -->
+    <string name="island_call_incoming">Incoming call…</string>
+    <string name="island_call_ongoing">Ongoing call</string>
+    <string name="island_call_unknown_caller">Unknown caller</string>
+    <string name="island_call_decline">Decline</string>
+    <string name="island_call_accept">Accept</string>
+    <string name="island_call_mute">Mute</string>
+    <string name="island_call_speaker">Speaker</string>
+    <string name="island_call_end">End Call</string>
+
+    <!-- Voice recorder -->
+    <string name="island_voice_recording">Recording</string>
+    <string name="island_voice_paused">Paused</string>
+    <string name="island_voice_pause">Pause</string>
+    <string name="island_voice_resume">Resume</string>
+    <string name="island_voice_stop">Stop</string>
+    <string name="island_voice_save">Save</string>
+    <string name="island_voice_title">Voice Recorder</string>
+</resources>

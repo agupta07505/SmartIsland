@@ -72,10 +72,10 @@ class SmartIslandNotificationRepository : INotificationRepository {
     }
 
     override fun removeNotificationsForPackage(packageName: String) {
-        val matching = _notifications.value.filter { it.packageName == packageName && it.mode != IslandMode.Music }
+        val matching = _notifications.value.filter { it.packageName == packageName && it.mode !in KEPT_WHEN_APP_OPENS }
         if (matching.isEmpty()) return
         _notifications.update { list ->
-            list.filterNot { it.packageName == packageName && it.mode != IslandMode.Music }
+            list.filterNot { it.packageName == packageName && it.mode !in KEPT_WHEN_APP_OPENS }
         }
         for (notif in matching) {
             _commands.tryEmit(SmartIslandCommand.CancelNotification(notif.key))
@@ -312,6 +312,43 @@ class SmartIslandNotificationRepository : INotificationRepository {
                     IslandNotificationAction("Reset", null)
                 )
             )
+            IslandMode.Alarm -> IslandNotification(
+                key = "demo_alarm",
+                packageName = "com.google.android.deskclock",
+                appName = "Clock",
+                title = "Alarm",
+                text = "Wake up",
+                timeMillis = System.currentTimeMillis(),
+                category = "alarm",
+                mode = IslandMode.Alarm,
+                actionIntents = listOf(
+                    IslandNotificationAction("Snooze", null),
+                    IslandNotificationAction("Stop", null)
+                )
+            )
+            IslandMode.VoiceRecording -> IslandNotification(
+                key = "demo_voice_recording",
+                packageName = "com.google.android.apps.recorder",
+                appName = "Recorder",
+                title = "Recording",
+                text = "00:12",
+                timeMillis = System.currentTimeMillis() - 12_000L,
+                mode = IslandMode.VoiceRecording,
+                actionIntents = listOf(
+                    IslandNotificationAction("Pause", null),
+                    IslandNotificationAction("Stop", null)
+                )
+            )
+            IslandMode.PrivacyIndicator -> IslandNotification(
+                key = "demo_privacy_indicator",
+                packageName = "com.instagram.android",
+                appName = "Instagram",
+                title = "Instagram",
+                text = "Instagram",
+                timeMillis = System.currentTimeMillis(),
+                category = com.agupta07505.smartisland.util.PrivacyIndicatorAlert.CATEGORY_BOTH,
+                mode = IslandMode.PrivacyIndicator
+            )
             IslandMode.Empty -> null
         }
         if (demoNotification != null) {
@@ -340,6 +377,11 @@ class SmartIslandNotificationRepository : INotificationRepository {
 
     private companion object {
         const val MAX_STORED_NOTIFICATIONS = 50
+
+        /** Live tools that stay on the island while their own app is opened (music, a ringing alarm, a recorder). */
+        val KEPT_WHEN_APP_OPENS = setOf(
+            IslandMode.Music, IslandMode.Alarm, IslandMode.VoiceRecording, IslandMode.PrivacyIndicator
+        )
     }
 }
 

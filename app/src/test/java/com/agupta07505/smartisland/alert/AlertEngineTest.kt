@@ -53,8 +53,11 @@ class AlertEngineTest {
     @Test
     fun tiersFollowTheRulebook() {
         fun tier(mode: IslandMode, category: String? = null) = AlertClassifier.classify(alert("k", mode = mode, category = category))
-        listOf(IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.ScreenRecording, IslandMode.Timer, IslandMode.Stopwatch)
-            .forEach { assertEquals(it.name, AlertTier.Persistent, tier(it)) }
+        listOf(
+            IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.ScreenRecording, IslandMode.Timer, IslandMode.Stopwatch,
+            IslandMode.VoiceRecording, IslandMode.PrivacyIndicator
+        ).forEach { assertEquals(it.name, AlertTier.Persistent, tier(it)) }
+        assertEquals(AlertTier.Critical, tier(IslandMode.Alarm, "alarm"))
         listOf(IslandMode.Music, IslandMode.LiveActivity, IslandMode.Hotspot, IslandMode.DownloadUpload)
             .forEach { assertEquals(it.name, AlertTier.Background, tier(it)) }
         listOf(IslandMode.Battery, IslandMode.Bluetooth, IslandMode.Flashlight)
@@ -376,5 +379,37 @@ class AlertEngineTest {
         assertEquals(priv, LockscreenPrivacy.effectiveVisibility(pub, priv, osShowsNotifications = true))
         assertEquals(priv, LockscreenPrivacy.effectiveVisibility(priv, pub, osShowsNotifications = true))
         assertEquals(secret, LockscreenPrivacy.effectiveVisibility(pub, null, osShowsNotifications = false))
+    }
+
+    // ---- Alarm, voice recorder and privacy indicator (Rule_Book 4.10, 4.3, 4.15/4.16) ----
+
+    @Test
+    fun aRingingAlarmTakesTheMainPillFromACallAndARecording() {
+        val ringing = alert("ring", pkg = "com.google.android.deskclock", mode = IslandMode.Alarm, category = "alarm", title = "Alarm", text = "7:00")
+        val voice = alert("voice", pkg = "com.sec.android.app.voicenote", mode = IslandMode.VoiceRecording, category = null)
+        assertEquals(listOf("ring", "call"), keys(AlertEngine().evaluate(listOf(voice, call(), ringing), 0)))
+    }
+
+    @Test
+    fun anAlarmThatIsNotRingingIsOnlyAPassingNote() {
+        fun alarmNote(title: String, text: String) =
+            AlertClassifier.classify(alert("a", pkg = "com.google.android.deskclock", category = "alarm", title = title, text = text))
+        assertEquals(AlertTier.Critical, alarmNote("Alarm", "Wake up"))
+        assertEquals(AlertTier.Ephemeral, alarmNote("Upcoming alarm", "Tue 7:00 AM"))
+        assertEquals(AlertTier.Ephemeral, alarmNote("Alarm", "Snoozed until 7:10 AM"))
+    }
+
+    @Test
+    fun aVoiceRecordingAndThePrivacyIndicatorArePersistentTasks() {
+        val engine = AlertEngine()
+        val voice = alert("voice", pkg = "com.google.android.apps.recorder", mode = IslandMode.VoiceRecording, category = null)
+        val privacy = alert("system_privacy_indicator", pkg = "com.agupta07505.smartisland", mode = IslandMode.PrivacyIndicator, category = "privacy_camera_microphone")
+        engine.evaluate(listOf(voice), 0)
+        // Newest persistent first; a message waits behind both and they never time out.
+        val result = engine.evaluate(listOf(voice, privacy, alert("msg")), 10)
+        assertEquals(listOf("system_privacy_indicator", "voice"), keys(result))
+        assertEquals(listOf("system_privacy_indicator", "voice"), keys(engine.evaluate(listOf(voice, privacy), 60_000)))
+        // Camera and microphone are one merged alert: they never take both slots.
+        assertEquals(1, keys(engine.evaluate(listOf(privacy), 60_001)).size)
     }
 }

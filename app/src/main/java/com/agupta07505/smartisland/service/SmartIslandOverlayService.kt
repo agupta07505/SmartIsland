@@ -22,6 +22,7 @@ import com.agupta07505.smartisland.util.CutoutInsets
 import com.agupta07505.smartisland.util.DisplayBounds
 import com.agupta07505.smartisland.util.GatedAction
 import com.agupta07505.smartisland.util.KeyguardGate
+import com.agupta07505.smartisland.util.LandscapeAnchoring
 import com.agupta07505.smartisland.util.PermissionGate
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -99,6 +100,10 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var lastBlurRadiusPx = 0
     // Screen-capture FLAG_SECURE, immersive suppression, face-unlock clearance, secure-app guess (Rule_Book 8.2, 10.1).
     private var guards: OverlayGuardController? = null
+    // Camera / microphone privacy indicator (Rule_Book 4.15, 4.16).
+    private var privacyMonitor: PrivacyIndicatorMonitor? = null
+    // Landscape: the collapsed pill docks on the lateral cutout instead of the top centre (Rule_Book 9.2).
+    private val landscapeAnchored = MutableStateFlow(false)
     @Volatile private var permissionLost = false
 
     private val torchCallback = object : android.hardware.camera2.CameraManager.TorchCallback() {
@@ -450,6 +455,12 @@ class SmartIslandOverlayService : AccessibilityService() {
             // Rule_Book 8.2 Secure App Passthrough: a secure foreground app blocks Ephemeral auto-expand.
             onForegroundSecure = { secure -> viewModel.setForegroundSecure(secure) }
         )
+        privacyMonitor = PrivacyIndicatorMonitor(
+            context = this,
+            repository = notificationRepository,
+            foregroundPackage = { viewModel.foregroundPackage.value },
+            isLocked = { isLockScreenActive }
+        )
         
         systemEventReceiver = SystemEventReceiver(notificationRepository, settingsProvider = { viewModel.settings.value })
         val filter = IntentFilter().apply {
@@ -656,6 +667,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         destroyed = true
         guards?.stop()
         guards = null
+        privacyMonitor?.stop()
+        privacyMonitor = null
         isSystemConnected = false
         serviceScope.cancel()
 
@@ -692,11 +705,13 @@ class SmartIslandOverlayService : AccessibilityService() {
         ensureForegroundStarted()
         ensureCollapsedWindow()
         guards?.start()
+        privacyMonitor?.start()
         updateWindowLayoutParams(isWindowExpanded, settings)
     }
 
     private fun stopOverlaySession() {
         guards?.stop()
+        privacyMonitor?.stop()
         removeCollapsedWindow()
         stopForegroundSafely()
         if (::viewModel.isInitialized) {
@@ -754,7 +769,10 @@ class SmartIslandOverlayService : AccessibilityService() {
                 isFocusableInTouchMode = true
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setContent {
-                    val fullWidth by isTouchableRegionSupported.collectAsState()
+                    val touchRegion by isTouchableRegionSupported.collectAsState()
+                    val anchored by landscapeAnchored.collectAsState()
+                    // Docked in landscape the window is only as wide as the pill, so the content centres in it.
+                    val fullWidth = touchRegion && !anchored
                     val suppressed by this@SmartIslandOverlayService.viewModel.isSuppressed.collectAsState()
                     OverlayIsland(
                         viewModel = this@SmartIslandOverlayService.viewModel,
@@ -825,7 +843,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
                         val region = touchableRegionField.get(insets) as android.graphics.Region
                         region.setEmpty()
-                    } else if (isExpanded) {
+                    } else if (isExpanded || landscapeAnchored.value) {
+                        // Docked in landscape the window is just the pill group, so all of it is the pill.
                         // When expanded, let the entire frame intercept touches so clicking outside collapses it
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_FRAME)
                     } else {
@@ -951,12 +970,31 @@ class SmartIslandOverlayService : AccessibilityService() {
         val groupCenterPx = (groupStartPx + groupEndPx) / 2f
         val windowXPx = (groupCenterPx - screenWidthPx / 2f).toInt()
 
+        // Rule_Book 9.2: sideways, the collapsed pill (and its companion bubble) docks on the lateral cutout.
+        val lateralAnchor = if (isLandscape && !expanded && !settings.enableNotchMode) {
+            CameraCutoutDetector.lateralAnchor(this)
+        } else null
+        val anchoredPosition = lateralAnchor?.let { anchor ->
+            LandscapeAnchoring.windowPosition(
+                anchor = anchor,
+                screenWidthPx = screenWidthPx.toInt(),
+                screenHeightPx = DisplayBounds.heightPx(this),
+                mainWidthPx = mainWidthPx,
+                groupWidthPx = groupWidthPx,
+                mainOffsetInGroupPx = if (isCircleLeft && isSplitMode) circleSizePx + compactGapPx else 0f,
+                pillHeightPx = settings.height * density,
+                windowPaddingPx = 16f * density,
+                marginPx = LANDSCAPE_HOLE_MARGIN_DP * density
+            )
+        }
+        landscapeAnchored.value = anchoredPosition != null
+
         val h = if (expanded) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
             ((settings.height + 16f) * density).toInt()
         }
-        val w = if (expanded || isTouchableRegionSupported.value) {
+        val w = if (expanded || (isTouchableRegionSupported.value && anchoredPosition == null)) {
             WindowManager.LayoutParams.MATCH_PARENT
         } else {
             (groupWidthPx + 32f * density).toInt()
@@ -975,8 +1013,9 @@ class SmartIslandOverlayService : AccessibilityService() {
             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
 
-        val currentX = if (expanded || isTouchableRegionSupported.value) 0 else windowXPx
-        val currentY = if (settings.enableNotchMode) 0 else settings.yOffset.dpToPx()
+        val currentX = anchoredPosition?.xPx ?: if (expanded || isTouchableRegionSupported.value) 0 else windowXPx
+        val currentY = anchoredPosition?.yPx ?: if (settings.enableNotchMode) 0 else settings.yOffset.dpToPx()
+        val currentGravity = if (anchoredPosition != null) Gravity.TOP or Gravity.LEFT else Gravity.TOP or Gravity.CENTER_HORIZONTAL
         val currentSoftInputMode = if (isInput) {
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
@@ -992,6 +1031,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             lastBlurRadiusPx == blurRadiusPx &&
             lp.x == currentX &&
             lp.y == currentY &&
+            lp.gravity == currentGravity &&
             lp.softInputMode == currentSoftInputMode
         ) {
             return
@@ -1004,7 +1044,7 @@ class SmartIslandOverlayService : AccessibilityService() {
             currentFlags,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            gravity = currentGravity
             x = currentX
             y = currentY
             softInputMode = currentSoftInputMode
@@ -1128,6 +1168,9 @@ class SmartIslandOverlayService : AccessibilityService() {
                             }
                             startActivity(altIntent)
                         }
+                    }
+                    com.agupta07505.smartisland.model.IslandMode.PrivacyIndicator -> {
+                        com.agupta07505.smartisland.ui.expanded.openPrivacyDashboard(this)
                     }
                     com.agupta07505.smartisland.model.IslandMode.Hotspot -> {
                         val intent = Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS).apply {
@@ -1316,6 +1359,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         private const val LEGACY_OVERLAY_CHANNEL_ID = "smart_island_overlay"
         private const val OVERLAY_CHANNEL_NAME = "Smart Island overlay"
         private const val AUTO_COLLAPSE_DELAY_MS = 220L
+        /** Air between the lateral camera hole and the docked pill's outer end (Rule_Book 9.2). */
+        private const val LANDSCAPE_HOLE_MARGIN_DP = 6f
         private const val UNLOCK_WATCH_INTERVAL_MS = 250L
         private const val MUSIC_GROOVE_DELAY_MS = 1200L
         private const val TIMER_END_JITTER_MS = 1500L

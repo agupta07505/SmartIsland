@@ -2,6 +2,7 @@ package com.agupta07505.smartisland.alert
 
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.model.IslandNotificationAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -73,8 +74,20 @@ class AlertEngineSuppressionTest {
     fun biometricHoldShowsNothingEvenACriticalAlert() {
         val engine = AlertEngine()
         engine.biometricHold = true
+        // `call` has no Answer action, so it is not ringing; a ringing timer is not a ringing Alarm.
         assertTrue(keys(engine.evaluate(listOf(alarm, call, music), 0L)).isEmpty())
         engine.biometricHold = false
         assertEquals(listOf("alarm", "call"), keys(engine.evaluate(listOf(alarm, call, music), 1L)))
+    }
+
+    @Test
+    fun aRingingCallOrAlarmShowsThroughTheBiometricHold() {
+        val ringingCall = call.copy(key = "ringing", actionIntents = listOf(IslandNotificationAction("Answer", null)))
+        val ringingAlarm = alert("ring", pkg = "com.google.android.deskclock", mode = IslandMode.Alarm, category = "alarm")
+        val engine = AlertEngine()
+        engine.biometricHold = true
+        assertEquals(listOf("ring", "ringing"), keys(engine.evaluate(listOf(message, ringingCall, music, ringingAlarm, alarm), 0L)))
+        assertTrue(AlertEngine.breaksBiometricHold(ringingCall))
+        assertTrue(!AlertEngine.breaksBiometricHold(call))
     }
 }

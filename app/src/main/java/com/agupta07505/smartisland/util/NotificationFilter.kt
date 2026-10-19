@@ -39,7 +39,7 @@ object NotificationFilter {
         val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled, deviceType)
 
         // Hotspot, Screen Recording, Timer, Stopwatch notifications are allowed even if posted by system/OEM frameworks
-        if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
+        if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.VoiceRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
             if (packageName == "com.agupta07505.smartisland") return true
             if (packageName in disabledNotificationPackages) return true
         } else {
@@ -63,7 +63,7 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
             ?: extras?.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
             ?: notification.tickerText?.toString()
-        if (title.isNullOrBlank() && text.isNullOrBlank() && mode != IslandMode.Stopwatch && mode != IslandMode.Timer && mode != IslandMode.ScreenRecording) return true
+        if (title.isNullOrBlank() && text.isNullOrBlank() && mode != IslandMode.Stopwatch && mode != IslandMode.Timer && mode != IslandMode.ScreenRecording && mode != IslandMode.VoiceRecording && mode != IslandMode.Alarm) return true
 
         // Suppress external torch / flashlight notifications from entering Smart Island,
         // because Smart Island natively manages physical torch state via CameraManager.TorchCallback.
@@ -93,7 +93,7 @@ object NotificationFilter {
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
             )
             val isAlarmNotification = TimerStopwatchParser.isAlarm(notification, packageName)
-            if (!isProgressNotification && !isAlarmNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording && mode != IslandMode.Timer && mode != IslandMode.Stopwatch) {
+            if (!isProgressNotification && !isAlarmNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording && mode != IslandMode.VoiceRecording && mode != IslandMode.Alarm && mode != IslandMode.Timer && mode != IslandMode.Stopwatch) {
                 return true
             }
         }
@@ -196,6 +196,12 @@ fun Notification.toIslandMode(
 
     val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
 
+    // A voice recorder app's own notification ("Recording 00:12") is never mistaken for a clock tool.
+    val isVoiceRecordingActive = OemDeviceRules.isVoiceRecording(packageName, titleText) && !isScreenRecordingComplete()
+    if (isVoiceRecordingActive && OemDeviceRules.isVoiceRecorderPackage(packageName)) {
+        return IslandMode.VoiceRecording
+    }
+
     // 0. Timer & Stopwatch (Dedicated Clock/Timer support)
     if (TimerStopwatchParser.isStopwatch(this, packageName)) {
         return IslandMode.Stopwatch
@@ -204,7 +210,17 @@ fun Notification.toIslandMode(
         return IslandMode.Timer
     }
 
-    // 1. Screen & Voice Recording (High priority, OEM-aware)
+    // 0b. A ringing alarm (Rule_Book §4.10); upcoming / snoozed alarm notifications stay ordinary alerts.
+    if (RingingAlarm.isRinging(this, packageName)) {
+        return IslandMode.Alarm
+    }
+
+    // 1a. Voice recording (Rule_Book §4.3), before the screen-recorder rule that would otherwise swallow it.
+    if (isVoiceRecordingActive) {
+        return IslandMode.VoiceRecording
+    }
+
+    // 1. Screen Recording (High priority, OEM-aware)
     val isRecordingPackageOrKeyword = OemDeviceRules.isScreenRecording(packageName, titleText, effectiveDevice)
     val isScreenRecordingActive = isRecordingPackageOrKeyword && !isScreenRecordingComplete()
     if (isScreenRecordingActive) {

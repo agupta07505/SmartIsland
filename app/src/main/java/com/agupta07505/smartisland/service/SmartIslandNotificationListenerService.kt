@@ -563,13 +563,38 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                     title = title,
                     pendingIntent = action.actionIntent,
                     isQuickReply = isReply,
-                    remoteInputKey = remoteInput?.resultKey ?: "key_text_reply"
+                    remoteInputKey = remoteInput?.resultKey ?: "key_text_reply",
+                    semanticAction = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) action.semanticAction else 0
                 )
             }
         }.orEmpty()
         val isNowRinging = actions.any { it.title.lowercase().let { t -> t.contains("answer") || t.contains("accept") || t.contains("take") } }
 
+        // A running chronometer's base (`when` + showChronometer) is the true start of a call or a recording.
+        val chronometerStart = runCatchingLogged(TAG, "Reading chronometer failed") {
+            notification.`when`.takeIf {
+                extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) &&
+                    !extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false) &&
+                    it in 1..System.currentTimeMillis()
+            }
+        }
         val computedTimeMillis = when {
+            // An answered call counts from its own chronometer when it shows one (Rule_Book §4.7, Active Call).
+            mode == IslandMode.IncomingCall && !isNowRinging && chronometerStart != null -> chronometerStart
+            // Voice recorder (Rule_Book §4.3): the chronometer, else the shown "00:42" counted back from now.
+            mode == IslandMode.VoiceRecording -> {
+                val shown = listOf(Notification.EXTRA_TEXT, Notification.EXTRA_TITLE, Notification.EXTRA_SUB_TEXT)
+                    .firstNotNullOfOrNull { field ->
+                        extras.getCharSequence(field)?.toString()?.takeIf { it.isNotBlank() }
+                            ?.let(TimerStopwatchParser::parseTimeStringToSeconds)
+                    }
+                com.agupta07505.smartisland.util.VoiceRecordingClock.startMillis(
+                    nowMs = System.currentTimeMillis(),
+                    chronometerWhenMs = chronometerStart,
+                    shownElapsedSeconds = shown,
+                    previousStartMs = existingNotif?.takeIf { it.mode == IslandMode.VoiceRecording }?.timeMillis
+                )
+            }
             mode == IslandMode.IncomingCall && existingNotif != null && existingNotif.isCallRinging && !isNowRinging -> {
                 System.currentTimeMillis()
             }
@@ -851,7 +876,9 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
 
         // Music playback and ongoing system hardware states (Hotspot, ScreenRecording)
         // are not intrusive notification alerts and must not be blocked by DND.
-        if (mode == IslandMode.Music || mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording) {
+        if (mode == IslandMode.Music || mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording ||
+            mode == IslandMode.VoiceRecording
+        ) {
             return false
         }
 
@@ -905,6 +932,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         if (mode == IslandMode.Music || mode == IslandMode.Navigation || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
             return false // Media/Music, Navigation, Timer & Stopwatch notifications must NOT be cancelled from system shade by default
         }
+        // A ringing alarm and a running recorder keep their own notification (and its full-screen / FGS UI).
+        if (mode == IslandMode.Alarm || mode == IslandMode.VoiceRecording) return false
         // All others: island-only
         return true
     }
@@ -1230,7 +1259,9 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             mode == IslandMode.LiveActivity ||
             mode == IslandMode.DownloadUpload ||
             mode == IslandMode.Hotspot ||
-            mode == IslandMode.ScreenRecording
+            mode == IslandMode.ScreenRecording ||
+            mode == IslandMode.VoiceRecording ||
+            mode == IslandMode.Alarm
     }
 
     companion object {
