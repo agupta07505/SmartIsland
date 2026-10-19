@@ -20,12 +20,18 @@ import kotlinx.coroutines.flow.StateFlow
  * screens (password managers, authenticators, payments, DRM video) plus any [extraPackages]. A miss only
  * means the island behaves as usual; it never hides anything.
  */
-class ForegroundSecureDetector(private val extraPackages: Set<String> = emptySet()) {
+class ForegroundSecureDetector(initialExtraPackages: Set<String> = emptySet()) {
 
+    @Volatile
+    private var extraPackages: Set<String> = initialExtraPackages
     private val secure = MutableStateFlow(false)
 
     /** True while the foreground app is believed to show a FLAG_SECURE window. */
     val foregroundSecure: StateFlow<Boolean> = secure
+
+    fun setExtraPackages(packages: Set<String>) {
+        extraPackages = packages
+    }
 
     fun onForegroundPackage(packageName: String?) {
         secure.value = isSecurePackage(packageName, extraPackages)

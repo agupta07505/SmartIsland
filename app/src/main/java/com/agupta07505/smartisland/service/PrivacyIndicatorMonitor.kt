@@ -22,6 +22,9 @@ import com.agupta07505.smartisland.util.PrivacyIndicatorAlert
 import com.agupta07505.smartisland.util.PrivacySensor
 import com.agupta07505.smartisland.util.PrivacyUsage
 import com.agupta07505.smartisland.util.runCatchingLogged
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * Feeds the camera / microphone privacy indicator (Rule_Book §4.15, §4.16) into the repository as one merged
@@ -45,7 +48,7 @@ class PrivacyIndicatorMonitor(
     private val foregroundPackage: () -> String?,
     private val isLocked: () -> Boolean
 ) {
-    enum class Source { None, AppOps, Fallback }
+    enum class Source { None, AppOps, Fallback, ShizukuDumpsys }
 
     var source: Source = Source.None
         private set
@@ -59,18 +62,55 @@ class PrivacyIndicatorMonitor(
     private var cameraCallback: CameraManager.AvailabilityCallback? = null
     private var recordingCallback: AudioManager.AudioRecordingCallback? = null
     private val unavailableCameras = HashSet<String>()
+    private var shizukuPollJob: kotlinx.coroutines.Job? = null
+    private val monitorScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
 
     fun start() {
         if (source != Source.None) return
-        source = if (canWatchOtherApps() && startAppOps()) Source.AppOps else {
+        source = if (canWatchOtherApps() && startAppOps()) {
+            Source.AppOps
+        } else if (com.agupta07505.smartisland.util.ShizukuManager.hasPermission()) {
+            startFallback()
+            startShizukuAppOpsPolling()
+            Source.ShizukuDumpsys
+        } else {
             startFallback()
             Source.Fallback
         }
         android.util.Log.d(TAG, "Privacy indicator source: $source")
     }
 
+    private fun startShizukuAppOpsPolling() {
+        shizukuPollJob?.cancel()
+        shizukuPollJob = monitorScope.launch {
+            while (isActive) {
+                try {
+                    if (com.agupta07505.smartisland.util.ShizukuManager.hasPermission()) {
+                        if (usage.microphone.isNotEmpty()) {
+                            val activeMicPackages = com.agupta07505.smartisland.util.ShizukuManager.queryActiveAppOps("RECORD_AUDIO")
+                            val user = activeMicPackages.firstOrNull { it != ownPackage }
+                            if (user != null && user != PrivacyUsage.UNKNOWN_USER) {
+                                update(usage.copy(microphone = setOf(user)))
+                            }
+                        }
+                        if (usage.camera.isNotEmpty()) {
+                            val activeCamPackages = com.agupta07505.smartisland.util.ShizukuManager.queryActiveAppOps("CAMERA")
+                            val user = activeCamPackages.firstOrNull { it != ownPackage }
+                            if (user != null && user != PrivacyUsage.UNKNOWN_USER) {
+                                update(usage.copy(camera = setOf(user)))
+                            }
+                        }
+                    }
+                } catch (_: Throwable) {}
+                delay(3000L)
+            }
+        }
+    }
+
     fun stop() {
         if (source == Source.None) return
+        shizukuPollJob?.cancel()
+        shizukuPollJob = null
         runCatchingLogged(TAG, "Stopping app-op watch failed") {
             val listener = appOpsListener
             if (listener != null) context.getSystemService(AppOpsManager::class.java)?.stopWatchingActive(listener)

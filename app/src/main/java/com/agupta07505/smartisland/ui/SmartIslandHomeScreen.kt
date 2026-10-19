@@ -72,6 +72,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.BatteryChargingFull
@@ -88,11 +89,14 @@ import androidx.compose.material.icons.rounded.Gesture
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.PrivacyTip
+import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SettingsBackupRestore
 import androidx.compose.material.icons.rounded.Shield
@@ -197,7 +201,8 @@ private enum class FeatureDetailSection {
     AboutApp,
     SupportCommunity,
     DeveloperOptions,
-    Buddy
+    Buddy,
+    SecureApps
 }
 
 @SuppressLint("BatteryLife")
@@ -525,7 +530,10 @@ private fun SimulationLabCard(
             ModeItem(IslandMode.Flashlight, Icons.Rounded.FlashlightOn, R.string.mode_flashlight),
             ModeItem(IslandMode.ScreenRecording, Icons.Rounded.Videocam, R.string.mode_screen_recording),
             ModeItem(IslandMode.Timer, Icons.Rounded.HourglassBottom, R.string.mode_timer),
-            ModeItem(IslandMode.Stopwatch, Icons.Rounded.AvTimer, R.string.mode_stopwatch)
+            ModeItem(IslandMode.Stopwatch, Icons.Rounded.AvTimer, R.string.mode_stopwatch),
+            ModeItem(IslandMode.Alarm, Icons.Rounded.Alarm, R.string.mode_alarm),
+            ModeItem(IslandMode.VoiceRecording, Icons.Rounded.Mic, R.string.mode_voice_recording),
+            ModeItem(IslandMode.PrivacyIndicator, Icons.Rounded.PrivacyTip, R.string.mode_privacy_indicator)
         )
     }
 
@@ -738,6 +746,12 @@ private fun SettingsOverviewSection(
                 icon = Icons.Rounded.SettingsBackupRestore,
                 onClick = { onNavigateTo(FeatureDetailSection.BackupRestore) }
             )
+            GroupedRow(
+                title = "Secure App Blacklist",
+                icon = Icons.Rounded.Security,
+                value = if (settings.secureAppPackages.isNotEmpty()) "${settings.secureAppPackages.size} added" else null,
+                onClick = { onNavigateTo(FeatureDetailSection.SecureApps) }
+            )
         }
 
         GroupedSection(
@@ -889,6 +903,7 @@ private fun DetailScreenHost(
         FeatureDetailSection.SupportCommunity -> stringResource(R.string.detail_title_support_community)
         FeatureDetailSection.DeveloperOptions -> stringResource(R.string.detail_title_developer_options)
         FeatureDetailSection.Buddy -> stringResource(R.string.detail_title_buddy)
+        FeatureDetailSection.SecureApps -> "Secure Apps"
     }
 
     Box(
@@ -981,6 +996,9 @@ private fun DetailScreenHost(
             }
             FeatureDetailSection.Buddy -> {
                 BuddySection(settings = settings, repository = repository)
+            }
+            FeatureDetailSection.SecureApps -> {
+                com.agupta07505.smartisland.ui.sections.SecureAppsSection(settings = settings, repository = repository)
             }
         }
     }

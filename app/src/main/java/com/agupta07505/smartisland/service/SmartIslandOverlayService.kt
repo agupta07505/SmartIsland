@@ -102,6 +102,8 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var guards: OverlayGuardController? = null
     // Camera / microphone privacy indicator (Rule_Book 4.15, 4.16).
     private var privacyMonitor: PrivacyIndicatorMonitor? = null
+    // Ambient island / AOD emulation controller (burn-in protection drift on OLED)
+    private var ambientController: AmbientIslandController? = null
     // Landscape: the collapsed pill docks on the lateral cutout instead of the top centre (Rule_Book 9.2).
     private val landscapeAnchored = MutableStateFlow(false)
     @Volatile private var permissionLost = false
@@ -265,6 +267,7 @@ class SmartIslandOverlayService : AccessibilityService() {
                 val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
                 when (intent.action) {
                     Intent.ACTION_SCREEN_ON -> {
+                        ambientController?.onScreenOn()
                         overlayOwners.resume()
                         viewModel.setScreenOn(true)
                         isLockScreenActive = keyguardManager?.isKeyguardLocked == true
@@ -281,7 +284,12 @@ class SmartIslandOverlayService : AccessibilityService() {
                         // Two layers (Rule_Book 4.3, 5): the paused lifecycle stops the frame clock, and the
                         // screen-off state takes every looping animation and ticker out of the composition.
                         viewModel.setScreenOn(false)
-                        overlayOwners.pause()
+                        if (viewModel.settings.value.aodEnabled && ambientController?.isOledDevice() == true) {
+                            ambientController?.onScreenOff()
+                            overlayOwners.resume()
+                        } else {
+                            overlayOwners.pause()
+                        }
                         isLockScreenActive = true
                         guards?.biometric?.onScreenOff()
                         updateWindowLayoutParams(
@@ -318,6 +326,8 @@ class SmartIslandOverlayService : AccessibilityService() {
             }
 
             if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                val className = event.className?.toString()
+                guards?.onAccessibilityWindowClass(className)
                 val openedPackage = event.packageName?.toString()
                 if (!openedPackage.isNullOrEmpty() &&
                     openedPackage != packageName &&
@@ -460,6 +470,11 @@ class SmartIslandOverlayService : AccessibilityService() {
             repository = notificationRepository,
             foregroundPackage = { viewModel.foregroundPackage.value },
             isLocked = { isLockScreenActive }
+        )
+        ambientController = AmbientIslandController(
+            context = this,
+            viewModel = viewModel,
+            scope = serviceScope
         )
         
         systemEventReceiver = SystemEventReceiver(notificationRepository, settingsProvider = { viewModel.settings.value })
@@ -669,6 +684,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         guards = null
         privacyMonitor?.stop()
         privacyMonitor = null
+        ambientController?.stop()
+        ambientController = null
         isSystemConnected = false
         serviceScope.cancel()
 

@@ -93,6 +93,9 @@ fun OverlayIsland(
 
     // Screen off halts every looping animation and ticker below (Rule_Book 4.3, 5).
     val screenOn by viewModel.isScreenOn.collectAsState()
+    val ambientMode by viewModel.ambientMode.collectAsState()
+    val burnInShiftX by viewModel.burnInShiftX.collectAsState()
+    val burnInShiftY by viewModel.burnInShiftY.collectAsState()
     CompositionLocalProvider(LocalScreenOn provides screenOn) {
     IslandOverlayView(
         settings = settings,
@@ -112,6 +115,9 @@ fun OverlayIsland(
         isInputActive = isInputActive,
         onReplyStateChanged = { viewModel.setInputActive(it) },
         isFullWidth = isFullWidth,
+        ambientMode = ambientMode,
+        burnInShiftXDp = burnInShiftX,
+        burnInShiftYDp = burnInShiftY,
         onUserInteraction = { viewModel.onUserInteraction() },
         modifier = modifier
     )

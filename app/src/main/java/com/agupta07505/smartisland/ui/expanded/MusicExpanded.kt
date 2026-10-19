@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -233,7 +235,7 @@ fun MusicExpanded(
             }
         }
     }
-
+    val coroutineScope = rememberCoroutineScope()
     val stopSong = {
         val repo = SmartIslandRepositories.notificationRepository(context)
         if (controller != null) {
@@ -241,7 +243,13 @@ fun MusicExpanded(
                 controller.transportControls.stop()
             }
         } else {
-            notification.sendFirstAction(context, "stop", "close", "dismiss")
+            notification?.sendFirstAction(context, "stop", "close", "dismiss")
+        }
+        val pkg = notification?.packageName
+        if (pkg != null && com.agupta07505.smartisland.util.ShizukuManager.hasPermission()) {
+            coroutineScope.launch {
+                com.agupta07505.smartisland.util.ShizukuManager.forceStopPackage(pkg)
+            }
         }
         notification?.key?.let { repo.removeNotification(it) }
         onCollapse()

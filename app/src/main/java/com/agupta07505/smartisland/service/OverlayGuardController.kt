@@ -72,6 +72,23 @@ class BiometricClearance(
 
     fun onScreenOff() = end()
 
+    /**
+     * In-app biometric clearance (Rule_Book §8.2): detects 3rd-party BiometricPrompt or FingerprintDialog
+     * windows from accessibility events.
+     */
+    fun onAccessibilityWindowClass(className: String?) {
+        if (className.isNullOrBlank()) return
+        val matchesBiometric = BIOMETRIC_WINDOW_CLASSES.any { className.contains(it, ignoreCase = true) }
+        if (matchesBiometric) {
+            job?.cancel()
+            set(true)
+            job = scope.launch {
+                delay(BIOMETRIC_PROMPT_TIMEOUT_MS)
+                set(false)
+            }
+        }
+    }
+
     private fun end() {
         job?.cancel()
         job = null
@@ -87,6 +104,17 @@ class BiometricClearance(
     companion object {
         /** Long enough for a face scan right after wake; a failed scan falls back to the normal lock screen. */
         const val WINDOW_MS = 5_000L
+        /** In-app biometric dialogs may stay open longer for fingerprint/face auth. */
+        const val BIOMETRIC_PROMPT_TIMEOUT_MS = 10_000L
+
+        private val BIOMETRIC_WINDOW_CLASSES = listOf(
+            "BiometricFragment",
+            "BiometricPrompt",
+            "FingerprintDialog",
+            "AuthContainerView",
+            "com.samsung.android.biometrics",
+            "FingerprintAuthDialog"
+        )
     }
 }
 
@@ -144,6 +172,11 @@ class OverlayGuardController(
         jobs += scope.launch {
             foregroundSecure.foregroundSecure.drop(1).collect { onForegroundSecure(it) }
         }
+        jobs += scope.launch {
+            viewModel.settings.map { it.secureAppPackages }.distinctUntilChanged().collect { packages ->
+                foregroundSecure.setExtraPackages(packages)
+            }
+        }
         // A capture that was already running when the session started.
         if (screenCapture.isCapturing.value) onWindowFlagsChanged()
     }
@@ -169,4 +202,6 @@ class OverlayGuardController(
     )
 
     fun onForegroundPackage(packageName: String?) = foregroundSecure.onForegroundPackage(packageName)
+
+    fun onAccessibilityWindowClass(className: String?) = biometric.onAccessibilityWindowClass(className)
 }

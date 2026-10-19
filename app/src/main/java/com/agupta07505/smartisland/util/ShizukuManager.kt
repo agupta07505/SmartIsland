@@ -199,4 +199,50 @@ object ShizukuManager {
         )
         runShizukuCommands(commands)
     }
+
+    /**
+     * Executes `dumpsys appops` via Shizuku process to find packages with the given op currently running.
+     * E.g. opName: "CAMERA", "RECORD_AUDIO", or "COARSE_LOCATION"
+     */
+    suspend fun queryActiveAppOps(opName: String): List<String> = withContext(Dispatchers.IO) {
+        if (!hasPermission()) return@withContext emptyList()
+        val result = runCatching {
+            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            ).apply { isAccessible = true }
+
+            val process = newProcessMethod.invoke(null, arrayOf("dumpsys", "appops"), null, null) as Process
+            val output = BufferedReader(InputStreamReader(process.inputStream)).use { it.readLines() }
+            process.waitFor()
+
+            val activePackages = mutableListOf<String>()
+            var currentPackage: String? = null
+            val opTarget = opName.uppercase()
+
+            for (line in output) {
+                val trimmed = line.trim()
+                if (trimmed.startsWith("Package ") && trimmed.endsWith(":")) {
+                    currentPackage = trimmed.removePrefix("Package ").removeSuffix(":")
+                } else if (currentPackage != null && trimmed.contains(opTarget) && trimmed.contains("running")) {
+                    if (currentPackage != "android" && !currentPackage.startsWith("com.android.systemui")) {
+                        activePackages.add(currentPackage)
+                    }
+                }
+            }
+            activePackages.distinct()
+        }
+        result.getOrDefault(emptyList())
+    }
+
+    /**
+     * Force-stops a package using `am force-stop` via Shizuku.
+     */
+    suspend fun forceStopPackage(packageName: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        if (!hasPermission()) return@withContext Result.failure(IllegalStateException("Shizuku permission not available"))
+        val cmd = "am force-stop ${shellQuote(packageName)}"
+        runShizukuCommands(listOf(cmd)).map { true }
+    }
 }

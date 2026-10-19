@@ -98,11 +98,13 @@ object PillLayout {
         screenWidthDp: Float,
         pillCenterOffsetDp: Float,
         iconsManaged: Boolean,
-        capDp: Float = MAX_ALERT_PILL_WIDTH_DP
+        capDp: Float = MAX_ALERT_PILL_WIDTH_DP,
+        leftMarginDp: Float = STATUS_LEFT_RESERVE_DP,
+        rightMarginDp: Float = STATUS_RIGHT_RESERVE_DP
     ): Float {
         if (iconsManaged || screenWidthDp <= 0f) return capDp
         val center = screenWidthDp / 2f + pillCenterOffsetDp
-        val half = minOf(center - STATUS_LEFT_RESERVE_DP, screenWidthDp - center - STATUS_RIGHT_RESERVE_DP)
+        val half = minOf(center - leftMarginDp, screenWidthDp - center - rightMarginDp)
         return (2f * half).coerceIn(0f, capDp)
     }
 

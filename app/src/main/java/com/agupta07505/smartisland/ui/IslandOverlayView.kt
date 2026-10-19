@@ -44,7 +44,9 @@ import androidx.compose.ui.input.pointer.positionChange
 import kotlin.math.abs
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -95,6 +97,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -122,6 +125,9 @@ fun IslandOverlayView(
     onReplyStateChanged: (Boolean) -> Unit = {},
     onDismissAllNotifications: () -> Unit = {},
     isFullWidth: Boolean = true,
+    ambientMode: Boolean = false,
+    burnInShiftXDp: Float = 0f,
+    burnInShiftYDp: Float = 0f,
     /** The user touched the island; pending messages get their full seven seconds again. */
     onUserInteraction: () -> Unit = {}
 ) {
@@ -356,7 +362,7 @@ fun IslandOverlayView(
         isAutoHidden = true
     }
 
-    val isHiding = isIdleHiding || (settings.autoHidePill && isAutoHidden)
+    val isHiding = !ambientMode && (isIdleHiding || (settings.autoHidePill && isAutoHidden))
     val buddyCanCameo = settings.buddyEnabled && notifications.isNotEmpty() && !expanded && !isHiding
     LaunchedEffect(buddyCanCameo) { MascotRuntime.controller.setCanCameo(buddyCanCameo) }
     val pillBackgroundColor = Color(settings.pillColor)
@@ -546,10 +552,27 @@ fun IslandOverlayView(
     )
 
     val expandedCompactX = collapsedMainLeft
-    val collapsedSecondaryOffset = if (isFullWidth) {
+    // Privacy Dot Edge Alignment (Rule_Book §4.15): pin dot to cutout right edge
+    val isPrivacyIndicatorBubble = secondaryNotification?.mode == IslandMode.PrivacyIndicator
+    val cutoutRightEdgeOffset = remember(context, isPrivacyIndicatorBubble) {
+        if (isPrivacyIndicatorBubble) {
+            val bounds = com.agupta07505.smartisland.util.DisplayBounds.bounds(context)
+            val boxes = com.agupta07505.smartisland.util.CameraCutoutDetector.currentBoxes(context)
+            com.agupta07505.smartisland.util.CameraCutoutDetector.cutoutRightEdgeOffsetDp(
+                boxes, bounds.width(), context.resources.displayMetrics.density
+            )
+        } else null
+    }
+
+    val standardCollapsedSecondaryOffset = if (isFullWidth) {
         circleCenter - screenCenter
     } else {
         circleCenter - groupCenter
+    }
+    val collapsedSecondaryOffset = if (isPrivacyIndicatorBubble && cutoutRightEdgeOffset != null && isFullWidth) {
+        (cutoutRightEdgeOffset + 6f).dp
+    } else {
+        standardCollapsedSecondaryOffset
     }
     val secondaryExpandedOffset = calculateSecondaryExpandedOffset(
         secondaryIsPill = secondaryIsPill,
@@ -614,7 +637,8 @@ fun IslandOverlayView(
 
         // The Large dashboard and message cards are pitch black so they merge with the camera cutout, whatever the pill colour.
         val shellColor by androidx.compose.animation.animateColorAsState(
-            targetValue = if (expanded && (sizeClass == IslandSizeClass.Large || activeMode == IslandMode.Notification)) Color.Black
+            targetValue = if (ambientMode) Color.Black
+            else if (expanded && (sizeClass == IslandSizeClass.Large || activeMode == IslandMode.Notification)) Color.Black
             else pillBackgroundColor.copy(alpha = settings.opacity),
             animationSpec = androidx.compose.animation.core.tween(180),
             label = "islandShellColor"
@@ -636,8 +660,8 @@ fun IslandOverlayView(
                 .width(safeWidth)
                 .height(safeHeight)
                 .graphicsLayer {
-                    translationX = animatedXOffset.toPx() + (if (!currentExpanded) pillDragOffsetX else 0f)
-                    translationY = yOffset.toPx() + dragOffset
+                    translationX = animatedXOffset.toPx() + (if (!currentExpanded) pillDragOffsetX else 0f) + (if (ambientMode) burnInShiftXDp.dp.toPx() else 0f)
+                    translationY = yOffset.toPx() + dragOffset + (if (ambientMode) burnInShiftYDp.dp.toPx() else 0f)
                     scaleX = switchScaleAnim.value
                     scaleY = switchScaleAnim.value
                 }
@@ -1021,7 +1045,52 @@ fun IslandOverlayView(
             contentAlignment = Alignment.TopCenter
         ) {
             // Collapsed content layer (pinned to fixed pill bounds at top-center, cancelling yOffset)
-            if (collapsedAlpha > 0f) {
+            if (ambientMode) {
+                Box(
+                    modifier = Modifier
+                        .width(pillWidthDp)
+                        .height(settings.height.dp)
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val timeStr = remember {
+                            val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                            sdf.format(java.util.Date())
+                        }
+                        Text(
+                            text = timeStr,
+                            color = Color(0x99FFFFFF),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (notifications.isNotEmpty()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Notifications,
+                                    contentDescription = null,
+                                    tint = Color(0x99FFFFFF),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "${notifications.size}",
+                                    color = Color(0x99FFFFFF),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (collapsedAlpha > 0f) {
                 Box(
                     modifier = Modifier
                         .width(pillWidthDp)

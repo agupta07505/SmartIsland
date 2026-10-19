@@ -52,6 +52,9 @@
     <string name="mode_screen_recording">Record</string>
     <string name="mode_timer">Timer</string>
     <string name="mode_stopwatch">Stopwatch</string>
+    <string name="mode_alarm">Alarm</string>
+    <string name="mode_voice_recording">Voice</string>
+    <string name="mode_privacy_indicator">Privacy</string>
     <string name="btn_clear_all_test_notifications">Clear</string>
     <string name="toast_cleared_test_notifications">Cleared active demo alerts</string>
     <string name="quick_test_controls">Quick Test Controls</string>

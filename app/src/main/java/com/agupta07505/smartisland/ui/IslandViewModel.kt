@@ -74,6 +74,10 @@ class IslandViewModel(
      */
     val isScreenOn: StateFlow<Boolean> = screenOnState
 
+    val ambientMode = MutableStateFlow(false)
+    val burnInShiftX = MutableStateFlow(0f)
+    val burnInShiftY = MutableStateFlow(0f)
+
     val visibleNotifications: StateFlow<List<IslandNotification>> = combine(
         notifications,
         foregroundPackage,
@@ -243,6 +247,12 @@ class IslandViewModel(
 
     fun setScreenOn(on: Boolean) {
         screenOnState.value = on
+    }
+
+    fun setAmbientMode(active: Boolean, shiftX: Float = 0f, shiftY: Float = 0f) {
+        ambientMode.value = active
+        burnInShiftX.value = shiftX
+        burnInShiftY.value = shiftY
     }
 
     /** Set by the foreground secure-window detector (Rule_Book §8.2). */

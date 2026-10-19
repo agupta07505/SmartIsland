@@ -96,7 +96,9 @@ data class SmartIslandSettings(
     /** Whether a faint glow flares while the island is moving fast ([com.agupta07505.smartisland.ui.KineticGlow]). */
     val kineticGlow: Boolean = true,
     val buddyReacts: Boolean = true,
-    val buddyHidesWhenIdle: Boolean = true
+    val buddyHidesWhenIdle: Boolean = true,
+    val aodEnabled: Boolean = false,
+    val secureAppPackages: Set<String> = emptySet()
 ) {
     val buddyLook: MascotLook
         get() = MascotLook(
@@ -208,6 +210,10 @@ data class SmartIslandSettings(
         settingsObj.put("kineticGlow", kineticGlow)
         settingsObj.put("buddyReacts", buddyReacts)
         settingsObj.put("buddyHidesWhenIdle", buddyHidesWhenIdle)
+        settingsObj.put("aodEnabled", aodEnabled)
+        val secureAppsArray = JSONArray()
+        secureAppPackages.forEach { secureAppsArray.put(it) }
+        settingsObj.put("secureAppPackages", secureAppsArray)
 
         root.put("settings", settingsObj)
         return root.toString(2)
@@ -369,7 +375,9 @@ data class SmartIslandSettings(
                 springPreset = SpringPreset.fromId(obj.optString("springPreset", defaults.springPreset)).id,
                 kineticGlow = obj.optBoolean("kineticGlow", defaults.kineticGlow),
                 buddyReacts = obj.optBoolean("buddyReacts", defaults.buddyReacts),
-                buddyHidesWhenIdle = obj.optBoolean("buddyHidesWhenIdle", defaults.buddyHidesWhenIdle)
+                buddyHidesWhenIdle = obj.optBoolean("buddyHidesWhenIdle", defaults.buddyHidesWhenIdle),
+                aodEnabled = obj.optBoolean("aodEnabled", defaults.aodEnabled),
+                secureAppPackages = safeStringSet("secureAppPackages", defaults.secureAppPackages)
             )
         }
     }

@@ -35,7 +35,12 @@ import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.agupta07505.smartisland.util.HotspotTrafficMonitor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +100,15 @@ fun HotspotExpanded(
             val titleLower = action.title.lowercase()
             titleLower.contains("hotspot") || titleLower.contains("setting") || HotspotUtil.isTurnOffAction(action.title)
         }
+    }
+
+    val coroutineScope = rememberCoroutineScope()
+    val trafficMonitor = remember { HotspotTrafficMonitor() }
+    val throughputSnapshot by trafficMonitor.throughput.collectAsState()
+
+    DisposableEffect(Unit) {
+        trafficMonitor.start(coroutineScope)
+        onDispose { trafficMonitor.stop() }
     }
 
     // Rule_Book §4.8: the toggle turns the hotspot off and drops the island to IDLE. Apps cannot switch tethering
@@ -202,7 +216,7 @@ fun HotspotExpanded(
             }
         }
 
-        // Connected Devices Detail Card
+        // Connected Devices & Throughput Detail Card
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -210,35 +224,70 @@ fun HotspotExpanded(
                 .background(IslandPalette.fill)
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Devices,
-                        contentDescription = stringResource(R.string.a11y_devices),
-                        tint = accentColor,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Devices,
+                            contentDescription = stringResource(R.string.a11y_devices),
+                            tint = accentColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Connected Devices",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
                     Text(
-                        text = "Connected Devices",
-                        color = Color.White,
+                        text = deviceCountText,
+                        color = accentColor,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
-                Text(
-                    text = deviceCountText,
-                    color = accentColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                // Live Hotspot Throughput (Item 10)
+                if (throughputSnapshot.totalBytesPerSec > 0 || throughputSnapshot.rxBytesPerSec > 0 || throughputSnapshot.txBytesPerSec > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Throughput",
+                            color = IslandPalette.secondaryLabel,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = throughputSnapshot.formatTx(),
+                                color = IslandPalette.secondaryLabel,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = throughputSnapshot.formatRx(),
+                                color = accentColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
 

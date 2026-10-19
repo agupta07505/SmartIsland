@@ -73,6 +73,18 @@ object CameraCutoutDetector {
         boxes.filter { it.height > 0 && it.width > 0 }.minByOrNull { it.top }
 
     /**
+     * Calculates the right edge of the top camera cutout in dp relative to screen center.
+     * Returns null if no hardware cutout is detected.
+     */
+    fun cutoutRightEdgeOffsetDp(boxes: List<CutoutBox>, screenWidthPx: Int, density: Float): Float? {
+        if (density <= 0f || screenWidthPx <= 0) return null
+        val top = topCutout(boxes) ?: return null
+        val screenCenterX = screenWidthPx / 2f
+        val rightEdgePx = top.right
+        return (rightEdgePx - screenCenterX) / density
+    }
+
+    /**
      * In landscape the hole lies on a lateral bezel: the rect touching the left or right quarter of the
      * screen, whichever sits nearer its edge. Null when no rect lies on a side (portrait, or no cutout).
      */

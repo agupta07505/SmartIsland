@@ -24,10 +24,15 @@ object AlertWidthBudget {
             context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
         }.getOrDefault(false)
 
-    fun maxAlertPillWidthDp(context: Context, settings: SmartIslandSettings): Float =
-        PillLayout.maxAlertPillWidthDp(
+    fun maxAlertPillWidthDp(context: Context, settings: SmartIslandSettings): Float {
+        val oemProfile = OemDeviceRules.getOemWidthProfile(settings.deviceType)
+        return PillLayout.maxAlertPillWidthDp(
             screenWidthDp = DisplayBounds.widthDp(context),
             pillCenterOffsetDp = settings.xOffset,
-            iconsManaged = hasSecureSettings(context)
+            iconsManaged = hasSecureSettings(context),
+            capDp = oemProfile.maxPillWidthDp,
+            leftMarginDp = oemProfile.leftMarginDp,
+            rightMarginDp = oemProfile.rightMarginDp
         )
+    }
 }

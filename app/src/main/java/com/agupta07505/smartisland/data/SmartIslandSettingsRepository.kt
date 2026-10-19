@@ -118,6 +118,8 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val KineticGlow = booleanPreferencesKey("kinetic_glow")
         val BuddyReacts = booleanPreferencesKey("buddy_reacts")
         val BuddyHidesWhenIdle = booleanPreferencesKey("buddy_hides_when_idle")
+        val AodEnabled = booleanPreferencesKey("aod_enabled")
+        val SecureAppPackages = stringSetPreferencesKey("secure_app_packages")
     }
 
     val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
@@ -267,7 +269,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 springPreset = com.agupta07505.smartisland.ui.SpringPreset.fromId(prefs[Keys.SpringPreset]).id,
                 kineticGlow = prefs[Keys.KineticGlow] ?: defaults.kineticGlow,
                 buddyReacts = prefs[Keys.BuddyReacts] ?: defaults.buddyReacts,
-                buddyHidesWhenIdle = prefs[Keys.BuddyHidesWhenIdle] ?: defaults.buddyHidesWhenIdle
+                buddyHidesWhenIdle = prefs[Keys.BuddyHidesWhenIdle] ?: defaults.buddyHidesWhenIdle,
+                aodEnabled = prefs[Keys.AodEnabled] ?: defaults.aodEnabled,
+                secureAppPackages = prefs[Keys.SecureAppPackages] ?: defaults.secureAppPackages
             )
         }
 
@@ -690,6 +694,21 @@ class SmartIslandSettingsRepository(private val context: Context) {
         prefs[Keys.KineticGlow] = settings.kineticGlow
         prefs[Keys.BuddyReacts] = settings.buddyReacts
         prefs[Keys.BuddyHidesWhenIdle] = settings.buddyHidesWhenIdle
+        prefs[Keys.AodEnabled] = settings.aodEnabled
+        prefs[Keys.SecureAppPackages] = settings.secureAppPackages
+    }
+
+    suspend fun setAodEnabled(value: Boolean) = editSafely { it[Keys.AodEnabled] = value }
+    suspend fun setSecureAppPackages(packages: Set<String>) = editSafely { it[Keys.SecureAppPackages] = packages }
+    suspend fun addSecureAppPackage(packageName: String) = editSafely {
+        val current = it[Keys.SecureAppPackages]?.toMutableSet() ?: mutableSetOf()
+        current.add(packageName)
+        it[Keys.SecureAppPackages] = current
+    }
+    suspend fun removeSecureAppPackage(packageName: String) = editSafely {
+        val current = it[Keys.SecureAppPackages]?.toMutableSet() ?: mutableSetOf()
+        current.remove(packageName)
+        it[Keys.SecureAppPackages] = current
     }
 
     suspend fun resetAllSettings() = restoreSettings(SmartIslandSettings.Default.copy(welcomeDialogShown = true))
