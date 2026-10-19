@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.ui.glass.Card
 import com.agupta07505.smartisland.util.AgendaPrefs
+import androidx.compose.foundation.layout.Spacer
 
 /**
  * Agenda do menu expandido: ate que distancia no futuro os compromissos aparecem na ilha.
@@ -69,6 +70,10 @@ internal fun AgendaWindowCard(modifier: Modifier = Modifier) {
                     }
                 }
             }
+
+            // Espaço e cartão de clima inseridos abaixo da agenda
+            Spacer(modifier = Modifier.padding(top = 8.dp))
+            WeatherWindowCard()
         }
     }
 }
