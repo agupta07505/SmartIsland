@@ -8,13 +8,11 @@
 package com.agupta07505.smartisland.model
 
 /**
- * "Mix fonts": island text uses up to three fonts, like a system family's Light, Regular and Medium cuts; the
- * requested weight picks the font.
+ * "Mix fonts": island text uses up to 3 fonts, like a system family's Light, Regular and Medium cuts, the requested
+ * weight picks the font
  */
 enum class FontSlot(
-    /** Weight whose file is used for built-in fonts (400, 500, 700). */
     val representativeWeight: Int,
-    /** CSS-style weights (100..900) the slot draws; the three slots cover all nine. */
     val weights: List<Int>
 ) {
     Light(400, listOf(100, 200, 300, 400)),
@@ -23,13 +21,6 @@ enum class FontSlot(
 }
 
 object FontMix {
-    /** Slot for [weight] (clamped to 1..1000 like Compose). */
-    fun slotFor(weight: Int): FontSlot = when {
-        weight <= 400 -> FontSlot.Light
-        weight <= 600 -> FontSlot.Regular
-        else -> FontSlot.Medium
-    }
-
     fun effectiveId(slotId: String, islandFont: String): String = slotId.ifEmpty { islandFont }
 
     fun idOf(slot: FontSlot, light: String, regular: String, medium: String): String = when (slot) {
