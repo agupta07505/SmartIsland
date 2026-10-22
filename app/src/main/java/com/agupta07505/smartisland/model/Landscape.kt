@@ -7,23 +7,72 @@
 
 package com.agupta07505.smartisland.model
 
+import kotlin.math.abs
+
+object LandscapeLayoutStyle {
+    const val CLASSIC = "classic"
+    const val EDGE = "edge"
+
+    /** Layout used until the owner picks one: the edge pill. */
+    const val DEFAULT = EDGE
+
+    val VALID_IDS: Set<String> = setOf(CLASSIC, EDGE)
+
+    fun fromId(id: String?): String = if (id != null && id in VALID_IDS) id else DEFAULT
+
+    fun isEdge(id: String?): Boolean = fromId(id) == EDGE
+}
+
+fun landscapeWidgetPillWanted(
+    isLandscape: Boolean,
+    widgetsEnabled: Boolean,
+    widgetIds: String,
+    pillHidden: Boolean,
+    shadeOpen: Boolean,
+    widgetsSuppressed: Boolean = false,
+    tickHold: Boolean = false,
+    emptyPillShown: Boolean = false
+): Boolean = isLandscape && !shadeOpen && (
+    emptyPillShown ||
+        (tickHold && widgetsEnabled) ||
+        (widgetsEnabled && !widgetsSuppressed && !pillHidden && IdleWidgets.parse(widgetIds).isNotEmpty())
+    )
+
+fun pillOnIsland(hasCards: Boolean, widgetPill: Boolean): Boolean = hasCards || widgetPill
+
 /**
- * Landscape: how the collapsed cutout leaves when its last card goes: it slides away and fades, then the idle circle
- * opens at its spot.
+ * What the pill's incoming-card slide ([IslandInteractionState.pillEnter]) does when the shown card or widget changes
+ * or the content layer returns
+ */
+enum class PillEnterStep {
+    Start,
+
+    SettleStale,
+
+    Nothing
+}
+
+const val PILL_ENTER_REST_PX = 0.5f
+
+fun pillEnterStep(pendingEnterSign: Int, enterOffsetPx: Float): PillEnterStep = when {
+    pendingEnterSign != 0 -> PillEnterStep.Start
+    abs(enterOffsetPx) > PILL_ENTER_REST_PX -> PillEnterStep.SettleStale
+    else -> PillEnterStep.Nothing
+}
+
+/**
+ * Landscape: how the collapsed cutout leaves when its last card goes. It slides away and fades, then the idle circle
+ * opens at its spot
  */
 enum class PillExitDirection { Up, Left, Right }
 
-/** "Near an edge": the pill's centre is within this share of the screen width from it. */
 const val PILL_EXIT_EDGE_FRACTION = 0.25f
 
-/** The pill slides no further than this (fading on the way), so a low pill does not fly across the screen. */
+/** Pill slides no further than this (fading on the way), so a low pill does not fly across the screen. */
 const val PILL_EXIT_MAX_TRAVEL_DP = 120f
 
 /** Spare room past the screen edge so the pill is fully clear. */
 const val PILL_EXIT_MARGIN_DP = 8f
-
-/** Base exit length (scaled by the animation speed). */
-const val PILL_EXIT_MS = 360
 
 fun pillExitDirection(centerXDp: Float, screenWidthDp: Float): PillExitDirection {
     if (screenWidthDp <= 0f) return PillExitDirection.Up
@@ -56,7 +105,6 @@ fun pillExitTravelDp(
 
 data class PillExitOffset(val dx: Float, val dy: Float)
 
-/** Offset (dp) of the sliding pill at [progress] (0 = in place, 1 = gone). */
 fun pillExitOffsetDp(direction: PillExitDirection, travelDp: Float, progress: Float): PillExitOffset {
     val d = travelDp * progress.coerceIn(0f, 1f)
     return when (direction) {
@@ -66,9 +114,4 @@ fun pillExitOffsetDp(direction: PillExitDirection, travelDp: Float, progress: Fl
     }
 }
 
-private fun smooth(t: Float): Float {
-    val c = t.coerceIn(0f, 1f)
-    return c * c * (3f - 2f * c)
-}
-
-fun pillExitAlpha(progress: Float): Float = 1f - smooth((progress - 0.3f) / 0.7f)
+fun pillExitAlpha(progress: Float): Float = 1f - smoothstep((progress - 0.3f) / 0.7f)
