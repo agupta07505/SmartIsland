@@ -97,6 +97,8 @@ internal fun Modifier.islandMainGestures(
                 ui.cardBackJob?.cancel()
                 ui.cardWaitJob?.cancel()
                 ui.pillReleaseJob?.cancel()
+                ui.pillDragOffsetX = 0f
+                ui.dragOffset = 0f
                 // Read once per touch so the distances do not change under the finger.
                 val sensitivity = GestureSensitivity.fromId(cb.currentSettings.gestureSensitivity)
                 val tapSlop = sensitivity.scaled(10f) * displayMetrics.density
@@ -245,9 +247,12 @@ internal fun Modifier.islandMainGestures(
                     val event = awaitPointerEvent()
                     val change = event.changes.firstOrNull { it.id == pointerId } ?: break
 
+                    val released = change.changedToUp() || (pickerTouchAtStart && change.changedToUpIgnoreConsumed())
+                    if (!change.pressed && !released) break
+
                     // A picker row consumes its own (accepted) tap; the island must still see that lift, or this loop would wait for
                     // the next touch and the hold buzz would fire 300 ms later.
-                    if (change.changedToUp() || (pickerTouchAtStart && change.changedToUpIgnoreConsumed())) {
+                    if (released) {
                         change.consume()
                         holdJob.cancel()
                         if (childScrolled) break
