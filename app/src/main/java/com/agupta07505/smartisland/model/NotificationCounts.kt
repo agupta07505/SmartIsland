@@ -8,20 +8,18 @@
 package com.agupta07505.smartisland.model
 
 /**
- * A notification as the count widget sees it, from the shade or from a card the island holds (it may have cancelled
- * its shade copy). Collecting: util/NotificationCountTracker.kt.
+ * Notification as the count widget sees it, from the shade or from a card the island holds (it may have cancelled its
+ * shade copy). Collected in util/NotificationCountTracker.kt
  */
 data class CountEntry(
     val key: String,
     val packageName: String,
     val appLabel: String,
-    /** [android.app.Notification.category] ("msg", "email", "call", ...); null when the app sets none. */
+    /** [android.app.Notification.category] ("msg", "email", "call" ...), null when the app sets none. */
     val category: String? = null,
-    /** Uses MessagingStyle (chat apps that set no category still do). */
     val isMessagingStyle: Boolean = false,
-    /** Ongoing / foreground-service notification: never a message waiting to be read. */
     val ongoing: Boolean = false,
-    /** The app's group summary repeats its children, so counting it would count every message twice. */
+    /** An app's group summary repeats its children, so counting it would count every message twice. */
     val groupSummary: Boolean = false
 )
 
@@ -29,7 +27,7 @@ data class AppCount(val packageName: String, val label: String, val count: Int)
 
 /**
  * All counted notifications: the total for the pill's glyph and per-app counts (most first) for the semi-expanded
- * island.
+ * island
  */
 data class NotificationSummary(val total: Int, val apps: List<AppCount>) {
     companion object {
@@ -37,17 +35,14 @@ data class NotificationSummary(val total: Int, val apps: List<AppCount>) {
     }
 }
 
-/** What the semi-expanded island lists: the first few apps and the notifications in the apps that did not fit. */
 data class NotificationRows(val shown: List<AppCount>, val moreNotifications: Int, val moreApps: Int)
 
 object NotificationCounts {
     const val CATEGORY_MESSAGE = "msg"
     const val CATEGORY_EMAIL = "email"
 
-    /** The count badge shows at most this ("99+"). */
     const val BADGE_MAX = 99
 
-    /** The island lists this many apps; the rest are summed in one "+N more" line. */
     const val ISLAND_MAX_ROWS = 3
 
     private val NON_MESSAGE_CATEGORIES = setOf(
@@ -56,8 +51,8 @@ object NotificationCounts {
     )
 
     /**
-     * Messaging and mail apps that post without a category or MessagingStyle. Fallback only: they still pass the
-     * ongoing / group-summary / non-message checks of [isCounted].
+     * Messaging and mail apps that post without a category or MessagingStyle. Fallback only, they still pass the
+     * ongoing / group-summary / non-message checks of [isCounted]
      */
     val KNOWN_MESSAGING_PACKAGES: Set<String> = setOf(
         "com.whatsapp", "com.whatsapp.w4b", "org.telegram.messenger", "org.telegram.messenger.web", "org.thunderdog.challegram",
@@ -72,10 +67,6 @@ object NotificationCounts {
         "com.android.email", "com.oneplus.email", "com.fastmail.mobile", "com.apple.android.mail"
     )
 
-    /**
-     * Whether [entry] is a message or mail waiting to be read: not ongoing, not a group summary, and a message by
-     * category, style or app.
-     */
     fun isCounted(entry: CountEntry): Boolean {
         if (entry.ongoing || entry.groupSummary) return false
         val category = entry.category
@@ -86,8 +77,8 @@ object NotificationCounts {
     }
 
     /**
-     * The shade's notifications plus the island's cards, one per key (a card kept after cancelling its shade copy has
-     * no twin; one both hold counts once).
+     * Shade's notifications plus the island's cards, 1 per key (a card kept after cancelling its shade copy has no
+     * twin, one both hold counts once)
      */
     fun merge(shade: List<CountEntry>, island: List<CountEntry>): List<CountEntry> {
         val byKey = LinkedHashMap<String, CountEntry>()
@@ -96,7 +87,6 @@ object NotificationCounts {
         return byKey.values.toList()
     }
 
-    /** Counts notifications that pass [isCounted] per app: biggest first, ties in label order. */
     fun summarize(entries: List<CountEntry>): NotificationSummary {
         val counted = entries.filter { isCounted(it) }
         if (counted.isEmpty()) return NotificationSummary.Empty
@@ -106,14 +96,12 @@ object NotificationCounts {
         return NotificationSummary(counted.size, apps)
     }
 
-    /** Pill count glyph text: "" for none, "7", "99+". */
     fun badgeText(total: Int): String = when {
         total <= 0 -> ""
         total > BADGE_MAX -> "$BADGE_MAX+"
         else -> total.toString()
     }
 
-    /** Apps the island lists and what is left for its "+N more" line. */
     fun rows(summary: NotificationSummary, maxRows: Int = ISLAND_MAX_ROWS): NotificationRows {
         val shown = summary.apps.take(maxRows)
         val rest = summary.apps.drop(maxRows)
@@ -124,7 +112,6 @@ object NotificationCounts {
     private const val ISLAND_ROW_DP = 20f
     private const val ISLAND_MORE_DP = 14f
 
-    /** Height (dp) the semi-expanded island needs for [rows]: the rows, the "+N more" line if any, and padding. */
     fun islandContentHeightDp(rows: NotificationRows): Float =
         ISLAND_PADDING_DP + rows.shown.size * ISLAND_ROW_DP + if (rows.moreApps > 0) ISLAND_MORE_DP else 0f
 }
