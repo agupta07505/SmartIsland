@@ -1,3 +1,8 @@
+---
+applyTo: ".github/ISSUE_TEMPLATE/**, **"
+description: "Issue triage and response guidelines for Smart Island"
+---
+
 # Issue Triage and Response Guidelines for GitHub Copilot
 
 When responding to, summarizing, or triaging issues in Smart Island:

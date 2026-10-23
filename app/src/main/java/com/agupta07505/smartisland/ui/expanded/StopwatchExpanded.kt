@@ -32,17 +32,15 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +51,13 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.ui.rememberRecordingSeconds
 import com.agupta07505.smartisland.util.TimerStopwatchParser
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 
 @Composable
 fun StopwatchExpanded(
@@ -63,34 +67,120 @@ fun StopwatchExpanded(
     onCollapse: () -> Unit = {},
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
+    if (com.agupta07505.smartisland.util.OemDeviceRules.isMiuiOrHyperOs()) {
+        StopwatchExpandedMiui(
+            notification = notification,
+            bottomPadding = bottomPadding,
+            onOpenNotification = onOpenNotification,
+            onCollapse = onCollapse,
+            settings = settings
+        )
+    } else {
+        StopwatchExpandedCurrent(
+            notification = notification,
+            bottomPadding = bottomPadding,
+            onOpenNotification = onOpenNotification,
+            onCollapse = onCollapse,
+            settings = settings
+        )
+    }
+}
+
+@Composable
+private fun StopwatchExpandedMiui(
+    notification: IslandNotification?,
+    bottomPadding: Dp,
+    onOpenNotification: () -> Unit = {},
+    onCollapse: () -> Unit = {},
+    settings: SmartIslandSettings = SmartIslandSettings.Default
+) {
     val context = LocalContext.current
     val stopwatchColor = Color(settings.stopwatchColor)
 
-    val isNotificationPaused = remember(notification?.key, notification?.actionIntents, notification?.text) {
-        val actions = notification?.actionIntents.orEmpty()
-        actions.any { it.title.contains("resume", ignoreCase = true) || it.title.contains("start", ignoreCase = true) } ||
-            notification?.text?.contains("pause", ignoreCase = true) == true
+    val resumeKeywords = remember { listOf("resume", "start", "play", "unpause", "weiter", "reanudar") }
+    val pauseKeywords = remember { listOf("pause", "pausa", "pausar", "sospendi", "रोकें", "暂停") }
+
+    val startTime = notification?.timeMillis ?: remember { System.currentTimeMillis() }
+
+    val frozenElapsedSeconds = notification?.stopwatchElapsedSeconds
+    val chronometerBase = notification?.stopwatchChronometerBase
+
+    val isNotificationPaused = remember(
+        notification?.key,
+        notification?.actionIntents,
+        notification?.title,
+        notification?.text,
+        frozenElapsedSeconds
+    ) {
+        frozenElapsedSeconds != null ||
+            notification?.actionIntents?.any {
+                it.title.contains("resume", ignoreCase = true) ||
+                    it.title.contains("start", ignoreCase = true)
+            } == true ||
+            notification?.title?.contains("paused", ignoreCase = true) == true ||
+            notification?.text?.contains("paused", ignoreCase = true) == true
     }
 
-    var isPaused by remember(notification?.key, isNotificationPaused) {
-        mutableStateOf(isNotificationPaused)
+    val isPaused = isNotificationPaused
+
+    var elapsedSeconds by remember(
+        notification?.key,
+        startTime,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        mutableLongStateOf(
+            frozenElapsedSeconds
+                ?: chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+                ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                    .coerceAtLeast(0L)
+        )
     }
 
-    var startTime by remember(notification?.key, notification?.timeMillis) {
-        mutableStateOf(notification?.timeMillis ?: System.currentTimeMillis())
+    val notificationLapCount = remember(
+        notification?.title,
+        notification?.text
+    ) {
+        val lapRegex = Regex("""(?i)\blap\s*[:#]?\s*(\d+)\b""")
+
+        listOf(
+            notification?.title.orEmpty(),
+            notification?.text.orEmpty()
+        ).firstNotNullOfOrNull { value ->
+            lapRegex.find(value)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        } ?: 1
     }
 
-    var elapsedSeconds by remember(notification?.key, startTime, isPaused) {
-        mutableStateOf(((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L))
+    var lapCount by remember(notification?.key) {
+        mutableIntStateOf(notificationLapCount)
     }
 
-    var lapCount by remember(notification?.key) { mutableStateOf(1) }
-
-    LaunchedEffect(notification?.key, startTime, isPaused) {
-        if (!isPaused) {
+    LaunchedEffect(
+        notification?.key,
+        startTime,
+        isPaused,
+        frozenElapsedSeconds,
+        chronometerBase
+    ) {
+        if (frozenElapsedSeconds != null) {
+            elapsedSeconds = frozenElapsedSeconds
+        } else if (!isPaused) {
             while (true) {
-                elapsedSeconds = ((System.currentTimeMillis() - startTime) / 1000L).coerceAtLeast(0L)
-                kotlinx.coroutines.delay(500L)
+                val clockElapsed = chronometerBase?.let { base ->
+                    (
+                        (android.os.SystemClock.elapsedRealtime() - base) / 1000L
+                    ).coerceAtLeast(0L)
+                }
+
+                elapsedSeconds = clockElapsed
+                    ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                        .coerceAtLeast(0L)
+
+                kotlinx.coroutines.delay(100L)
             }
         }
     }
@@ -118,7 +208,6 @@ fun StopwatchExpanded(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: Stopwatch Glyph & Time
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -136,7 +225,7 @@ fun StopwatchExpanded(
                     tint = stopwatchColor,
                     modifier = Modifier
                         .size(22.dp)
-                        .then(if (!isPaused) Modifier.rotate(rotation) else Modifier)
+                        .then(if (!isPaused) Modifier.graphicsLayer { rotationZ = rotation } else Modifier)
                 )
             }
 
@@ -171,12 +260,10 @@ fun StopwatchExpanded(
             }
         }
 
-        // Right: Interactive Quick Actions (Lap, Pause/Resume, Reset)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. Lap Button
             val lapAction = notification?.actionIntents?.firstOrNull {
                 it.title.contains("lap", ignoreCase = true) || it.title.contains("split", ignoreCase = true)
             }
@@ -186,10 +273,20 @@ fun StopwatchExpanded(
                     .clip(CircleShape)
                     .background(Color(0xFF27272A))
                     .bounceClick {
-                        if (lapAction?.pendingIntent != null && notification != null) {
-                            triggerAction(context, notification.packageName, lapAction.pendingIntent, lapAction.title, notification.contentIntent)
+                        // Clock does not record laps while the stopwatch is paused.
+                        if (!isPaused) {
+                            if (lapAction?.pendingIntent != null && notification != null) {
+                                triggerAction(
+                                    context,
+                                    notification.packageName,
+                                    lapAction.pendingIntent,
+                                    lapAction.title,
+                                    notification.contentIntent
+                                )
+                            }
+
+                            lapCount++
                         }
-                        lapCount++
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -201,26 +298,17 @@ fun StopwatchExpanded(
                 )
             }
 
-            // 2. Pause / Resume Button
-            val resumeKeywords = listOf("resume", "start", "play", "unpause", "weiter", "reanudar")
-            val pauseKeywords = listOf("pause", "pausa", "pausar", "sospendi", "रोकें", "暂停")
-            val destructiveKeywords = listOf("reset", "stop", "cancel", "clear", "delete", "dismiss")
-
             val pauseAction = if (isPaused) {
-                notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    resumeKeywords.any { t.contains(it) }
-                } ?: notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    !destructiveKeywords.any { t.contains(it) } && !t.contains("lap")
+                notification?.actionIntents?.firstOrNull { action ->
+                    resumeKeywords.any {
+                        action.title.contains(it, ignoreCase = true)
+                    }
                 }
             } else {
-                notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    pauseKeywords.any { t.contains(it) }
-                } ?: notification?.actionIntents?.firstOrNull { act ->
-                    val t = act.title.lowercase()
-                    !destructiveKeywords.any { t.contains(it) } && !t.contains("lap")
+                notification?.actionIntents?.firstOrNull { action ->
+                    pauseKeywords.any {
+                        action.title.contains(it, ignoreCase = true)
+                    }
                 }
             }
             Box(
@@ -229,37 +317,20 @@ fun StopwatchExpanded(
                     .clip(CircleShape)
                     .background(stopwatchColor)
                     .bounceClick {
-                        val newPaused = !isPaused
-                        isPaused = newPaused
-                        if (!newPaused) {
-                            startTime = System.currentTimeMillis() - elapsedSeconds * 1000L
-                        }
+                        val currentNotification = notification
+                        val action = pauseAction
 
-                        if (pauseAction?.pendingIntent != null && notification != null) {
-                            triggerAction(context, notification.packageName, pauseAction.pendingIntent, pauseAction.title, notification.contentIntent)
-                        } else if (notification != null) {
-                            val repo = SmartIslandRepositories.notificationRepository(context)
-                            val updatedActions = if (newPaused) {
-                                listOf(
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Lap", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Resume", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Reset", null)
-                                )
-                            } else {
-                                listOf(
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Lap", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Pause", null),
-                                    com.agupta07505.smartisland.model.IslandNotificationAction("Reset", null)
-                                )
-                            }
-                            repo.postNotification(
-                                notification.copy(
-                                    title = if (newPaused) "Stopwatch (Paused)" else "Stopwatch",
-                                    text = TimerStopwatchParser.formatTime(elapsedSeconds),
-                                    timeMillis = System.currentTimeMillis() - elapsedSeconds * 1000L,
-                                    actionIntents = updatedActions
-                                )
+                        if (currentNotification != null && action?.pendingIntent != null) {
+                            triggerAction(
+                                context,
+                                currentNotification.packageName,
+                                action.pendingIntent,
+                                action.title,
+                                currentNotification.contentIntent
                             )
+                        } else {
+                            // Don't fake a state change if Clock provides no matching action.
+                            onOpenNotification()
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -272,7 +343,6 @@ fun StopwatchExpanded(
                 )
             }
 
-            // 3. Reset / Stop Button
             val resetAction = notification?.actionIntents?.firstOrNull {
                 val t = it.title.lowercase()
                 t.contains("reset") || t.contains("stop") || t.contains("clear") || t.contains("cancel")
@@ -298,6 +368,188 @@ fun StopwatchExpanded(
                     tint = Color(0xFFE4E4E7),
                     modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StopwatchExpandedCurrent(
+    notification: IslandNotification?,
+    bottomPadding: Dp,
+    onOpenNotification: () -> Unit = {},
+    onCollapse: () -> Unit = {},
+    settings: SmartIslandSettings = SmartIslandSettings.Default
+) {
+    val context = LocalContext.current
+    val stopwatchColor = Color(settings.stopwatchColor)
+
+    // The listener keeps the stopwatch clock: a paused card carries its frozen time, a running
+    // one counts from its start. Nothing here is recomputed from the wall clock while paused.
+    val frozenMs = notification?.recordingFrozenMs
+
+    // Optimistic freeze after tapping Pause, until the app posts its paused notification.
+    var tappedPauseAtSec by remember(notification?.key, frozenMs) { mutableLongStateOf(-1L) }
+    val isPaused = frozenMs != null || tappedPauseAtSec >= 0L
+
+    val liveSeconds = rememberRecordingSeconds(notification)
+    val elapsedSeconds = if (tappedPauseAtSec >= 0L) tappedPauseAtSec else liveSeconds
+
+    val displayTime = remember(elapsedSeconds) {
+        TimerStopwatchParser.formatTime(elapsedSeconds)
+    }
+
+    // No rotation runs while the card waits collapsed (pre-composed): the transition only exists while the card is shown.
+    val rotation = if (com.agupta07505.smartisland.ui.LocalCardShown.current) {
+        val infiniteTransition = rememberInfiniteTransition(label = "stopwatchAnim")
+        val animated by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 4000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "stopwatchRotation"
+        )
+        animated
+    } else 0f
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenNotification() }
+            .padding(start = 18.dp, top = 14.dp, end = 18.dp, bottom = bottomPadding),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(stopwatchColor.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AvTimer,
+                    contentDescription = "Stopwatch",
+                    tint = stopwatchColor,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .then(if (!isPaused) Modifier.graphicsLayer { rotationZ = rotation } else Modifier)
+                )
+            }
+
+            Column {
+                Text(
+                    text = displayTime,
+                    color = LocalIslandPalette.current.text,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(Modifier.height(2.dp))
+                val notifText = notification?.text.orEmpty()
+                val notifTitle = notification?.title.orEmpty()
+                val subtitle = if (isPaused) {
+                    "Paused"
+                } else if (notifText.isNotBlank() && !notifText.equals("Stopwatch", ignoreCase = true) && !notifText.contains("00:")) {
+                    notifText
+                } else if (notifTitle.isNotBlank() && !notifTitle.equals("Stopwatch", ignoreCase = true) && !notifTitle.contains("00:")) {
+                    notifTitle
+                } else {
+                    "Stopwatch Active"
+                }
+                Text(
+                    text = subtitle,
+                    color = stopwatchColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Lap: only shown when the stopwatch app offers a Lap button. The app owns the lap list.
+            val lapAction = notification.actionWithRole(ActionRole.Lap)
+            if (lapAction != null && notification != null && !isPaused) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(LocalIslandPalette.current.pick(Color(0xFF27272A), Color(0xFFD9D8DB)))
+                        .bounceClick { notification.fireAction(context, lapAction) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Flag,
+                        contentDescription = lapAction.title,
+                        tint = LocalIslandPalette.current.pick(Color(0xFFE4E4E7), Color(0xFF1F2937)),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            val toggleAction = if (isPaused) notification.actionWithRole(ActionRole.Resume)
+            else notification.actionWithRole(ActionRole.Pause)
+            if (toggleAction != null && notification != null) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(stopwatchColor)
+                        .bounceClick {
+                            if (notification.fireAction(context, toggleAction) && !isPaused) {
+                                tappedPauseAtSec = elapsedSeconds
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                        contentDescription = toggleAction.title,
+                        tint = Color.Black,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            val resetAction = notification.actionWithRole(ActionRole.Reset, ActionRole.Stop)
+            if (resetAction != null && notification != null) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(LocalIslandPalette.current.pick(Color(0xFF3F3F46), Color(0xFFC9C8CB)))
+                        .bounceClick {
+                            // Clear the card only if the press was delivered.
+                            if (notification.fireAction(context, resetAction)) {
+                                SmartIslandRepositories.notificationRepository(context).removeNotification(notification.key)
+                                onCollapse()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = resetAction.title,
+                        tint = LocalIslandPalette.current.pick(Color(0xFFE4E4E7), Color(0xFF1F2937)),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            // Any other button the stopwatch app put in its notification, shown as the app labels it.
+            if (notification != null) {
+                notification.leftoverActions(lapAction, toggleAction, resetAction).forEach {
+                    ShadeActionChip(notification, it, stopwatchColor)
+                }
             }
         }
     }

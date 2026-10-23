@@ -47,3 +47,7 @@
     public java.lang.String getAction();
     public java.lang.CharSequence getName();
 }
+
+# R8's optimizer miscompiles the very large IslandOverlayView composable (dex VerifyError:
+# "type Float unexpected as arg to if-eqz/if-nez"). Keep shrinking/obfuscation, skip optimization.
+-dontoptimize

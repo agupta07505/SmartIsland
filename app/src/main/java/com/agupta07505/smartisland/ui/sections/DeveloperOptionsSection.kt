@@ -50,13 +50,13 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
+import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -113,7 +113,6 @@ fun DeveloperOptionsSection(
         }
     }
 
-    // SAF Document Creator Launcher for TXT log export
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/plain")
     ) { uri: Uri? ->
@@ -148,7 +147,9 @@ fun DeveloperOptionsSection(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
 
-        // Card 2: Application Log Recording Engine
+        // Face ID unlock: the "face unlock only / any unlock" choice and the log capture helper.
+        FaceUnlockSection(settings = settings, repository = repository)
+
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
@@ -213,7 +214,6 @@ fun DeveloperOptionsSection(
                     )
                 }
 
-                // Live status badge
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -254,7 +254,6 @@ fun DeveloperOptionsSection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Action Buttons: Export to Storage & Share
                 Text(
                     text = stringResource(R.string.dev_export_section_title),
                     style = MaterialTheme.typography.labelLarge,
@@ -357,7 +356,6 @@ fun DeveloperOptionsSection(
             }
         }
 
-        // Card 3: Live System & Diagnostic Summary
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
@@ -423,7 +421,6 @@ fun DeveloperOptionsSection(
         }
     }
 
-    // Clear Logs Confirmation Dialog
     if (showClearLogsDialog) {
         AlertDialog(
             onDismissRequest = { showClearLogsDialog = false },

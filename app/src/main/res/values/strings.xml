@@ -6,7 +6,6 @@
   Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
 -->
 <resources>
-    <!-- Application Info -->
     <string name="app_name">Smart Island</string>
     <string name="app_subtitle">Floating Dynamic Overlay</string>
     <string name="app_description">Smart Island reimagines Android notifications with a beautiful floating experience, interactive controls, and fluid animations—keeping everything important just a glance away.</string>
@@ -14,15 +13,11 @@
     <string name="accessibility_service_description">Enables the Smart Island overlay to sit on top of the status bar so you can tap the pill around your camera cutout without touch interference.</string>
     <string name="grant_accessibility">Grant Accessibility permission to start overlay over status bar</string>
     <string name="made_by">Made with ❤️ by Animesh Gupta</string>
-
-    <!-- Navigation Tabs -->
     <string name="tab_studio">Home</string>
     <string name="tab_position">Layout</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_features">Features</string>
     <string name="tab_system">System &amp; About</string>
-
-    <!-- Master Switch & Status -->
     <string name="master_switch_title">Smart Island</string>
     <string name="master_switch_active_desc">Active</string>
     <string name="master_switch_ready_desc">Off — tap to start</string>
@@ -35,8 +30,6 @@
     <string name="enable_smart_island">Enable Smart Island</string>
     <string name="overlay_ready">Overlay service is ready</string>
     <string name="grant_overlay">Grant overlay permission to start</string>
-
-    <!-- Simulation Lab & Test Controls -->
     <string name="simulation_lab_title">Try It Out</string>
     <string name="simulation_lab_desc">Preview any mode</string>
     <string name="mode_music_player">Music</string>
@@ -60,15 +53,11 @@
     <string name="btn_music">Music</string>
     <string name="btn_battery">Battery</string>
     <string name="btn_clear_test">Clear Test Notifications</string>
-
-    <!-- System Diagnostics -->
     <string name="system_diagnostics_title">Health</string>
     <string name="system_diagnostics_desc">Permissions &amp; health</string>
     <string name="diag_accessibility">Accessibility</string>
     <string name="diag_notifications">Notifications</string>
     <string name="diag_battery_saver">Battery Saver</string>
-
-    <!-- Settings Overview -->
     <string name="settings_overview_title">Settings</string>
     <string name="settings_overview_desc">Configure island behaviors, colors, gestures, and system access</string>
     <string name="category_behaviors_launcher">Features</string>
@@ -84,13 +73,12 @@
     <string name="sec_support_desc">Request features, star on GitHub, review &amp; bug report</string>
     <string name="sec_about">About</string>
     <string name="sec_about_desc">App version, privacy policy, terms &amp; contact developer</string>
-
     <string name="card_notifications_privacy_title">Notifications &amp; Privacy</string>
     <string name="card_notifications_privacy_desc">Lock screen, auto-expand, actions &amp; app filters</string>
     <string name="card_notifications_privacy_status_lock">Lock Screen</string>
     <string name="card_notifications_privacy_status_standard">Standard</string>
     <string name="card_app_shortcuts_title">App Shortcuts</string>
-    <string name="card_app_shortcuts_desc">Quick-launch pinned apps from collapsed island</string>
+    <string name="card_app_shortcuts_desc">Long-press the collapsed island to quick-launch pinned apps</string>
     <string name="card_app_shortcuts_status">%1$d/8 pinned</string>
     <string name="card_app_shortcuts_status_disabled">Disabled</string>
     <string name="card_notification_history_title">Notification History</string>
@@ -101,7 +89,7 @@
     <string name="card_color_studio_desc">Background opacity, album backdrop &amp; color themes</string>
     <string name="card_color_studio_status">%1$d%% Opacity</string>
     <string name="card_gestures_guide_title">Gestures</string>
-    <string name="card_gestures_guide_desc">Swipe actions &amp; gesture controls</string>
+    <string name="card_gestures_guide_desc">Gesture guide, tour &amp; swipe actions</string>
     <string name="card_gestures_guide_status">Guide</string>
     <string name="card_permissions_setup_title">Permissions</string>
     <string name="card_permissions_setup_desc">Accessibility, notification access &amp; battery</string>
@@ -111,15 +99,13 @@
     <string name="card_about_app_status">Open Source</string>
     <string name="card_support_requests_title">Support &amp; Community</string>
     <string name="card_support_requests_desc">GitHub, issues &amp; Telegram community</string>
-
-    <!-- Detail Screen Titles -->
     <string name="detail_title_notifications_privacy">Notifications &amp; Privacy</string>
     <string name="detail_title_app_shortcuts">App Shortcuts Launcher</string>
     <string name="detail_title_notification_history">Notification History Log</string>
     <string name="detail_title_color_studio">Appearance, Opacity &amp; Colors</string>
-    <string name="detail_title_gestures_guide">Gesture Guide &amp; Playground</string>
+    <string name="detail_title_gestures_guide">Gestures &amp; Guide</string>
     <string name="card_updates_downloads_title">Updates &amp; Downloads</string>
-    <string name="card_updates_downloads_desc">Download stats, update checker &amp; changelogs</string>
+    <string name="card_updates_downloads_desc">Update checker &amp; changelogs</string>
     <string name="detail_title_updates_downloads">App Updates &amp; Downloads</string>
     <string name="total_downloads_title">Total Downloads</string>
     <string name="total_downloads_subtitle">Official GitHub APK Downloads</string>
@@ -134,10 +120,8 @@
     <string name="detail_title_permissions_center">Permissions &amp; Setup Center</string>
     <string name="detail_title_about_app">About Smart Island</string>
     <string name="detail_title_support_community">Support &amp; Feedback</string>
-
-    <!-- Permissions Section -->
     <string name="shizuku_card_title">Shizuku 1-Tap Auto Setup</string>
-    <string name="shizuku_card_desc">Automatically grant all required permissions via Shizuku without manually opening system settings</string>
+    <string name="shizuku_card_desc">Grants permissions through Shizuku, without opening each system settings page. Choose how much to grant.</string>
     <string name="shizuku_btn_run">Run Auto Setup</string>
     <string name="shizuku_btn_running">Running…</string>
     <string name="shizuku_not_running">Shizuku is not running or permission not granted</string>
@@ -147,14 +131,14 @@
     <string name="perm_accessibility_desc">Allows Smart Island to float dynamically above the status bar and notch area</string>
     <string name="perm_notification_title">Notification Access</string>
     <string name="perm_notification_desc">Reads incoming messages, calls, media metadata, and live tracking alerts</string>
+    <string name="perm_bluetooth_title">Nearby devices</string>
+    <string name="perm_bluetooth_desc">Allows Smart Island to detect Bluetooth device connections and show connected-device events</string>
     <string name="perm_battery_title">Battery Optimization Bypass</string>
     <string name="perm_battery_desc">Prevents Android and aggressive OEM task killers from terminating background services</string>
     <string name="perm_status_granted">Granted</string>
     <string name="perm_status_action_required">Action required</string>
     <string name="btn_open">Open</string>
     <string name="btn_grant">Grant</string>
-
-    <!-- Positions, Notch & Layout -->
     <string name="presets_title">Quick Layout Presets</string>
     <string name="presets_desc">Instant 1-tap positioning calibrated to your device screen width (%1$d dp)</string>
     <string name="preset_center_hole">Center Hole</string>
@@ -189,8 +173,6 @@
     <string name="toast_applied_right_preset">Applied Right Corner preset (+%1$d dp)</string>
     <string name="toast_applied_compact_preset">Applied Compact Pill preset</string>
     <string name="toast_reset_position">Position reset to factory defaults</string>
-
-    <!-- Customizations / Studio -->
     <string name="opacity_card_title">Island Opacity &amp; Transparency</string>
     <string name="opacity_card_desc">Adjust background translucency for a sleek glassmorphic look</string>
     <string name="opacity_solid">100%% Solid</string>
@@ -244,8 +226,6 @@
     <string name="color_blue">Blue</string>
     <string name="btn_save_color">Save Color</string>
     <string name="btn_cancel">Cancel</string>
-
-    <!-- Gestures Guide -->
     <string name="gestures_guide_title">Smart Island Gesture Guide</string>
     <string name="gestures_guide_desc">5 intuitive gestures to control notifications, calls &amp; multitasking</string>
     <string name="gesture_1_tap_tab">1. Tap</string>
@@ -268,8 +248,6 @@
     <string name="gesture_5_swipe_horizontal_title">5. Horizontal Swipe (Left / Right)</string>
     <string name="gesture_5_swipe_horizontal_sub">Switch Between Multiple Notifications</string>
     <string name="gesture_5_swipe_horizontal_desc">When multiple notifications are queued in Smart Island, swipe left or right horizontally on the expanded card to page between active alerts.</string>
-
-    <!-- Swipe Customization & Disable Actions -->
     <string name="enable_swipe_gestures_title">Enable Swipe Gestures</string>
     <string name="enable_swipe_gestures_desc">Enable swipe actions on the island. Turn off to completely disable all swipe gestures and prevent accidental actions.</string>
     <string name="swipe_customization_title">Customize Swipe Actions</string>
@@ -313,8 +291,6 @@
     <string name="swipe_action_play_pause_title">Play / Pause Media</string>
     <string name="swipe_action_play_pause_desc">Toggles playback of currently playing music or media</string>
     <string name="swipe_action_dialog_title">Select Action for %1$s</string>
-
-    <!-- Pill Specific Swipe Strings -->
     <string name="enable_pill_swipe_gestures_title">Enable Pill Swipe Gestures</string>
     <string name="enable_pill_swipe_gestures_desc">Enable swipe actions on the collapsed island pill. Turn off to completely disable gestures on the pill and prevent accidental actions.</string>
     <string name="pill_swipe_customization_title">Collapsed Pill Swipe Actions</string>
@@ -329,8 +305,6 @@
     <string name="pill_swipe_down_desc">Flick or drag downward on the collapsed pill</string>
     <string name="expanded_swipe_customization_title">Expanded Card Swipe Actions</string>
     <string name="expanded_swipe_customization_desc">Customize actions when swiping on the expanded island card</string>
-
-    <!-- Notifications & Privacy Rules -->
     <string name="oem_rules_title">Device Profile &amp; OEM Rules</string>
     <string name="oem_rules_desc">Tailored rules for Xiaomi, Samsung, Vivo, Realme, OnePlus &amp; more</string>
     <string name="select_device_oem">Select Device Manufacturer / ROM</string>
@@ -349,7 +323,7 @@
     <string name="display_rules_title">Display &amp; Interaction Rules</string>
     <string name="display_rules_desc">Customize automatic expansion, quick action buttons, and shade mirroring</string>
     <string name="toggle_auto_expand_title">Auto-Expand on New Notification</string>
-    <string name="toggle_auto_expand_desc">Pop open island card when new alerts arrive, or keep minimized in pill</string>
+    <string name="toggle_auto_expand_desc">Pop open island card when new alerts arrive, or keep minimized in pill. Apps start with loud (non-silent) notifications only; change it per app in the app list, and per event on the Home tab.</string>
     <string name="toggle_quick_actions_title">Notification Quick Actions</string>
     <string name="toggle_quick_actions_desc">Show actionable buttons like Reply, Mark Read, and Dismiss in expanded card</string>
     <string name="toggle_mirror_only_title">Mirror Only (Hide from System Shade)</string>
@@ -371,8 +345,6 @@
     <string name="toggle_live_activities_desc">Real-time live badges for Uber, Swiggy, Zomato, Blinkit, Rapido, Ola, etc.</string>
     <string name="toggle_navigation_title">Turn-by-Turn Map Navigation</string>
     <string name="toggle_navigation_desc">Real-time direction arrows and distance for Google Maps &amp; Waze</string>
-
-    <!-- Notification Cooldown & Anti-Spam -->
     <string name="notification_cooldown_title">Notification Cooldown &amp; Anti-Spam</string>
     <string name="notification_cooldown_desc">Temporarily cool down noisy apps that spam multiple alerts, and surface the latest notification after a quiet delay</string>
     <string name="toggle_enable_cooldown_title">Enable Anti-Spam Cooldown</string>
@@ -388,7 +360,6 @@
     <string name="btn_clear_exclusions">Clear All</string>
     <string name="chip_excluded">Always Alert</string>
     <string name="chip_cooldown_active">Cooldown Active</string>
-
     <string name="app_alerts_manager_title">App Alerts &amp; Sound Manager</string>
     <string name="app_alerts_manager_desc">Manage notification display and sound playback on a per-app basis</string>
     <string name="search_installed_apps">Search installed applications…</string>
@@ -415,8 +386,6 @@
     <string name="filter_tab_excluded">Excluded (%1$d)</string>
     <string name="filter_tab_muted">Muted (%1$d)</string>
     <string name="btn_reset_default">Reset to Default</string>
-
-    <!-- Notification History -->
     <string name="history_title">Notification History Log</string>
     <string name="history_desc">View and search saved notifications with day/time grouping &amp; auto-clean timer</string>
     <string name="toggle_enable_history_title">Enable Notification History Logging</string>
@@ -439,18 +408,14 @@
     <string name="filter_all_apps">All Apps</string>
     <string name="filter_all_apps_desc">View all app notifications together</string>
     <string name="filter_by_app">Filter by App</string>
-
-    <!-- App Shortcuts -->
-    <string name="shortcuts_title">Empty Island Quick Launcher</string>
-    <string name="shortcuts_desc">When there are no active alerts, tapping the island reveals your quick-launch apps grid (up to 8 apps).</string>
+    <string name="shortcuts_title">Open Apps Shortcut</string>
+    <string name="shortcuts_desc">Long-press the collapsed island to open your quick-launch apps grid (up to 8 apps). If the middle of the pill overlaps the camera cutout (always the case in notch mode), long-press a glyph; otherwise long-press anywhere on it, and a long press on the camera cutout hides or shows the pill. In landscape, long-press the collapsed pill.</string>
     <string name="toggle_enable_shortcuts_title">Enable App Shortcut Launcher</string>
-    <string name="toggle_enable_shortcuts_desc">Tap the empty island to access quick-launch pinned or recent applications</string>
-    <string name="toggle_recent_apps_title">Auto-fill with Recent Apps</string>
-    <string name="toggle_recent_apps_desc_granted">Fills open slots with your most recently used apps</string>
+    <string name="toggle_enable_shortcuts_desc">Long-press the collapsed island to access quick-launch pinned or recent applications</string>
+    <string name="toggle_recent_apps_title">Turn on Recently Used Apps</string>
+    <string name="toggle_recent_apps_desc_granted">Adds a Recents page to the quick-launch window. Swipe left or right to switch between your apps and recently used apps. Off: no Recents page and no sideways swipe.</string>
     <string name="toggle_recent_apps_desc_needed">Usage stats permission required for recent apps</string>
     <string name="pinned_apps_title">Pinned Applications</string>
-
-    <!-- Support & Community -->
     <string name="support_title">Support &amp; Community</string>
     <string name="star_on_github">Star on GitHub</string>
     <string name="star_on_github_desc">Support open-source development</string>
@@ -462,8 +427,6 @@
     <string name="report_bug_desc">File an issue with device details on GitHub</string>
     <string name="license_title">License (GNU GPL v3)</string>
     <string name="license_desc">Free &amp; Open Source Software</string>
-
-    <!-- About & GitHub Updates -->
     <string name="about_title">About Smart Island</string>
     <string name="github_update_center_title">GitHub Update Center</string>
     <string name="current_version_label">Current Version: v%1$s</string>
@@ -476,13 +439,9 @@
     <string name="repo_insights_title">Repository Insights</string>
     <string name="contributors_title">Top Contributors</string>
     <string name="recent_commits_title">Recent Commits</string>
-
-    <!-- Welcome Dialog -->
     <string name="welcome_title">Welcome to Smart Island Studio</string>
     <string name="welcome_desc">A private, customizable floating overlay experience for Android. No advertisements, zero tracking, and completely open source.</string>
     <string name="btn_get_started">Get Started</string>
-
-    <!-- Expanded Cards & Widgets -->
     <string name="expanded_battery_saver">Battery Saver ON</string>
     <string name="expanded_battery_low">Low Battery</string>
     <string name="expanded_battery_charging">Charging</string>
@@ -508,8 +467,6 @@
     <string name="expanded_action_reply">Reply</string>
     <string name="expanded_action_mark_read">Mark as read</string>
     <string name="expanded_action_dismiss">Dismiss</string>
-
-    <!-- Launcher & About Section Extra Strings -->
     <string name="quick_launch_open_settings">Open Smart Island settings</string>
     <string name="quick_launch_apps_unavailable">Selected apps are unavailable. Update App shortcuts in Smart Island.</string>
     <string name="privacy_policy_title">Privacy Policy</string>
@@ -517,8 +474,6 @@
     <string name="terms_of_use_title">Terms of Use</string>
     <string name="version_title">Version</string>
     <string name="developer_contact_title">Developer &amp; Contact</string>
-
-    <!-- Backup & Restore -->
     <string name="detail_title_backup_restore">Backup &amp; Restore</string>
     <string name="card_backup_restore_title">Backup &amp; Restore Settings</string>
     <string name="card_backup_restore_desc">Export and import your layout adjustments, custom color themes, and rules to JSON</string>
@@ -547,8 +502,6 @@
     <string name="toast_backup_invalid_file">Selected file is not a valid Smart Island backup.</string>
     <string name="toast_reset_all_success">All settings reset to defaults</string>
     <string name="btn_backup_restore_shortcut">Backup &amp; Restore</string>
-
-    <!-- Developer Options & Diagnostic Logs -->
     <string name="category_developer_options">Developer &amp; Diagnostics</string>
     <string name="card_developer_options_title">Developer Options &amp; Logs</string>
     <string name="card_developer_options_desc">Record in-app diagnostic logs, view system snapshot, and export to storage</string>
@@ -579,8 +532,6 @@
     <string name="dev_system_snapshot_desc">Current hardware, permissions, and island parameters</string>
     <string name="dev_mode_unlocked_banner_title">Developer Mode Active</string>
     <string name="dev_mode_unlocked_banner_desc">Diagnostic logging and system telemetry are available in Developer Options.</string>
-
-    <!-- iPhone Notch Mode -->
     <string name="notch_mode_card_title">iPhone Notch Mode</string>
     <string name="notch_mode_card_desc">Transforms Smart Island into an authentic iPhone-style notch docked at the top screen edge, with rounded bottom corners and zero companion circles.</string>
     <string name="notch_mode_toggle_title">Enable iPhone Notch Mode</string>
@@ -592,8 +543,6 @@
     <string name="preset_iphone_notch">iPhone Notch</string>
     <string name="preset_iphone_notch_desc">175x35dp, top edge docked</string>
     <string name="y_offset_locked_notch_mode">Docked to top edge (0 dp) in Notch Mode</string>
-
-    <!-- Companion Circle Position -->
     <string name="circle_position_card_title">Companion Circle Position</string>
     <string name="circle_position_card_desc">Choose whether the secondary multi-tasking circle appears on the left or right side of the main pill.</string>
     <string name="circle_position_right">Right Side</string>
@@ -601,4 +550,518 @@
     <string name="circle_position_left">Left Side</string>
     <string name="circle_position_left_desc">Recommended for right-aligned camera punch holes</string>
     <string name="toast_circle_position_updated">Companion circle placed on %1$s</string>
+    <string name="tab_demo">Demo</string>
+    <string name="island_font_title">Island font</string>
+    <string name="island_font_desc">The font of the text inside the island.</string>
+    <string name="island_font_yours">Your fonts</string>
+    <string name="island_font_add">Add font (.ttf or .otf)</string>
+    <string name="island_font_add_hint">The font is copied into the app, so it keeps working if you move the original file. Fonts are not part of a settings backup.</string>
+    <string name="island_font_remove">Remove font</string>
+    <string name="font_mix_title">Mix fonts</string>
+    <string name="font_mix_desc">Use up to three fonts at once, like the Light, Regular and Medium cuts of a system font.</string>
+    <string name="font_mix_light">Light</string>
+    <string name="font_mix_light_note">Secondary and small detail text</string>
+    <string name="font_mix_regular">Regular</string>
+    <string name="font_mix_regular_note">The main line of a card</string>
+    <string name="font_mix_medium">Medium</string>
+    <string name="font_mix_medium_note">Titles, names and numbers</string>
+    <string name="font_mix_same">Island font</string>
+    <string name="font_mix_same_note">Same as the font chosen above</string>
+    <string name="font_mix_done">Done</string>
+    <string name="font_mix_hint">Each piece of text picks its font by its weight. A slot left on the island font changes nothing. Add your own fonts with Add font above.</string>
+    <string name="island_font_added">Font added</string>
+    <string name="island_font_too_large">That file is too large for a font (20 MB at most).</string>
+    <string name="island_font_not_a_font">That file is not a .ttf or .otf font.</string>
+    <string name="island_font_import_failed">The font could not be added.</string>
+    <string name="shizuku_btn_sensitive">Show hidden notification text</string>
+    <string name="shizuku_sensitive_done">Done. Restarting the app so it can read hidden notification text</string>
+    <string name="sensitive_status_allowed">Hidden notification text: allowed</string>
+    <string name="sensitive_status_not_allowed">Hidden notification text: not allowed (the island may show \"Sensitive notification content hidden\")</string>
+    <string name="shizuku_check_button">Check Shizuku methods</string>
+    <string name="shizuku_check_running">Checking…</string>
+    <string name="shizuku_check_desc">Tries each Shizuku shortcut the Utilities tab can use (Wi-Fi, mobile data, screen recorder, cache, hotspot) and remembers which ones work on this phone. The others fall back to the system page.</string>
+    <string name="shizuku_check_done">Shizuku check finished</string>
+    <string name="shizuku_check_dialog_title">Try the Shizuku method checks?</string>
+    <string name="shizuku_check_dialog_body">This finds out which Shizuku shortcuts work on your phone. Wi-Fi and mobile data are not switched. The hotspot test turns your hotspot on for a few seconds and then off again. You can skip that test and the hotspot will keep opening its settings page.</string>
+    <string name="shizuku_check_dialog_all">Run all checks</string>
+    <string name="shizuku_check_dialog_skip_hotspot">Skip hotspot test</string>
+    <string name="shizuku_check_line_works">%1$s: works</string>
+    <string name="shizuku_check_line_missing">%1$s: not available on this phone</string>
+    <string name="shizuku_check_line_not_tested">%1$s: not tested</string>
+    <string name="shizuku_method_shell">Shell access</string>
+    <string name="shizuku_method_wifi_data">Wi-Fi and mobile data</string>
+    <string name="shizuku_method_screen_recorder">Screen recorder</string>
+    <string name="shizuku_method_trim_cache">Cache trimming</string>
+    <string name="shizuku_method_hotspot">Hotspot</string>
+    <string name="utility_timer_minutes_short">%1$dm</string>
+    <string name="camera_cutout_title">Camera cutout</string>
+    <string name="camera_cutout_summary">Set the camera hole by hand if it is not detected</string>
+    <string name="camera_cutout_manual_title">Set camera cutout manually</string>
+    <string name="camera_cutout_manual_desc">Use your own area instead of the detected one. This is where the expanded island closes when tapped (portrait). The area never gets wider than the pill\'s centre band.</string>
+    <string name="camera_cutout_x">Cutout centre (X from screen centre)</string>
+    <string name="camera_cutout_y">Cutout top (Y from screen top)</string>
+    <string name="camera_cutout_width">Cutout width</string>
+    <string name="camera_cutout_height">Cutout height</string>
+    <string name="expanded_style_card_title">Expanded Card Style</string>
+    <string name="toggle_expanded_blur_title">Background Blur</string>
+    <string name="toggle_expanded_blur_desc">Card blur blurs the artwork and backdrop inside an open card. Needs Android 12+</string>
+    <string name="slider_expanded_blur_radius">Blur Strength</string>
+    <string name="blur_mode_off">Off</string>
+    <string name="blur_mode_card">Card blur</string>
+    <string name="media_output_this_phone">This phone</string>
+    <string name="media_output_cast">Cast</string>
+    <string name="media_output_wired">Wired</string>
+    <string name="media_output_wired_headphones">Wired headphone</string>
+    <string name="media_look_title">Media Card</string>
+    <string name="media_look_desc">Blur and opacity for the music card only. Starts from the values above until you change them</string>
+    <string name="slider_media_opacity">Media Opacity</string>
+    <string name="toggle_media_blur_title">Media Artwork Blur</string>
+    <string name="slider_media_blur_radius">Media Blur Strength</string>
+    <string name="toggle_expanded_gradient_title">Card Gradient</string>
+    <string name="toggle_expanded_gradient_desc">Fade open island cards from the pill colour toward a second colour</string>
+    <string name="color_expanded_gradient">Gradient Colour</string>
+    <string name="slider_expanded_gradient_strength">Gradient Strength</string>
+    <string name="expanded_theme_title">Expanded island theme</string>
+    <string name="expanded_theme_desc">Dark or light card. System follows the light / dark setting of your phone.</string>
+    <string name="expanded_theme_dark">Dark</string>
+    <string name="expanded_theme_light">Light</string>
+    <string name="expanded_theme_system">System</string>
+    <string name="swipe_gesture_left_title">Swipe Left (Expanded)</string>
+    <string name="swipe_gesture_left_desc">Drag left on the expanded card</string>
+    <string name="swipe_gesture_right_title">Swipe Right (Expanded)</string>
+    <string name="swipe_gesture_right_desc">Drag right on the expanded card</string>
+    <string name="swipe_action_next_event_title">Next Event</string>
+    <string name="swipe_action_next_event_desc">Switches to the next stored event: live cards, queued notifications and loud notifications still in the shade (silent ones are skipped)</string>
+    <string name="swipe_action_prev_event_title">Previous Event</string>
+    <string name="swipe_action_prev_event_desc">Switches to the previous stored event: live cards, queued notifications and loud notifications still in the shade (silent ones are skipped)</string>
+    <string name="swipe_action_next_sibling_title">Next Sibling</string>
+    <string name="swipe_action_next_sibling_desc">Switches to the next card of the same app as the current one (wraps around). Does nothing when the app has only one card</string>
+    <string name="swipe_action_prev_sibling_title">Previous Sibling</string>
+    <string name="swipe_action_prev_sibling_desc">Switches to the previous card of the same app as the current one (wraps around). Does nothing when the app has only one card</string>
+    <string name="long_press_card_title">Long press</string>
+    <string name="long_press_card_desc">Long press on the collapsed pill. Rotating the phone overrides it: landscape hides the pill, portrait shows it again</string>
+    <string name="long_press_gesture_title">Long press on Pill</string>
+    <string name="long_press_gesture_desc">Press and hold the collapsed pill</string>
+    <string name="swipe_action_toggle_pill_title">Hide / show collapsed pill</string>
+    <string name="swipe_action_toggle_pill_desc">Hides the collapsed pill until a call comes (the idle pill is shown instead). Long press the idle pill to show it again</string>
+    <string name="toggle_transfer_speed_title">Detect transfers by network speed</string>
+    <string name="toggle_transfer_speed_desc">Last resort when an app shows no download or upload notification (for example its notifications are blocked). Shows an estimated card from overall network speed while the screen is on. It cannot tell which app is transferring.</string>
+    <string name="toggle_hide_all_lock_screen_title">Hide every event on the lock screen</string>
+    <string name="toggle_hide_all_lock_screen_desc">While the phone is locked no event shows in the pill (calls always do); the idle cutout stays</string>
+    <string name="lock_screen_preset_title">Lock screen preset</string>
+    <string name="lock_screen_preset_show_all">Show all</string>
+    <string name="lock_screen_preset_messages">Messages only</string>
+    <string name="lock_screen_preset_calls">Calls only</string>
+    <string name="lock_screen_preset_nothing">Nothing</string>
+    <string name="lock_screen_preset_desc">One choice for the switches below. Calls always show, except with Nothing, which hides the island on the lock screen completely. A mix of your own selects none.</string>
+    <string name="option_hide_on_lock_screen">Hide on lock screen</string>
+    <string name="option_hide_on_lock_screen_desc">This app\'s cards stay out of the pill while the phone is locked; its notifications are not turned off</string>
+    <string name="lock_screen_per_event_title">Hide per event on the lock screen</string>
+    <string name="lock_screen_per_event_desc">Switched-on events stay out of the pill while the phone is locked and come back when you unlock</string>
+    <string name="toggle_notifications_enabled_title">Show app notifications</string>
+    <string name="toggle_notifications_enabled_desc">Off: no notification cards at all; the notifications stay in the system shade and the island does no work for them</string>
+    <string name="notifications_master_title">Notifications</string>
+    <string name="notifications_master_off_note">App notifications are switched off, so the notification settings below have no effect until you switch them on.</string>
+    <string name="toggle_auto_expand_lock_screen_title">Auto-Expand on Lock Screen</string>
+    <string name="toggle_auto_expand_lock_screen_desc">Off: while the phone is locked only calls open the island by themselves; other events stay in the pill</string>
+    <string name="cooldown_system_events_title">System Events</string>
+    <string name="cooldown_system_events_desc">Pick the system events the cooldown may quiet when they repeat quickly (a charger plugged in again and again, Wi-Fi that keeps reconnecting). The card still shows; only the pop-up is held back. Uses the same trigger count and quiet period as above.</string>
+    <string name="cooldown_system_events_count">%1$d system events in cooldown</string>
+    <string name="btn_select_all_events">Select all</string>
+    <string name="btn_clear_events">Clear</string>
+    <string name="chip_always_alert">Always alert</string>
+    <string name="shortcut_action_app_info">App info</string>
+    <string name="shortcut_action_floating_window">Floating window</string>
+    <string name="shortcut_action_split_screen">Split screen</string>
+    <string name="pinned_folder_label">Folder</string>
+    <string name="utilities_title">Utilities</string>
+    <string name="utilities_empty_desc">Quick controls will appear here.</string>
+    <string name="recent_apps_grant_access">Open usage access settings</string>
+    <string name="recent_apps_empty">No recent apps yet</string>
+    <string name="pinned_folder_full_unpinned">All 8 slots are taken, so %1$s was unpinned</string>
+    <string name="shortcut_floating_window_off">Floating window is turned off in Smart Island settings.</string>
+    <string name="shortcut_split_unavailable">Split screen isn\'t available right now.</string>
+    <string name="pin_apps_add">Add</string>
+    <string name="sibling_picker_title">%1$s · %2$d cards</string>
+    <string name="sibling_picker_close">Close list</string>
+    <string name="card_about_title">About</string>
+    <string name="card_about_subtitle">Version, the original project and licences</string>
+    <string name="detail_title_about">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_based_on_title">Based on SmartIsland 7.0.0</string>
+    <string name="about_based_on_body">This app is based on SmartIsland 7.0.0 by Animesh Gupta. The original project is open source; this version changes its animations, layout, settings and features.</string>
+    <string name="about_open_original">Open the original project</string>
+    <string name="about_no_browser">No app found to open the link.</string>
+    <string name="about_license_title">Licence</string>
+    <string name="about_license_body">Released under the GNU General Public License v3.0. The original copyright notice, Copyright © 2026 Animesh Gupta, is kept as the licence requires.</string>
+    <string name="about_fonts_title">Fonts</string>
+    <string name="about_fonts_body">Lora, Inter Display and Poppins are bundled under the SIL Open Font License 1.1. Fonts you add yourself stay on your device and are covered by their own licences.</string>
+    <string name="card_timing_title">Timing</string>
+    <string name="card_timing_subtitle">How long cards stay and when the island idles</string>
+    <string name="detail_title_timing">Timing</string>
+    <string name="timing_intro">Fine-tune how long things stay on the island. Changes apply straight away and the defaults match the old fixed values.</string>
+    <string name="timing_idle_label">Idle timeout</string>
+    <string name="timing_never">Never</string>
+    <string name="timing_idle_hint">How long cards stay before the island returns to its idle cutout: ordinary notifications, and live events (music, navigation, timers ...) that appeared by themselves. Live events you open with a tap on the idle cutout stay until you close them. Calls never time out. Slide to the end for Never: cards stay until they are dismissed.</string>
+    <string name="timing_battery_label">Battery warning length</string>
+    <string name="timing_battery_hint">How long Low battery, Battery saver and Fully charged cards stay.</string>
+    <string name="timing_popup_label">Popup length</string>
+    <string name="timing_popup_hint">How long a new short event holds the main cutout before the older cards return. It never takes the cutout from a live event.</string>
+    <string name="timing_merge_label">Secondary cutout merge delay</string>
+    <string name="timing_merge_hint">How long the small round cutout waits, untouched, before it merges into the main one.</string>
+    <string name="timing_transfer_label">Stuck download expiry</string>
+    <string name="timing_transfer_hint">A download or upload card the app has not updated for this long is removed from the island. Fixes cards left behind when an app cancels its notification without telling the island. 0 keeps them until the app removes them.</string>
+    <string name="timing_reset">Reset timing to defaults</string>
+    <string name="anim_speed_title_portrait">Animation speed (portrait)</string>
+    <string name="anim_speed_title_landscape">Animation speed (landscape)</string>
+    <string name="anim_speed_desc">How fast the island opens, closes and moves. Normal is the original feel.</string>
+    <string name="anim_speed_relaxed">Relaxed</string>
+    <string name="anim_speed_normal">Normal</string>
+    <string name="anim_speed_snappy">Snappy</string>
+    <string name="merge_style_title_portrait">Cutout merge style (portrait)</string>
+    <string name="merge_style_title_landscape">Cutout merge style (landscape)</string>
+    <string name="merge_style_desc">How the small round cutout joins the main one. Slide is the original look; Bubble pushes the two cutouts together, then joins them into one liquid shape.</string>
+    <string name="landscape_edge_inset_title">Distance from the screen edge</string>
+    <string name="landscape_edge_inset_label">Edge inset</string>
+    <string name="landscape_edge_inset_desc">How far the circle and the bar sit from the side edge of the screen in landscape when they are placed Left or Right (and Camera, when the phone reports no cutout). Raise it to move them toward the middle. It does nothing for Middle.</string>
+    <string name="category_interaction">Interaction</string>
+    <string name="merge_style_slide">Slide</string>
+    <string name="merge_style_bubble">Bubble</string>
+    <string name="floating_window_title">Floating window</string>
+    <string name="floating_window_desc">The white pill at the bottom of an expanded card: pull it down to open the app in a floating window. Off removes the pill, its pull animation and the Floating window swipe action.</string>
+    <string name="floating_window_mode_title">Open with</string>
+    <string name="floating_window_mode_system">System</string>
+    <string name="floating_window_mode_lmo">LMO Freeform</string>
+    <string name="floating_window_mode_system_desc">Android\'s own freeform windows. Needs freeform support on this ROM (Developer options).</string>
+    <string name="floating_window_mode_lmo_desc">Uses the LMO Freeform app (com.libremobileos.freeform) found on LibreMobileOS-based ROMs. It opens the app\'s main screen in its window.</string>
+    <string name="haptics_title">Haptic feedback</string>
+    <string name="haptics_desc">A small vibration when the island opens, closes, or a swipe action runs. Holding the pill keeps its own stronger pulse.</string>
+    <string name="haptics_off">Off</string>
+    <string name="haptics_light">Light</string>
+    <string name="haptics_normal">Normal</string>
+    <string name="haptics_strong">Strong</string>
+    <string name="gesture_sensitivity_title">Gesture sensitivity</string>
+    <string name="gesture_sensitivity_desc">How easily swipes fire. High needs a shorter swipe. Low needs a longer, straighter one, so a diagonal drag does not trigger the wrong action. Normal is the original feel.</string>
+    <string name="gesture_sensitivity_low">Low</string>
+    <string name="gesture_sensitivity_normal">Normal</string>
+    <string name="gesture_sensitivity_high">High</string>
+    <string name="toggle_show_during_dnd_title">Show the island during Do Not Disturb</string>
+    <string name="toggle_show_during_dnd_desc">Keep showing cards while Do Not Disturb hides notifications. Alert sounds stay muted.</string>
+    <string name="option_expanded_card">Expanded card</string>
+    <string name="option_expanded_card_desc">Tapping this app\'s card opens the big card.</string>
+    <string name="tag_card_never_expands">Card never expands</string>
+    <string name="option_auto_expand">Auto-expand</string>
+    <string name="option_auto_expand_desc">Only loud (non-silent) notifications from this app open its card by themselves.</string>
+    <string name="option_auto_expand_always_desc">Every new notification from this app opens its card by itself, silent ones too.</string>
+    <string name="tag_no_auto_expand">Does not auto-expand</string>
+    <string name="auto_expand_choice_default">Loud only</string>
+    <string name="auto_expand_choice_always">Always</string>
+    <string name="auto_expand_choice_never">Never</string>
+    <string name="event_auto_expand_on">Auto-expand on</string>
+    <string name="event_auto_expand_off">Auto-expand off</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_empty">No settings match %1$s</string>
+    <string name="utilities_empty_action">Set up utilities</string>
+    <string name="utilities_open_settings">Open app shortcut settings</string>
+    <string name="utility_mobile_data">Mobile data</string>
+    <string name="utility_wifi">Wi-Fi</string>
+    <string name="utility_hotspot">Hotspot</string>
+    <string name="utility_flashlight">Flashlight</string>
+    <string name="utility_calculator">Calculator</string>
+    <string name="utility_clear_cache">Clear cache</string>
+    <string name="utility_screen_recorder">Screen recorder</string>
+    <string name="utility_screenshot">Screenshot</string>
+    <string name="utility_timer">Timer</string>
+    <string name="utility_stopwatch">Stopwatch</string>
+    <string name="utility_lock_screen">Lock screen</string>
+    <string name="utility_app_widget">App widget</string>
+    <string name="utility_voice_recorder">Voice recorder</string>
+    <string name="utility_camera">Camera</string>
+    <string name="utility_bluetooth">Bluetooth</string>
+    <string name="utility_airplane_mode">Airplane mode</string>
+    <string name="utility_auto_rotate">Auto-rotate</string>
+    <string name="utility_dark_mode">Dark mode</string>
+    <string name="utility_battery_saver">Battery saver</string>
+    <string name="utility_auto_brightness">Auto brightness</string>
+    <string name="utility_ringer">Ringer mode</string>
+    <string name="utility_ringer_needs_dnd">Silent needs Do Not Disturb access. Run the Shizuku setup or allow it in system settings.</string>
+    <string name="utilities_editor_tab_one">Tab 1</string>
+    <string name="utilities_editor_tab_two">Tab 2</string>
+    <string name="utilities_editor_tab_hint">The second tab only shows in the island once every cell of the first tab is filled.</string>
+    <string name="utility_settings_permission">Allow Smart Island to modify system settings for this</string>
+    <string name="utility_app_missing">App is no longer available</string>
+    <string name="utility_no_flash">This device has no flashlight</string>
+    <string name="utility_no_calculator">No calculator app found</string>
+    <string name="utility_cache_cleared">Background apps stopped and cache cleared</string>
+    <string name="utility_needs_android_9">Needs Android 9 or newer</string>
+    <string name="utility_action_failed">Could not do that</string>
+    <string name="utility_recorder_use_tile">Tap the Screen record tile</string>
+    <string name="utility_widget_unavailable">Widget unavailable</string>
+    <string name="utility_pick_calculator">Choose a calculator</string>
+    <string name="utility_pick_cancel">Cancel</string>
+    <string name="utility_brightness">Brightness</string>
+    <string name="utility_volume">Volume</string>
+    <string name="utility_brightness_permission">Allow Smart Island to modify system settings to change brightness</string>
+    <string name="utilities_editor_title">Utilities page</string>
+    <string name="utilities_editor_desc">Swipe up in the quick-launch window to reach it. The grid is 2 rows of 4 icons: tap an empty cell to add a utility or an app widget, and press and hold an item to drag it to another cell or onto another item to swap them.</string>
+    <string name="utilities_editor_add_title">Add to Utilities</string>
+    <string name="utilities_editor_add_widget">App widget…</string>
+    <string name="utilities_editor_widget_pick">Choose a widget</string>
+    <string name="utilities_editor_widget_none">No widgets available</string>
+    <string name="utilities_editor_cancel">Cancel</string>
+    <string name="utilities_editor_selected_hint">Selected. Tap an empty cell to move it there, or tap it again to deselect.</string>
+    <string name="utilities_editor_remove">Remove</string>
+    <string name="utilities_editor_rows">Rows</string>
+    <string name="utilities_editor_columns">Columns</string>
+    <string name="utilities_editor_calculator_app">Calculator app</string>
+    <string name="utilities_editor_calculator_unset">Not chosen yet. You pick one the first time you tap it.</string>
+    <string name="utilities_editor_calculator_reset">Ask again</string>
+    <string name="utilities_editor_calculator_floating">Open in a floating window</string>
+    <string name="utilities_editor_calculator_floating_off">Turn on Floating window in the gesture settings to use this.</string>
+    <string name="idle_widgets_title">Idle widgets</string>
+    <string name="idle_widgets_desc">Show a small live readout in the collapsed cutout while no event is on the island. Several widgets take turns.</string>
+    <string name="idle_widgets_enable">Show idle widgets</string>
+    <string name="idle_widget_clock_title">Hour tick</string>
+    <string name="idle_widget_clock_desc">No clock (the status bar has one). On every full hour the hour and the minutes tick over on the cutout, whatever it shows, 12 or 24 hour like the system.</string>
+    <string name="cal_cfg_title">Calendar: next event</string>
+    <string name="cal_cfg_no_permission">Allow calendar access so the next event can be shown. All-day, cancelled and declined events are skipped.</string>
+    <string name="cal_cfg_intro">The date widget\'s island names your next event under the date (for example "Standup · 10:30", "in 25 min"). Events are read on this phone only.</string>
+    <string name="cal_cfg_allowed">Calendar access is allowed.</string>
+    <string name="cal_cfg_allow">Allow calendar access</string>
+    <string name="idle_battery_only_charging_title">Battery: only when charging</string>
+    <string name="idle_battery_only_charging_desc">Off: the battery also takes a turn while not charging, with the battery glyph on the left and the percentage on the right. On: it shows only while plugged in.</string>
+    <string name="battery_island_till">till %1$s</string>
+    <string name="idle_widget_liveclock_title">Clock</string>
+    <string name="idle_widget_liveclock_desc">The hour on the left of the cutout and the minute on the right, 12 or 24 hour like the system; the minute ticks upwards on every new minute. The island shows the time in large type over the full date.</string>
+    <string name="idle_widget_date_title">Date</string>
+    <string name="idle_widget_date_desc">Weekday and day of the month.</string>
+    <string name="idle_widget_weather_title">Weather</string>
+    <string name="idle_widget_weather_desc">Temperature and conditions for your area. How often it refreshes, where the place comes from and when it shows are set under Idle widgets > Weather in Settings.</string>
+    <string name="idle_widget_battery_title">Battery</string>
+    <string name="idle_widget_battery_desc">Battery level, green while charging and red when low.</string>
+    <string name="idle_widget_alarm_title">Next alarm</string>
+    <string name="idle_widget_alarm_desc">When the next alarm rings. Skipped while no alarm is set.</string>
+    <string name="idle_widget_speed_title">Network speed</string>
+    <string name="idle_widget_speed_desc">Live download or upload speed of the whole device.</string>
+    <string name="idle_widget_daymoments_title">Day moments</string>
+    <string name="idle_widget_daymoments_desc">A glyph ticks in on the left of the cutout at your local 6:00 (sunrise), 12:00 (afternoon), 17:30 (sunset) and 23:00 (midnight). Sunrise and afternoon tick upwards, sunset and midnight downwards.</string>
+    <string name="idle_widget_notifications_title">Notification count</string>
+    <string name="idle_widget_notifications_desc">Unread messages and mail from all your messaging and email apps, as a number on the left of the cutout. Tap it to see how many each app has. Skipped while there are none.</string>
+    <string name="idle_widget_modes_title">Do Not Disturb / mode</string>
+    <string name="idle_widget_modes_desc">The active mode (Do Not Disturb, Bedtime, Driving, …) as its icon on the left of the cutout. Tap it for the mode\'s name. Skipped while none is on. Grant Do Not Disturb access to tell the modes apart (Android 15 or later).</string>
+    <string name="idle_modes_access_desc">The mode widget shows Do Not Disturb as it is. To tell Bedtime, Driving and your other modes apart (Android 15 or later) and show their names, allow Smart Island under Do Not Disturb access. It only reads which mode is on; it changes nothing.</string>
+    <string name="idle_modes_access_button">Grant Do Not Disturb access</string>
+    <string name="idle_widgets_cycle_title">Switch every</string>
+    <string name="idle_widgets_seconds">%1$d s</string>
+    <string name="idle_widgets_island_close_title">Close the widget island after</string>
+    <string name="idle_widgets_island_never">Never</string>
+    <string name="idle_widgets_island_close_desc">Tap a widget\'s icon or value on the collapsed cutout to open it larger. It closes after this time without a touch, or at once with a tap outside it. Its pause button holds the pill on the current widget.</string>
+    <string name="idle_widgets_battery_metric_title">Charging island shows</string>
+    <string name="idle_widgets_battery_metric_watt">Wattage</string>
+    <string name="idle_widgets_battery_metric_volt">Voltage</string>
+    <string name="idle_widgets_battery_metric_desc">The battery island opens only while charging. It shows the percentage, the time until full, the battery temperature and this value. Wattage depends on the phone reporting its charging current.</string>
+    <string name="idle_widgets_glyph_scale_title">Glyph size</string>
+    <string name="idle_widgets_glyph_font_title">Glyph font</string>
+    <string name="idle_widgets_glyph_font_desc">The font of the idle widget text on the collapsed pill. The glyphs are white.</string>
+    <string name="idle_widgets_glyph_font_same">Same as island</string>
+    <string name="idle_widgets_glyph_font_same_note">Follows the island font</string>
+    <string name="idle_widgets_unit_title">Temperature unit</string>
+    <string name="idle_widgets_unit_auto">Auto</string>
+    <string name="idle_widgets_unit_c">\u00B0C</string>
+    <string name="idle_widgets_unit_f">\u00B0F</string>
+    <string name="idle_widgets_weather_needs_network">Weather needs Network checks, which is off. Turn it on in Notifications and privacy.</string>
+    <string name="idle_widgets_weather_no_location">Without location access the weather uses your approximate place from your internet connection (wrong while a VPN is on).</string>
+    <string name="idle_widgets_weather_location_ok">Weather uses your approximate location (about 10 km). Only that rounded place is sent to the weather provider chosen in Settings (Open-Meteo unless you set your own).</string>
+    <string name="idle_widgets_weather_manual_note">Weather uses the city you picked in Settings > Idle widgets > Weather. No location is read.</string>
+    <string name="idle_widgets_weather_last_known_note">Weather uses only the last place the app stored. No new location is read and no internet place lookup is made.</string>
+    <string name="idle_widgets_allow_location">Allow approximate location</string>
+    <string name="idle_widgets_landscape_note">In landscape the idle circle is small, so it shows only the value. Make the circle bigger in the landscape position settings if it is hard to read.</string>
+    <string name="card_idle_widgets_subtitle">Switches per orientation, which widgets, tick timers</string>
+    <string name="idle_widgets_open_settings">Open idle widget settings</string>
+    <string name="idle_off_after_tap_title">Off after tap to close</string>
+    <string name="idle_off_after_tap_desc">If you close the island with a tap on the cutout, no widget shows when the pill then goes idle. They stay off until you tap to open the island again.</string>
+    <string name="idle_off_after_long_press_title">Off after long press to hide</string>
+    <string name="idle_off_after_long_press_desc">After you hide the pill with a long press, no idle widget shows at all. Showing the pill again brings them back.</string>
+    <string name="idle_orientation_note_portrait">These switches are for portrait. Landscape has its own, on the Landscape tab.</string>
+    <string name="idle_orientation_note_landscape">These switches are for landscape. Portrait has its own, on the Portrait tab.</string>
+    <string name="idle_select_title">Widgets</string>
+    <string name="idle_select_desc">Pick any of them. Several take turns in the order shown.</string>
+    <string name="idle_select_button">Select widgets</string>
+    <string name="idle_select_dialog_title">Select widgets</string>
+    <string name="idle_select_all">Select all</string>
+    <string name="idle_select_reset">Reset</string>
+    <string name="idle_select_done">Done</string>
+    <string name="idle_select_drag">Reorder %1$s</string>
+    <string name="idle_select_pin">Always show %1$s first</string>
+    <string name="idle_select_unpin">Stop showing %1$s first</string>
+    <string name="idle_select_pinned">Always shown first</string>
+    <string name="idle_select_order_note">Drag a handle to change the order. The pinned widget always comes first.</string>
+    <string name="idle_sched_title">Schedules</string>
+    <string name="idle_sched_intro">Choose which widgets take turns during work hours, at night, or while charging. A widget you untick is left out only while that schedule is in force. Charging comes first, then night, then work hours.</string>
+    <string name="idle_sched_charging_title">While charging</string>
+    <string name="idle_sched_charging_desc">Use its own list of widgets while the phone is charging.</string>
+    <string name="idle_sched_night_title">At night</string>
+    <string name="idle_sched_night_desc">Use its own list of widgets between these hours.</string>
+    <string name="idle_sched_work_title">Work hours</string>
+    <string name="idle_sched_work_desc">Use its own list of widgets between these hours.</string>
+    <string name="idle_sched_from">From %1$s</string>
+    <string name="idle_sched_to">Until %1$s</string>
+    <string name="idle_sched_weekdays">Monday to Friday only</string>
+    <string name="idle_sched_rotate">Widgets that take turns</string>
+    <string name="idle_sched_none_note">Nothing is ticked, so no widget shows while this schedule is in force.</string>
+    <string name="idle_select_last_note">At least one widget stays selected. Switch the widgets off with the main switch.</string>
+    <string name="idle_timers_title">Timers</string>
+    <string name="idle_tick_timer_title">Glyph tick every</string>
+    <string name="idle_tick_timer_desc">How often the glyphs on the cutout tick sideways and a faster network speed ticks to its arrow.</string>
+    <string name="idle_switch_timer_title">Widget switch every</string>
+    <string name="idle_switch_timer_desc">How long a widget stays before the glyphs tick away in three steps and the next widget comes in.</string>
+    <string name="idle_beat_only_change_title">Beat only when a value changes</string>
+    <string name="idle_beat_only_change_desc">The sideways beat of the glyphs plays only when something on the widget changed, such as a new temperature, minute or day. Off: it plays on every beat.</string>
+    <string name="idle_timers_shared_note">Both timers are shared by portrait and landscape.</string>
+    <string name="idle_seconds_decimal">%1$.1f s</string>
+
+    <!-- ===== Ported from the modified build (main) ===== -->
+    <string name="shizuku_option_necessary_title">Necessary permissions</string>
+    <string name="shizuku_option_necessary_desc">Everything the island needs to work: restricted settings, accessibility, notification access, hidden notification text, modify system settings, notifications, Bluetooth, battery and background.</string>
+    <string name="shizuku_option_necessary_btn">Grant necessary</string>
+    <string name="shizuku_option_all_title">All permissions</string>
+    <string name="shizuku_option_all_desc">The necessary ones plus the optional ones: Do Not Disturb (silent ringer), usage access (recent apps), and location (weather, Wi-Fi name).</string>
+    <string name="shizuku_option_all_btn">Grant all</string>
+    <string name="content_pill_same_title">Same size with content</string>
+    <string name="content_pill_same_desc">Keep the collapsed cutout the same size when it shows a notification, event or music. Off: it stretches to the size below and shrinks back when the card is put away.</string>
+    <string name="slider_content_pill_width">Collapsed cutout width with content</string>
+    <string name="toggle_live_events_foreground_title">Live events in foreground apps</string>
+    <string name="toggle_live_events_foreground_desc">Keep showing music, navigation, timers, recordings and downloads on the island even while their app is open</string>
+    <string name="utilities_editor_full">Every utility cell is taken. Remove one first.</string>
+    <string name="idle_alarm_hide_far_title">Hide alarm when far away</string>
+    <string name="idle_alarm_hide_far_desc">Don\'t show the next alarm on the pill while it is more than 12 hours away.</string>
+    <string name="idle_widget_wind_title">Wind speed</string>
+    <string name="idle_widget_wind_desc">Current wind speed for your area, with its direction in the island. Uses the same lookup as Weather.</string>
+    <string name="idle_units_title">Units</string>
+    <string name="idle_units_wind_title">Wind speed unit</string>
+    <string name="idle_units_wind_kmh">km/h</string>
+    <string name="idle_units_wind_ms">m/s</string>
+    <string name="idle_units_wind_mph">mph</string>
+    <string name="idle_units_wind_kn">kn</string>
+    <string name="weather_cfg_title">Weather</string>
+    <string name="weather_cfg_intro">Where the weather comes from, how often it updates and which service answers. Applies to the Weather and Wind widgets.</string>
+    <string name="weather_cfg_source_title">Location source</string>
+    <string name="weather_cfg_source_auto">Auto</string>
+    <string name="weather_cfg_source_manual">Manual city</string>
+    <string name="weather_cfg_source_last">Last known</string>
+    <string name="weather_cfg_source_auto_desc">Uses your device\'s approximate location (about 10 km). Without location access it falls back to the place of your internet connection, which is wrong while a VPN is on.</string>
+    <string name="weather_cfg_source_last_desc">Uses only the place the app stored the last time it could read your location. It never reads your location or looks up your internet place by itself, which saves battery and data.</string>
+    <string name="weather_cfg_last_needs_permission">Allow approximate location once so there is a place to remember.</string>
+    <string name="weather_cfg_last_none">No place is stored yet. Open this screen with location access allowed, or switch to Auto once.</string>
+    <string name="weather_cfg_city_none">No city chosen yet</string>
+    <string name="weather_cfg_city_chosen">City: %1$s</string>
+    <string name="weather_cfg_city_search_hint">Search for a city</string>
+    <string name="weather_cfg_city_search">Search</string>
+    <string name="weather_cfg_city_searching">Searching…</string>
+    <string name="weather_cfg_city_no_results">No city found. Check the spelling, or that Network checks is on.</string>
+    <string name="weather_cfg_city_privacy">No location permission is needed. The search text goes to Open-Meteo\'s geocoding service; only the rounded place of the chosen city is kept.</string>
+    <string name="weather_cfg_refresh_title">Refresh interval</string>
+    <string name="weather_cfg_refresh_15m">15 min</string>
+    <string name="weather_cfg_refresh_30m">30 min</string>
+    <string name="weather_cfg_refresh_1h">1 h</string>
+    <string name="weather_cfg_refresh_3h">3 h</string>
+    <string name="weather_cfg_refresh_manual">Manual</string>
+    <string name="weather_cfg_refresh_desc">A longer interval uses less battery and data. Nothing is fetched while Network checks is off or the screen is off.</string>
+    <string name="weather_cfg_refresh_manual_desc">Weather is fetched once, then only when you tap Refresh now.</string>
+    <string name="weather_cfg_refresh_now">Refresh now</string>
+    <string name="weather_cfg_refresh_working">Updating…</string>
+    <string name="weather_cfg_refresh_done">Updated</string>
+    <string name="weather_cfg_refresh_failed">Could not update. Check the place, the provider and your connection.</string>
+    <string name="weather_cfg_provider_title">Data provider</string>
+    <string name="weather_cfg_provider_open_meteo">Open-Meteo</string>
+    <string name="weather_cfg_provider_custom">Custom</string>
+    <string name="weather_cfg_provider_open_meteo_desc">Open-Meteo is free and needs no account or API key. Only the rounded place is sent.</string>
+    <string name="weather_cfg_custom_url">Service address (https)</string>
+    <string name="weather_cfg_custom_url_invalid">Enter an https address, for example https://example.com/v1/forecast.</string>
+    <string name="weather_cfg_custom_key">API key (optional)</string>
+    <string name="weather_cfg_custom_save">Save</string>
+    <string name="weather_cfg_custom_desc">The service must answer like Open-Meteo\'s forecast API (a self-hosted Open-Meteo or its customer API). It receives the rounded place and the key, which is sent as the apikey parameter. The key stays on this device and is not included in backups.</string>
+    <string name="weather_cfg_pill_title">Pill display</string>
+    <string name="weather_cfg_pill_temp_icon">Temp + icon</string>
+    <string name="weather_cfg_pill_temp_only">Temp only</string>
+    <string name="weather_cfg_pill_feels">Feels like</string>
+    <string name="weather_cfg_pill_text">Condition</string>
+    <string name="weather_cfg_pill_desc">What the weather shows on the pill. Feels like is drawn as ~19°; condition names are short (Sunny, Rain, Storm).</string>
+    <string name="weather_cfg_readouts_title">Island readouts</string>
+    <string name="weather_cfg_readout_high_low">High / Low</string>
+    <string name="weather_cfg_readout_rain">Rain chance</string>
+    <string name="weather_cfg_readout_humidity">Humidity</string>
+    <string name="weather_cfg_readout_uv">UV index</string>
+    <string name="weather_cfg_readout_sun">Sunrise / Sunset</string>
+    <string name="weather_cfg_readout_aqi">Air quality</string>
+    <string name="weather_cfg_readout_hourly">Next 4 hours</string>
+    <string name="weather_cfg_readouts_desc">Extra rows when the weather island is open. A row without a value is left out. Only the rows you pick are asked for; air quality is a second request to Open-Meteo\'s air quality service.</string>
+    <string name="weather_cfg_readout_aqi_custom">Air quality only comes from Open-Meteo, so it is left out while a custom provider is chosen.</string>
+    <string name="weather_cfg_icon_animated">Animated weather icon</string>
+    <string name="weather_cfg_icon_saver">Pause while Battery Saver is on</string>
+    <string name="weather_cfg_icon_desc">The icon moves (sun spin, rain fall). The system setting that removes animations always keeps it still. Off also swaps two icons instantly instead of morphing.</string>
+    <string name="weather_cfg_open">Weather settings</string>
+    <string name="net_cfg_open">Network speed settings</string>
+    <string name="cal_cfg_open">Calendar settings</string>
+    <string name="net_cfg_title">Network speed</string>
+    <string name="net_cfg_intro">The widget shows only the busier direction: one arrow and one number, for example ↓ 4.2M. It switches to ↑ when upload is the larger of the two.</string>
+    <string name="net_cfg_threshold_title">Show when traffic is above</string>
+    <string name="net_cfg_off">Off</string>
+    <string name="net_cfg_50k">50 KB/s</string>
+    <string name="net_cfg_200k">200 KB/s</string>
+    <string name="net_cfg_1m">1 MB/s</string>
+    <string name="net_cfg_note_on">The widget sits out of the rotation until the busier direction reaches this speed, and leaves again once it falls clearly below it.</string>
+    <string name="net_cfg_conn_title">Show on</string>
+    <string name="net_cfg_conn_any">Any connection</string>
+    <string name="net_cfg_conn_wifi">Wi-Fi only</string>
+    <string name="net_cfg_conn_mobile">Mobile only</string>
+    <string name="net_cfg_conn_note">Wi-Fi only hides the widget on mobile data. Mobile only shows it just on mobile data. The island always shows the current connection, today\'s total for it (counted while this widget is switched on) and a "Data Saver on" line while Android\'s Data Saver is switched on.</string>
+    <string name="net_conn_wifi">Wi-Fi</string>
+    <string name="net_conn_mobile">Mobile data</string>
+    <string name="net_conn_other">Network</string>
+    <string name="net_conn_none">No connection</string>
+    <string name="net_island_data_saver">Data Saver on</string>
+    <string name="net_island_today">%1$s today</string>
+    <string name="net_cfg_note_off">Off: the widget is always in the rotation, even when the connection is idle.</string>
+    <string name="weather_cfg_rule_title">Show the weather</string>
+    <string name="weather_cfg_rule_always">Always</string>
+    <string name="weather_cfg_rule_notable">Only when notable</string>
+    <string name="weather_cfg_trigger_title">Notable when</string>
+    <string name="weather_cfg_trigger_rain">Rain or snow</string>
+    <string name="weather_cfg_trigger_hot">Hot</string>
+    <string name="weather_cfg_trigger_cold">Cold</string>
+    <string name="weather_cfg_trigger_severe">Severe alert</string>
+    <string name="weather_cfg_hot_at">Hot from %1$s</string>
+    <string name="weather_cfg_cold_at">Cold up to %1$s</string>
+    <string name="weather_cfg_trigger_desc">Judged on the latest reading, so it is as fresh as the refresh interval. Open-Meteo has no alert feed: a severe alert means a thunderstorm, heavy rain or snow, or freezing rain in the reading.</string>
+    <string name="weather_cfg_night_title">Hide at night</string>
+    <string name="weather_cfg_night_from">Night starts at %1$s</string>
+    <string name="weather_cfg_night_to">Night ends at %1$s</string>
+    <string name="weather_cfg_rules_desc">While a rule keeps the weather off, the pill skips it, its change tick stays quiet, and the weather is still looked up in the background so it can come back. A selected severe alert also shows at night. The Wind widget is not affected.</string>
+    <string name="weather_cfg_step_minus">\u2212</string>
+    <string name="weather_cfg_step_plus">+</string>
+    <string name="idle_units_note">Auto follows your region. Temperature applies to the Weather widget and the battery temperature; wind speed applies to the Wind widget.</string>
+    <string name="idle_off_when_stored_title">Off while a notification is stored</string>
+    <string name="idle_off_when_stored_desc">No idle widget shows while the island holds any notification, including ones the idle timeout put away. They come back when none is left.</string>
+    <string name="led_tick_title">Tick style</string>
+    <string name="led_tick_switch_title">LED footsteps tick</string>
+    <string name="led_tick_switch_desc">The glyphs change in short hops on an LED grid instead of one smooth slide.</string>
+    <string name="led_tick_pattern_title">Ticks per change</string>
+    <string name="led_tick_pattern_desc">Numbers from 1 to 9, used in turn and then repeated. 1, 2, 3 means one tick, then two, then three, then round again.</string>
+    <string name="led_tick_pace_title">Pace</string>
+    <string name="led_tick_pace_desc">Time between ticks. Lower is faster.</string>
+    <string name="led_tick_ms">%1$d ms</string>
+    <string name="led_tick_stagger_title">Glyph first, value after</string>
+    <string name="led_tick_stagger_desc">The value steps half a pace after the glyph, like left foot, right foot. A new minute or temperature steps only the value; a new widget steps both.</string>
+    <string name="led_tick_color_title">LED colour</string>
+    <string name="led_tick_color_red">Red</string>
+    <string name="led_tick_color_amber">Amber</string>
+    <string name="led_tick_color_green">Green</string>
+    <string name="led_tick_color_white">White</string>
+    <string name="led_tick_font_title">LED font</string>
+    <string name="led_tick_font_desc">Letters are drawn as dots. Any font you choose, including fonts you added, is turned into dots.</string>
+    <string name="led_tick_font_builtin">LED dots</string>
+    <string name="led_tick_font_builtin_note">The built-in 5 by 7 dot font</string>
+    <string name="led_tick_note">Applies to the clock, date, weather, wind speed, battery, next alarm and net speed slots. The notification count and mode glyphs keep the smooth tick.</string>
 </resources>

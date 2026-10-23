@@ -17,6 +17,32 @@ import android.provider.Settings
 import android.widget.Toast
 
 object HotspotUtil {
+    /** Shell commands that start and stop Wi-Fi tethering on Android 11+. */
+    internal const val START_COMMAND = "service call tethering 4 null s16 random"
+    internal const val STOP_COMMAND = "service call tethering 5 s16 random"
+
+    /**
+     * Reads the platform's own flag when the ROM allows it, otherwise goes by the island's Hotspot card that the
+     * notification listener shows while the hotspot's notification is up.
+     */
+    fun isOn(context: Context): Boolean {
+        val byFlag = runCatching {
+            val wifi = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            android.net.wifi.WifiManager::class.java.getMethod("isWifiApEnabled").invoke(wifi) as Boolean
+        }.getOrNull()
+        if (byFlag != null) return byFlag
+        return runCatching {
+            com.agupta07505.smartisland.di.SmartIslandRepositories.notificationRepository(context).notifications.value
+                .any { it.mode == com.agupta07505.smartisland.model.IslandMode.Hotspot }
+        }.getOrDefault(false)
+    }
+
+    /** Blocking: call it off the main thread. */
+    suspend fun toggleWithShizuku(context: Context) {
+        val command = if (isOn(context)) STOP_COMMAND else START_COMMAND
+        ShizukuManager.runShellForOutput(command)
+    }
+
     fun parseDeviceCount(title: String?, text: String?): Int {
         val fullText = "${title.orEmpty()} ${text.orEmpty()}"
         val lower = fullText.lowercase()
@@ -40,11 +66,7 @@ object HotspotUtil {
         return 0
     }
 
-    /**
-     * Opens the device's Hotspot & Tethering configuration page.
-     * Uses contentIntent if available, otherwise attempts platform and OEM specific tethering intents.
-     */
-    fun openHotspotSettings(context: Context, contentIntent: PendingIntent? = null) {
+    fun openHotspotSettings(context: Context, contentIntent: PendingIntent? = null, floating: Boolean = false) {
         if (contentIntent != null) {
             val sent = runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -65,25 +87,25 @@ object HotspotUtil {
         }
 
         val intents = listOf(
-            // 1. Android Standard WiFi Tethering Settings (API 30+)
+            // API 30+
             Intent("android.settings.WIFI_TETHER_SETTINGS"),
-            // 2. Android Standard Tethering Settings (API 26+)
+            // API 26+
             Intent("android.settings.TETHER_SETTINGS"),
-            // 3. Xiaomi / HyperOS / MIUI Component Tethering
+            // Xiaomi, HyperOS, MIUI
             Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.TetherSettings")),
             Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.wifi.tether.TetherSettings")),
             Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.Settings\$TetherSettingsActivity")),
             Intent("miui.intent.action.TETHER_SETTINGS"),
-            // 4. Samsung Hotspot Settings
+            // Samsung
             Intent("com.samsung.android.settings.WIFI_AP_SETTINGS"),
             Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.Settings\$WifiApSettingsActivity")),
-            // 5. General Wireless / Network Settings Fallbacks
             Intent(Settings.ACTION_WIRELESS_SETTINGS),
             Intent(Settings.ACTION_SETTINGS)
         )
 
         for (intent in intents) {
-            val launched = runCatching {
+            // The utility asks for a floating window first; any page the phone cannot float opens full screen.
+            val launched = (floating && UtilityBridge.openIntentFloating?.invoke(Intent(intent)) == true) || runCatching {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
                 true

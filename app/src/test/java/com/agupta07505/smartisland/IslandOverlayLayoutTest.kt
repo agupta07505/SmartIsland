@@ -69,7 +69,6 @@ class IslandOverlayLayoutTest {
                 val circleLeftPx = if (isCircleLeft) mainLeftPx - compactGapPx - circleSizePx else mainLeftPx + mainWidthPx + compactGapPx
                 val circleRightPx = circleLeftPx + circleSizePx
 
-                // 1. Assert no overlap between main pill and circle (separation >= compactGapPx)
                 if (isCircleLeft) {
                     val gap = mainLeftPx - circleRightPx
                     org.junit.Assert.assertTrue(
@@ -84,7 +83,6 @@ class IslandOverlayLayoutTest {
                     )
                 }
 
-                // 2. Assert that the secondary circle is completely inside the window
                 org.junit.Assert.assertTrue(
                     "Circle left ($circleLeftPx) must be >= window left ($windowLeftPx)",
                     circleLeftPx >= windowLeftPx - 0.01f
@@ -94,7 +92,6 @@ class IslandOverlayLayoutTest {
                     circleRightPx <= windowRightPx + 0.01f
                 )
 
-                // 3. Assert circle and pill are within screen bounds
                 org.junit.Assert.assertTrue(circleLeftPx >= edgePaddingPx - 0.01f)
                 org.junit.Assert.assertTrue(circleRightPx <= screenWidthPx - edgePaddingPx + 0.01f)
                 org.junit.Assert.assertTrue(mainLeftPx >= edgePaddingPx - 0.01f)
@@ -104,33 +101,26 @@ class IslandOverlayLayoutTest {
     }
 
     @Test
-    fun landscapeExpandedWidthIsFixedAndDoesNotFillLandscapeScreenWidth() {
+    fun landscapeExpandedWidthIsAboutHalfTheScreenAndDoesNotFillIt() {
         val landscapeScreenWidth = 914f
         val landscapeScreenHeight = 411f
 
-        val portraitExpandedWidth = com.agupta07505.smartisland.ui.calculateExpandedWidth(
-            isLandscape = false,
-            screenWidthDp = landscapeScreenHeight, // 411dp in portrait
-            screenHeightDp = landscapeScreenWidth  // 914dp in portrait
-        )
         val landscapeExpandedWidth = com.agupta07505.smartisland.ui.calculateExpandedWidth(
             isLandscape = true,
-            screenWidthDp = landscapeScreenWidth,  // 914dp in landscape
-            screenHeightDp = landscapeScreenHeight // 411dp in landscape
+            screenWidthDp = landscapeScreenWidth,
+            screenHeightDp = landscapeScreenHeight
         )
-
-        // The landscape expanded width must equal the portrait compact width, NOT 95% of 914dp
-        assertEquals(portraitExpandedWidth, landscapeExpandedWidth, 0.01f)
-        org.junit.Assert.assertTrue(landscapeExpandedWidth < 450f)
+        // Half of the screen width (the heads-up-notification strip), never 95% of it.
+        assertEquals(457f, landscapeExpandedWidth, 0.01f)
         org.junit.Assert.assertTrue(landscapeExpandedWidth < landscapeScreenWidth * 0.95f)
 
-        // Clamping bounds for tablets / ultra-wides
+        // Clamping bounds for tablets / ultra-wides and small screens
         val tabletLandscapeWidth = com.agupta07505.smartisland.ui.calculateExpandedWidth(
             isLandscape = true,
             screenWidthDp = 1280f,
             screenHeightDp = 800f
         )
-        assertEquals(440f, tabletLandscapeWidth, 0.01f)
+        assertEquals(560f, tabletLandscapeWidth, 0.01f)
 
         val smallLandscapeWidth = com.agupta07505.smartisland.ui.calculateExpandedWidth(
             isLandscape = true,
@@ -138,6 +128,76 @@ class IslandOverlayLayoutTest {
             screenHeightDp = 320f
         )
         assertEquals(340f, smallLandscapeWidth, 0.01f)
+
+        // Portrait is untouched.
+        assertEquals(
+            411f * 0.95f,
+            com.agupta07505.smartisland.ui.calculateExpandedWidth(false, 411f, 914f),
+            0.01f
+        )
+    }
+
+    @Test
+    fun landscapeSplitLayoutIsCardPlusGapPlusPicker() {
+        fun w(sw: Float, card: Float?, picker: Boolean = true, landscape: Boolean = true) =
+            com.agupta07505.smartisland.ui.calculateExpandedWidth(
+                landscape, sw, 411f, pickerSideBySide = picker, splitCardWidthDp = card
+            )
+        // 914 dp wide: picker 30% = 274 (inside 240..300), gap 14, so a measured 260 dp card -> 548.
+        assertEquals(274.2f, com.agupta07505.smartisland.ui.splitPickerWidthDp(914f), 0.01f)
+        assertEquals(548.2f, w(914f, 260f), 0.01f)
+        // Not measured yet: the widest the card may get = 62% of the screen minus gap and picker.
+        assertEquals(278.5f, com.agupta07505.smartisland.ui.splitCardMaxWidthDp(914f), 0.1f)
+        assertEquals(914f * 0.62f, w(914f, null), 0.1f)
+        // A tiny card is held at the minimum card width, a huge one at the maximum.
+        assertEquals(240f + 14f + 274.2f, w(914f, 80f), 0.01f)
+        assertEquals(278.5f + 14f + 274.2f, w(914f, 900f), 0.2f)
+        // Tablet: picker capped at 300; the group stays about 62% of the screen.
+        assertEquals(300f, com.agupta07505.smartisland.ui.splitPickerWidthDp(1280f), 0.01f)
+        assertEquals(1280f * 0.62f, w(1280f, null), 0.1f)
+        // Small screen: never wider than the screen minus the margin.
+        assertEquals(484f, w(500f, null), 0.01f)
+        // Picker closed, and portrait, are unchanged.
+        assertEquals(457f, w(914f, 260f, picker = false), 0.01f)
+        assertEquals(411f * 0.95f, w(411f, 260f, landscape = false), 0.01f)
+    }
+
+    @Test
+    fun landscapeSplitGroupCoversAboutAThirdOfTheScreen() {
+        // 914 x 411 dp screen, three picker rows (compact picker height 200 dp).
+        val width = com.agupta07505.smartisland.ui.calculateExpandedWidth(true, 914f, 411f, pickerSideBySide = true)
+        val height = com.agupta07505.smartisland.ui.expanded.siblingPickerHeight(3, compact = true).value
+        val share = width * height / (914f * 411f)
+        org.junit.Assert.assertTrue("share $share", share in 0.26f..0.34f)
+    }
+
+    @Test
+    fun landscapeExpandedIslandSitsALittleHigherAndNeverAboveTheScreen() {
+        fun top(sb: Float, landscape: Boolean, companion: Boolean = false) =
+            com.agupta07505.smartisland.ui.calculateExpandedTopOffset(
+                enableNotchMode = false, hasCompanion = companion, statusBarHeightDp = sb, isLandscape = landscape
+            )
+        assertEquals(24f, top(24f, landscape = false), 0.01f)
+        assertEquals(10f, top(24f, landscape = true), 0.01f)
+        assertEquals(0f, top(6f, landscape = true), 0.01f)
+    }
+
+    @Test
+    fun pickerIslandStartsWhereTheRightPartOfTheWindowBegins() {
+        // 548 dp window, 274 dp picker: it starts at about 50% of the width.
+        assertEquals(0.5f, com.agupta07505.smartisland.ui.splitPickerLeftFraction(548f, 914f), 0.01f)
+        // Unknown width falls back to 50 %.
+        assertEquals(0.5f, com.agupta07505.smartisland.ui.splitPickerLeftFraction(0f, 914f), 0.0001f)
+    }
+
+    @Test
+    fun collapsedCutoutsAreLoweredInsideTheLandscapeWindowOnly() {
+        // Landscape: the window starts at the top, the cutouts are lowered by yOffset.
+        assertEquals(205f, com.agupta07505.smartisland.ui.collapsedTopShiftDp(true, false, 205f), 0.01f)
+        // Portrait and notch mode: the window itself is offset, nothing is lowered inside it.
+        assertEquals(0f, com.agupta07505.smartisland.ui.collapsedTopShiftDp(false, false, 12f), 0.01f)
+        assertEquals(0f, com.agupta07505.smartisland.ui.collapsedTopShiftDp(true, true, 12f), 0.01f)
+        assertEquals(0f, com.agupta07505.smartisland.ui.collapsedTopShiftDp(true, false, -4f), 0.01f)
     }
 
     @Test
@@ -207,8 +267,7 @@ class IslandOverlayLayoutTest {
         // Collapsed left-side circle center offset: circle is to the LEFT of pill
         val collapsedLeftCircleOffset = (expandedCompactX - compactGap - circleSize / 2f) - screenCenter
 
-        // 1. With ONLY 2 notifications (secondaryIsPill == true):
-        // In left-side circle mode, it MUST shift RIGHT to pill location
+        // With only 2 notifications (secondaryIsPill == true) a left-side circle shifts right to the pill location.
         val expandedOffsetLeftMode = com.agupta07505.smartisland.ui.calculateSecondaryExpandedOffset(
             secondaryIsPill = true,
             isCircleLeft = true,
@@ -225,7 +284,7 @@ class IslandOverlayLayoutTest {
             expandedOffsetLeftMode > collapsedLeftCircleOffset
         )
 
-        // 2. Right-side circle mode also lands at pill location
+        // A right-side circle also lands at the pill location.
         val expandedOffsetRightMode = com.agupta07505.smartisland.ui.calculateSecondaryExpandedOffset(
             secondaryIsPill = true,
             isCircleLeft = false,
@@ -238,8 +297,7 @@ class IslandOverlayLayoutTest {
         )
         assertEquals(pillCenterOffset, expandedOffsetRightMode, 0.01f)
 
-        // 3. With 3+ notifications (secondaryIsPill == false):
-        // Left circle stays on the left
+        // With 3+ notifications (secondaryIsPill == false) the left circle stays on the left.
         val threeNotifLeftOffset = com.agupta07505.smartisland.ui.calculateSecondaryExpandedOffset(
             secondaryIsPill = false,
             isCircleLeft = true,
@@ -251,5 +309,62 @@ class IslandOverlayLayoutTest {
             compactGap = compactGap
         )
         assertEquals(collapsedLeftCircleOffset, threeNotifLeftOffset, 0.01f)
+    }
+
+    @Test
+    fun landscapeExpandedCardSitsBelowThePillRowAndStaysOnScreen() {
+        // 10 dp base + 32 dp pill + 8 dp gap = 50 dp, plenty of room on a 411 dp tall screen.
+        assertEquals(
+            50f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopOffsetDp(10f, 32f, 8f, 411f, 200f),
+            0.01f
+        )
+        // A tall card is held back so its bottom plus one gap still fits: 411 - 340 - 8 = 63 -> 50 fits.
+        assertEquals(
+            50f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopOffsetDp(10f, 32f, 8f, 411f, 340f),
+            0.01f
+        )
+        // A taller one is clamped to 411 - 380 - 8 = 23 dp.
+        assertEquals(
+            23f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopOffsetDp(10f, 32f, 8f, 411f, 380f),
+            0.01f
+        )
+        // Never above the base offset, even when the card is taller than the screen.
+        assertEquals(
+            10f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopOffsetDp(10f, 32f, 8f, 411f, 500f),
+            0.01f
+        )
+    }
+
+    @Test
+    fun landscapeCardMovesUpForACornerPillAndDownForAMiddlePill() {
+        // Card 300..700 on an 800 dp wide screen. A pill in the left corner is clear of it.
+        val corner = com.agupta07505.smartisland.ui.landscapePillOverlapsCard(16f, 128f, 300f, 700f, 8f)
+        assertEquals(false, corner)
+        // A pill in the middle sits on the card.
+        val middle = com.agupta07505.smartisland.ui.landscapePillOverlapsCard(344f, 456f, 300f, 700f, 8f)
+        assertEquals(true, middle)
+
+        // Corner: just the edge gap from the top, whatever the pill's own offset.
+        assertEquals(
+            10f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopDp(false, 0f, 80f, 8f, 10f, 411f, 200f),
+            0.01f
+        )
+        // Middle: one gap under the pill (12 shift + 34 height = 46, +8 = 54).
+        assertEquals(
+            54f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopDp(true, 0f, 46f, 8f, 10f, 411f, 200f),
+            0.01f
+        )
+        // Middle on a short screen is held back so the card still fits: 411 - 380 - 8 = 23.
+        assertEquals(
+            23f,
+            com.agupta07505.smartisland.ui.landscapeExpandedTopDp(true, 0f, 46f, 8f, 10f, 411f, 380f),
+            0.01f
+        )
     }
 }

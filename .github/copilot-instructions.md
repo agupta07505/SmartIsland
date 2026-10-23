@@ -53,7 +53,7 @@ SmartIsland supports 13 primary modes:
 - `Stopwatch`: Live millisecond elapsed ticker, lap counter, lap times history list, and pause/reset controls.
 - `IncomingCall`: Ringing / active phone call timer and caller badge.
 - `Music`: Media playback controls, live progress scrubber, animated visualizer, and artwork.
-- `Battery`: 
+- `Battery`:
   - *Charging*: Green electric flow gradient with remaining charge time.
   - *Low Battery* ($\le 20\%$): Pulsing red warning glyph with live battery percentage.
   - *Battery Saver*: Warm amber energy savings glyph with live battery percentage.

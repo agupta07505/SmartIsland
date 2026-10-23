@@ -109,4 +109,17 @@ class LiveActivityParserTest {
         val info = LiveActivityParser.parse(sbn)
         assertNull(info)
     }
+
+    @Test
+    fun moreDeliveryAndRideAppsAreSupported() {
+        listOf("com.ubercab.eats", "com.dd.doordash", "me.lyft.android", "com.grabtaxi.passenger", "com.gojek.app", "com.deliveroo.orderapp", "com.wolt.android", "com.glovo")
+            .forEach { assertEquals(it, true, LiveActivityParser.isSupportedApp(it)) }
+        assertEquals(false, LiveActivityParser.isSupportedApp("com.waze"))
+    }
+
+    @Test
+    fun brandColourFallsBackForUnknownPackages() {
+        assertEquals(0xFF06C167L, LiveActivityParser.getBrandColor("com.ubercab.eats"))
+        assertEquals(0xFF38BDF8L, LiveActivityParser.getBrandColor("com.unknown.app"))
+    }
 }

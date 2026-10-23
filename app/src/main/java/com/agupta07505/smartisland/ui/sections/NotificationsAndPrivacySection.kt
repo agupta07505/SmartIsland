@@ -1,11 +1,15 @@
 /*
  * Smart Island (2026)
- * Copyright Animesh Gupta — github.com/agupta07505
+ * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.util.LruCache
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -30,25 +34,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.HourglassBottom
-import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -59,8 +60,7 @@ import androidx.compose.material3.FilterChipDefaults
 import com.agupta07505.smartisland.ui.SliderSettingItem
 import com.agupta07505.smartisland.ui.bounceClick
 import kotlin.math.roundToInt
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,15 +74,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
+import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,10 +92,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.R
+import com.agupta07505.smartisland.ui.search.searchAnchor
 import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.util.AppAutoExpand
+import com.agupta07505.smartisland.util.AppEventRules
 import com.agupta07505.smartisland.util.NotificationFilter
 import com.agupta07505.smartisland.util.OemDeviceRules
 import com.agupta07505.smartisland.util.OemDeviceType
@@ -116,6 +117,8 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,13 +131,12 @@ fun NotificationsAndPrivacySection(
 
     val detectedDevice = remember { OemDeviceRules.detectCurrentDevice() }
     val effectiveDevice = remember(settings.deviceType) { OemDeviceRules.resolveEffectiveDevice(settings.deviceType) }
-    var isDeviceMenuExpanded by remember { mutableStateOf(false) }
+    var isDeviceMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Group 0: Device Profile & OEM Compatibility Rules
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -186,7 +188,6 @@ fun NotificationsAndPrivacySection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Device Selector Dropdown
                 ExposedDropdownMenuBox(
                     expanded = isDeviceMenuExpanded,
                     onExpandedChange = { isDeviceMenuExpanded = it },
@@ -252,7 +253,6 @@ fun NotificationsAndPrivacySection(
                     }
                 }
 
-                // Active Rules Summary Chip
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -280,7 +280,43 @@ fun NotificationsAndPrivacySection(
             }
         }
 
-        // Group 1: Lock Screen & Privacy
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.notifications_master_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                ToggleRowItem(
+                    searchKey = "np.notifications_enabled",
+                    title = stringResource(R.string.toggle_notifications_enabled_title),
+                    subtitle = stringResource(R.string.toggle_notifications_enabled_desc),
+                    icon = Icons.Rounded.Notifications,
+                    checked = settings.notificationsEnabled,
+                    onCheckedChange = { scope.launch { repository.setNotificationsEnabled(it) } }
+                )
+                if (!settings.notificationsEnabled) {
+                    Text(
+                        text = stringResource(R.string.notifications_master_off_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -308,7 +344,44 @@ fun NotificationsAndPrivacySection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
+                // Presets on top of the switches; the one the switches add up to is highlighted.
+                Column(
+                    modifier = Modifier.fillMaxWidth().searchAnchor("np.lock_screen_preset"),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.lock_screen_preset_title),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    val currentPreset = com.agupta07505.smartisland.model.LockScreenPreset.from(settings)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(
+                            com.agupta07505.smartisland.model.LockScreenPreset.ShowAll to R.string.lock_screen_preset_show_all,
+                            com.agupta07505.smartisland.model.LockScreenPreset.MessagesOnly to R.string.lock_screen_preset_messages,
+                            com.agupta07505.smartisland.model.LockScreenPreset.CallsOnly to R.string.lock_screen_preset_calls,
+                            com.agupta07505.smartisland.model.LockScreenPreset.Off to R.string.lock_screen_preset_nothing
+                        ).forEach { (preset, label) ->
+                            PrivacySegmentButton(
+                                label = stringResource(label),
+                                selected = currentPreset == preset,
+                                onClick = { scope.launch { repository.applyLockScreenPreset(preset) } },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Text(
+                        text = stringResource(R.string.lock_screen_preset_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
                 ToggleRowItem(
+                    searchKey = "np.show_lock_screen",
                     title = stringResource(R.string.toggle_show_lock_screen_title),
                     subtitle = stringResource(R.string.toggle_show_lock_screen_desc),
                     icon = Icons.Rounded.Lock,
@@ -349,19 +422,58 @@ fun NotificationsAndPrivacySection(
                     }
                 }
 
+                if (settings.showOnLockScreen) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    ToggleRowItem(
+                        searchKey = "np.hide_all_lock_screen",
+                        title = stringResource(R.string.toggle_hide_all_lock_screen_title),
+                        subtitle = stringResource(R.string.toggle_hide_all_lock_screen_desc),
+                        icon = Icons.Rounded.VisibilityOff,
+                        checked = settings.hideAllOnLockScreen,
+                        onCheckedChange = { scope.launch { repository.setHideAllOnLockScreen(it) } }
+                    )
+                    // The per-event switches only matter while the universal one is off.
+                    if (!settings.hideAllOnLockScreen) {
+                        LockScreenEventList(settings = settings, repository = repository)
+                    }
+                }
+
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.live_events_foreground",
+                    title = stringResource(R.string.toggle_live_events_foreground_title),
+                    subtitle = stringResource(R.string.toggle_live_events_foreground_desc),
+                    icon = Icons.Rounded.OpenInFull,
+                    checked = settings.showLiveEventsInForeground,
+                    onCheckedChange = { scope.launch { repository.setShowLiveEventsInForeground(it) } }
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    searchKey = "np.network_access",
                     title = stringResource(R.string.toggle_network_access_title),
                     subtitle = stringResource(R.string.toggle_network_access_desc),
                     icon = Icons.Rounded.Public,
                     checked = settings.allowNetworkChecks,
                     onCheckedChange = { scope.launch { repository.setAllowNetworkChecks(it) } }
                 )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    searchKey = "np.transfer_speed",
+                    title = stringResource(R.string.toggle_transfer_speed_title),
+                    subtitle = stringResource(R.string.toggle_transfer_speed_desc),
+                    icon = Icons.Rounded.Speed,
+                    checked = settings.detectTransfersBySpeed,
+                    onCheckedChange = { scope.launch { repository.setDetectTransfersBySpeed(it) } }
+                )
             }
         }
 
-        // Group 2: Display & Expansion Behavior
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -390,6 +502,7 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 ToggleRowItem(
+                    searchKey = "np.auto_expand",
                     title = stringResource(R.string.toggle_auto_expand_title),
                     subtitle = stringResource(R.string.toggle_auto_expand_desc),
                     icon = Icons.Rounded.NotificationsActive,
@@ -399,6 +512,27 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.auto_expand_lock_screen",
+                    title = stringResource(R.string.toggle_auto_expand_lock_screen_title),
+                    subtitle = stringResource(R.string.toggle_auto_expand_lock_screen_desc),
+                    icon = Icons.Rounded.Lock,
+                    checked = settings.autoExpandOnLockScreen,
+                    onCheckedChange = { scope.launch { repository.setAutoExpandOnLockScreen(it) } }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    searchKey = "np.show_during_dnd",
+                    title = stringResource(R.string.toggle_show_during_dnd_title),
+                    subtitle = stringResource(R.string.toggle_show_during_dnd_desc),
+                    icon = Icons.Rounded.DoNotDisturbOn,
+                    checked = settings.showDuringDnd,
+                    onCheckedChange = { scope.launch { repository.setShowDuringDnd(it) } }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
+                    searchKey = "np.quick_actions",
                     title = stringResource(R.string.toggle_quick_actions_title),
                     subtitle = stringResource(R.string.toggle_quick_actions_desc),
                     icon = Icons.Rounded.TouchApp,
@@ -408,6 +542,7 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.mirror_only",
                     title = stringResource(R.string.toggle_mirror_only_title),
                     subtitle = stringResource(R.string.toggle_mirror_only_desc),
                     icon = Icons.Rounded.VisibilityOff,
@@ -417,24 +552,17 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
-                    title = stringResource(R.string.toggle_show_in_landscape_title),
-                    subtitle = stringResource(R.string.toggle_show_in_landscape_desc),
-                    icon = Icons.Rounded.ScreenRotation,
-                    checked = settings.showInLandscape,
-                    onCheckedChange = { scope.launch { repository.setShowInLandscape(it) } }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                ToggleRowItem(
+                    searchKey = "np.hide_when_idle",
                     title = stringResource(R.string.toggle_auto_hide_idle_title),
                     subtitle = stringResource(R.string.toggle_auto_hide_idle_desc),
-                    icon = Icons.Rounded.Visibility,
+                    icon = Icons.Rounded.VisibilityOff,
                     checked = settings.hideWhenIdle,
                     onCheckedChange = { scope.launch { repository.setHideWhenIdle(it) } }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.auto_hide_pill",
                     title = stringResource(R.string.toggle_auto_hide_pill_title),
                     subtitle = stringResource(R.string.toggle_auto_hide_pill_desc),
                     icon = Icons.Rounded.Timer,
@@ -489,6 +617,7 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.bluetooth_battery",
                     title = stringResource(R.string.toggle_bluetooth_battery_title),
                     subtitle = stringResource(R.string.toggle_bluetooth_battery_desc),
                     icon = Icons.Rounded.BluetoothConnected,
@@ -496,75 +625,30 @@ fun NotificationsAndPrivacySection(
                     onCheckedChange = { scope.launch { repository.setShowBluetoothBattery(it) } }
                 )
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                ToggleRowItem(
-                    title = stringResource(R.string.toggle_battery_mode_title),
-                    subtitle = stringResource(R.string.toggle_battery_mode_desc),
-                    icon = Icons.Rounded.BatteryChargingFull,
-                    checked = settings.enableBatteryMode,
-                    onCheckedChange = { scope.launch { repository.setEnableBatteryMode(it) } }
-                )
             }
         }
 
-        // Group 3: Real-Time Services (Live Activities & Maps)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.live_nav_services_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = stringResource(R.string.live_nav_services_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                ToggleRowItem(
-                    title = stringResource(R.string.toggle_live_activities_title),
-                    subtitle = stringResource(R.string.toggle_live_activities_desc),
-                    icon = Icons.Rounded.DirectionsCar,
-                    checked = settings.liveActivitiesEnabled,
-                    onCheckedChange = { scope.launch { repository.setLiveActivitiesEnabled(it) } }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                ToggleRowItem(
-                    title = stringResource(R.string.toggle_navigation_title),
-                    subtitle = stringResource(R.string.toggle_navigation_desc),
-                    icon = Icons.Rounded.Map,
-                    checked = settings.navigationEnabled,
-                    onCheckedChange = { scope.launch { repository.setNavigationEnabled(it) } }
-                )
-            }
-        }
-
-        // Shared Installed Apps Provider
         val installedApps by produceState(initialValue = emptyList<LaunchableApp>(), context) {
             value = withContext(Dispatchers.IO) {
-                AppShortcutProvider.installedApps(context)
+                val apps = AppShortcutProvider.installedApps(context)
                     .filter { NotificationFilter.isAppEligibleForIsland(it.packageName, context.packageManager) }
+                // The system Download Manager posts its notifications as com.android.providers.downloads, which has no
+                // launcher icon, so the launcher query never lists it and its expand setting could not be changed.
+                val dmPackage = "com.android.providers.downloads"
+                if (apps.any { it.packageName == dmPackage }) {
+                    apps
+                } else {
+                    val label = runCatching {
+                        val pm = context.packageManager
+                        pm.getApplicationLabel(pm.getApplicationInfo(dmPackage, 0)).toString()
+                    }.getOrNull()?.takeIf { it.isNotBlank() } ?: "Download Manager"
+                    (apps + LaunchableApp(packageName = dmPackage, label = label))
+                        .sortedBy { it.label.lowercase() }
+                }
             }
         }
 
-        // Group 3.5: Notification Cooldown & Anti-Spam
-        var cooldownAppQuery by remember { mutableStateOf("") }
+        var cooldownAppQuery by rememberSaveable { mutableStateOf("") }
         val cooldownFilteredApps = remember(installedApps, cooldownAppQuery) {
             if (cooldownAppQuery.isBlank()) installedApps
             else installedApps.filter {
@@ -601,6 +685,7 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 ToggleRowItem(
+                    searchKey = "np.enable_cooldown",
                     title = stringResource(R.string.toggle_enable_cooldown_title),
                     subtitle = stringResource(R.string.toggle_enable_cooldown_desc),
                     icon = Icons.Rounded.HourglassBottom,
@@ -619,7 +704,6 @@ fun NotificationsAndPrivacySection(
                             .padding(top = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // 1. Cooldown Duration
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 text = stringResource(R.string.cooldown_duration_title, settings.notificationCooldownDurationMinutes),
@@ -661,7 +745,6 @@ fun NotificationsAndPrivacySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-                        // 2. Trigger Threshold (Alert count in 30 seconds)
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 text = stringResource(R.string.cooldown_threshold_title, settings.notificationCooldownThreshold),
@@ -703,7 +786,103 @@ fun NotificationsAndPrivacySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-                        // 3. Excluded Apps (Whitelist)
+                        // System events (battery, Wi-Fi, VPN, Bluetooth, flashlight): not apps, so they get their own list.
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = stringResource(R.string.cooldown_system_events_title),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = stringResource(R.string.cooldown_system_events_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.cooldown_system_events_count,
+                                        settings.notificationCooldownSystemEvents.size
+                                    ),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val all = com.agupta07505.smartisland.util.NotificationCooldownManager.SYSTEM_EVENTS
+                                                .map { it.id }.toSet()
+                                            scope.launch { repository.setNotificationCooldownSystemEvents(all) }
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Text(stringResource(R.string.btn_select_all_events), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { scope.launch { repository.setNotificationCooldownSystemEvents(emptySet()) } },
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Text(stringResource(R.string.btn_clear_events), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                            com.agupta07505.smartisland.util.NotificationCooldownManager.SYSTEM_EVENTS.forEach { event ->
+                                val inCooldown = event.id in settings.notificationCooldownSystemEvents
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = event.shortLabel,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = event.label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    FilterChip(
+                                        selected = inCooldown,
+                                        onClick = {
+                                            scope.launch { repository.toggleNotificationCooldownSystemEvent(event.id) }
+                                        },
+                                        label = {
+                                            Text(
+                                                text = if (inCooldown) stringResource(R.string.chip_cooldown_active) else stringResource(R.string.chip_always_alert),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = stringResource(R.string.cooldown_excluded_apps_title),
@@ -830,25 +1009,30 @@ fun NotificationsAndPrivacySection(
             }
         }
 
-        // State for managing app alerts & exclusions
-        var showAppManagerDialog by remember { mutableStateOf(false) }
-        var selectedAppForOptions by remember { mutableStateOf<LaunchableApp?>(null) }
+        var showAppManagerDialog by rememberSaveable { mutableStateOf(false) }
+        var selectedAppForOptions by rememberSaveable(stateSaver = LaunchableAppSaver) {
+            mutableStateOf<LaunchableApp?>(null)
+        }
 
-        // Identify customized apps (apps where user changed notification, sound, or cooldown)
         val customizedApps = remember(
             installedApps,
             settings.disabledNotificationPackages,
             settings.disabledSoundPackages,
-            settings.notificationCooldownExcludedPackages
+            settings.notificationCooldownExcludedPackages,
+            settings.noExpandPackages,
+            settings.noAutoExpandPackages,
+            settings.autoExpandPackages
         ) {
             installedApps.filter { app ->
                 app.packageName in settings.disabledNotificationPackages ||
                     app.packageName in settings.disabledSoundPackages ||
-                    app.packageName in settings.notificationCooldownExcludedPackages
+                    app.packageName in settings.notificationCooldownExcludedPackages ||
+                    app.packageName in settings.noExpandPackages ||
+                    app.packageName in settings.noAutoExpandPackages ||
+                    app.packageName in settings.autoExpandPackages
             }
         }
 
-        // Group 4: Per-App Notification, Alert & Sound Management
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -900,7 +1084,6 @@ fun NotificationsAndPrivacySection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Stats row
                 val activeCount = installedApps.count { it.packageName !in settings.disabledNotificationPackages }
                 val excludedCount = settings.disabledNotificationPackages.size
                 val mutedCount = settings.disabledSoundPackages.size
@@ -981,7 +1164,6 @@ fun NotificationsAndPrivacySection(
                     }
                 }
 
-                // Overview of customized apps (if any)
                 if (customizedApps.isNotEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -1122,7 +1304,6 @@ fun NotificationsAndPrivacySection(
                     }
                 }
 
-                // Primary Button to open management dialog
                 FilledTonalButton(
                     onClick = { showAppManagerDialog = true },
                     shape = RoundedCornerShape(12.dp),
@@ -1142,12 +1323,11 @@ fun NotificationsAndPrivacySection(
             }
         }
 
-        // Dialog 1: App Alerts Management List Dialog
         if (showAppManagerDialog) {
-            var query by remember { mutableStateOf("") }
-            var filterTab by remember { mutableIntStateOf(0) } // 0: All, 1: Customized, 2: Excluded
+            var query by rememberSaveable { mutableStateOf("") }
+            var filterTab by rememberSaveable { mutableIntStateOf(0) } // 0: All, 1: Customized, 2: Excluded
 
-            val filteredApps = remember(installedApps, query, filterTab, settings.disabledNotificationPackages, settings.disabledSoundPackages, settings.notificationCooldownExcludedPackages) {
+            val filteredApps = remember(installedApps, query, filterTab, settings.disabledNotificationPackages, settings.disabledSoundPackages, settings.notificationCooldownExcludedPackages, settings.noExpandPackages, settings.noAutoExpandPackages, settings.autoExpandPackages) {
                 installedApps.filter { app ->
                     val matchesQuery = query.isBlank() ||
                         app.label.contains(query, ignoreCase = true) ||
@@ -1156,7 +1336,10 @@ fun NotificationsAndPrivacySection(
                     val matchesTab = when (filterTab) {
                         1 -> app.packageName in settings.disabledNotificationPackages ||
                              app.packageName in settings.disabledSoundPackages ||
-                             app.packageName in settings.notificationCooldownExcludedPackages
+                             app.packageName in settings.notificationCooldownExcludedPackages ||
+                             app.packageName in settings.noExpandPackages ||
+                             app.packageName in settings.noAutoExpandPackages ||
+                             app.packageName in settings.autoExpandPackages
                         2 -> app.packageName in settings.disabledNotificationPackages
                         else -> true
                     }
@@ -1188,7 +1371,6 @@ fun NotificationsAndPrivacySection(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Search box
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
@@ -1212,7 +1394,6 @@ fun NotificationsAndPrivacySection(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Filter chips row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1246,7 +1427,6 @@ fun NotificationsAndPrivacySection(
                             )
                         }
 
-                        // Batch actions row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1291,7 +1471,6 @@ fun NotificationsAndPrivacySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-                        // LazyColumn of apps (fast & virtualized)
                         if (filteredApps.isEmpty()) {
                             Box(
                                 modifier = Modifier
@@ -1428,11 +1607,14 @@ fun NotificationsAndPrivacySection(
             )
         }
 
-        // Dialog 2: Detailed App Options Modal (Notifications On/Off/Exclude, Sound On/Off, Cooldown Bypass)
         selectedAppForOptions?.let { app ->
             val isNotificationEnabled = app.packageName !in settings.disabledNotificationPackages
             val isSoundEnabled = app.packageName !in settings.disabledSoundPackages
             val isCooldownBypassed = app.packageName in settings.notificationCooldownExcludedPackages
+            val mayExpandCard = app.packageName !in settings.noExpandPackages
+            val autoExpandChoice = AppEventRules.autoExpandChoice(
+                settings.noAutoExpandPackages, settings.autoExpandPackages, app.packageName
+            )
 
             AlertDialog(
                 onDismissRequest = { selectedAppForOptions = null },
@@ -1485,7 +1667,6 @@ fun NotificationsAndPrivacySection(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Option 1: Smart Island Notifications (Allow / Exclude from Island)
                         ToggleRowItem(
                             title = stringResource(R.string.option_island_notifications),
                             subtitle = if (isNotificationEnabled)
@@ -1507,7 +1688,6 @@ fun NotificationsAndPrivacySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-                        // Option 2: Island Alert Sound (Sound on / Muted)
                         ToggleRowItem(
                             title = stringResource(R.string.option_island_sound),
                             subtitle = if (isSoundEnabled)
@@ -1528,7 +1708,97 @@ fun NotificationsAndPrivacySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
-                        // Option 3: Anti-Spam Cooldown Bypass (Exclude from cooldown)
+                        ToggleRowItem(
+                            title = stringResource(R.string.option_expanded_card),
+                            subtitle = if (mayExpandCard)
+                                stringResource(R.string.option_expanded_card_desc)
+                            else
+                                stringResource(R.string.tag_card_never_expands),
+                            icon = Icons.Rounded.OpenInFull,
+                            checked = mayExpandCard && isNotificationEnabled,
+                            onCheckedChange = { enabled ->
+                                val updated = if (enabled) {
+                                    settings.noExpandPackages - app.packageName
+                                } else {
+                                    settings.noExpandPackages + app.packageName
+                                }
+                                scope.launch { repository.setNoExpandPackages(updated) }
+                            }
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                        // Auto-expand: Loud only is the default for every app; Always also opens silent ones; Never beats loud.
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.NotificationsActive,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.option_auto_expand),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = when {
+                                            !(mayExpandCard && isNotificationEnabled) -> stringResource(R.string.tag_card_never_expands)
+                                            autoExpandChoice == AppAutoExpand.NEVER -> stringResource(R.string.tag_no_auto_expand)
+                                            autoExpandChoice == AppAutoExpand.ALWAYS -> stringResource(R.string.option_auto_expand_always_desc)
+                                            else -> stringResource(R.string.option_auto_expand_desc)
+                                        },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf(
+                                    AppAutoExpand.DEFAULT to R.string.auto_expand_choice_default,
+                                    AppAutoExpand.ALWAYS to R.string.auto_expand_choice_always,
+                                    AppAutoExpand.NEVER to R.string.auto_expand_choice_never
+                                ).forEach { (choice, label) ->
+                                    PrivacySegmentButton(
+                                        label = stringResource(label),
+                                        selected = autoExpandChoice == choice,
+                                        onClick = { scope.launch { repository.setAppAutoExpand(app.packageName, choice) } },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                        ToggleRowItem(
+                            title = stringResource(R.string.option_hide_on_lock_screen),
+                            subtitle = stringResource(R.string.option_hide_on_lock_screen_desc),
+                            icon = Icons.Rounded.VisibilityOff,
+                            checked = app.packageName in settings.hideOnLockScreenPackages,
+                            onCheckedChange = { scope.launch { repository.setAppHiddenOnLockScreen(app.packageName, it) } }
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
                         ToggleRowItem(
                             title = stringResource(R.string.option_cooldown_bypass),
                             subtitle = stringResource(R.string.option_cooldown_bypass_desc),
@@ -1554,6 +1824,9 @@ fun NotificationsAndPrivacySection(
                                 repository.setDisabledNotificationPackages(settings.disabledNotificationPackages - app.packageName)
                                 repository.setDisabledSoundPackages(settings.disabledSoundPackages - app.packageName)
                                 repository.setNotificationCooldownExcludedPackages(settings.notificationCooldownExcludedPackages - app.packageName)
+                                repository.setNoExpandPackages(settings.noExpandPackages - app.packageName)
+                                repository.setAppAutoExpand(app.packageName, AppAutoExpand.DEFAULT)
+                                repository.setAppHiddenOnLockScreen(app.packageName, false)
                             }
                         }
                     ) {
@@ -1570,6 +1843,7 @@ fun NotificationsAndPrivacySection(
 
 @Composable
 private fun ToggleRowItem(
+    searchKey: String? = null,
     title: String,
     subtitle: String,
     icon: ImageVector,
@@ -1580,6 +1854,7 @@ private fun ToggleRowItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .searchAnchor(searchKey)
             .clip(RoundedCornerShape(8.dp))
             .clickable { onCheckedChange(!checked) }
             .padding(vertical = 4.dp),
@@ -1683,4 +1958,75 @@ private fun rememberAppIcon(packageName: String): ImageBitmap? {
         }
     }
     return iconBitmap
+}
+
+private val LaunchableAppSaver: Saver<LaunchableApp?, Any> = listSaver(
+    save = { app -> if (app == null) emptyList<Any>() else listOf(app.packageName, app.label) },
+    restore = { saved ->
+        if (saved.size < 2) null else LaunchableApp(saved[0] as String, saved[1] as String)
+    }
+)
+
+@Composable
+private fun LockScreenEventList(
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository
+) {
+    val scope = rememberCoroutineScope()
+    var open by rememberSaveable { mutableStateOf(false) }
+    val events = com.agupta07505.smartisland.model.IslandEvent.entries.filter { it.canHideOnLockScreen }
+    val hiddenCount = events.count { it.id in settings.hideOnLockScreenEvents }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .searchAnchor("np.hide_events_lock_screen")
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { open = !open }
+                .padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.lock_screen_per_event_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.lock_screen_per_event_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "$hiddenCount / ${events.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (open) {
+            events.forEach { event ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = event.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = event.id in settings.hideOnLockScreenEvents,
+                        onCheckedChange = { hide ->
+                            scope.launch { repository.setEventHiddenOnLockScreen(event.id, hide) }
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

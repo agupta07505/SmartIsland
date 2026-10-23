@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.data
 
-import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,11 +18,15 @@ interface INotificationRepository {
     val commands: SharedFlow<SmartIslandCommand>
 
     fun postNotification(notification: IslandNotification, autoExpand: Boolean = false)
+
+    /**
+     * Changes one stored card in place (never adds one, never auto-expands). Used for live fields that change faster
+     * than the app re-posts its notification, such as the track shown by a media card.
+     */
+    fun updateNotification(key: String, transform: (IslandNotification) -> IslandNotification) {}
     fun removeNotification(key: String)
     fun removeNotificationsForPackage(packageName: String)
     fun removeAllNotifications()
     fun resetTimer()
     fun sendCommand(command: SmartIslandCommand)
-    fun showDemo(mode: IslandMode)
-    fun clearTestNotifications()
 }

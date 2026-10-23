@@ -69,7 +69,7 @@ git tag v3.2.1
 git push origin v3.2.1
 ```
 
-When a tag starting with `v` is pushed, the workflow builds signed artifacts and publishes them to a GitHub release. Pushes to `main` also publish/update a release using the app `versionName`; pushes to `dev` build a debug APK artifact only.
+When a tag starting with `v` is pushed, the workflow builds signed artifacts and publishes them to a GitHub release. Direct pushes to `main` and `dev` never build or publish releases under any circumstances.
 
 ## What Is `RUNNER_TEMP`?
 

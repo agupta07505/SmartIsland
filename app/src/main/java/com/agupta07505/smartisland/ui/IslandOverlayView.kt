@@ -7,85 +7,46 @@
 
 package com.agupta07505.smartisland.ui
 
-import com.agupta07505.smartisland.data.SmartIslandCommand
-import com.agupta07505.smartisland.model.SwipeAction
-import com.agupta07505.smartisland.ui.expanded.IslandExpandedContent
-import com.agupta07505.smartisland.ui.expanded.trySendFirstAction
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDp
-import androidx.compose.animation.core.animateFloat
+import android.content.res.Configuration
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.input.pointer.changedToUp
-import androidx.compose.ui.input.pointer.positionChange
-import kotlin.math.abs
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import android.content.res.Configuration
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
-import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
-import com.agupta07505.smartisland.data.LaunchableApp
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.FlashlightOn
-import androidx.compose.ui.res.painterResource
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import com.agupta07505.smartisland.model.SwipeAction
+import com.agupta07505.smartisland.util.HapticKind
+import com.agupta07505.smartisland.util.HapticStrength
+import com.agupta07505.smartisland.util.IslandHaptics
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 
+/**
+ * The island overlay. This function only wires the pieces together; each behaviour lives in its own file.
+ */
 @Composable
 fun IslandOverlayView(
     settings: SmartIslandSettings,
@@ -96,1250 +57,596 @@ fun IslandOverlayView(
     onPageSelected: (Int) -> Unit,
     onOpenNotification: (IslandNotification) -> Unit,
     onLaunchApp: (String) -> Unit,
+    onAppAction: (String, com.agupta07505.smartisland.model.AppShortcutAction) -> Unit = { _, _ -> },
     onToggleExpanded: () -> Unit,
     onDismissNotification: () -> Unit,
     onOpenFloatingWindow: () -> Unit,
     onOpenNotificationShade: () -> Unit = {},
     statusBarHeight: Float,
+    /** The idle widgets are held off the pill (Settings > Idle widgets: off after tap to close / long press to hide). */
+    idleWidgetsSuppressed: Boolean = false,
+    /**
+     * Landscape: a tick has brought the pill in although it was hidden (ui/TickPill.kt): the idle widgets stay off
+     * it, only the tick shows.
+     */
+    tickPillHold: Boolean = false,
+    onTickPillHold: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
     isInputActive: Boolean = false,
     onReplyStateChanged: (Boolean) -> Unit = {},
+    onTextExpandedChanged: (Boolean) -> Unit = {},
+    siblingPickerOpen: Boolean = false,
+    readingExpandedText: Boolean = false,
+    /** How deep the shown card is (preview / reader / picture), and the swipe-down / swipe-up step functions (false = no step). */
+    cardDepth: com.agupta07505.smartisland.model.CardDepth = com.agupta07505.smartisland.model.CardDepth.First,
+    onCardDeeper: () -> Boolean = { false },
+    onCardBack: () -> Boolean = { false },
+    onSiblingSelected: (String) -> Unit = {},
+    onSiblingPickerClose: () -> Unit = {},
+    onOpenSiblingPicker: () -> Boolean = { false },
     onDismissAllNotifications: () -> Unit = {},
-    isFullWidth: Boolean = true
+    isFullWidth: Boolean = true,
+    hasIdleStoredCards: Boolean = false,
+    onRevealIdleCards: () -> Unit = {},
+    onSwitchEvent: (forward: Boolean) -> Unit = {},
+    onSwitchNotification: ((forward: Boolean) -> Boolean)? = null,
+    onSwitchSibling: (forward: Boolean) -> Boolean = { false },
+    onTogglePillHidden: () -> Unit = {},
+    onExpandedSurfaceBounds: (android.graphics.Rect?) -> Unit = {},
+    onUserEngaged: () -> Unit = {},
+    onHandleHeld: (Boolean) -> Unit = {},
+    pickerOnLeft: Boolean = false,
+    landscapeDot: com.agupta07505.smartisland.model.IdleDotGeometry? = null,
+    widgetPill: Boolean = false,
+    onIdleDotTap: () -> Unit = {},
+    onOpenAppsLauncher: () -> Unit = {},
+    idleClosing: Boolean = false,
+    /** The expanded island shows the quick-launch grid (Open Apps shortcut) with no card: not a "last card gone" close. */
+    appsLauncherOpen: Boolean = false,
+    idleLeaving: Boolean = false,
+    /** The semi-expanded idle widget island is open (see [WidgetIslandLayer]) and the call that opens or closes it. */
+    widgetIslandOpen: Boolean = false,
+    onWidgetIslandChange: (Boolean) -> Unit = {},
+    onWidgetIslandShownChange: (Boolean) -> Unit = {},
+    widgetIslandSnap: Int = 0
 ) {
-    // Fix #1: rememberUpdatedState ensures the lambda is always fresh
-    // even though pointerInput(Unit) never restarts its coroutine
-    val currentOnToggle by rememberUpdatedState(onToggleExpanded)
-    val currentOnDismiss by rememberUpdatedState(onDismissNotification)
-    val currentOnDismissAll by rememberUpdatedState(onDismissAllNotifications)
-    val currentOnOpenFloatingWindow by rememberUpdatedState(onOpenFloatingWindow)
-    val currentOnOpenNotificationShade by rememberUpdatedState(onOpenNotificationShade)
-    val currentOnOpenNotification by rememberUpdatedState(onOpenNotification)
-    val currentOnPageSelected by rememberUpdatedState(onPageSelected)
-    val currentExpanded by rememberUpdatedState(expanded)
-    val currentSettings by rememberUpdatedState(settings)
     val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
-    val currentNotifications by rememberUpdatedState(notifications)
-    val currentSelectedIndex by rememberUpdatedState(safeIndex)
-    val haptic = LocalHapticFeedback.current
+    // Gesture code (pointerInput(Unit) never restarts its coroutine) reads these instead of capturing the parameters.
+    val cb = rememberIslandCallbacks(
+        onToggleExpanded = onToggleExpanded,
+        hasIdleStoredCards = hasIdleStoredCards,
+        onExpandedSurfaceBounds = onExpandedSurfaceBounds,
+        onRevealIdleCards = onRevealIdleCards,
+        onIdleDotTap = onIdleDotTap,
+        onOpenAppsLauncher = onOpenAppsLauncher,
+        onTogglePillHidden = onTogglePillHidden,
+        onDismissNotification = onDismissNotification,
+        onDismissAllNotifications = onDismissAllNotifications,
+        onOpenFloatingWindow = onOpenFloatingWindow,
+        onOpenNotificationShade = onOpenNotificationShade,
+        onOpenNotification = onOpenNotification,
+        onPageSelected = onPageSelected,
+        onSwitchEvent = onSwitchEvent,
+        onSwitchNotification = onSwitchNotification,
+        onSwitchSibling = onSwitchSibling,
+        onOpenSiblingPicker = onOpenSiblingPicker,
+        onSiblingPickerClose = onSiblingPickerClose,
+        siblingPickerOpen = siblingPickerOpen,
+        mediaExpansion = com.agupta07505.smartisland.ui.expanded.LocalMediaExpansion.current,
+        readingExpandedText = readingExpandedText,
+        cardDepth = cardDepth,
+        onCardDeeper = onCardDeeper,
+        onCardBack = onCardBack,
+        expanded = expanded,
+        settings = settings,
+        notifications = notifications,
+        safeIndex = safeIndex
+    )
+    ExpandCollapseHapticEffect(expanded, cb, launcherOpen = appsLauncherOpen)
 
     val scope = rememberCoroutineScope()
-    var dragOffset by remember { mutableStateOf(0f) }
-    var pillDragOffsetX by remember { mutableStateOf(0f) }
-    var springBackJob by remember { mutableStateOf<Job?>(null) }
-
+    val ui = remember { IslandInteractionState() }
+    val onUserEngagedState = rememberUpdatedState(onUserEngaged)
+    ui.onUserTouch = { onUserEngagedState.value() }
+    val onHandleHeldState = rememberUpdatedState(onHandleHeld)
+    ui.onHandleHeld = { held -> onHandleHeldState.value(held) }
+    val onTickPillHoldState = rememberUpdatedState(onTickPillHold)
+    ui.onTickHold = { hold -> onTickPillHoldState.value(hold) }
+    WidgetIslandWiring(ui, widgetIslandOpen, onWidgetIslandChange, settings)
+    // The reader text reports its scrolling here; the gesture handler refuses a tap that starts on it (see ReaderScrollTracker).
+    ui.readerScroll = com.agupta07505.smartisland.ui.expanded.LocalReaderScroll.current
+    ui.stepDrag = com.agupta07505.smartisland.ui.expanded.LocalStepDrag.current
     val context = LocalContext.current
+    val runner = remember(context, cb) { IslandActionRunner(context, cb) }
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val displayMetrics = context.resources.displayMetrics
-    val density = LocalDensity.current
     val screenWidth = configuration.screenWidthDp.dp
     val screenCenter = screenWidth / 2f
-    val expandedWidth = calculateExpandedWidth(
+    // Landscape (and portrait for a tap on the idle circle): when the last card goes, the collapsed cutout itself
+    // slides away (up, or out to the nearer edge) and the idle circle opens at its spot, overlapping the slide.
+    val pillExit = rememberLandscapePillExit(
+        // The widget pill is a pill on the island too: a card arriving or leaving swaps its content, the pill neither slides out nor in.
+        hasContent = com.agupta07505.smartisland.model.pillOnIsland(notifications.isNotEmpty(), widgetPill && isLandscape),
+        expanded = expanded,
         isLandscape = isLandscape,
-        screenWidthDp = configuration.screenWidthDp.toFloat(),
-        screenHeightDp = configuration.screenHeightDp.toFloat()
-    ).dp
-    val transition = updateTransition(targetState = expanded, label = "islandTransition")
-
-    val sizeSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.72f,
-        stiffness = 520f
+        idleLeaving = idleLeaving,
+        notchMode = settings.enableNotchMode,
+        screenWidthDp = screenWidth.value,
+        animSpeed = settings.animationSpeed(isLandscape),
+        pillOnScreen = !((settings.hideWhenIdle && notifications.isEmpty()) || (settings.autoHidePill && ui.isAutoHidden))
     )
-    val sizeSpecFloat = spring<Float>(
-        dampingRatio = 0.72f,
-        stiffness = 520f
+    @Suppress("NAME_SHADOWING")
+    val settings = pillExit.frozenNow ?: settings
+    // Landscape: an open sibling picker sits beside the card as a SEPARATE island, so the window widens while it is
+    // open and this view's own single island surface is switched off.
+    val openPicture = com.agupta07505.smartisland.ui.expanded.LocalMediaExpansion.current
+    val pictureBeside = expanded && com.agupta07505.smartisland.ui.expanded.pictureShownBesideCard(
+        isLandscape = isLandscape,
+        openKey = openPicture.key,
+        openIndex = openPicture.index,
+        cardKey = notifications.getOrNull(safeIndex)?.key,
+        cardMediaCount = notifications.getOrNull(safeIndex)?.media?.size ?: 0,
+        selectorOpen = openPicture.selectorOpen
     )
-    val heightSpec = spring<androidx.compose.ui.unit.Dp>(
-        dampingRatio = 0.76f,
-        stiffness = 520f
-    )
-    val alphaSpec = tween<Float>(
-        durationMillis = 190,
-        easing = FastOutSlowInEasing
-    )
-
+    val pickerSideBySideNow = pictureBeside || (isLandscape && expanded && siblingPickerOpen &&
+        com.agupta07505.smartisland.model.siblingIndices(notifications, safeIndex).isNotEmpty())
+    // Landscape: when the picker closes, the two-island layout (window width, separate surfaces, no shell clip) is
+    // kept for the length of the close so the picker island can shrink away instead of vanishing.
+    var sideBySideHold by remember { mutableStateOf(false) }
+    val sideBySideHoldMs = settings.animationSpeed(isLandscape).durationMs(com.agupta07505.smartisland.model.PickerSwap.CLOSE_MS)
+    // A picture island is held like the picker's.
+    val stepDragForHold = com.agupta07505.smartisland.ui.expanded.LocalStepDrag.current
+    LaunchedEffect(pickerSideBySideNow) {
+        if (pickerSideBySideNow) {
+            sideBySideHold = true
+        } else if (sideBySideHold) {
+            androidx.compose.runtime.snapshotFlow { stepDragForHold.active }.first { !it }
+            // The content says when its two islands are gone (a timer ended before the card had grown back to the
+            // single island's width, so the single surface showed up around a smaller card).
+            kotlinx.coroutines.withTimeoutOrNull(sideBySideHoldMs * 3L + 400L) {
+                androidx.compose.runtime.snapshotFlow { stepDragForHold.splitShown }.first { !it }
+            }
+            kotlinx.coroutines.delay(SIDE_BY_SIDE_HOLD_MARGIN_MS)
+            sideBySideHold = false
+        }
+    }
+    // The hold also ends the moment the content has left the two-island layout (it reports that in splitShown).
+    val pickerSideBySideRaw = pickerSideBySideNow || (sideBySideHold && isLandscape && expanded && stepDragForHold.splitShown)
+    // Set by the watchdog below when the flag was still on with nothing open. It drops the flag until the next picker / picture.
+    var forceSingle by remember { mutableStateOf(false) }
+    LaunchedEffect(pickerSideBySideNow, expanded) { forceSingle = false }
+    val pickerSideBySide = pickerSideBySideRaw && !forceSingle
+    // What the shell's clip, shadow and surface follow: the flag above only sizes the window early; the two islands
+    // are drawn when the content says so too (model/ShellStateGuard.kt).
+    val twoIslandsDrawn = com.agupta07505.smartisland.model.ShellStateGuard.twoIslandsDrawn(pickerSideBySide, stepDragForHold.splitShown)
+    // Natural width of the card island in the split layout, reported by the content; null until
+    // measured (the window then starts at the widest the card may get and settles once measured).
+    var splitCardWidthDp by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(pickerSideBySide) { if (!pickerSideBySide) splitCardWidthDp = 0f }
     val activeNotification = notifications.getOrNull(safeIndex)
+    // The width each card had in the split layout the last time.
+    val splitWidthCache = remember { HashMap<String, Float>() }
+    val splitWidthSeed = activeNotification?.key?.let { splitWidthCache[it] } ?: 0f
+    val splitWidthEffective = if (splitCardWidthDp > 0f) splitCardWidthDp else splitWidthSeed
     val activeMode = activeNotification?.mode ?: IslandMode.Empty
 
-    val initialEstimatedHeight = remember(activeMode, notifications.isEmpty()) {
-        if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
-    }
-    var expandedHeight by remember { mutableStateOf(initialEstimatedHeight) }
+    // A card that is pre-composed while collapsed reports its real height itself, so the estimate must not overwrite
+    // it.
+    val screenOn = rememberScreenInteractive()
+    val prewarmWanted = notifications.isNotEmpty() && com.agupta07505.smartisland.model.CardPrewarm.shouldPrewarm(activeMode, screenOn)
+    var expandedHeight by rememberExpandedHeight(activeMode, notifications.isEmpty(), expanded, prewarmWanted)
+    AutoHideEffects(expanded, notifications, selectedIndex, settings, ui)
 
-    LaunchedEffect(activeMode, notifications.isEmpty()) {
-        if (!expanded) {
-            expandedHeight = if (notifications.isEmpty()) 135.dp else defaultEstimatedHeightForMode(activeMode)
-        }
-    }
+    // The extra cutouts beside the pill keep the state they had when the widget island opened, until it is back in the cutout.
+    val holdCutouts = com.agupta07505.smartisland.model.widgetIslandHoldsExpand(widgetIslandOpen, ui.widgetIslandShown)
+    val cutoutSnapshot = remember { arrayOfNulls<Pair<List<IslandNotification>, Int>>(1) }
+    val heldCutouts = cutoutSnapshot[0]
+    if (!holdCutouts || heldCutouts == null) cutoutSnapshot[0] = notifications to safeIndex
+    val cutoutNotifications = if (holdCutouts && heldCutouts != null) heldCutouts.first else notifications
+    val cutoutIndex = if (holdCutouts && heldCutouts != null) heldCutouts.second else safeIndex
 
-    val compactGap = COMPACT_INDICATOR_GAP_DP.dp
-    val miniPillWidth = settings.width.dp
-    val circleSize = settings.height.dp
-    val compactShapes = compactNotificationShapes(notifications.size, expanded)
-    val hasCompanion = if (settings.enableNotchMode) false else notifications.size >= 2
-    val isCircleLeft = settings.circlePosition == SmartIslandSettings.CIRCLE_POSITION_LEFT
-    val collapsedGroupWidth = settings.width.dp + if (hasCompanion) compactGap + circleSize else 0.dp
-
-    val desiredMainLeft = screenCenter + settings.xOffset.dp - settings.width.dp / 2f
-    val (minMainLeft, maxMainLeft) = when {
-        !hasCompanion -> compactGap to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap)
-        isCircleLeft -> (compactGap + circleSize + compactGap) to (screenWidth - compactGap - settings.width.dp).coerceAtLeast(compactGap + circleSize + compactGap)
-        else -> compactGap to (screenWidth - compactGap - collapsedGroupWidth).coerceAtLeast(compactGap)
-    }
-    val collapsedMainLeft = desiredMainLeft.coerceIn(minMainLeft, maxMainLeft)
-    val mainCenter = collapsedMainLeft + settings.width.dp / 2f
-    val circleLeft = if (isCircleLeft) {
-        collapsedMainLeft - compactGap - circleSize
-    } else {
-        collapsedMainLeft + settings.width.dp + compactGap
-    }
-    val circleCenter = circleLeft + circleSize / 2f
-    val groupStart = if (isCircleLeft && hasCompanion) circleLeft else collapsedMainLeft
-    val groupEnd = if (!isCircleLeft && hasCompanion) circleLeft + circleSize else collapsedMainLeft + settings.width.dp
-    val groupCenter = (groupStart + groupEnd) / 2f
-
-    val collapsedMainOffset = if (settings.enableNotchMode) {
-        settings.xOffset.dp
-    } else if (isFullWidth) {
-        mainCenter - screenCenter
-    } else {
-        mainCenter - groupCenter
-    }
-    val expandedTopOffset = calculateExpandedTopOffset(
-        enableNotchMode = settings.enableNotchMode,
-        hasCompanion = hasCompanion,
-        statusBarHeightDp = statusBarHeight,
-        notchHeightDp = settings.height,
-        circleSizeDp = settings.height,
-        compactGapDp = COMPACT_INDICATOR_GAP_DP
-    ).dp
-    val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
-
-    var isAutoHidden by remember { mutableStateOf(false) }
-    var userInteractionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
-
-    // Reset auto-hide whenever active notifications change or selection changes
-    LaunchedEffect(notifications.map { it.key }, selectedIndex) {
-        isAutoHidden = false
-        userInteractionTimestamp = System.currentTimeMillis()
-    }
-
-    // Auto-hide countdown timer when pill is collapsed and autoHidePill is enabled
-    LaunchedEffect(expanded, settings.autoHidePill, settings.autoHideTimeoutSeconds, userInteractionTimestamp) {
-        if (expanded || !settings.autoHidePill) {
-            isAutoHidden = false
-            return@LaunchedEffect
-        }
-        val timeoutMs = (settings.autoHideTimeoutSeconds.coerceAtLeast(1) * 1000L)
-        kotlinx.coroutines.delay(timeoutMs)
-        isAutoHidden = true
-    }
-
-    val isHiding = isIdleHiding || (settings.autoHidePill && isAutoHidden)
-    val pillBackgroundColor = Color(settings.pillColor)
-
-    val width by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandWidth") {
-        if (it) expandedWidth else if (isHiding) 0.dp else settings.width.dp
-    }
-    val height by transition.animateDp(transitionSpec = { heightSpec }, label = "islandHeight") {
-        if (it) expandedHeight else if (isHiding) 0.dp else settings.height.dp
-    }
-    val yOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandYOffset") {
-        if (it) expandedTopOffset else 0.dp
-    }
-    val radius by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandRadius") {
-        if (it) 34.dp else if (isHiding) 0.dp else settings.cornerRadius.dp
-    }
-    val animatedXOffset by transition.animateDp(transitionSpec = { sizeSpec }, label = "islandXOffset") {
-        if (it) 0.dp else collapsedMainOffset
-    }
-
-    val collapsedAlpha by transition.animateFloat(
-        transitionSpec = { alphaSpec },
-        label = "collapsedAlpha"
-    ) {
-        if (it || isHiding) 0f else 1f
-    }
-
-    val expandedAlpha by transition.animateFloat(
-        transitionSpec = { alphaSpec },
-        label = "expandedAlpha"
-    ) {
-        if (it) 1f else 0f
-    }
-
-    val contentScale by transition.animateFloat(
-        transitionSpec = { sizeSpecFloat },
-        label = "contentScale"
-    ) {
-        if (it) 1f else 0.95f
-    }
-
-    val contentSlideY by transition.animateDp(
-        transitionSpec = { sizeSpec },
-        label = "contentSlideY"
-    ) {
-        if (it) 0.dp else (-6).dp
-    }
-
-    val safeWidth = width.coerceAtLeast(0.dp)
-    val safeHeight = height.coerceAtLeast(0.dp)
-    val safeRadius = radius.coerceAtLeast(0.dp)
-
-    // Tactile spring scale bounce animation only when user switches between active notifications
-    val switchScaleAnim = remember { androidx.compose.animation.core.Animatable(1f) }
-    var isInitialComposition by remember { mutableStateOf(true) }
-    var lastSelectedIndex by remember { mutableStateOf(selectedIndex) }
-    LaunchedEffect(selectedIndex) {
-        if (isInitialComposition) {
-            isInitialComposition = false
-            lastSelectedIndex = selectedIndex
-            return@LaunchedEffect
-        }
-        if (lastSelectedIndex != selectedIndex) {
-            lastSelectedIndex = selectedIndex
-            switchScaleAnim.animateTo(
-                targetValue = 0.92f,
-                animationSpec = tween(40, easing = FastOutSlowInEasing)
-            )
-            switchScaleAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = 650f
-                )
-            )
-        }
-    }
-
-    // Dual Pill (Multi-Tasking Split Island) Detection:
-    // When 2 or more notifications exist (e.g. Music + Notification/Timer/Call), split into Main Pill + Secondary Bubble
-    val secondaryNotification = if (!settings.enableNotchMode && notifications.size >= 2) {
-        notifications.firstOrNull { it.key != activeNotification?.key }
-    } else null
-    val secondaryIndex = if (secondaryNotification != null) {
-        notifications.indexOfFirst { it.key == secondaryNotification.key }
-    } else -1
-    val tertiaryNotification = if (!settings.enableNotchMode && notifications.size >= 3) {
-        notifications.firstOrNull {
-            it.key != activeNotification?.key && it.key != secondaryNotification?.key
-        }
-    } else null
-    val tertiaryIndex = if (tertiaryNotification != null) {
-        notifications.indexOfFirst { it.key == tertiaryNotification.key }
-    } else -1
-    val isSplitMode = if (settings.enableNotchMode) false else secondaryNotification != null
-    val secondaryIsPill = compactShapes.singleOrNull() == CompactNotificationShape.MiniPill
-    val showTertiaryPill = compactShapes.size == 2 && tertiaryNotification != null
-
-    val secondaryAlpha by animateFloatAsState(
-        targetValue = if (isSplitMode && !isHiding) 1f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "secondaryAlpha"
-    )
-    val secondaryScale by animateFloatAsState(
-        targetValue = if (isSplitMode && !isHiding) 1f else 0.3f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
-        label = "secondaryScale"
-    )
-    val secondaryBubbleWidth by animateDpAsState(
-        targetValue = if (secondaryIsPill) miniPillWidth else circleSize,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
-        label = "secondaryBubbleWidth"
-    )
-    val secondaryPillProgress = (miniPillWidth - circleSize).value.let { widthDelta ->
-        if (widthDelta == 0f) {
-            if (secondaryIsPill) 1f else 0f
-        } else {
-            ((secondaryBubbleWidth - circleSize).value / widthDelta).coerceIn(0f, 1f)
-        }
-    }
-    val secondaryBubbleCorner by animateDpAsState(
-        targetValue = if (secondaryIsPill) settings.cornerRadius.dp else circleSize / 2f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
-        label = "secondaryBubbleCorner"
-    )
-    val tertiaryAlpha by animateFloatAsState(
-        targetValue = if (showTertiaryPill && !isHiding) 1f else 0f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-        label = "tertiaryAlpha"
-    )
-    val tertiaryScale by animateFloatAsState(
-        targetValue = if (showTertiaryPill && !isHiding) 1f else 0.3f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = 480f),
-        label = "tertiaryScale"
-    )
-
-    val expandedCompactX = collapsedMainLeft
-    val collapsedSecondaryOffset = if (isFullWidth) {
-        circleCenter - screenCenter
-    } else {
-        circleCenter - groupCenter
-    }
-    val secondaryExpandedOffset = calculateSecondaryExpandedOffset(
-        secondaryIsPill = secondaryIsPill,
-        isCircleLeft = isCircleLeft,
+    val layout = rememberIslandLayout(
+        settings = settings,
+        notifications = cutoutNotifications,
+        expanded = expanded,
+        safeIndex = cutoutIndex,
         isFullWidth = isFullWidth,
-        expandedCompactX = expandedCompactX.value,
-        screenCenter = screenCenter.value,
-        miniPillWidth = miniPillWidth.value,
-        circleSize = circleSize.value,
-        compactGap = compactGap.value
-    ).dp
-    val secondaryOffset by animateDpAsState(
-        targetValue = if (!expanded) collapsedSecondaryOffset else secondaryExpandedOffset,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = 520f),
-        label = "secondaryOffset"
+        pickerOnLeft = pickerOnLeft,
+        statusBarHeight = statusBarHeight,
+        pickerSideBySide = pickerSideBySide,
+        surfaceTwoIslands = twoIslandsDrawn,
+        splitCardWidthDp = splitWidthEffective,
+        expandedHeight = expandedHeight,
+        isAutoHidden = ui.isAutoHidden,
+        idleClosing = idleClosing,
+        launcherOpen = appsLauncherOpen && expanded,
+        context = context,
+        configuration = configuration,
+        isLandscape = isLandscape,
+        screenWidth = screenWidth,
+        screenCenter = screenCenter,
+        snapGeometry = pillExit.snapGeometry,
+        cardSwitching = { ui.cardSwipeSnap },
+        landscapePillStretch = widgetPill,
+        holdArrivalPulse = holdCutouts
     )
-
-    // Outer Box: Fills the entire WindowManager window bounds (which are padded for easy touch)
-    val outerModifier = if (currentExpanded) {
-        modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    if (isInputActive) {
-                        onReplyStateChanged(false)
-                    }
-                    currentOnToggle()
-                }
-            }
-    } else {
-        modifier.fillMaxSize()
+    SideEffect {
+        pillExit.record(
+            // Both orientations: portrait needs the pill's spot for the slide when a tap on the idle circle starts one.
+            shown = !settings.enableNotchMode && !expanded && com.agupta07505.smartisland.model.pillOnIsland(notifications.isNotEmpty(), widgetPill && isLandscape) && !layout.isHiding,
+            isLandscape = isLandscape,
+            settings = settings,
+            // The collapsed pill's rest spot. This runs when the function recomposes, which is no
+            // longer once per animation frame, so it must not read the animated size (it would be the first frame's value).
+            centerXDp = layout.collapsedMainOffset.value,
+            topDp = layout.collapsedTopShift.value,
+            widthDp = settings.width,
+            heightDp = settings.height
+        )
     }
+    val pickerLeftFraction = rememberUpdatedState(layout.pickerEdgeFraction)
+    val pickerOnLeftState = rememberUpdatedState(pickerOnLeft)
+    // True once the single island's surface has faded back in after the two landscape islands (flips twice per split,
+    // so reading it here does not recompose per frame of the fade).
+    val layoutForSurface by rememberUpdatedState(layout)
+    val surfaceBack by remember { androidx.compose.runtime.derivedStateOf { layoutForSurface.singleSurfaceAlpha >= 0.98f } }
+    // Close hand-off: the content keeps its two-island layout (the same rectangle at progress 0) until the shell is
+    // the single island again: the flag is off, the surface is back, and the window has had two frames to follow.
+    LaunchedEffect(pickerSideBySideNow, twoIslandsDrawn, surfaceBack) {
+        if (!pickerSideBySideNow && !twoIslandsDrawn && surfaceBack) {
+            androidx.compose.runtime.withFrameNanos { }
+            androidx.compose.runtime.withFrameNanos { }
+            stepDragForHold.shellSingleReady = true
+        }
+    }
+    // Watchdog.
+    val notificationsNow by rememberUpdatedState(notifications)
+    val safeIndexNow by rememberUpdatedState(safeIndex)
+    val selectedIndexNow by rememberUpdatedState(selectedIndex)
+    LaunchedEffect(expanded, pickerSideBySide, pickerSideBySideNow, twoIslandsDrawn, sideBySideHold) {
+        fun reasonNow(): String? = com.agupta07505.smartisland.model.ShellStateGuard.stuckReason(
+            expanded = expanded && layoutForSurface.expandedShown,
+            atRest = shellAtRest(ui),
+            overlayFlag = pickerSideBySide,
+            splitWanted = pickerSideBySideNow,
+            twoIslandsDrawn = twoIslandsDrawn,
+            singleSurfaceAlpha = layoutForSurface.singleSurfaceAlpha,
+            radiusDp = layoutForSurface.safeRadius.value
+        )
+        androidx.compose.runtime.snapshotFlow { reasonNow() }.collectLatest { first ->
+            if (first == null) return@collectLatest
+            kotlinx.coroutines.delay(com.agupta07505.smartisland.model.ShellStateGuard.waitMs(sideBySideHold, sideBySideHoldMs))
+            val reason = reasonNow() ?: return@collectLatest
+            com.agupta07505.smartisland.util.AppLogRecorder.w(
+                "ShellState",
+                "Shell state stuck: reason=$reason pickerSideBySide=$pickerSideBySide now=$pickerSideBySideNow hold=$sideBySideHold " +
+                    "splitShown=${stepDragForHold.splitShown} radius=${layoutForSurface.safeRadius.value} " +
+                    "singleSurfaceAlpha=${layoutForSurface.singleSurfaceAlpha} cardPop=${ui.cardPop.value} cardDragX=${ui.cardDragX} " +
+                    "card=${notificationsNow.getOrNull(safeIndexNow)?.key} " +
+                    "page=${com.agupta07505.smartisland.model.appGroupPageOf(notificationsNow, safeIndexNow)} selected=$selectedIndexNow"
+            )
+            if (com.agupta07505.smartisland.model.ShellStateGuard.canForceSingle(reason)) forceSingle = true
+        }
+    }
+    // No single expanded island (collapsed, or the two landscape islands).
+    LaunchedEffect(expanded, pickerSideBySide) {
+        if (!expanded || pickerSideBySide) cb.currentOnExpandedSurfaceBounds(null)
+    }
+    val switchScaleAnim = rememberSwitchScaleAnim(selectedIndex) {
+        System.currentTimeMillis() - ui.lastCardSwipeMs < SWIPE_SWITCH_BOUNCE_SKIP_MS
+    }
+    // The collapsed content fades in as the idle cutout grows into the pill when a card arrives.
+    val collapsedContentFade = rememberCollapsedContentFade(
+        activeNotification,
+        settings.animationSpeed(isLandscape),
+        fadeOut = pillExit.leavingNow
+    )
+    val secondary = rememberIslandSecondary(
+        settings = settings,
+        notifications = cutoutNotifications,
+        safeIndex = cutoutIndex,
+        expanded = expanded,
+        layout = layout,
+        activeNotification = cutoutNotifications.getOrNull(cutoutIndex),
+        isFullWidth = isFullWidth,
+        isLandscape = isLandscape,
+        screenWidth = screenWidth,
+        screenCenter = screenCenter,
+        landscapeDot = landscapeDot,
+        widgetPill = widgetPill,
+        userInteractionTimestamp = ui.userInteractionTimestamp,
+        switchScaleAnim = switchScaleAnim,
+        forceMerge = idleClosing,
+        holdMerge = pillExit.leavingNow,
+        forcedMergeMs = if (idleClosing) com.agupta07505.smartisland.model.IdleCloseSequence.plan(settings.animationSpeed(isLandscape)).step1Ms else 0
+    )
+    AnimScaleProbeEffect()
+    MergeTouchHapticEffect(layout, secondary, cb)
 
     Box(
-        modifier = outerModifier,
+        modifier = modifier
+            .islandOutsideTap(expanded, cb, isInputActive, onReplyStateChanged)
+            .widgetIslandOutsideTap(widgetIslandOpen && !expanded) { ui.onWidgetGlyphTap?.invoke() }
+            .islandTopInset { layout.topShift.coerceAtLeast(0.dp).roundToPx() },
         contentAlignment = Alignment.TopCenter
     ) {
+        HiddenPillTouchTarget(settings, layout, cb, ui)
 
-        // Invisible touch target over the pill location when hiding, so tapping the area reveals the pill or opens shortcuts
-        if (isHiding && !currentExpanded) {
-            Box(
-                modifier = Modifier
-                    .width(settings.width.dp)
-                    .height(settings.height.dp)
-                    .graphicsLayer {
-                        translationX = collapsedMainOffset.toPx()
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures {
-                            if (settings.autoHidePill && isAutoHidden) {
-                                // First tap on auto-hidden pill: awaken and reveal the pill
-                                isAutoHidden = false
-                                userInteractionTimestamp = System.currentTimeMillis()
-                            } else if (settings.enableAppShortcuts || currentNotifications.isNotEmpty()) {
-                                // Empty notifications idle hiding: expand favorite shortcuts if enabled
-                                currentOnToggle()
-                            }
-                        }
-                    }
-            )
+        // Notch mode, collapsed: square top corners. The radius itself is read in the draw phase (IslandShellModifiers.kt).
+        val squareTop = settings.enableNotchMode && !expanded
+
+        // Landscape, expanded: the collapsed pill stays at its own spot beside / above the card.
+        CornerPill(settings, layout, secondary, cb, ui, runner, scope, context)
+
+        // Landscape: the collapsed cutout lives in the top corner nearest the camera.
+        val cornerLockY: () -> Dp = { if (isLandscape && !settings.enableNotchMode) layout.collapsedTopShift - layout.topShift else 0.dp }
+
+        MergeBubbleBackdrop(settings, layout, secondary, pillExit, switchScaleAnim, cornerLockY, cb)
+
+        // The shell's opacity fades between the shared value and the media value.
+        val palette = com.agupta07505.smartisland.ui.expanded.LocalIslandPalette.current
+        val mediaShell = expanded && activeMode == IslandMode.Music
+        val mediaShellOpacity = androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (mediaShell) settings.mediaOpacity else settings.opacity,
+            // When the pill has left and the island takes the idle settings, the opacity jumps (the idle dot covers
+            // the spot meanwhile); a 200 ms fade from the pill's opacity showed as a dark box fading into the circle.
+            animationSpec = if (pillExit.phase == com.agupta07505.smartisland.model.PillPhase.Settling && landscapeDot != null) {
+                androidx.compose.animation.core.snap()
+            } else {
+                androidx.compose.animation.core.tween(
+                    durationMillis = settings.animationSpeed(isLandscape).durationMs(MEDIA_SHELL_OPACITY_FADE_MS)
+                )
+            },
+            label = "mediaShellOpacity"
+        )
+        // Tells the pill exit when the shell has really reached the idle settings, so the hand-over from the idle dot waits for it.
+        SideEffect {
+            pillExit.dotCoversHandover = landscapeDot != null
+            pillExit.shellSettled = {
+                val wantWidth = if (layout.isHiding && layout.hidingAlpha <= 0.01f) 0f else settings.width
+                val wantHeight = if (layout.isHiding && layout.hidingAlpha <= 0.01f) 0f else settings.height
+                kotlin.math.abs(layout.safeWidth.value - wantWidth) < SHELL_SETTLED_DP &&
+                    kotlin.math.abs(layout.safeHeight.value - wantHeight) < SHELL_SETTLED_DP &&
+                    kotlin.math.abs(mediaShellOpacity.value - settings.opacity) < SHELL_SETTLED_OPACITY
+            }
         }
 
-        val mainShape = if (settings.enableNotchMode && !currentExpanded) {
-            RoundedCornerShape(
-                topStart = 0.dp,
-                topEnd = 0.dp,
-                bottomStart = safeRadius,
-                bottomEnd = safeRadius
-            )
-        } else {
-            RoundedCornerShape(safeRadius)
+        // Landscape, the last card went while the island was open (a dismissed card, a call that ended): the shell
+        // must not shrink down onto the idle circle.
+        val closingOntoIdle: () -> Boolean = {
+            isLandscape && !settings.enableNotchMode && landscapeDot != null && notifications.isEmpty() && !widgetPill && !appsLauncherOpen &&
+                pillExit.phase == com.agupta07505.smartisland.model.PillPhase.None &&
+                !pillExit.shellSettled()
         }
 
-        // Inner Box: The actual visible pill container, managing the black background shape and size animations
+        // Portrait: does the pill's glyph-free centre band reach into the camera cutout (by 1 dp or more)? Decides where a long press
+        // opens the Open Apps shortcut (model/PortraitPillTap.kt, longPressOpensApps).
+        val cutoutArea = rememberCameraCutoutArea(settings, isLandscape)
+        val centreOverlapsCutout = com.agupta07505.smartisland.model.centreBandOverlapsCutout(
+            bandCentreXDp = layout.collapsedMainOffset.value,
+            bandWidthDp = settings.width * com.agupta07505.smartisland.model.PILL_CENTER_ZONE_SHARE,
+            bandTopDp = settings.yOffset,
+            bandHeightDp = settings.height,
+            cutoutCentreXDp = cutoutArea?.centreXDp,
+            cutoutWidthDp = cutoutArea?.widthDp ?: 0f,
+            cutoutTopDp = cutoutArea?.topDp ?: 0f,
+            cutoutHeightDp = cutoutArea?.heightDp ?: 0f
+        )
+
+        // The collapsed pill is not drawn while the widget island is out. Touches still reach the pill underneath
+        // (alpha does not change hit testing), so the glyph tap and the outside tap keep working.
+        val pillHiddenByIsland = ui.widgetIslandShown && !expanded
+        val pillContentAlpha = androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (pillHiddenByIsland) 0f else 1f,
+            animationSpec = if (pillHiddenByIsland) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(120),
+            label = "pillContentAlpha"
+        )
+        val pillContentFade = Modifier.graphicsLayer { alpha = pillContentAlpha.value }
         Box(
             modifier = Modifier
-                .width(safeWidth)
-                .height(safeHeight)
-                .graphicsLayer {
-                    translationX = animatedXOffset.toPx() + (if (!currentExpanded) pillDragOffsetX else 0f)
-                    translationY = yOffset.toPx() + dragOffset
-                    scaleX = switchScaleAnim.value
-                    scaleY = switchScaleAnim.value
-                }
-                .then(
-                    if (settings.enableShadow && settings.shadowElevation > 0f && !isHiding) {
-                        val activeMainShadow = if (currentExpanded) {
-                            (settings.shadowElevation * 1.5f).dp
-                        } else {
-                            settings.shadowElevation.dp
-                        }
-                        Modifier.shadow(
-                            elevation = activeMainShadow,
-                            shape = mainShape,
-                            clip = false,
-                            ambientColor = Color.Black,
-                            spotColor = Color.Black
-                        )
-                    } else Modifier
-                )
-                .clip(mainShape)
-                .background(pillBackgroundColor.copy(alpha = settings.opacity))
-                .pointerInput(displayMetrics.density, isInputActive) {
-                    if (isInputActive) return@pointerInput
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        springBackJob?.cancel()
-                        pillDragOffsetX = 0f
-                        dragOffset = 0f
-                        userInteractionTimestamp = System.currentTimeMillis()
-                        val pressTimeMs = System.currentTimeMillis()
-                        val wasExpandedAtStart = currentExpanded
-                        var isHoldRegistered = false
-                        var dragAccumulatorY = 0f
-                        var dragAccumulatorX = 0f
-                        var isDragging = false
-                        var pillGestureTriggered = false
-
-                        val holdJob = scope.launch {
-                            kotlinx.coroutines.delay(HOLD_GESTURE_THRESHOLD_MS)
-                            isHoldRegistered = true
-                            triggerHapticVibration(context)
-                        }
-
-                        val pointerId = down.id
-
-                        try {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-                            if (!change.pressed && !change.changedToUp()) break
-
-                            if (change.changedToUp()) {
-                                change.consume()
-                                holdJob.cancel()
-                                val totalElapsedMs = System.currentTimeMillis() - pressTimeMs
-                                val currentNotification = currentNotifications.getOrNull(currentSelectedIndex)
-
-                                if (wasExpandedAtStart) {
-                                    val swipeUpThreshold = -SWIPE_THRESHOLD_DP * displayMetrics.density
-                                    val swipeDownThreshold = SWIPE_THRESHOLD_DP * displayMetrics.density
-                                    if (isDragging && currentSettings.enableSwipeActions && dragOffset < swipeUpThreshold) {
-                                        val isHold = isHoldRegistered || totalElapsedMs >= HOLD_GESTURE_THRESHOLD_MS
-                                        val actionStr = if (isHold) currentSettings.swipeHoldUpAction else currentSettings.swipeUpAction
-                                        val action = SwipeAction.fromId(actionStr, if (isHold) SwipeAction.DismissAll else SwipeAction.DismissCurrent)
-                                        executeSwipeAction(
-                                            action = action,
-                                            currentNotification = currentNotification,
-                                            context = context,
-                                            onDismiss = currentOnDismiss,
-                                            onDismissAll = currentOnDismissAll,
-                                            onToggle = currentOnToggle,
-                                            onOpenNotification = currentOnOpenNotification,
-                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                            onPageSelected = currentOnPageSelected,
-                                            notificationsSize = currentNotifications.size,
-                                            currentIndex = currentSelectedIndex
-                                        )
-                                    } else if (isDragging && currentSettings.enableSwipeActions && dragOffset > swipeDownThreshold) {
-                                        val action = SwipeAction.fromId(currentSettings.swipeDownAction, SwipeAction.FloatingWindow)
-                                        executeSwipeAction(
-                                            action = action,
-                                            currentNotification = currentNotification,
-                                            context = context,
-                                            onDismiss = currentOnDismiss,
-                                            onDismissAll = currentOnDismissAll,
-                                            onToggle = currentOnToggle,
-                                            onOpenNotification = currentOnOpenNotification,
-                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                            onPageSelected = currentOnPageSelected,
-                                            notificationsSize = currentNotifications.size,
-                                            currentIndex = currentSelectedIndex
-                                        )
-                                    } else if (!isDragging || abs(dragOffset) < 10f * displayMetrics.density) {
-                                        if (!isHoldRegistered) {
-                                            if (currentNotification != null) {
-                                                currentOnOpenNotification(currentNotification)
-                                            } else {
-                                                SmartIslandRepositories.notificationRepository(context).resetTimer()
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // Collapsed state (In-Pill Gestures)
-                                    if (!pillGestureTriggered) {
-                                        val isPillSwipeEnabled = currentSettings.enablePillSwipeActions
-                                        val pillThreshold = PILL_SWIPE_THRESHOLD_DP * displayMetrics.density
-                                        val absX = abs(dragAccumulatorX)
-                                        val absY = abs(dragAccumulatorY)
-
-                                        if (isPillSwipeEnabled && (absX >= pillThreshold || absY >= pillThreshold)) {
-                                            pillGestureTriggered = true
-                                            if (absX > absY) {
-                                                if (dragAccumulatorX < -pillThreshold) {
-                                                    val action = SwipeAction.fromId(currentSettings.pillSwipeLeftAction, SwipeAction.PreviousNotification)
-                                                    executeSwipeAction(
-                                                        action = action,
-                                                        currentNotification = currentNotification,
-                                                        context = context,
-                                                        onDismiss = currentOnDismiss,
-                                                        onDismissAll = currentOnDismissAll,
-                                                        onToggle = currentOnToggle,
-                                                        onOpenNotification = currentOnOpenNotification,
-                                                        onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                        onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                        onPageSelected = currentOnPageSelected,
-                                                        notificationsSize = currentNotifications.size,
-                                                        currentIndex = currentSelectedIndex
-                                                    )
-                                                } else if (dragAccumulatorX > pillThreshold) {
-                                                    val action = SwipeAction.fromId(currentSettings.pillSwipeRightAction, SwipeAction.NextNotification)
-                                                    executeSwipeAction(
-                                                        action = action,
-                                                        currentNotification = currentNotification,
-                                                        context = context,
-                                                        onDismiss = currentOnDismiss,
-                                                        onDismissAll = currentOnDismissAll,
-                                                        onToggle = currentOnToggle,
-                                                        onOpenNotification = currentOnOpenNotification,
-                                                        onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                        onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                        onPageSelected = currentOnPageSelected,
-                                                        notificationsSize = currentNotifications.size,
-                                                        currentIndex = currentSelectedIndex
-                                                    )
-                                                }
-                                            } else {
-                                                if (dragAccumulatorY < -pillThreshold) {
-                                                    val action = SwipeAction.fromId(currentSettings.pillSwipeUpAction, SwipeAction.DismissCurrent)
-                                                    executeSwipeAction(
-                                                        action = action,
-                                                        currentNotification = currentNotification,
-                                                        context = context,
-                                                        onDismiss = currentOnDismiss,
-                                                        onDismissAll = currentOnDismissAll,
-                                                        onToggle = currentOnToggle,
-                                                        onOpenNotification = currentOnOpenNotification,
-                                                        onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                        onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                        onPageSelected = currentOnPageSelected,
-                                                        notificationsSize = currentNotifications.size,
-                                                        currentIndex = currentSelectedIndex
-                                                    )
-                                                } else if (dragAccumulatorY > pillThreshold) {
-                                                    val action = SwipeAction.fromId(currentSettings.pillSwipeDownAction, SwipeAction.Expand)
-                                                    executeSwipeAction(
-                                                        action = action,
-                                                        currentNotification = currentNotification,
-                                                        context = context,
-                                                        onDismiss = currentOnDismiss,
-                                                        onDismissAll = currentOnDismissAll,
-                                                        onToggle = currentOnToggle,
-                                                        onOpenNotification = currentOnOpenNotification,
-                                                        onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                        onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                        onPageSelected = currentOnPageSelected,
-                                                        notificationsSize = currentNotifications.size,
-                                                        currentIndex = currentSelectedIndex
-                                                    )
-                                                }
-                                            }
-                                        } else {
-                                            // Tap on collapsed pill: expands or reveals
-                                            if (!isHoldRegistered) {
-                                                if (settings.autoHidePill && isAutoHidden) {
-                                                    isAutoHidden = false
-                                                    userInteractionTimestamp = System.currentTimeMillis()
-                                                } else if (currentNotifications.isNotEmpty() || currentSettings.enableAppShortcuts) {
-                                                    currentOnToggle()
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                break
-                            } else {
-                                val dragAmountY = change.positionChange().y
-                                val dragAmountX = change.positionChange().x
-                                if (abs(dragAmountY) > 0.5f || abs(dragAmountX) > 0.5f) {
-                                    isDragging = true
-                                    dragAccumulatorY += dragAmountY
-                                    dragAccumulatorX += dragAmountX
-                                    change.consume()
-                                    if (abs(dragAccumulatorY) > 5f * displayMetrics.density || abs(dragAccumulatorX) > 5f * displayMetrics.density) {
-                                        holdJob.cancel()
-                                    }
-                                    if (wasExpandedAtStart) {
-                                        dragOffset = dragAccumulatorY.coerceIn(
-                                            -DRAG_MAX_OFFSET_DP * displayMetrics.density,
-                                            DRAG_MAX_OFFSET_DP * displayMetrics.density
-                                        )
-                                    } else {
-                                        pillDragOffsetX = (dragAccumulatorX * 0.35f).coerceIn(
-                                            -24f * displayMetrics.density,
-                                            24f * displayMetrics.density
-                                        )
-                                        dragOffset = (dragAccumulatorY * 0.35f).coerceIn(
-                                            -12f * displayMetrics.density,
-                                            12f * displayMetrics.density
-                                        )
-
-                                        // Snappy immediate execution when swipe threshold is crossed while dragging
-                                        if (!pillGestureTriggered && currentSettings.enablePillSwipeActions) {
-                                            val pillThreshold = PILL_SWIPE_THRESHOLD_DP * displayMetrics.density
-                                            val absX = abs(dragAccumulatorX)
-                                            val absY = abs(dragAccumulatorY)
-
-                                            if (absX >= pillThreshold || absY >= pillThreshold) {
-                                                pillGestureTriggered = true
-                                                holdJob.cancel()
-                                                val currentNotification = currentNotifications.getOrNull(currentSelectedIndex)
-
-                                                if (absX > absY) {
-                                                    if (dragAccumulatorX < -pillThreshold) {
-                                                        val action = SwipeAction.fromId(currentSettings.pillSwipeLeftAction, SwipeAction.PreviousNotification)
-                                                        executeSwipeAction(
-                                                            action = action,
-                                                            currentNotification = currentNotification,
-                                                            context = context,
-                                                            onDismiss = currentOnDismiss,
-                                                            onDismissAll = currentOnDismissAll,
-                                                            onToggle = currentOnToggle,
-                                                            onOpenNotification = currentOnOpenNotification,
-                                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                            onPageSelected = currentOnPageSelected,
-                                                            notificationsSize = currentNotifications.size,
-                                                            currentIndex = currentSelectedIndex
-                                                        )
-                                                    } else if (dragAccumulatorX > pillThreshold) {
-                                                        val action = SwipeAction.fromId(currentSettings.pillSwipeRightAction, SwipeAction.NextNotification)
-                                                        executeSwipeAction(
-                                                            action = action,
-                                                            currentNotification = currentNotification,
-                                                            context = context,
-                                                            onDismiss = currentOnDismiss,
-                                                            onDismissAll = currentOnDismissAll,
-                                                            onToggle = currentOnToggle,
-                                                            onOpenNotification = currentOnOpenNotification,
-                                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                            onPageSelected = currentOnPageSelected,
-                                                            notificationsSize = currentNotifications.size,
-                                                            currentIndex = currentSelectedIndex
-                                                        )
-                                                    }
-                                                } else {
-                                                    if (dragAccumulatorY < -pillThreshold) {
-                                                        val action = SwipeAction.fromId(currentSettings.pillSwipeUpAction, SwipeAction.DismissCurrent)
-                                                        executeSwipeAction(
-                                                            action = action,
-                                                            currentNotification = currentNotification,
-                                                            context = context,
-                                                            onDismiss = currentOnDismiss,
-                                                            onDismissAll = currentOnDismissAll,
-                                                            onToggle = currentOnToggle,
-                                                            onOpenNotification = currentOnOpenNotification,
-                                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                            onPageSelected = currentOnPageSelected,
-                                                            notificationsSize = currentNotifications.size,
-                                                            currentIndex = currentSelectedIndex
-                                                        )
-                                                    } else if (dragAccumulatorY > pillThreshold) {
-                                                        val action = SwipeAction.fromId(currentSettings.pillSwipeDownAction, SwipeAction.Expand)
-                                                        executeSwipeAction(
-                                                            action = action,
-                                                            currentNotification = currentNotification,
-                                                            context = context,
-                                                            onDismiss = currentOnDismiss,
-                                                            onDismissAll = currentOnDismissAll,
-                                                            onToggle = currentOnToggle,
-                                                            onOpenNotification = currentOnOpenNotification,
-                                                            onOpenFloatingWindow = currentOnOpenFloatingWindow,
-                                                            onOpenNotificationShade = currentOnOpenNotificationShade,
-                                                            onPageSelected = currentOnPageSelected,
-                                                            notificationsSize = currentNotifications.size,
-                                                            currentIndex = currentSelectedIndex
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        } finally {
-                            holdJob.cancel()
-                            springBackJob = scope.launch {
-                                if (pillDragOffsetX != 0f) {
-                                    val startPillOffset = pillDragOffsetX
-                                    launch {
-                                        androidx.compose.animation.core.Animatable(startPillOffset).animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMedium
-                                            )
-                                        ) {
-                                            pillDragOffsetX = value
-                                        }
-                                        pillDragOffsetX = 0f
-                                    }
-                                }
-                                if (dragOffset != 0f) {
-                                    val startDrag = dragOffset
-                                    launch {
-                                        androidx.compose.animation.core.Animatable(startDrag).animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMedium
-                                            )
-                                        ) {
-                                            dragOffset = value
-                                        }
-                                        dragOffset = 0f
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                .graphicsLayer { alpha = if (ui.widgetIslandCovers() && !expanded) 0f else 1f }
+                .islandPillSurface(settings.forCard(mediaShell), layout, secondary, pillExit, switchScaleAnim, cb, ui, squareTop, pickerSideBySide, twoIslandsDrawn, { mediaShellOpacity.value }, reportBounds = surfaceBack, shellHidden = { closingOntoIdle() || FaceIdShell.covering }, palette = palette)
+                .islandMainGestures(
+                    settings = settings,
+                    isInputActive = isInputActive,
+                    isLandscape = isLandscape,
+                    cb = cb,
+                    ui = ui,
+                    runner = runner,
+                    scope = scope,
+                    context = context,
+                    pickerLeftFraction = pickerLeftFraction,
+                    pickerOnLeft = pickerOnLeftState,
+                    centreOverlapsCutout = centreOverlapsCutout,
+                    pillHasContent = com.agupta07505.smartisland.model.pillOnIsland(notifications.isNotEmpty(), widgetPill && isLandscape)
+                ),
             contentAlignment = Alignment.TopCenter
         ) {
-            // Collapsed content layer (pinned to fixed pill bounds at top-center, cancelling yOffset)
-            if (collapsedAlpha > 0f) {
-                Box(
-                    modifier = Modifier
-                        .width(settings.width.dp)
-                        .height(settings.height.dp)
-                        .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            alpha = collapsedAlpha
-                        }
-                ) {
-                    IslandCollapsedContent(
-                        mode = activeMode,
-                        notification = activeNotification,
-                        collapsedAlpha = collapsedAlpha,
-                        settings = settings
-                    )
-                }
-            }
-
-            // Expanded content layer — smoothly fade out while collapsing
-            if (expanded || expandedAlpha > 0.01f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .graphicsLayer {
-                            alpha = expandedAlpha
-                            scaleX = contentScale
-                            scaleY = contentScale
-                            translationY = contentSlideY.toPx()
-                        }
-                ) {
-                    IslandExpandedContent(
-                        notifications = notifications,
-                        launcherApps = launcherApps,
-                        selectedIndex = selectedIndex,
-                        onPageSelected = onPageSelected,
-                        onOpenNotification = onOpenNotification,
-                        onLaunchApp = onLaunchApp,
-                        onCollapse = onToggleExpanded,
-                        statusBarHeight = statusBarHeight.dp,
-                        // Each mode owns its natural height. The launcher already
-                        // supplies its own loading height and must not impose that
-                        // minimum on compact call or battery content.
-                        onHeightMeasured = { expandedHeight = it },
-                        settings = settings,
-                        onReplyStateChanged = onReplyStateChanged
-                    )
-                }
-            }
-        }
-
-        // Collapsed: secondary circle. Expanded with 2: the same item morphs
-        // into a full-size pill. Expanded with 3+: it stays the circle on the right.
-        if (!settings.enableNotchMode && secondaryAlpha > 0f && secondaryNotification != null) {
-            Box(
-                modifier = Modifier
-                    .absoluteOffset {
-                        IntOffset(
-                            secondaryOffset.roundToPx(),
-                            0
-                        )
-                    }
-                    .width(secondaryBubbleWidth)
-                    .height(circleSize)
-                    .graphicsLayer {
-                        alpha = secondaryAlpha
-                        scaleX = secondaryScale * switchScaleAnim.value
-                        scaleY = secondaryScale * switchScaleAnim.value
-                    }
-                    .then(
-                        if (settings.enableShadow && settings.shadowElevation > 0f) {
-                            Modifier.shadow(
-                                elevation = (settings.shadowElevation * 0.85f).dp,
-                                shape = RoundedCornerShape(secondaryBubbleCorner),
-                                clip = false,
-                                ambientColor = Color.Black,
-                                spotColor = Color.Black
-                            )
-                        } else Modifier
-                    )
-                    .clip(RoundedCornerShape(secondaryBubbleCorner))
-                    .background(pillBackgroundColor.copy(alpha = settings.opacity))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        if (secondaryIndex >= 0) {
-                            onPageSelected(secondaryIndex)
-                        }
-                        if (!currentExpanded) {
-                            currentOnToggle()
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { alpha = 1f - secondaryPillProgress },
-                    contentAlignment = Alignment.Center
-                ) {
-                    SecondaryBubbleContent(
-                        notification = secondaryNotification,
-                        settings = settings
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .requiredWidth(miniPillWidth)
-                        .height(circleSize)
-                        .graphicsLayer { alpha = secondaryPillProgress },
-                    contentAlignment = Alignment.Center
-                ) {
-                    IslandCollapsedContent(
-                        mode = secondaryNotification.mode,
-                        notification = secondaryNotification,
-                        collapsedAlpha = 1f,
-                        settings = settings
-                    )
-                }
-            }
-        }
-
-        if (!settings.enableNotchMode && tertiaryAlpha > 0f && tertiaryNotification != null) {
-            Box(
-                modifier = Modifier
-                    .absoluteOffset {
-                        IntOffset(
-                            (expandedCompactX - screenCenter + miniPillWidth / 2f).roundToPx(),
-                            0
-                        )
-                    }
-                    .width(miniPillWidth)
-                    .height(circleSize)
-                    .graphicsLayer {
-                        alpha = tertiaryAlpha
-                        scaleX = tertiaryScale * switchScaleAnim.value
-                        scaleY = tertiaryScale * switchScaleAnim.value
-                    }
-                    .then(
-                        if (settings.enableShadow && settings.shadowElevation > 0f) {
-                            Modifier.shadow(
-                                elevation = (settings.shadowElevation * 0.85f).dp,
-                                shape = RoundedCornerShape(settings.cornerRadius.dp),
-                                clip = false,
-                                ambientColor = Color.Black,
-                                spotColor = Color.Black
-                            )
-                        } else Modifier
-                    )
-                    .clip(RoundedCornerShape(settings.cornerRadius.dp))
-                    .background(pillBackgroundColor.copy(alpha = settings.opacity))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        if (tertiaryIndex >= 0) {
-                            onPageSelected(tertiaryIndex)
-                        }
-                        if (!currentExpanded) {
-                            currentOnToggle()
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                IslandCollapsedContent(
-                    mode = tertiaryNotification.mode,
-                    notification = tertiaryNotification,
-                    collapsedAlpha = 1f,
-                    settings = settings
+            if (layout.collapsedShown) {
+                CollapsedContentLayer(
+                    layout = layout,
+                    fade = collapsedContentFade,
+                    activeMode = activeMode,
+                    settings = settings,
+                    ui = ui,
+                    animSpeed = settings.animationSpeed(isLandscape),
+                    idleSuppressed = idleWidgetsSuppressed || tickPillHold,
+                    modifier = Modifier.align(Alignment.TopCenter).then(pillContentFade)
                 )
+                // The clock widget's tick on the full hour, over whatever the pill shows (also while the idle widgets
+                // are held off after a tap or long press).
+                val tickCanHold = isLandscape && !settings.enableNotchMode
+                HourChimeLayer(settings, ui, settings.animationSpeed(isLandscape), Modifier.align(Alignment.TopCenter).then(pillContentFade), canHold = tickCanHold)
+                // The sunrise / afternoon / sunset / midnight glyphs (Day moments widget).
+                DayMomentLayer(settings, ui, settings.animationSpeed(isLandscape), Modifier.align(Alignment.TopCenter).then(pillContentFade), canHold = tickCanHold)
+                // The weather change tick over whatever the pill shows (unless the pill's own weather widget does it).
+                WeatherTickLayer(settings, ui, settings.animationSpeed(isLandscape), Modifier.align(Alignment.TopCenter).then(pillContentFade), canHold = tickCanHold)
             }
-        }
-    }
-}
 
-@Composable
-private fun SecondaryBubbleContent(
-    notification: IslandNotification,
-    settings: SmartIslandSettings
-) {
-    when (notification.mode) {
-        IslandMode.Bluetooth -> {
-            BluetoothCollapsedRight(
-                notification = notification,
-                settings = settings
+            ExpandedCardHost(
+                expanded = expanded,
+                layout = layout,
+                settings = settings,
+                notifications = notifications,
+                activeNotification = activeNotification,
+                prewarmWanted = prewarmWanted,
+                launcherApps = launcherApps,
+                launcherOpen = appsLauncherOpen,
+                selectedIndex = selectedIndex,
+                onPageSelected = onPageSelected,
+                onOpenNotification = onOpenNotification,
+                onLaunchApp = onLaunchApp,
+                onAppAction = onAppAction,
+                onToggleExpanded = onToggleExpanded,
+                onReplyStateChanged = onReplyStateChanged,
+                onTextExpandedChanged = onTextExpandedChanged,
+                siblingPickerOpen = siblingPickerOpen,
+                onSiblingSelected = onSiblingSelected,
+                onSiblingPickerClose = onSiblingPickerClose,
+                isLandscape = isLandscape,
+                pickerOnLeft = pickerOnLeft,
+                configuration = configuration,
+                onHeightMeasured = { expandedHeight = it },
+                onSplitCardWidthMeasured = { measured ->
+                    activeNotification?.key?.let { key ->
+                        if (splitWidthCache.size > SPLIT_WIDTH_CACHE_MAX) splitWidthCache.clear()
+                        splitWidthCache[key] = measured
+                    }
+                    // No state write (no recomposition) when the width is what the window already uses.
+                    if (kotlin.math.abs(measured - splitWidthEffective) > SPLIT_WIDTH_SAME_DP) splitCardWidthDp = measured
+                },
+                ui = ui,
+                animSpeed = settings.animationSpeed(isLandscape)
+            )
+
+            // A small white handle at the bottom of the expanded island: pull it down to open the notification in a floating window.
+            FloatingWindowHandle(
+                // Floating window off in settings: no white pill and no pull / squeeze animation at all.
+                enabled = settings.floatingWindowEnabled && expanded && !pickerSideBySide && !isInputActive && activeNotification != null,
+                visible = settings.floatingWindowEnabled && !pickerSideBySide && !isInputActive && activeNotification != null,
+                fade = { layout.expandedAlpha },
+                cb = cb,
+                ui = ui
             )
         }
-        IslandMode.Flashlight -> {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFF59E0B).copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.FlashlightOn,
-                    contentDescription = "Flashlight",
-                    tint = Color(0xFFFACC15),
-                    modifier = Modifier.size(12.dp)
-                )
-            }
-        }
-        IslandMode.Hotspot -> {
-            HotspotCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.Battery -> {
-            BatteryCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.LiveActivity -> {
-            LiveActivityCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.Navigation -> {
-            NavigationCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.IncomingCall -> {
-            val icon = notification.largeIcon ?: notification.icon
-            if (icon != null) {
-                Image(
-                    bitmap = icon.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Icon(
-                    Icons.Rounded.Call,
-                    contentDescription = null,
-                    tint = Color(settings.callColor),
-                    modifier = Modifier.size(14.dp)
-                )
-            }
-        }
-        IslandMode.Music -> {
-            val artwork = notification.largeIcon ?: notification.icon
-            if (artwork != null) {
-                Image(
-                    bitmap = artwork.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Color(settings.musicVisualizerColor)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
+
+        SecondaryBubble(settings, layout, secondary, pillExit, switchScaleAnim, cornerLockY, cutoutNotifications, onPageSelected, cb, ui)
+        WidgetIslandLayer(
+            open = widgetIslandOpen,
+            expanded = expanded,
+            hasCards = notifications.isNotEmpty(),
+            importantCard = notifications.any { com.agupta07505.smartisland.model.cardClosesWidgetIsland(it.mode) },
+            snapCount = widgetIslandSnap,
+            settings = settings,
+            islandLayout = layout,
+            ui = ui,
+            screenWidthDp = screenWidth.value,
+            isLandscape = isLandscape,
+            animSpeed = settings.animationSpeed(isLandscape),
+            onOpenChange = onWidgetIslandChange,
+            onShownChange = onWidgetIslandShownChange,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+        TertiaryPill(settings, layout, secondary, switchScaleAnim, cornerLockY, screenCenter, onPageSelected, cb)
+
+        // Portrait: no separate idle pill. While expanded, the pill's glyph-free centre closes the island.
+        val closeZone = rememberExpandedCloseZone(settings, isLandscape)
+        // Collapsed, centre band clear of the camera cutout: a long press on the cutout itself hides / shows the pill. The window
+        // is the pill's row, so the target sits at the cutout's spot inside it (the service adds the same rectangle to the touchable region).
+        val cutoutTarget = cutoutArea?.let { com.agupta07505.smartisland.model.cutoutTouchTarget(it) }
+        CutoutLongPressTarget(
+            enabled = !expanded && !isLandscape && !settings.enableNotchMode && cutoutTarget != null && !centreOverlapsCutout,
+            width = (cutoutTarget?.widthDp ?: 0f).dp,
+            height = (cutoutTarget?.heightDp ?: 0f).dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .graphicsLayer {
+                    translationX = (cutoutTarget?.centreXDp ?: 0f).dp.toPx()
+                    translationY = ((cutoutTarget?.topDp ?: 0f) - settings.yOffset).coerceAtLeast(0f).dp.toPx()
+                },
+            onLongPress = {
+                ui.touch()
+                IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
+                val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
+                if (longPress != SwipeAction.None) {
+                    runner.runLongPress(longPress)
                 }
             }
-        }
-        IslandMode.ScreenRecording -> {
-            ScreenRecordingCollapsedGlyph(settings = settings)
-        }
-        IslandMode.Timer -> {
-            TimerCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.Stopwatch -> {
-            StopwatchCollapsedGlyph(notification = notification, settings = settings)
-        }
-        IslandMode.Notification, IslandMode.DownloadUpload, IslandMode.Empty -> {
-            NotificationGlyph(notification = notification, settings = settings)
-        }
-    }
-}
-
-// Animation specs
-internal const val EXPANDED_WIDTH_RATIO = 0.95f
-
-internal fun calculateExpandedWidth(
-    isLandscape: Boolean,
-    screenWidthDp: Float,
-    screenHeightDp: Float,
-    ratio: Float = EXPANDED_WIDTH_RATIO
-): Float {
-    return if (isLandscape) {
-        val portraitWidth = minOf(screenWidthDp, screenHeightDp)
-        (portraitWidth * ratio).coerceIn(340f, 440f)
-    } else {
-        screenWidthDp * ratio
-    }
-}
-
-internal fun calculateExpandedTopOffset(
-    enableNotchMode: Boolean,
-    hasCompanion: Boolean,
-    statusBarHeightDp: Float,
-    notchHeightDp: Float = 35f,
-    circleSizeDp: Float = 34f,
-    compactGapDp: Float = COMPACT_INDICATOR_GAP_DP
-): Float {
-    return if (enableNotchMode) {
-        maxOf(statusBarHeightDp, notchHeightDp) + 8f
-    } else if (hasCompanion) {
-        maxOf(statusBarHeightDp, circleSizeDp + compactGapDp)
-    } else {
-        statusBarHeightDp
-    }
-}
-
-internal fun calculateSecondaryExpandedOffset(
-    secondaryIsPill: Boolean,
-    isCircleLeft: Boolean,
-    isFullWidth: Boolean,
-    expandedCompactX: Float,
-    screenCenter: Float,
-    miniPillWidth: Float,
-    circleSize: Float,
-    compactGap: Float
-): Float {
-    return if (secondaryIsPill) {
-        val secCenter = expandedCompactX + miniPillWidth / 2f
-        if (isFullWidth) secCenter - screenCenter else 0f
-    } else if (isCircleLeft) {
-        val secCenter = expandedCompactX - compactGap - circleSize / 2f
-        if (isFullWidth) secCenter - screenCenter else -(miniPillWidth + compactGap) / 2f
-    } else {
-        val secCenter = expandedCompactX + miniPillWidth + compactGap + circleSize / 2f
-        if (isFullWidth) secCenter - screenCenter else ((miniPillWidth + compactGap) / 2f)
-    }
-}
-private const val SWIPE_THRESHOLD_DP = 35f
-private const val PILL_SWIPE_THRESHOLD_DP = 16f
-private const val DRAG_MAX_OFFSET_DP = 100f
-private const val COMPACT_INDICATOR_GAP_DP = 8f
-private const val HOLD_GESTURE_THRESHOLD_MS = 300L
-
-private fun triggerHapticVibration(context: android.content.Context) {
-    runCatching {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val vm = context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
-            val vibrator = vm?.defaultVibrator
-            if (vibrator?.hasVibrator() == true) {
-                vibrator.vibrate(android.os.VibrationEffect.createOneShot(60L, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-                return
+        )
+        PortraitPillCenterTarget(
+            enabled = expanded && com.agupta07505.smartisland.model.portraitCenterTapIsIdleControl(
+                isLandscape = isLandscape,
+                notchMode = settings.enableNotchMode,
+                hasCards = notifications.isNotEmpty()
+            ) && !pickerSideBySide,
+            zoneWidth = closeZone.widthDp.dp,
+            zoneHeight = closeZone.heightDp.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .graphicsLayer {
+                    // On a detected camera cutout: its own spot. Otherwise the pill's sideways offset.
+                    translationX = (closeZone.offsetXDp?.dp ?: layout.collapsedMainOffset).toPx()
+                    translationY = closeZone.topDp.dp.toPx()
+                },
+            onTap = {
+                com.agupta07505.smartisland.util.AppLogRecorder.i("IdleDot", "portrait centre target tapped while expanded")
+                ui.touch()
+                cb.currentOnIdleDotTap()
+            },
+            onLongPress = {
+                ui.touch()
+                IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
+                val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
+                if (longPress != SwipeAction.None) {
+                    runner.runLongPress(longPress)
+                }
             }
-        }
-        @Suppress("DEPRECATION")
-        val vibrator = context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
-        if (vibrator?.hasVibrator() == true) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                vibrator.vibrate(android.os.VibrationEffect.createOneShot(60L, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator.vibrate(60L)
+        )
+
+        // Landscape idle dot; portrait has none, its pill centre is the control. Drawn last, above the pill, so it
+        // can always be pressed.
+        LandscapeIdleDotView(
+            dot = landscapeDot,
+            alpha = { if (closingOntoIdle()) 1f else pillExit.dotAlpha(secondary.idleDotAlpha) },
+            topShiftDp = { layout.topShift.value },
+            color = layout.pillBackgroundColor,
+            onTap = {
+                ui.touch()
+                cb.currentOnIdleDotTap()
+            },
+            onLongPress = {
+                ui.touch()
+                IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
+                val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
+                if (longPress != SwipeAction.None) {
+                    runner.runLongPress(longPress)
+                }
             }
-        }
+        )
+
+        // Face ID scan (ui/FaceIdLayer.kt): drawn last, above the pill and every cutout. OverlayIsland keeps
+        // everything else off while it plays.
+        FaceIdLayer(
+            settings = settings,
+            pillColor = layout.pillBackgroundColor,
+            centerOffsetX = layout.collapsedMainOffset,
+            isLandscape = isLandscape,
+            topOffset = layout.yOffset,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 
-internal enum class CompactNotificationShape { MiniPill, Circle }
+private fun shellAtRest(ui: IslandInteractionState): Boolean =
+    ui.cardDragX == 0f && ui.dragOffset == 0f && ui.swipeDownPull == 0f && ui.handlePull == 0f &&
+        ui.pendingCardEnterSign == 0 && ui.cardPop.value >= 1f && ui.cardLeanFromPx == 0f && !ui.stepDrag.active
 
-internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
-    return when (mode) {
-        IslandMode.Music -> 175.dp
-        IslandMode.Notification -> 135.dp
-        IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
-        IslandMode.LiveActivity, IslandMode.Navigation -> 180.dp
-        IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
-        IslandMode.Bluetooth, IslandMode.Flashlight, IslandMode.ScreenRecording,
-        IslandMode.Timer, IslandMode.Stopwatch -> 115.dp
-        IslandMode.Empty, null -> 135.dp
-    }
-}
+private const val SHELL_SETTLED_DP = 0.6f
+private const val SHELL_SETTLED_OPACITY = 0.02f
 
-internal fun compactNotificationShapes(
-    notificationCount: Int,
-    expanded: Boolean
-): List<CompactNotificationShape> = when {
-    notificationCount < 2 -> emptyList()
-    !expanded -> listOf(CompactNotificationShape.Circle)
-    notificationCount == 2 -> listOf(CompactNotificationShape.MiniPill)
-    else -> listOf(CompactNotificationShape.MiniPill, CompactNotificationShape.Circle)
-}
+private const val MEDIA_SHELL_OPACITY_FADE_MS = 200
 
-private fun trySkipMedia(
-    context: android.content.Context?,
-    notification: IslandNotification?,
-    forward: Boolean
-): Boolean {
-    if (context == null) return false
+private const val SIDE_BY_SIDE_HOLD_MARGIN_MS = 0L
 
-    // 1. Direct notification action PendingIntent (e.g. Spotify, YouTube Music, podcasts)
-    val actionSent = if (forward) {
-        notification.trySendFirstAction(context, "next", "skip", "forward")
-    } else {
-        notification.trySendFirstAction(context, "previous", "prev", "rewind")
-    }
-    if (actionSent) return true
-
-    // 2. Notification MediaSession token
-    val token = notification?.mediaToken
-    if (token != null) {
-        val success = runCatching {
-            val controller = android.media.session.MediaController(context, token)
-            if (forward) controller.transportControls.skipToNext() else controller.transportControls.skipToPrevious()
-            true
-        }.getOrDefault(false)
-        if (success) return true
-    }
-
-    // 3. Delegate to NotificationListenerService via SmartIslandCommand
-    runCatching {
-        val repo = SmartIslandRepositories.notificationRepository(context)
-        if (forward) {
-            repo.sendCommand(SmartIslandCommand.SkipNext(notification?.packageName))
-        } else {
-            repo.sendCommand(SmartIslandCommand.SkipPrevious(notification?.packageName))
-        }
-    }
-
-    // 4. Fallback: AudioManager media key events
-    runCatching {
-        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-        val keyCode = if (forward) android.view.KeyEvent.KEYCODE_MEDIA_NEXT else android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
-        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
-        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
-        audioManager?.dispatchMediaKeyEvent(down)
-        audioManager?.dispatchMediaKeyEvent(up)
-    }
-
-    return true
-}
-
-private fun tryPlayPauseMedia(
-    context: android.content.Context?,
-    notification: IslandNotification?
-) {
-    if (context == null) return
-
-    // 1. Direct notification action PendingIntent
-    val actionSent = notification.trySendFirstAction(context, "play", "pause", "resume", "toggle")
-    if (actionSent) return
-
-    // 2. Notification MediaSession token
-    val token = notification?.mediaToken
-    if (token != null) {
-        val success = runCatching {
-            val controller = android.media.session.MediaController(context, token)
-            if (notification.mediaIsPlaying) {
-                controller.transportControls.pause()
-            } else {
-                controller.transportControls.play()
-            }
-            true
-        }.getOrDefault(false)
-        if (success) return
-    }
-
-    // 3. Delegate to NotificationListenerService via SmartIslandCommand
-    runCatching {
-        val repo = SmartIslandRepositories.notificationRepository(context)
-        repo.sendCommand(SmartIslandCommand.PlayPause(notification?.packageName))
-    }
-
-    // 4. Fallback: AudioManager media key events
-    runCatching {
-        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-        val keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
-        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
-        audioManager?.dispatchMediaKeyEvent(down)
-        audioManager?.dispatchMediaKeyEvent(up)
-    }
-}
-
-internal fun executeSwipeAction(
-    action: SwipeAction,
-    currentNotification: IslandNotification?,
-    context: android.content.Context? = null,
-    onDismiss: () -> Unit,
-    onDismissAll: () -> Unit,
-    onToggle: () -> Unit,
-    onOpenNotification: (IslandNotification) -> Unit,
-    onOpenFloatingWindow: () -> Unit,
-    onOpenNotificationShade: () -> Unit,
-    onPageSelected: (Int) -> Unit,
-    notificationsSize: Int,
-    currentIndex: Int
-) {
-    if (context != null && action != SwipeAction.None) {
-        triggerHapticVibration(context)
-    }
-    when (action) {
-        SwipeAction.DismissCurrent -> onDismiss()
-        SwipeAction.DismissAll -> onDismissAll()
-        SwipeAction.Collapse -> onToggle()
-        SwipeAction.Expand -> onToggle()
-        SwipeAction.OpenApp -> {
-            if (currentNotification != null) {
-                onOpenNotification(currentNotification)
-            }
-        }
-        SwipeAction.FloatingWindow -> onOpenFloatingWindow()
-        SwipeAction.NotificationShade -> onOpenNotificationShade()
-        SwipeAction.NextPrevious, SwipeAction.NextNotification -> {
-            if (notificationsSize > 1) {
-                val nextIndex = (currentIndex + 1) % notificationsSize
-                onPageSelected(nextIndex)
-            } else {
-                trySkipMedia(context, currentNotification, forward = true)
-            }
-        }
-        SwipeAction.PreviousNotification -> {
-            if (notificationsSize > 1) {
-                val prevIndex = (currentIndex - 1 + notificationsSize) % notificationsSize
-                onPageSelected(prevIndex)
-            } else {
-                trySkipMedia(context, currentNotification, forward = false)
-            }
-        }
-        SwipeAction.NextTrack -> {
-            trySkipMedia(context, currentNotification, forward = true)
-        }
-        SwipeAction.PreviousTrack -> {
-            trySkipMedia(context, currentNotification, forward = false)
-        }
-        SwipeAction.PlayPause -> {
-            tryPlayPauseMedia(context, currentNotification)
-        }
-        SwipeAction.None -> {
-            // Disabled / No action
-        }
-    }
-}
+private const val SPLIT_WIDTH_CACHE_MAX = 32
+private const val SPLIT_WIDTH_SAME_DP = 0.5f

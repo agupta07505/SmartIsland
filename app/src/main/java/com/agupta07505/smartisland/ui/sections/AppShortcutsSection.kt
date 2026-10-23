@@ -1,11 +1,13 @@
 /*
  * Smart Island (2026)
- * Copyright Animesh Gupta — github.com/agupta07505
+ * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.Intent
 import android.provider.Settings
 import android.util.LruCache
@@ -32,10 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
@@ -47,20 +51,31 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import kotlin.math.abs
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.runtime.key
+import com.agupta07505.smartisland.data.PinnedApps
+import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -68,46 +83,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.AppShortcutProvider
 import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.ui.pickers.rememberAppIcon
 import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
-private object AppShortcutIconCache {
-    private val cache = LruCache<String, ImageBitmap>(150)
-    fun get(pkg: String): ImageBitmap? = cache.get(pkg)
-    fun put(pkg: String, bmp: ImageBitmap) { cache.put(pkg, bmp) }
-}
-
-@Composable
-private fun rememberAppIcon(packageName: String): ImageBitmap? {
-    val context = LocalContext.current
-    var iconBitmap by remember(packageName) { mutableStateOf(AppShortcutIconCache.get(packageName)) }
-
-    LaunchedEffect(packageName) {
-        if (iconBitmap == null) {
-            val loaded = withContext(Dispatchers.IO) {
-                runCatching {
-                    val drawable = context.packageManager.getApplicationIcon(packageName)
-                    val bmp = drawable.toBitmap(width = 72, height = 72)
-                    bmp.asImageBitmap()
-                }.getOrNull()
-            }
-            if (loaded != null) {
-                AppShortcutIconCache.put(packageName, loaded)
-                iconBitmap = loaded
-            }
-        }
-    }
-    return iconBitmap
-}
+private const val FOLDER_DWELL_MS = 1500L
 
 @Composable
 fun AppShortcutsSection(
@@ -116,8 +106,7 @@ fun AppShortcutsSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showAppSelectionDialog by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
+    var showAppSelectionDialog by rememberSaveable { mutableStateOf(false) }
 
     val installedApps by produceState(initialValue = emptyList<LaunchableApp>(), context) {
         value = withContext(Dispatchers.IO) { AppShortcutProvider.installedApps(context) }
@@ -125,20 +114,37 @@ fun AppShortcutsSection(
     val pinnedApps = remember(installedApps, settings.shortcutPackages) {
         AppShortcutProvider.selectedApps(context, settings.shortcutPackages)
     }
-    val usageAccess = AppShortcutProvider.hasUsageAccess(context)
-    val filteredApps = remember(installedApps, query) {
-        if (query.isBlank()) installedApps
-        else installedApps.filter {
-            it.label.contains(query, ignoreCase = true) ||
-                it.packageName.contains(query, ignoreCase = true)
-        }
+    // Dragging works on the rows as they rest: the dragged row follows the finger and the order is saved once, when the finger lifts.
+    var dragOrder by remember(pinnedApps) { mutableStateOf(pinnedApps) }
+    var draggedPackage by remember { mutableStateOf<String?>(null) }
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    // Where the dragged entry would land if let go now: the entry it is over, whether it is resting on one it could
+    // make a folder with, and whether it has rested there long enough ([FOLDER_DWELL_MS]) for letting go to make the
+    // folder.
+    var dragTarget by remember { mutableStateOf<String?>(null) }
+    var dragOverJoinable by remember { mutableStateOf(false) }
+    var dragJoin by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    // The folder timer starts over whenever the dragged row moves onto another one, and arms the folder once it runs out.
+    LaunchedEffect(draggedPackage, dragTarget, dragOverJoinable) {
+        dragJoin = false
+        if (draggedPackage == null || dragTarget == null || !dragOverJoinable) return@LaunchedEffect
+        kotlinx.coroutines.delay(FOLDER_DWELL_MS)
+        dragJoin = true
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
+    // An app of a folder being dragged (to reorder the folder or to take the app out of it).
+    var draggedMember by remember { mutableStateOf<String?>(null) }
+    var memberOffsetY by remember { mutableFloatStateOf(0f) }
+    // Resting bounds of every entry (its row, and for a folder its apps too) in the list, and of every folder app in its folder.
+    val entryBounds = remember { HashMap<String, androidx.compose.ui.geometry.Rect>() }
+    val memberBounds = remember { HashMap<String, androidx.compose.ui.geometry.Rect>() }
+    val usageAccess = AppShortcutProvider.hasUsageAccess(context)
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Card 1: Launcher Configuration & Recent Apps
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
@@ -147,7 +153,6 @@ fun AppShortcutsSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Master Switch: Enable / Disable App Shortcut Launcher
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -277,7 +282,6 @@ fun AppShortcutsSection(
             }
         }
 
-        // Card 2: Pinned Apps Display & Quick Manage
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(16.dp),
@@ -299,7 +303,7 @@ fun AppShortcutsSection(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Up to 8 apps accessible directly from your island pill",
+                            text = "Up to 8 slots on your island pill. Drag one app onto another in the island to make a folder of up to 4.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -322,7 +326,6 @@ fun AppShortcutsSection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                 if (pinnedApps.isEmpty()) {
-                    // Clean Empty State
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -365,20 +368,63 @@ fun AppShortcutsSection(
                         }
                     }
                 } else {
-                    // Pinned Apps List with Icons & Quick Unpin
+                    // Drag a handle to move an entry: letting go trades places with the entry it is over; resting on
+                    // another app (or a folder with room) for 1.5 s first makes a folder.
+                    fun dropFor(dragged: String, offsetY: Float): Pair<String?, Boolean> {
+                        val from = entryBounds[dragged] ?: return null to false
+                        val centerY = from.center.y + offsetY
+                        var best: String? = null
+                        var bestDistance = Float.MAX_VALUE
+                        for (other in dragOrder) {
+                            if (other.packageName == dragged) continue
+                            val rect = entryBounds[other.packageName] ?: continue
+                            val distance = abs(rect.center.y - centerY)
+                            if (distance < bestDistance) {
+                                best = other.packageName
+                                bestDistance = distance
+                            }
+                        }
+                        val target = best ?: return null to false
+                        val rect = entryBounds[target] ?: return null to false
+                        val join = PinnedApps.canJoin(settings.shortcutPackages, dragged, target) &&
+                            centerY >= rect.top && centerY <= rect.bottom
+                        return target to join
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        pinnedApps.forEachIndexed { index, app ->
+                        dragOrder.forEach { app ->
+                          key(app.packageName) {
+                            val entry = app.packageName
+                            val isDragged = draggedPackage == entry
+                            val isFolder = PinnedApps.isFolder(entry)
+                            val memberApps = remember(entry) {
+                                if (isFolder) AppShortcutProvider.selectedApps(context, PinnedApps.members(entry)) else emptyList()
+                            }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onGloballyPositioned { entryBounds[entry] = it.boundsInParent() }
+                                    .zIndex(if (isDragged) 1f else 0f)
+                                    .graphicsLayer { translationY = if (isDragged) dragOffsetY else 0f },
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                                    .clickable { showAppSelectionDialog = true }
+                                    .background(
+                                        when {
+                                            isDragged -> MaterialTheme.colorScheme.surfaceVariant
+                                            dragTarget == entry && dragJoin -> MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                                            dragTarget == entry -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                        }
+                                    )
+                                    .clickable(enabled = draggedPackage == null && draggedMember == null) { showAppSelectionDialog = true }
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                val icon = rememberAppIcon(app.packageName)
+                                val icon = if (isFolder) null else rememberAppIcon(entry)
                                 if (icon != null) {
                                     Image(
                                         bitmap = icon,
@@ -396,7 +442,7 @@ fun AppShortcutsSection(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Apps,
+                                            imageVector = if (isFolder) Icons.Rounded.Folder else Icons.Rounded.Apps,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp)
@@ -409,10 +455,16 @@ fun AppShortcutsSection(
                                         text = app.label,
                                         fontWeight = FontWeight.SemiBold,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = app.packageName,
+                                        text = if (isFolder) {
+                                            "${stringResource(R.string.pinned_folder_label)} · ${PinnedApps.members(entry).size}"
+                                        } else {
+                                            entry
+                                        },
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -422,9 +474,10 @@ fun AppShortcutsSection(
 
                                 IconButton(
                                     onClick = {
-                                        val updated = settings.shortcutPackages - app.packageName
+                                        val updated = settings.shortcutPackages - entry
                                         scope.launch { repository.setShortcutPackages(updated) }
                                     },
+                                    enabled = draggedPackage == null && draggedMember == null,
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -434,12 +487,179 @@ fun AppShortcutsSection(
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
+
+                                // Drag handle: the row follows the finger. Over the middle of another app it makes a folder with it,
+                                // over an edge it moves there. The order is saved when the finger lifts.
+                                if (dragOrder.size > 1) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.DragHandle,
+                                        contentDescription = "Reorder ${app.label}",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .pointerInput(entry, settings.shortcutPackages) {
+                                                detectDragGestures(
+                                                    onDragStart = {
+                                                        draggedPackage = entry
+                                                        dragOffsetY = 0f
+                                                        dragTarget = null
+                                                        dragOverJoinable = false
+                                                        dragJoin = false
+                                                    },
+                                                    onDrag = { change, amount ->
+                                                        change.consume()
+                                                        dragOffsetY += amount.y
+                                                        val (target, joinable) = dropFor(entry, dragOffsetY)
+                                                        // Moving onto another row starts the folder timer over (the effect above).
+                                                        if (target != dragTarget || !joinable) dragJoin = false
+                                                        dragTarget = target
+                                                        dragOverJoinable = joinable
+                                                    },
+                                                    onDragEnd = {
+                                                        val current = settings.shortcutPackages
+                                                        val target = dropFor(entry, dragOffsetY).first
+                                                        val updated = target?.let { t ->
+                                                            if (dragJoin) PinnedApps.joinFolder(current, entry, t)
+                                                            else PinnedApps.swap(current, entry, t)
+                                                        } ?: current
+                                                        draggedPackage = null
+                                                        dragOffsetY = 0f
+                                                        dragTarget = null
+                                                        dragOverJoinable = false
+                                                        dragJoin = false
+                                                        if (updated != current) scope.launch { repository.setShortcutPackages(updated) }
+                                                    },
+                                                    onDragCancel = {
+                                                        draggedPackage = null
+                                                        dragOffsetY = 0f
+                                                        dragTarget = null
+                                                        dragOverJoinable = false
+                                                        dragJoin = false
+                                                    }
+                                                )
+                                            }
+                                    )
+                                }
                             }
+
+                            memberApps.forEach { member ->
+                                key(member.packageName) {
+                                    val memberPkg = member.packageName
+                                    val memberDragged = draggedMember == memberPkg
+                                    val memberIcon = rememberAppIcon(memberPkg)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 24.dp)
+                                            .onGloballyPositioned { memberBounds[memberPkg] = it.boundsInParent() }
+                                            .zIndex(if (memberDragged) 1f else 0f)
+                                            .graphicsLayer { translationY = if (memberDragged) memberOffsetY else 0f }
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                if (memberDragged) MaterialTheme.colorScheme.surfaceVariant
+                                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                                            )
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        if (memberIcon != null) {
+                                            Image(
+                                                bitmap = memberIcon,
+                                                contentDescription = member.label,
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .clip(RoundedCornerShape(7.dp))
+                                            )
+                                        } else {
+                                            Box(Modifier.size(28.dp))
+                                        }
+                                        Text(
+                                            text = member.label,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        IconButton(
+                                            onClick = {
+                                                val updated = PinnedApps.unpin(settings.shortcutPackages, memberPkg)
+                                                scope.launch { repository.setShortcutPackages(updated) }
+                                            },
+                                            enabled = draggedPackage == null && draggedMember == null,
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Close,
+                                                contentDescription = "Remove ${member.label}",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Rounded.DragHandle,
+                                            contentDescription = "Reorder ${member.label}",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(24.dp)
+                                                .pointerInput(memberPkg, entry, settings.shortcutPackages) {
+                                                    detectDragGestures(
+                                                        onDragStart = {
+                                                            draggedMember = memberPkg
+                                                            memberOffsetY = 0f
+                                                        },
+                                                        onDrag = { change, amount ->
+                                                            change.consume()
+                                                            memberOffsetY += amount.y
+                                                        },
+                                                        onDragEnd = {
+                                                            val current = settings.shortcutPackages
+                                                            val block = entryBounds[entry]
+                                                            val row = memberBounds[memberPkg]
+                                                            var updated = current
+                                                            if (block != null && row != null) {
+                                                                val centerY = block.top + row.center.y + memberOffsetY
+                                                                if (centerY < block.top || centerY > block.bottom) {
+                                                                    // Past the folder: the app takes a slot of its
+                                                                    // own, or is unpinned when none is free.
+                                                                    if (PinnedApps.dragOutUnpins(current)) {
+                                                                        android.widget.Toast.makeText(
+                                                                            context,
+                                                                            context.getString(R.string.pinned_folder_full_unpinned, member.label),
+                                                                            android.widget.Toast.LENGTH_SHORT
+                                                                        ).show()
+                                                                    }
+                                                                    updated = PinnedApps.dragOut(current, entry, memberPkg)
+                                                                } else {
+                                                                    val apps = PinnedApps.members(entry)
+                                                                    val to = apps.indices.minByOrNull { i ->
+                                                                        val r = memberBounds[apps[i]]
+                                                                        if (r == null) Float.MAX_VALUE else abs(block.top + r.center.y - centerY)
+                                                                    } ?: apps.indexOf(memberPkg)
+                                                                    updated = PinnedApps.moveInFolder(current, entry, apps.indexOf(memberPkg), to)
+                                                                }
+                                                            }
+                                                            draggedMember = null
+                                                            memberOffsetY = 0f
+                                                            if (updated != current) scope.launch { repository.setShortcutPackages(updated) }
+                                                        },
+                                                        onDragCancel = {
+                                                            draggedMember = null
+                                                            memberOffsetY = 0f
+                                                        }
+                                                    )
+                                                }
+                                        )
+                                    }
+                                }
+                            }
+                            }
+                          }
                         }
                     }
                 }
 
-                // Action Button to Open Full App Selection
                 FilledTonalButton(
                     onClick = { showAppSelectionDialog = true },
                     shape = RoundedCornerShape(12.dp),
@@ -458,188 +678,15 @@ fun AppShortcutsSection(
                 }
             }
         }
+
+        UtilitiesEditorCard(settings = settings, repository = repository)
     }
 
-    // Modal App Selection Dialog with Logos & Checkboxes
     if (showAppSelectionDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showAppSelectionDialog = false
-                query = ""
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Rounded.Apps,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(28.dp)
-                )
-            },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Select Pinned Apps",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                    ) {
-                        Text(
-                            text = "${settings.shortcutPackages.size} / 8",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = { Text(stringResource(R.string.search_installed_apps)) },
-                        leadingIcon = {
-                            Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        },
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(Icons.Rounded.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    if (filteredApps.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (query.isBlank()) stringResource(R.string.no_installed_apps_found) else stringResource(R.string.no_apps_matching_query, query),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 380.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(filteredApps, key = { it.packageName }) { app ->
-                                val selected = app.packageName in settings.shortcutPackages
-                                val canSelect = selected || settings.shortcutPackages.size < 8
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .clickable(enabled = canSelect) {
-                                            val updated = if (selected) {
-                                                settings.shortcutPackages - app.packageName
-                                            } else {
-                                                settings.shortcutPackages + app.packageName
-                                            }
-                                            scope.launch { repository.setShortcutPackages(updated) }
-                                        }
-                                        .padding(vertical = 6.dp, horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val icon = rememberAppIcon(app.packageName)
-                                    if (icon != null) {
-                                        Image(
-                                            bitmap = icon,
-                                            contentDescription = app.label,
-                                            modifier = Modifier
-                                                .size(34.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(34.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Apps,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(Modifier.width(10.dp))
-
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = app.label,
-                                            fontWeight = FontWeight.SemiBold,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = if (canSelect) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
-                                        Text(
-                                            text = app.packageName,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    Checkbox(
-                                        checked = selected,
-                                        enabled = canSelect,
-                                        onCheckedChange = { checked ->
-                                            val updated = if (checked) {
-                                                settings.shortcutPackages + app.packageName
-                                            } else {
-                                                settings.shortcutPackages - app.packageName
-                                            }
-                                            scope.launch { repository.setShortcutPackages(updated) }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showAppSelectionDialog = false
-                        query = ""
-                    }
-                ) {
-                    Text("Done", fontWeight = FontWeight.Bold)
-                }
-            }
+        com.agupta07505.smartisland.ui.pickers.AppPickerDialog(
+            settings = settings,
+            repository = repository,
+            onDismiss = { showAppSelectionDialog = false }
         )
     }
 }

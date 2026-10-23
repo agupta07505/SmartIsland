@@ -1,7 +1,8 @@
 /*
  * Smart Island (2026)
- * Copyright Animesh Gupta — github.com/agupta07505
+ * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
 package com.agupta07505.smartisland.data
@@ -18,16 +19,20 @@ data class LaunchableApp(
 )
 
 object AppShortcutProvider {
-    fun selectedApps(context: Context, packages: Set<String>): List<LaunchableApp> =
-        packages.mapNotNull { packageName ->
-            runCatching {
-                val info = context.packageManager.getApplicationInfo(packageName, 0)
-                LaunchableApp(
-                    packageName = packageName,
-                    label = context.packageManager.getApplicationLabel(info).toString()
-                )
-            }.getOrNull()
+    /** The pinned entries whose apps are still installed, in the order they were pinned. */
+    fun selectedApps(context: Context, packages: List<String>): List<LaunchableApp> =
+        packages.mapNotNull { entry ->
+            if (PinnedApps.isFolder(entry)) {
+                val labels = PinnedApps.members(entry).mapNotNull { appLabel(context, it) }
+                if (labels.isEmpty()) null else LaunchableApp(entry, labels.joinToString(", "))
+            } else {
+                appLabel(context, entry)?.let { LaunchableApp(entry, it) }
+            }
         }
+
+    private fun appLabel(context: Context, packageName: String): String? = runCatching {
+        context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(packageName, 0)).toString()
+    }.getOrNull()
 
     fun installedApps(context: Context): List<LaunchableApp> {
         val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -59,13 +64,21 @@ object AppShortcutProvider {
 
     fun shortcuts(
         context: Context,
-        selectedPackages: Set<String>,
+        selectedPackages: List<String>,
         includeRecent: Boolean,
-        limit: Int = 8
+        limit: Int = PinnedApps.MAX * 2
     ): List<LaunchableApp> {
         val installed = installedApps(context)
         val byPackage = installed.associateBy { it.packageName }
-        val selected = selectedPackages.mapNotNull(byPackage::get)
+        val selected = selectedPackages.mapNotNull { entry ->
+            if (PinnedApps.isFolder(entry)) {
+                val labels = PinnedApps.members(entry).mapNotNull { byPackage[it]?.label }
+                if (labels.isEmpty()) null else LaunchableApp(entry, labels.joinToString(", "))
+            } else {
+                byPackage[entry]
+            }
+        }
+        val pinnedPackages = PinnedApps.flatPackages(selectedPackages).toSet()
         if (!includeRecent || !hasUsageAccess(context)) return selected.take(limit)
 
         val end = System.currentTimeMillis()
@@ -76,6 +89,7 @@ object AppShortcutProvider {
         }.getOrDefault(emptyList())
             .sortedByDescending { it.lastTimeUsed }
             .mapNotNull { byPackage[it.packageName] }
+            .filter { it.packageName !in pinnedPackages }
             .distinctBy { it.packageName }
 
         return (selected + usage)

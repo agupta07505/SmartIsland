@@ -23,42 +23,20 @@ data class LiveActivityInfo(
 
 object LiveActivityParser {
 
-    private val SUPPORTED_PACKAGES = setOf(
-        "com.application.zomato",      // Zomato
-        "in.swiggy.android",           // Swiggy & Instamart
-        "com.grofers.customerapp",     // Blinkit
-        "com.zepto.consumer",          // Zepto
-        "com.ubercab",                 // Uber
-        "com.rapido.passenger",        // Rapido
-        "com.olacabs.customer",        // Ola
-        "com.dunzo.user",              // Dunzo
-        "com.Dominos"                  // Domino's
-    )
-
-    private val ETA_PATTERN = Pattern.compile("(\\d+)(?:\\s*-\\s*\\d+)?\\s*(?:mins?|minutes?|min|m)\\b", Pattern.CASE_INSENSITIVE)
+    private val ETA_PATTERN = Pattern.compile("(\\d+)(?:\\s*-\\s*\\d+)?\\s*(?:mins?|minutes?|min|минут[аы]?|мин|хв|minutos?|minuti|minuten|minuut|dakika|dk|menit|phút|分钟|分鐘|分|분|دقيقة|دقائق|मिनट)(?![\\p{L}\\p{N}])", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE)
     private val DISTANCE_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:km|miles?|m)\\b", Pattern.CASE_INSENSITIVE)
 
-    private val STATUS_STAGE_1 = listOf("placed", "accepted", "booked", "finding", "searching", "confirmed", "assigned")
-    private val STATUS_STAGE_2 = listOf("preparing", "on the way", "heading", "en route", "picked up", "out for delivery", "driving", "dispatched")
-    private val STATUS_STAGE_3 = listOf("arriving", "arrived", "reaching", "at location", "nearby", "delivered", "completed")
+    private val STATUS_STAGE_1 = listOf("placed", "accepted", "booked", "finding", "searching", "confirmed", "assigned",
+        "принят", "подтвержд", "ищем", "pedido recibido", "confirmado", "commande confirmée", "bestellung bestätigt", "ordine confermato", "已接单", "已下单", "주문 접수")
+    private val STATUS_STAGE_3 = listOf("arriving", "arrived", "reaching", "at location", "nearby", "delivered", "completed",
+        "прибыл", "приехал", "доставлен", "llegando", "ha llegado", "entregado", "livré", "angekommen", "geliefert", "in arrivo", "consegnato", "已送达", "已到达", "司机已到", "配達完了", "배달 완료")
 
     fun getBrandColor(packageName: String?): Long {
-        return when (packageName) {
-            "com.application.zomato" -> 0xFFE23744L
-            "in.swiggy.android" -> 0xFFFC8019L
-            "com.grofers.customerapp" -> 0xFFF7C325L
-            "com.zepto.consumer" -> 0xFF7D2EC0L
-            "com.ubercab" -> 0xFF38BDF8L
-            "com.rapido.passenger" -> 0xFFFACC15L
-            "com.olacabs.customer" -> 0xFF84CC16L
-            "com.dunzo.user" -> 0xFF00B259L
-            "com.Dominos" -> 0xFF006491L
-            else -> 0xFF38BDF8L
-        }
+        return AppPackageCatalog.brandColor(packageName) ?: 0xFF38BDF8L
     }
 
     fun isSupportedApp(packageName: String): Boolean {
-        return packageName in SUPPORTED_PACKAGES
+        return AppPackageCatalog.isLiveActivityApp(packageName)
     }
 
     fun parse(sbn: StatusBarNotification): LiveActivityInfo? {
@@ -77,7 +55,6 @@ object LiveActivityParser {
         val progress = extras.getInt(Notification.EXTRA_PROGRESS, 0)
         val progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)
 
-        // 1. Extract ETA
         val etaMatcher = ETA_PATTERN.matcher("$title $text")
         var extractedMins: Float? = null
         val etaText = if (etaMatcher.find()) {
@@ -93,7 +70,6 @@ object LiveActivityParser {
             null
         }
 
-        // Detect if this is a tracking notification vs a promo notification
         val isPromo = isPromoNotification(combinedContent)
         val isTrackingNotification = !isPromo && (
             etaText != null ||
@@ -105,14 +81,12 @@ object LiveActivityParser {
             return null
         }
 
-        // 2. Determine Stage
         val stage = when {
             STATUS_STAGE_3.any { combinedContent.contains(it) } -> 3
             STATUS_STAGE_1.any { combinedContent.contains(it) } -> 1
             else -> 2
         }
 
-        // 3. Calculate Progress Ratio (0.0f to 1.0f)
         val progressRatio = when {
             progressMax > 0 -> (progress.toFloat() / progressMax.toFloat()).coerceIn(0f, 1f)
             extractedMins != null -> {
@@ -123,13 +97,11 @@ object LiveActivityParser {
             else -> 0.65f
         }
 
-        // 4. Extract Distance if present
         val distMatcher = DISTANCE_PATTERN.matcher("$title $text")
         val distanceText = if (distMatcher.find()) {
             distMatcher.group(0)
         } else null
 
-        // 5. Construct Status and SubStatus
         val finalStatusTitle = if (title.isNotBlank()) title else "Order / Ride in progress"
         val subStatusText = when {
             distanceText != null -> "Distance: $distanceText • $text"
@@ -157,7 +129,11 @@ object LiveActivityParser {
         val trackingPhrases = listOf(
             "on the way", "en route", "out for delivery", "preparing", "dispatched", "picked up",
             "driver", "captain", "arriving", "arrived", "heading to", "your order", "order status",
-            "order placed", "order confirmed", "order in progress", "ride status", "cab arriving", "auto arriving"
+            "order placed", "order confirmed", "order in progress", "ride status", "cab arriving", "auto arriving",
+            "курьер", "водитель", "ваш заказ", "в пути", "готовится", "tu pedido", "repartidor", "tu conductor", "en camino", "seu pedido", "a caminho",
+            "votre commande", "votre chauffeur", "livreur", "en route", "ihre bestellung", "ihr fahrer", "unterwegs", "il tuo ordine", "in consegna",
+            "siparişiniz", "kurye", "yolda", "zamówienie", "w drodze", "pesanan anda", "dalam perjalanan", "đơn hàng", "đang giao", "您的订单", "骑手", "司机", "配送中",
+            "주문", "배달 중", "طلبك", "في الطريق", "आपका ऑर्डर"
         )
         return trackingPhrases.any { content.contains(it) }
     }

@@ -12,6 +12,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.service.notification.StatusBarNotification
 import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.TransferKind
 
 object NotificationFilter {
     private val SYSTEM_LEVEL_PACKAGES = setOf(
@@ -26,6 +27,8 @@ object NotificationFilter {
         "com.agupta07505.smartisland"
     )
 
+    private val TRANSFER_ALLOWED_SYSTEM_PACKAGES = setOf("com.android.bluetooth")
+
     fun shouldSuppressFromIsland(
         sbn: StatusBarNotification,
         packageManager: PackageManager,
@@ -33,28 +36,48 @@ object NotificationFilter {
         navigationEnabled: Boolean = true,
         disabledNotificationPackages: Set<String> = emptySet(),
         deviceType: String? = null
-    ): Boolean {
+    ): Boolean = suppressionReason(
+        sbn, packageManager, liveActivitiesEnabled, navigationEnabled, disabledNotificationPackages, deviceType
+    ) != null
+
+    /**
+     * The rule that keeps a notification off the island, or null when it may be shown. Same rules and order as
+     * [shouldSuppressFromIsland]; the name goes into the diagnostic log.
+     */
+    fun suppressionReason(
+        sbn: StatusBarNotification,
+        packageManager: PackageManager,
+        liveActivitiesEnabled: Boolean = true,
+        navigationEnabled: Boolean = true,
+        disabledNotificationPackages: Set<String> = emptySet(),
+        deviceType: String? = null
+    ): String? {
         val packageName = sbn.packageName
         val notification = sbn.notification
         val mode = notification.toIslandMode(sbn, liveActivitiesEnabled, navigationEnabled, deviceType)
 
         // Hotspot, Screen Recording, Timer, Stopwatch notifications are allowed even if posted by system/OEM frameworks
-        if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
-            if (packageName == "com.agupta07505.smartisland") return true
-            if (packageName in disabledNotificationPackages) return true
+        if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.AudioRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
+            if (packageName == "com.agupta07505.smartisland") return "own-package"
+            if (packageName in disabledNotificationPackages) return "app-disabled-in-settings"
         } else {
-            if (packageName in SYSTEM_LEVEL_PACKAGES) return true
-            if (packageName in disabledNotificationPackages) return true
-            if (isSystemLevelCategory(notification)) return true
-            if (isSystemLevelPackage(packageName, packageManager)) return true
+            // Transfers (downloads, backups, file operations) often come from foreground services with the SERVICE or
+            // STATUS category, and Bluetooth file transfers from the Bluetooth stack itself, so those two checks are
+            // relaxed for them.
+            val isTransfer = mode == IslandMode.DownloadUpload
+            val transferFromAllowedSystem = isTransfer && packageName in TRANSFER_ALLOWED_SYSTEM_PACKAGES
+            if (packageName in SYSTEM_LEVEL_PACKAGES && !transferFromAllowedSystem) return "system-level-package-list"
+            if (packageName in disabledNotificationPackages) return "app-disabled-in-settings"
+            if (isSystemLevelCategory(notification, isTransfer)) return "system-level-category(${notification.category})"
+            if (!transferFromAllowedSystem && isSystemLevelPackage(packageName, packageManager)) return "system-level-package"
         }
 
         // Suppress group summary notifications (they are handled separately in the service:
         // cancelled from the system shade but never shown in the island)
         val isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0
-        if (isGroupSummary) return true
+        // WhatsApp posts its ringing / ongoing call as a CallStyle notification that carries the group-summary flag.
+        if (isGroupSummary && !isCallNotification(notification)) return "group-summary"
 
-        // Suppress if both title and text are null or blank (except for dedicated hardware/clock modes)
         val extras = notification.extras
         val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
             ?: extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
@@ -63,66 +86,69 @@ object NotificationFilter {
             ?: extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
             ?: extras?.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString()
             ?: notification.tickerText?.toString()
-        if (title.isNullOrBlank() && text.isNullOrBlank() && mode != IslandMode.Stopwatch && mode != IslandMode.Timer && mode != IslandMode.ScreenRecording) return true
+        // Chat and inbox styles can leave title/text empty and keep their content in other extras.
+        val hasPlainContent = !title.isNullOrBlank() || !text.isNullOrBlank()
+        val hasStyledContent = !hasPlainContent && extras != null && (
+            !extras.getCharSequence(Notification.EXTRA_TITLE_BIG).isNullOrBlank() ||
+                !extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE).isNullOrBlank() ||
+                !extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT).isNullOrBlank() ||
+                (extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.isNotEmpty() == true) ||
+                (extras.getParcelableArray(Notification.EXTRA_MESSAGES)?.isNotEmpty() == true)
+            )
+        // A CallStyle call keeps the caller in its person extra and may leave title and text empty.
+        val isCallWithPerson = mode == IslandMode.IncomingCall && CallStyleExtras.callerName(notification) != null
+        if (!hasStyledContent && !isCallWithPerson && title.isNullOrBlank() && text.isNullOrBlank() && mode != IslandMode.Stopwatch && mode != IslandMode.Timer && mode != IslandMode.ScreenRecording && mode != IslandMode.AudioRecording) return "empty-title-and-text"
 
-        // Suppress external torch / flashlight notifications from entering Smart Island,
-        // because Smart Island natively manages physical torch state via CameraManager.TorchCallback.
+        // The island manages the torch itself through CameraManager.TorchCallback.
         val titleText = "$title $text".lowercase()
         val isTorchNotification = listOf("flashlight", "torch", "flash light").any { titleText.contains(it) }
         if (isTorchNotification && packageName != "com.agupta07505.smartisland") {
-            return true
+            return "torch-notification"
         }
 
         val isOngoing = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
 
-        // Suppress background message syncing / polling notifications (e.g. Snapchat, WhatsApp, Telegram "Syncing messages", "Checking for messages")
-        val isMessageSync = isMessageSyncNotification(titleText)
+        // A backup that says "backup in progress" is a transfer card (decided by toIslandMode), not a message poll.
+        val isMessageSync = isMessageSyncNotification(titleText) && mode != IslandMode.DownloadUpload
         if (isMessageSync) {
-            return true
+            return "message-sync-text"
         }
 
-        // Suppress wearable / watch connection and sync status notifications
         if (isWearableConnectionNotification(packageName, titleText)) {
-            return true
+            return "wearable-connection"
         }
 
-        // Suppress ongoing notifications that are not calls, media/music playback, live activities, navigation, downloads/uploads, hotspot, screen recording, timer, stopwatch, or alarms
         if (isOngoing) {
             val isProgressNotification = !isMessageSync && (
                 notification.category == Notification.CATEGORY_PROGRESS ||
                 (notification.extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
             )
             val isAlarmNotification = TimerStopwatchParser.isAlarm(notification, packageName)
-            if (!isProgressNotification && !isAlarmNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording && mode != IslandMode.Timer && mode != IslandMode.Stopwatch) {
-                return true
+            if (!isProgressNotification && !isAlarmNotification && mode != IslandMode.IncomingCall && mode != IslandMode.Music && mode != IslandMode.LiveActivity && mode != IslandMode.Navigation && mode != IslandMode.DownloadUpload && mode != IslandMode.Hotspot && mode != IslandMode.ScreenRecording && mode != IslandMode.AudioRecording && mode != IslandMode.Timer && mode != IslandMode.Stopwatch) {
+                return "ongoing-not-a-live-card"
             }
         }
 
-        return false
+        return null
     }
 
-    /**
-     * Returns true if the package belongs to a third-party (user-installed) app, meaning it is
-     * not a system-level package. Used to decide whether a group summary should be cancelled
-     * from the system shade.
-     */
+    /** True for a call notification: category "call" or a CallStyle template. It may carry the group-summary flag. */
+    fun isCallNotification(notification: Notification): Boolean =
+        notification.category == Notification.CATEGORY_CALL ||
+            notification.extras?.getString(Notification.EXTRA_TEMPLATE)?.endsWith("CallStyle") == true
+
+    /** True for a user-installed app; decides whether a group summary is cancelled from the shade. */
     fun isThirdPartyApp(packageName: String, packageManager: PackageManager): Boolean {
         return !isSystemLevelPackage(packageName, packageManager)
     }
 
-    /**
-     * Returns true if the app package is eligible to be configured and shown in Smart Island.
-     * System-level packages and sensitive system settings (like com.android.settings) return false.
-     */
+    /** False for system-level packages and sensitive system settings such as com.android.settings. */
     fun isAppEligibleForIsland(packageName: String, packageManager: PackageManager): Boolean {
         if (packageName in SYSTEM_LEVEL_PACKAGES) return false
         return !isSystemLevelPackage(packageName, packageManager)
     }
 
-    /**
-     * Returns true if the notification is a connection status or sync notification
-     * from a wearable/smartwatch companion app or Bluetooth sync event.
-     */
+    /** True for a connection or sync status notification from a wearable companion app or Bluetooth sync. */
     fun isWearableConnectionNotification(packageName: String, titleText: String): Boolean {
         val isWearablePackage = packageName.startsWith("com.samsung.android.app.watchmanager") ||
             packageName.startsWith("com.samsung.accessory") ||
@@ -151,11 +177,15 @@ object NotificationFilter {
         return watchConnectionPhrases.any { titleText.contains(it) }
     }
 
-    private fun isSystemLevelCategory(notification: Notification): Boolean {
-        return notification.category == Notification.CATEGORY_SYSTEM ||
-            notification.category == Notification.CATEGORY_STATUS ||
-            notification.category == Notification.CATEGORY_SERVICE ||
+    private fun isSystemLevelCategory(notification: Notification, isTransfer: Boolean = false): Boolean {
+        if (notification.category == Notification.CATEGORY_SYSTEM ||
             notification.category == Notification.CATEGORY_ERROR
+        ) {
+            return true
+        }
+        if (isTransfer) return false
+        return notification.category == Notification.CATEGORY_STATUS ||
+            notification.category == Notification.CATEGORY_SERVICE
     }
 
     private fun isSystemLevelPackage(packageName: String, packageManager: PackageManager): Boolean {
@@ -196,75 +226,95 @@ fun Notification.toIslandMode(
 
     val titleText = "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)} ${extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)}".lowercase()
 
-    // 0. Timer & Stopwatch (Dedicated Clock/Timer support)
-    if (TimerStopwatchParser.isStopwatch(this, packageName)) {
+    val clockKey = sbn?.let { TimerStopwatchParser.clockKey(it) }
+    if (TimerStopwatchParser.isStopwatch(this, packageName, clockKey)) {
         return IslandMode.Stopwatch
     }
-    if (TimerStopwatchParser.isTimer(this, packageName)) {
+    if (TimerStopwatchParser.isTimer(this, packageName, clockKey)) {
         return IslandMode.Timer
     }
 
-    // 1. Screen & Voice Recording (High priority, OEM-aware)
+    // A voice recorder's cloud backup would read as a recording in progress, so it is classified as a transfer first.
+    val recorderHasProgress = (extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0) > 0
+    if (TransferClassifier.isRecorderTransfer(packageName, titleText, recorderHasProgress)) {
+        return IslandMode.DownloadUpload
+    }
+
+    // Audio recorders get their own mode.
+    if (OemDeviceRules.isAudioRecording(packageName, titleText) && !isScreenRecordingComplete()) {
+        return IslandMode.AudioRecording
+    }
     val isRecordingPackageOrKeyword = OemDeviceRules.isScreenRecording(packageName, titleText, effectiveDevice)
     val isScreenRecordingActive = isRecordingPackageOrKeyword && !isScreenRecordingComplete()
     if (isScreenRecordingActive) {
         return IslandMode.ScreenRecording
     }
 
-    // 2. Hotspot & Tethering status (OEM-aware)
     val isHotspot = OemDeviceRules.isHotspot(packageName, titleText)
     if (isHotspot) {
         return IslandMode.Hotspot
     }
 
-    // 3. Incoming & Ongoing Phone Calls (OEM-aware)
-    val isCallStyle = extras?.getString(Notification.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle"
+    val isCallStyle = CallStyleExtras.isCallTemplate(this)
     val actionLabels = actions.orEmpty().map { it.title?.toString()?.lowercase().orEmpty() }
-    val hasIncomingCallActionPair =
-        actionLabels.any { it.contains("answer") || it.contains("accept") || it.contains("take") } &&
-            actionLabels.any {
-                it.contains("decline") ||
-                    it.contains("reject") ||
-                    it.contains("hang up") ||
-                    it.contains("dismiss")
-            }
+    val roles = actionLabels.map { VoipCallDetector.classifyCallAction(it) }
+    // The answer side matches whole words, so "Retake" or "Mistake" do not read as "take".
+    val hasIncomingCallActionPair = CallActionRole.Answer in roles &&
+        actionLabels.any {
+            it.contains("decline") ||
+                it.contains("reject") ||
+                it.contains("hang up") ||
+                it.contains("dismiss")
+        }
     val isInCallApp = OemDeviceRules.isInCallPackage(packageName, effectiveDevice)
-    val isCallEvent = (category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair || (isInCallApp && hasIncomingCallActionPair)) && !isCallEnded()
+    // While the system is in a VoIP call (audio mode), an ongoing notification that looks like a call (mute / hang-up
+    // buttons, chronometer, call wording) is that call's card, even when the app set no call category.
+    val isVoipCall = VoipCallSignal.active && sbn != null &&
+        VoipCallDetector.isVoipCall(toVoipFacts(packageName))
+    // Answer + hang-up buttons in any supported language, not only English. Only trusted together
+    // with a call signal, because words like "accept" or "responder" also label invites and replies.
+    val hasLocalizedCallPair = CallActionRole.Answer in roles && CallActionRole.HangUp in roles &&
+        (category == Notification.CATEGORY_CALL || isCallStyle || fullScreenIntent != null)
+    // A call-named channel (voip_notification, incoming_calls ...) marks a VoIP app's own call notification when it
+    // sets neither a call category nor CallStyle.
+    val isCallChannel = CallStyleExtras.channelLooksLikeCall(this) &&
+        (fullScreenIntent != null || CallStyleExtras.looksRinging(this) || roles.any { it != CallActionRole.Other } ||
+            VoipCallDetector.textLooksLikeCall(titleText))
+    val isCallEvent = (category == Notification.CATEGORY_CALL || isCallStyle || hasIncomingCallActionPair || hasLocalizedCallPair ||
+        isCallChannel || (isInCallApp && hasIncomingCallActionPair) || isVoipCall) && !isCallEnded()
     if (isCallEvent) {
         return IslandMode.IncomingCall
     }
 
-    // 4. Turn-by-Turn Map Navigation
     if (navigationEnabled && sbn != null) {
         if (NavigationParser.parse(sbn) != null) {
             return IslandMode.Navigation
         }
     }
 
-    // 5. Live Activities (Food delivery, ride-hailing)
     if (liveActivitiesEnabled && sbn != null) {
         if (LiveActivityParser.parse(sbn) != null) {
             return IslandMode.LiveActivity
         }
     }
 
-    // 6. Downloads, Uploads & Progress Transfers
-    val isMessageSync = isMessageSyncNotification(titleText)
-    val isProgressCategory = category == Notification.CATEGORY_PROGRESS
+    // A media player wins over the transfer scoring: video and popup players keep a progress bar plus Pause / Stop buttons,
+    // which would read as "Downloading".
+    val isMediaPlayer = category == Notification.CATEGORY_TRANSPORT ||
+        extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true ||
+        MediaTransportDetector.hasTransportButtons(actions.orEmpty().map { it.title?.toString().orEmpty() })
+    if (isMediaPlayer) {
+        return IslandMode.Music
+    }
+
+    // TransferDetector scores progress bar, CATEGORY_PROGRESS, Android 16 progress style, wording, speed/size/ETA
+    // text, channel names, download managers, cloud apps and Pause/Cancel buttons.
     val progressMax = extras?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0
-    val isIndeterminate = extras?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true
-    val activeTransferKeywords = listOf("downloading", "uploading", "exporting", "transferring", "saving file", "downloading file", "uploading file").any { titleText.contains(it) }
-    val genericTransferKeywords = listOf("download", "upload", "export", "transfer", "file", "apk", "pdf", "mp4", "zip", "media").any { titleText.contains(it) }
-    val isDownloadOrUpload = !isMessageSync && (
-        isProgressCategory ||
-        (progressMax > 0 && (genericTransferKeywords || activeTransferKeywords)) ||
-        (isIndeterminate && (genericTransferKeywords || activeTransferKeywords))
-    )
-    if (isDownloadOrUpload) {
+    val isMessageSync = isMessageSyncNotification(titleText) && progressMax <= 0 && !titleText.contains("backup")
+    if (TransferDetector.evaluate(TransferInput.fromNotification(this, packageName, isMessageSync)).isTransfer) {
         return IslandMode.DownloadUpload
     }
 
-    // 7. Media & Music Playback
     val hasMediaSession = extras?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true
     if (category == Notification.CATEGORY_TRANSPORT || hasMediaSession) {
         return IslandMode.Music
@@ -288,14 +338,37 @@ fun Notification.isDownloadComplete(): Boolean {
         "file saved", "sent successfully"
     )
     if (completionKeywords.any { titleText.contains(it) }) return true
+    if (TransferClassifier.COMPLETE_WORDS_I18N.any { titleText.contains(it) }) return true
+    // Past-tense words also appear in running counters ("3 of 10 backed up"), so they only count
+    // once the progress bar is gone.
+    val stillRunning = (progressMax > 0 && progressCurrent < progressMax) || isIndeterminate
+    val pastTenseKeywords = listOf("backed up", "synced", "copied", "moved", "deleted", "installed", "restored")
+    if (!stillRunning && pastTenseKeywords.any { titleText.contains(it) }) return true
+
+    // No bar (Android 16 progress style, or an app that only writes "45% - 2 MB/s" in the text):
+    // a speed, an ETA or a percentage below 100 means it is still running; 100% means it is done.
+    val facts = TransferTextAnalyzer.analyze(titleText)
+    if (progressMax == 0 && !isIndeterminate) {
+        val percentNow = facts.percent
+        if (percentNow != null && percentNow >= 100) return true
+        if (facts.speed != null || facts.eta != null || (percentNow != null && percentNow < 100)) return false
+    }
 
     // If progress bar is gone (progressMax == 0 && !isIndeterminate) and text does not say "downloading/uploading", it's complete
-    val isCurrentlyActiveText = listOf("downloading", "uploading", "exporting", "transferring", "saving", "fetching", "sending").any { titleText.contains(it) }
+    val isCurrentlyActiveText = (TransferClassifier.ACTIVE_WORDS + TransferClassifier.ACTIVE_WORDS_I18N + listOf("saving", "fetching"))
+        .any { titleText.contains(it) }
     if (progressMax == 0 && !isIndeterminate && !isCurrentlyActiveText) {
         return true
     }
 
     return false
+}
+
+/** What kind of transfer a progress notification describes (see TransferClassifier). */
+fun Notification.transferKind(packageName: String): TransferKind {
+    val extras = extras ?: return TransferKind.DOWNLOAD
+    val text = "${extras.getCharSequence(Notification.EXTRA_TITLE)} ${extras.getCharSequence(Notification.EXTRA_TEXT)} ${extras.getCharSequence(Notification.EXTRA_BIG_TEXT)}"
+    return TransferClassifier.classify(packageName, text)
 }
 
 fun Notification.isScreenRecordingComplete(): Boolean {
@@ -311,10 +384,19 @@ fun Notification.isCallEnded(): Boolean {
 
     val callEndedKeywords = listOf(
         "call ended", "call finished", "call declined", "call rejected",
-        "missed call", "missed video call", "call disconnected", "hung up",
-        "call duration", "ended"
+        "missed call", "missed video call", "missed voice call", "missed group call", "call disconnected", "hung up",
+        "call duration"
     )
     if (callEndedKeywords.any { titleText.contains(it) }) return true
+    // "ended" only as a whole word, so "extended" or "attended" do not end a call.
+    if (Regex("""(?<![\p{L}])ended(?![\p{L}])""").containsMatchIn(titleText)) return true
+
+    // A ringing call (WhatsApp, Telegram, Signal ...) is usually a heads-up / full-screen
+    // notification that is NOT flagged ongoing, so "not ongoing" must not mean "ended" for it.
+    if (CallStyleExtras.looksRinging(this)) return false
+    // A running call timer in the notification is a live call, even when the app does not flag it
+    // ongoing: the card for it must not be dropped as "ended".
+    if (extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)) return false
     if (!isOngoing && category == Notification.CATEGORY_CALL) return true
 
     return false

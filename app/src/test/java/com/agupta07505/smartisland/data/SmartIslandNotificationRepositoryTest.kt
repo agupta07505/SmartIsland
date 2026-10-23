@@ -16,7 +16,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -105,45 +104,6 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
-    fun testScreenRecordingDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.ScreenRecording)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val notif = notifications[0]
-        assertEquals("demo_screen_recording", notif.key)
-        assertEquals(IslandMode.ScreenRecording, notif.mode)
-        assertEquals("Screen Recording", notif.title)
-    }
-
-    @Test
-    fun testTimerDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.Timer)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val notif = notifications[0]
-        assertEquals("demo_timer", notif.key)
-        assertEquals(IslandMode.Timer, notif.mode)
-        assertEquals("Tea Timer", notif.title)
-    }
-
-    @Test
-    fun testStopwatchDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.Stopwatch)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val notif = notifications[0]
-        assertEquals("demo_stopwatch", notif.key)
-        assertEquals(IslandMode.Stopwatch, notif.mode)
-        assertEquals("Stopwatch", notif.title)
-    }
-
-    @Test
     fun testRemoveNotificationsForPackage() {
         val repository = SmartIslandNotificationRepository()
         val notif1 = IslandNotification(
@@ -229,70 +189,6 @@ class SmartIslandNotificationRepositoryTest {
     }
 
     @Test
-    fun testBluetoothDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.Bluetooth)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val notif = notifications[0]
-        assertEquals("demo_bluetooth", notif.key)
-        assertEquals(IslandMode.Bluetooth, notif.mode)
-        assertEquals("AirPods Pro", notif.title)
-    }
-
-    @Test
-    fun testFlashlightDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.Flashlight)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val notif = notifications[0]
-        assertEquals("demo_flashlight", notif.key)
-        assertEquals(IslandMode.Flashlight, notif.mode)
-        assertEquals("Flashlight ON", notif.title)
-    }
-
-    @Test
-    fun testShowDemoNotification() {
-        val repository = SmartIslandNotificationRepository()
-        repository.showDemo(IslandMode.Battery)
-
-        val notifications = repository.notifications.value
-        assertEquals(1, notifications.size)
-        val demo = notifications[0]
-        assertEquals("demo_battery", demo.key)
-        assertEquals(IslandMode.Battery, demo.mode)
-        assertEquals("85%", demo.text)
-    }
-
-    @Test
-    fun testClearTestNotificationsOnlyRemovesDemoNotifications() {
-        val repository = SmartIslandNotificationRepository()
-        
-        val realNotif = IslandNotification(
-            key = "real_whatsapp_1",
-            packageName = "com.whatsapp",
-            appName = "WhatsApp",
-            title = "Alice",
-            text = "Hello!",
-            mode = IslandMode.Notification,
-            timeMillis = System.currentTimeMillis()
-        )
-        repository.postNotification(realNotif)
-        repository.showDemo(IslandMode.Battery)
-
-        assertEquals(2, repository.notifications.value.size)
-
-        repository.clearTestNotifications()
-
-        val remaining = repository.notifications.value
-        assertEquals(1, remaining.size)
-        assertEquals("real_whatsapp_1", remaining[0].key)
-    }
-
-    @Test
     fun keepsOnlyTheMostRecentFiftyNotifications() {
         val repository = SmartIslandNotificationRepository()
 
@@ -314,5 +210,105 @@ class SmartIslandNotificationRepositoryTest {
         assertEquals(50, notifications.size)
         assertEquals("key_10", notifications.first().key)
         assertEquals("key_59", notifications.last().key)
+    }
+
+    @Test
+    fun openingAnAppOnlyDropsItsOrdinaryAlerts() {
+        val repository = SmartIslandNotificationRepository()
+        fun post(key: String, mode: IslandMode) = repository.postNotification(
+            IslandNotification(
+                key = key,
+                packageName = "com.clock",
+                appName = "Clock",
+                title = key,
+                text = key,
+                mode = mode,
+                timeMillis = 0L
+            )
+        )
+        post("alert", IslandMode.Notification)
+        post("timer", IslandMode.Timer)
+        post("stopwatch", IslandMode.Stopwatch)
+        post("recorder", IslandMode.AudioRecording)
+        post("screen", IslandMode.ScreenRecording)
+        post("call", IslandMode.IncomingCall)
+        post("download", IslandMode.DownloadUpload)
+        post("nav", IslandMode.Navigation)
+
+        repository.removeNotificationsForPackage("com.clock")
+
+        assertEquals(
+            listOf("timer", "stopwatch", "recorder", "screen", "call", "download", "nav"),
+            repository.notifications.value.map { it.key }
+        )
+    }
+
+    @Test
+    fun openingAnAppOnlyCancelsTheOrdinaryAlertInTheShade() = runTest {
+        val repository = SmartIslandNotificationRepository()
+        val received = mutableListOf<SmartIslandCommand>()
+        val job = launch { repository.commands.collect { received.add(it) } }
+        delay(100)
+
+        fun post(key: String, mode: IslandMode) = repository.postNotification(
+            IslandNotification(
+                key = key, packageName = "com.rec", appName = "Rec", title = key,
+                text = key, mode = mode, timeMillis = 0L
+            )
+        )
+        post("alert", IslandMode.Notification)
+        post("recording", IslandMode.AudioRecording)
+
+        repository.removeNotificationsForPackage("com.rec")
+        advanceUntilIdle()
+
+        assertEquals(listOf<SmartIslandCommand>(SmartIslandCommand.CancelNotification("alert")), received)
+        job.cancel()
+    }
+
+    @Test
+    fun testRemoveNotificationsForPackageKeepsTimerAndStopwatch() {
+        val repository = SmartIslandNotificationRepository()
+        val now = System.currentTimeMillis()
+
+        val regular = IslandNotification(
+            key = "regular",
+            packageName = "com.android.deskclock",
+            appName = "Clock",
+            title = "Clock notification",
+            text = "Reminder",
+            mode = IslandMode.Notification,
+            timeMillis = now
+        )
+
+        val timer = IslandNotification(
+            key = "timer",
+            packageName = "com.android.deskclock",
+            appName = "Clock",
+            title = "Timer",
+            text = "Running",
+            mode = IslandMode.Timer,
+            timeMillis = now + 60_000L
+        )
+
+        val stopwatch = IslandNotification(
+            key = "stopwatch",
+            packageName = "com.android.deskclock",
+            appName = "Clock",
+            title = "Stopwatch running",
+            text = "Running",
+            mode = IslandMode.Stopwatch,
+            timeMillis = now
+        )
+
+        repository.postNotification(regular)
+        repository.postNotification(timer)
+        repository.postNotification(stopwatch)
+
+        repository.removeNotificationsForPackage("com.android.deskclock")
+
+        val remainingKeys = repository.notifications.value.map { it.key }.toSet()
+
+        assertEquals(setOf("timer", "stopwatch"), remainingKeys)
     }
 }

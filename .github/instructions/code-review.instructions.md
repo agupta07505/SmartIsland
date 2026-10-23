@@ -1,3 +1,8 @@
+---
+applyTo: "app/**, **/*.kt, **/*.kts, **/*.xml, **/*.java"
+description: "Code review guidelines for Smart Island"
+---
+
 # Code Review Guidelines for GitHub Copilot
 
 Apply these checks whenever reviewing code changes in Smart Island:

@@ -22,10 +22,10 @@ import org.junit.Test
 class SystemEventReceiverTest {
 
     @Test
-    fun testPowerDisconnectedRemovesBatteryNotificationWhenNormal() {
+    fun testPowerDisconnectedPostsBriefUnpluggedCard() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
-        
+
         val context = mockk<Context>()
         val pm = mockk<PowerManager>(relaxed = true)
         every { pm.isPowerSaveMode } returns false
@@ -36,10 +36,77 @@ class SystemEventReceiverTest {
         every { intent.hasExtra(BatteryManager.EXTRA_LEVEL) } returns true
         every { intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) } returns 80
         every { intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1) } returns 100
-        
+
         receiver.onReceive(context, intent)
-        
-        verify { repo.removeNotification("system_battery") }
+
+        verify {
+            repo.postNotification(
+                match {
+                    it.key == "system_battery" &&
+                        it.category == "battery_plugged_out" &&
+                        it.text == "80%"
+                },
+                autoExpand = true
+            )
+        }
+    }
+
+    @Test
+    fun testPowerConnectedPostsPluggedInCardThenNothingElseImmediately() {
+        val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
+        val receiver = SystemEventReceiver(repo)
+        val context = mockk<Context>()
+
+        fun plugIntent(action: String) = mockk<Intent>().also {
+            every { it.action } returns action
+            every { it.hasExtra(BatteryManager.EXTRA_LEVEL) } returns true
+            every { it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) } returns 60
+            every { it.getIntExtra(BatteryManager.EXTRA_SCALE, -1) } returns 100
+            every { it.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) } returns BatteryManager.BATTERY_PLUGGED_AC
+            every { it.getIntExtra(BatteryManager.EXTRA_STATUS, -1) } returns BatteryManager.BATTERY_STATUS_CHARGING
+        }
+
+        receiver.onReceive(context, plugIntent(Intent.ACTION_POWER_CONNECTED))
+        // The battery broadcast that follows a plug-in must not replace the plug card.
+        receiver.onReceive(context, plugIntent(Intent.ACTION_BATTERY_CHANGED))
+
+        verify(exactly = 1) {
+            repo.postNotification(
+                match { it.category == "battery_plugged_in" && it.title == "Plugged in" && it.text == "60%" },
+                autoExpand = true
+            )
+        }
+        verify(exactly = 0) {
+            repo.postNotification(match { it.category == "battery_charging" }, any())
+        }
+    }
+
+    @Test
+    fun testChargeLimitPauseDoesNotCountAsUnplugged() {
+        val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
+        val receiver = SystemEventReceiver(repo)
+        val context = mockk<Context>()
+
+        fun batteryIntent(plugged: Int, status: Int) = mockk<Intent>().also {
+            every { it.action } returns Intent.ACTION_BATTERY_CHANGED
+            every { it.hasExtra(BatteryManager.EXTRA_LEVEL) } returns true
+            every { it.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) } returns 80
+            every { it.getIntExtra(BatteryManager.EXTRA_SCALE, -1) } returns 100
+            every { it.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) } returns plugged
+            every { it.getIntExtra(BatteryManager.EXTRA_STATUS, -1) } returns status
+        }
+
+        // Sticky broadcast on registration while charging: adopted silently.
+        receiver.onReceive(context, batteryIntent(BatteryManager.BATTERY_PLUGGED_AC, BatteryManager.BATTERY_STATUS_CHARGING))
+        // A charge limit pauses charging: still plugged, status NOT_CHARGING.
+        receiver.onReceive(context, batteryIntent(BatteryManager.BATTERY_PLUGGED_AC, BatteryManager.BATTERY_STATUS_NOT_CHARGING))
+
+        verify(exactly = 0) {
+            repo.postNotification(match { it.category == "battery_plugged_out" }, any())
+        }
+        verify(exactly = 0) {
+            repo.postNotification(any(), autoExpand = true)
+        }
     }
 
     @Test

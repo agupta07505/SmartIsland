@@ -9,7 +9,6 @@ package com.agupta07505.smartisland.util
 
 import android.app.Notification
 import android.service.notification.StatusBarNotification
-import java.util.regex.Pattern
 
 enum class TurnDirection {
     LEFT,
@@ -30,49 +29,46 @@ data class NavigationInfo(
     val turnDirection: TurnDirection = TurnDirection.STRAIGHT
 )
 
+/** What the expanded navigation card shows, split into its rows. */
+data class NavigationCardText(
+    /** "In 300 m" for the badge. */
+    val distance: String,
+    /** The maneuver itself ("Turn left onto MG Road"), without a leading distance. */
+    val instruction: String,
+    /** Extra instruction text such as a street or lane hint; empty when there is none. */
+    val detail: String,
+    /** Trip stats such as "24 min • 8.5 km" or "ETA 18:42"; empty when there are none. */
+    val eta: String
+)
+
 object NavigationParser {
 
-    private val NAVIGATION_PACKAGES = setOf(
-        "com.google.android.apps.maps",
-        "com.waze",
-        "com.maptls.app",
-        "com.mapmyindia.maps",
-        "com.sygic.aura",
-        "com.huawei.maps.app",
-        "com.autonavi.minimap",
-        "com.baidu.BaiduMap",
-        "com.here.app.maps",
-        "com.tomtom.gplay.navapp",
-        "net.osmand",
-        "ru.yandex.yandexnavi",
-        "ru.yandex.yandexmaps",
-        "com.locnall.KimGiSa",
-        "com.nhn.android.nmap"
-    )
-
-    private val DISTANCE_PATTERN = Pattern.compile("^(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", Pattern.CASE_INSENSITIVE)
-    private val GENERIC_DISTANCE_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", Pattern.CASE_INSENSITIVE)
-
-    private val NAVIGATION_MANEUVER_KEYWORDS = listOf(
-        "turn", "head", "continue", "exit", "merge", "destination", "arrived", "arriving",
-        "onto", "towards", "via", "route", "ramp", "fork", "keep left", "keep right", "u-turn", "roundabout"
-    )
-
-    fun isNavigationApp(packageName: String): Boolean {
-        return packageName in NAVIGATION_PACKAGES
-    }
+    fun isNavigationApp(packageName: String): Boolean = AppPackageCatalog.isNavigationApp(packageName)
 
     fun parse(sbn: StatusBarNotification): NavigationInfo? {
         val packageName = sbn.packageName
+
+        // Delivery and ride apps track an order or a trip; they never give turn-by-turn guidance, even when one of
+        // them tags its notification with the navigation category and a distance ("Your rider is 500 m away").
+        if (AppPackageCatalog.isLiveActivityApp(packageName)) return null
+
         val notification = sbn.notification ?: return null
         val isCategoryNav = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             notification.category == Notification.CATEGORY_NAVIGATION
         } else {
             notification.category == "navigation"
         }
+        val knownApp = isNavigationApp(packageName)
 
-        if (!isCategoryNav && !isNavigationApp(packageName)) {
+        if (!isCategoryNav && !knownApp) {
             return null
+        }
+
+        // A map app also posts ordinary notifications (Maps' "Your September Timeline", a saved-place tip, a traffic
+        // alert).
+        if (!isCategoryNav) {
+            val running = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
+            if (!running) return null
         }
 
         val extras = notification.extras ?: return null
@@ -90,32 +86,27 @@ object NavigationParser {
             return null
         }
 
-        // 1. Extract Distance to Turn
-        val leadingDistMatcher = DISTANCE_PATTERN.matcher(title.trim())
-        val genericDistMatcher = GENERIC_DISTANCE_PATTERN.matcher("$title $text")
+        val leadingDist = NavigationLocale.LEADING_DISTANCE.find(title.trim())
+        val anyDist = if (leadingDist == null) NavigationLocale.ANY_DISTANCE.find("$title $text") else null
+        val distanceMatch = leadingDist ?: anyDist
+        val hasTurnDirection = parseTurnDirection(combinedContent) != TurnDirection.STRAIGHT
+        val hasManeuverWording = hasTurnDirection || NavigationLocale.MANEUVER_WORDING.containsMatchIn(combinedContent)
+        val hasTripStat = NavigationLocale.TRIP_STAT.containsMatchIn(combinedContent)
 
-        val hasLeadingDist = leadingDistMatcher.find()
-        val hasGenericDist = if (!hasLeadingDist) genericDistMatcher.find() else false
-        val hasDistPattern = hasLeadingDist || hasGenericDist
-
-        val hasNavKeywords = NAVIGATION_MANEUVER_KEYWORDS.any { combinedContent.contains(it) }
-
-        // If not a recognized navigation app, require explicit distance or navigation maneuver keywords
-        if (!isNavigationApp(packageName) && !hasDistPattern && !hasNavKeywords) {
-            return null
+        if (knownApp) {
+            // A known map app that categorises the notification as navigation is trusted.
+            if (!isCategoryNav && !hasManeuverWording && distanceMatch == null && !hasTripStat) return null
+        } else {
+            // Any other app only gets here through the navigation category, which delivery, ride and tracking apps
+            // use too.
+            if (!hasManeuverWording) return null
+            if (NavigationLocale.DELIVERY_OR_RIDE_WORDING.containsMatchIn(combinedContent)) return null
         }
 
-        val distanceText = when {
-            hasLeadingDist -> leadingDistMatcher.group(0)
-            hasGenericDist -> genericDistMatcher.group(0)
-            isNavigationApp(packageName) -> "In 200 m"
-            else -> return null
-        }
+        val distanceText = distanceMatch?.value ?: "In 200 m"
 
-        // 2. Determine Turn Direction
         val turnDirection = parseTurnDirection(combinedContent)
 
-        // 3. Clean up Maneuver Title
         val maneuverTitle = when {
             title.isNotBlank() && !title.startsWith(distanceText, ignoreCase = true) -> title
             text.isNotBlank() -> text
@@ -137,22 +128,63 @@ object NavigationParser {
         )
     }
 
+    private val ENGLISH_LEFT_WORD = Regex("\\b(turn|go|head|take)\\s+left\\b")
+    private val ENGLISH_RIGHT_WORD = Regex("\\b(turn|go|head|take)\\s+right\\b")
+    private val LEFT_WORD = Regex("\\bleft\\b")
+    private val RIGHT_WORD = Regex("\\bright\\b")
+
+    private val U_TURN = NavigationLocale.anyOf(NavigationLocale.U_TURN)
+    private val SLIGHT_LEFT = NavigationLocale.anyOf(NavigationLocale.SLIGHT_LEFT)
+    private val SLIGHT_RIGHT = NavigationLocale.anyOf(NavigationLocale.SLIGHT_RIGHT)
+    private val LEFT = NavigationLocale.anyOf(NavigationLocale.LEFT)
+    private val RIGHT = NavigationLocale.anyOf(NavigationLocale.RIGHT)
+    private val ROUNDABOUT = NavigationLocale.anyOf(NavigationLocale.ROUNDABOUT)
+    private val DESTINATION = NavigationLocale.anyOf(NavigationLocale.DESTINATION)
+
     fun parseTurnDirection(content: String): TurnDirection {
         val lower = content.lowercase()
         return when {
-            lower.contains("u-turn") || lower.contains("uturn") || lower.contains("make a u turn") || lower.contains("make a u-turn") -> TurnDirection.U_TURN
-            lower.contains("slight left") || lower.contains("bear left") || lower.contains("keep left") || lower.contains("veer left") -> TurnDirection.SLIGHT_LEFT
-            lower.contains("slight right") || lower.contains("bear right") || lower.contains("keep right") || lower.contains("veer right") -> TurnDirection.SLIGHT_RIGHT
-            lower.contains("turn left") || lower.contains("left onto") || lower.contains("left on") || lower.contains("take the left") || lower.contains("sharp left") -> TurnDirection.LEFT
-            lower.contains("turn right") || lower.contains("right onto") || lower.contains("right on") || lower.contains("take the right") || lower.contains("sharp right") -> TurnDirection.RIGHT
-            lower.contains("roundabout") || lower.contains("rotary") || lower.contains("traffic circle") -> TurnDirection.ROUNDABOUT
-            lower.contains("arrived") || lower.contains("destination") || lower.contains("reached") || lower.contains("you have arrived") -> TurnDirection.DESTINATION
+            U_TURN.containsMatchIn(lower) -> TurnDirection.U_TURN
+            SLIGHT_LEFT.containsMatchIn(lower) -> TurnDirection.SLIGHT_LEFT
+            SLIGHT_RIGHT.containsMatchIn(lower) -> TurnDirection.SLIGHT_RIGHT
+            LEFT.containsMatchIn(lower) -> TurnDirection.LEFT
+            RIGHT.containsMatchIn(lower) -> TurnDirection.RIGHT
+            ROUNDABOUT.containsMatchIn(lower) -> TurnDirection.ROUNDABOUT
+            DESTINATION.containsMatchIn(lower) -> TurnDirection.DESTINATION
             // Word-boundary direction matching only when not preceded by numbers/time words
-            Regex("\\b(turn|go|head|take)\\s+left\\b").containsMatchIn(lower) -> TurnDirection.LEFT
-            Regex("\\b(turn|go|head|take)\\s+right\\b").containsMatchIn(lower) -> TurnDirection.RIGHT
-            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left") && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left") && Regex("\\bleft\\b").containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
-            !lower.contains("right now") && !lower.contains("all right") && Regex("\\bright\\b").containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.RIGHT
+            ENGLISH_LEFT_WORD.containsMatchIn(lower) -> TurnDirection.LEFT
+            ENGLISH_RIGHT_WORD.containsMatchIn(lower) -> TurnDirection.RIGHT
+            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left") && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left") && LEFT_WORD.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
+            !lower.contains("right now") && !lower.contains("all right") && RIGHT_WORD.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.RIGHT
             else -> TurnDirection.STRAIGHT
         }
+    }
+
+    private val SEGMENT_SPLIT = Regex("\\s*[\u2022\u00B7|]\\s*")
+
+    /** Splits a navigation notification into the rows of the expanded card. */
+    fun cardText(title: String, text: String): NavigationCardText {
+        val segments = text.split(SEGMENT_SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
+        val (statSegments, detailSegments) = segments.partition { NavigationLocale.TRIP_STAT.containsMatchIn(it) || NavigationLocale.TRIP_DISTANCE.matches(it) }
+        val eta = statSegments.joinToString(" \u2022 ")
+        val detail = detailSegments.joinToString(" \u2022 ")
+
+        val distanceSource = "$title $detail"
+        val distMatch = NavigationLocale.ANY_DISTANCE.find(distanceSource)
+        // "In 300 m" for Latin-script text; other scripts show the distance as the app wrote it ("через 300 м" stays unprefixed).
+        val distance = when {
+            distMatch == null -> "In 200 m"
+            distMatch.value.all { it.code < 128 } -> "In ${distMatch.value}"
+            else -> distMatch.value
+        }
+
+        val trimmedTitle = title.trim()
+        val stripped = trimmedTitle.replace(NavigationLocale.LEADING_DISTANCE_PREFIX, "").trim()
+        val instruction = when {
+            stripped.isNotEmpty() -> stripped
+            trimmedTitle.isNotEmpty() -> trimmedTitle
+            else -> "Navigation"
+        }
+        return NavigationCardText(distance, instruction, detail, eta)
     }
 }

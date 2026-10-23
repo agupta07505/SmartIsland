@@ -10,11 +10,6 @@ package com.agupta07505.smartisland.ui.expanded
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,26 +24,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BatteryAlert
-import androidx.compose.material.icons.rounded.BatterySaver
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +47,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
-import com.agupta07505.smartisland.ui.components.DottedRing
+import com.agupta07505.smartisland.ui.components.BatteryBadge
+import com.agupta07505.smartisland.ui.components.BatteryVisual
+import com.agupta07505.smartisland.ui.components.batteryVisualColor
+import com.agupta07505.smartisland.ui.components.rememberBatteryPulse
+import com.agupta07505.smartisland.ui.components.resolveBatteryVisual
 import com.agupta07505.smartisland.util.runCatchingLogged
 
 @Composable
@@ -71,17 +65,13 @@ fun BatteryExpanded(
     val pct = pctText.toFloatOrNull() ?: 49f
     val progress = (pct / 100f).coerceIn(0f, 1f)
 
-    val titleLower = notification.title.lowercase()
-    val isBatterySaver = titleLower.contains("saver") || notification.category == "battery_saver"
-    val isLowBattery = titleLower.contains("low") || notification.category == "battery_low" || pct <= 20f
-
-    val batteryColor = when {
-        isLowBattery -> Color(0xFFEF4444)
-        isBatterySaver -> Color(0xFFF59E0B)
-        else -> Color(settings.batteryColor)
-    }
-    val midBatteryColor = lerp(batteryColor, Color.White, 0.35f)
-    val lightestBatteryColor = lerp(batteryColor, Color.White, 0.65f)
+    val visual = resolveBatteryVisual(notification.category, notification.title, pct)
+    val batteryColor = batteryVisualColor(visual, Color(settings.batteryColor))
+    // The bar's sheen goes toward white on the dark island and toward black on the light one (a white sheen would vanish on pale).
+    val lightLook = LocalIslandPalette.current.isLight
+    val midBatteryColor = if (lightLook) lerp(batteryColor, Color.Black, 0.12f) else lerp(batteryColor, Color.White, 0.35f)
+    val lightestBatteryColor = if (lightLook) lerp(batteryColor, Color.Black, 0.24f) else lerp(batteryColor, Color.White, 0.65f)
+    val pulse = rememberBatteryPulse(visual)
 
     val animatedProgress = remember { Animatable(0f) }
     LaunchedEffect(progress) {
@@ -91,31 +81,21 @@ fun BatteryExpanded(
         )
     }
 
-    val flowTransition = rememberInfiniteTransition(label = "electricFlow")
-    val flowOffset by flowTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 5000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "flowOffset"
-    )
+    val barColors = remember(batteryColor, midBatteryColor, lightestBatteryColor) {
+        listOf(batteryColor, midBatteryColor, lightestBatteryColor, midBatteryColor, batteryColor)
+    }
+    val barShape = RoundedCornerShape(6.dp)
 
-    val rotationAngle by flowTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 8000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "dottedRingRotation"
-    )
-
-    val timeText = remember(pct, isBatterySaver, isLowBattery) {
-        if (isBatterySaver) {
+    val timeText = remember(pct, visual) {
+        if (visual == BatteryVisual.PluggedIn) {
+            "Charger connected"
+        } else if (visual == BatteryVisual.PluggedOut) {
+            "Running on battery"
+        } else if (visual == BatteryVisual.Full) {
+            "Battery full"
+        } else if (visual == BatteryVisual.Saver) {
             "Power Saver active"
-        } else if (isLowBattery) {
+        } else if (visual == BatteryVisual.Low) {
             "Connect charger"
         } else {
             val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
@@ -154,57 +134,26 @@ fun BatteryExpanded(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
-            Box(
-                modifier = Modifier.size(46.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                DottedRing(
-                    progress = progress,
-                    rotationAngle = rotationAngle,
-                    modifier = Modifier.size(44.dp),
-                    color = batteryColor
-                )
-                
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(batteryColor.copy(alpha = 0.12f), shape = CircleShape)
-                        .border(1.2.dp, batteryColor.copy(alpha = 0.4f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when {
-                        isBatterySaver -> {
-                            Icon(
-                                Icons.Rounded.BatterySaver,
-                                contentDescription = null,
-                                tint = batteryColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        isLowBattery -> {
-                            Icon(
-                                Icons.Rounded.BatteryAlert,
-                                contentDescription = null,
-                                tint = batteryColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        else -> {
-                            Icon(
-                                Icons.Rounded.Bolt,
-                                contentDescription = null,
-                                tint = batteryColor,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            BatteryBadge(
+                visual = visual,
+                progress = progress,
+                color = batteryColor,
+                pulse = pulse,
+                boxSize = 46.dp,
+                iconSize = 20.dp,
+                disc = true
+            )
 
             Column {
                 Text(
-                    text = notification.title.takeIf { it.isNotBlank() } ?: if (isBatterySaver) "Battery Saver ON" else if (isLowBattery) "Low Battery" else "Charging",
-                    color = Color.White,
+                    text = notification.title.takeIf { it.isNotBlank() } ?: when (visual) {
+                        BatteryVisual.Saver -> "Battery Saver ON"
+                        BatteryVisual.Low -> "Low Battery"
+                        BatteryVisual.PluggedIn -> "Plugged in"
+                        BatteryVisual.PluggedOut -> "Unplugged"
+                        BatteryVisual.Full -> "Fully Charged"
+                    },
+                    color = LocalIslandPalette.current.text,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     maxLines = 1
@@ -218,7 +167,7 @@ fun BatteryExpanded(
                 )
                 Text(
                     text = timeText,
-                    color = Color(0xFF98A2B3),
+                    color = LocalIslandPalette.current.textMuted,
                     fontSize = 11.sp,
                     maxLines = 1
                 )
@@ -233,29 +182,27 @@ fun BatteryExpanded(
                 modifier = Modifier
                     .width(72.dp)
                     .height(32.dp)
-                    .border(1.5.dp, Color(0x33FFFFFF), RoundedCornerShape(8.dp))
-                    .background(Color(0x1AFFFFFF), RoundedCornerShape(8.dp))
+                    .border(1.5.dp, LocalIslandPalette.current.tint(0.2f), RoundedCornerShape(8.dp))
+                    .background(LocalIslandPalette.current.tint(0.1f), RoundedCornerShape(8.dp))
                     .padding(2.5.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(animatedProgress.value)
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    batteryColor,
-                                    midBatteryColor,
-                                    lightestBatteryColor,
-                                    midBatteryColor,
-                                    batteryColor
-                                ),
-                                startX = flowOffset,
-                                endX = flowOffset + 300f,
-                                tileMode = TileMode.Repeated
-                            ),
-                            shape = RoundedCornerShape(6.dp)
-                        )
+                        .graphicsLayer { alpha = if (visual == BatteryVisual.Low) pulse.value else 1f }
+                        .drawBehind {
+                            val x = 0f
+                            drawOutline(
+                                outline = barShape.createOutline(size, layoutDirection, this),
+                                brush = Brush.horizontalGradient(
+                                    colors = barColors,
+                                    startX = x,
+                                    endX = x + 300f,
+                                    tileMode = TileMode.Repeated
+                                )
+                            )
+                        }
                 )
 
                 Box(
@@ -263,7 +210,7 @@ fun BatteryExpanded(
                         .fillMaxSize()
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent),
+                                colors = listOf(LocalIslandPalette.current.tint(0.15f), Color.Transparent),
                                 startY = 0f,
                                 endY = 40f
                             ),
@@ -276,7 +223,7 @@ fun BatteryExpanded(
                 modifier = Modifier
                     .width(4.dp)
                     .height(12.dp)
-                    .background(Color(0x66FFFFFF), shape = RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
+                    .background(LocalIslandPalette.current.tint(0.4f), shape = RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp))
             )
         }
     }

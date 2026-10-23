@@ -243,6 +243,21 @@ class AppNotificationFilterTest {
     }
 
     @Test
+    fun runningCallTimerMeansTheCallIsNotEnded() {
+        val live = mockk<Notification>(relaxed = true)
+        val extras = mockk<Bundle>(relaxed = true)
+        every { extras.getCharSequence(any()) } returns null
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Mama"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Ongoing voice call"
+        every { extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) } returns true
+        live.flags = 0   // not flagged ongoing
+        live.category = Notification.CATEGORY_CALL
+        live.extras = extras
+
+        assertFalse(live.isCallEnded())
+    }
+
+    @Test
     fun testMessageSyncNotificationNotDownloadMode() {
         val syncNotif = mockk<Notification>(relaxed = true)
         syncNotif.category = null

@@ -4,6 +4,88 @@ All notable changes to Smart Island should be documented in this file.
 
 The format is inspired by Keep a Changelog, and this project uses the GNU General Public License v3.0.
 
+## [7.6.0] - 2026-10-19
+
+### Highlights (v7.6.0)
+- **Multilingual Support**: Added Spanish and Japanese translations; expanded Brazilian Portuguese and Simplified Chinese.
+- **Translation Automation**: Integrated string extraction and translation script with local LibreTranslate support.
+- **Updated Screenshots**: Refreshed showcase screenshots across README.
+- **System Events & UI Polish**: Audio jack and USB connection refinements, welcome card opacity adjustments, and overlay stability fixes.
+
+## [7.5.0] - 2026-10-18
+
+### Major Release Highlights (v7.5.0)
+
+Smart Island **v7.5.0** adds idle widgets and a full landscape mode, and reworks large parts of the card, gesture and theme system:
+- **Idle Widgets**: the cutout now rotates through live widgets (clock, date, weather, wind, battery, next alarm, net speed, unread count, Do Not Disturb) when no event is on the island.
+- **Weather, Net Speed & Calendar**: location-aware weather with a custom provider option, a net speed widget with daily usage, and the next calendar event on the date widget.
+- **Face Unlock Animation**: a face scan and fingerprint animation drawn over the cutout when the phone is unlocked.
+- **Per-Event Control**: about 30 events, each with its own switch, auto-expand and lock screen setting, plus new lock screen presets.
+- **Quick Launch & Utilities**: pinned apps, recents and a 2x4 utilities grid with resizable app widgets.
+- **Landscape Overhaul**: independent portrait and landscape profiles, a landscape lab and a rotation veil.
+- **Material You & Liquid Glass**: Material 3 colours from your wallpaper or one accent, an optional glass theme, bundled and custom fonts.
+
+### Added
+
+- **Idle Widgets (`IdleWidget.kt`, `IdleWidgets.kt`, `IdleWidgetsSettingsSection.kt`)**:
+  - Widgets that take turns on the cutout: Live Clock, Date, Weather, Wind, Battery, Next Alarm, Net Speed, Notifications count and Do Not Disturb / Modes.
+  - Rotation interval of 3 to 60 seconds, temperature units (auto, Celsius, Fahrenheit) and a semi-expanded widget island that opens on tap.
+  - **Hour tick**: once an hour the pill ticks over to the new time.
+  - **Day Moments**: sunrise, afternoon, sunset and midnight glyphs at fixed local times.
+  - **Schedules**: choose which widgets show during work hours (weekdays only option), at night or while charging, drag them into your own order and pin one to always lead.
+  - **Tick styles**: smooth, or an LED board with hop patterns, speed, stagger and red, amber, green or white colours, with ambient LED motions for sun, rain and wind.
+- **Weather Widget (`WeatherConfig.kt`, `WeatherDisplay.kt`, `WeatherSettingsCard.kt`)**:
+  - Location from auto detect, a chosen city or the last known place.
+  - Open-Meteo by default, or your own compatible https service with an optional API key that is never part of a backup.
+  - Refresh interval or manual only, and island rows for high and low, rain chance, humidity, UV, sun times, air quality and hourly forecast.
+- **Net Speed Widget (`NetSpeedRules.kt`, `NetUsage.kt`, `NetSpeedSettingsCard.kt`)**: shows the busier direction above a threshold you set, with hysteresis so it does not flicker, can be limited to Wi-Fi or mobile data, and keeps a daily Wi-Fi and mobile usage counter that restarts at midnight.
+- **Calendar Next Event (`CalendarRules.kt`, `CalendarReader.kt`)**: the date widget lists your next event within 24 hours.
+- **Face Unlock Animation (`FaceIdLayer.kt`, `FaceIdFingerprint.kt`, `FaceUnlockSection.kt`)**: a scan animation over the cutout on face unlock, a fingerprint version for finger unlocks, app lock prompts (including MIUI app lock), and a choice between face unlock only or any unlock.
+- **Per-Event Switches (`IslandEvent.kt`, `EventTogglesSection.kt`)**:
+  - 32 events grouped as Power, Connectivity and Activities, each with its own on/off, auto-expand and hide-on-lock-screen switch.
+  - New events include Wi-Fi and VPN disconnect, USB in and out, wired headphones in and out, audio recording, backups, file copy and move, file delete and app install.
+  - **Lock screen presets**: Show all, Messages only, Calls only or Off.
+- **Quick Launch Window (`LauncherPager.kt`, `UtilityGrid.kt`, `UtilitiesSection.kt`, `PinnedApps.kt`)**:
+  - Apps and Recents pages, plus a Utilities page on a second level.
+  - Utilities include mobile data, Wi-Fi, hotspot, flashlight, calculator, clear cache, screen recorder, screenshot, timer, stopwatch, lock screen, voice recorder, camera, Bluetooth, airplane mode, auto rotate, dark mode and battery saver.
+  - Resizable app widgets on a 2x4 grid with two tabs.
+  - Pinned apps picker in its own see-through window so choosing never opens the app.
+- **Floating Window Engines (`FloatingWindowMode.kt`, `LmoFreeform.kt`)**: Android freeform or LMO Freeform, with a pull-down handle on the expanded island to open the current notification in a window.
+- **Landscape Overhaul (`OrientationProfile.kt`, `LandscapeLayout.kt`, `LandscapeLabSection.kt`)**:
+  - Fully independent portrait and landscape profiles for geometry, events and animation speed.
+  - Landscape lab that plays the demo script in each situation, a corner pill and a split island with a beside picker or picture island.
+  - **Rotation veil** that hides the island until the new orientation has settled.
+- **Notification Cards**:
+  - Half-typed reply drafts that survive collapses and interruptions.
+  - **Sibling picker** and secondary cutouts for several cards from one app.
+  - Stepped card depth: expandable text, a reader and a picture selector for pictures and stickers.
+  - Same-app card switching and silent notifications skipped when cycling events.
+- **Gestures (`GestureGuide.kt`, `GestureSensitivityRow.kt`, `HapticStrengthRow.kt`)**: new actions for next stored event, next card of the same app and long press to hide or restore the pill, plus gesture sensitivity and haptic strength settings and calmer, spring-based swipe feel.
+- **Media & Call Controls**: a redesigned media card with an audio output switcher chip, artwork tint colour and the app's own extra buttons, and call cards that can mute the mic and switch earpiece, speaker or Bluetooth.
+- **Look & Feel (`Theme.kt`, `LiquidGlass.kt`, `AppThemeOptions.kt`)**:
+  - Material 3 colour scheme built from one accent colour, or from the wallpaper with Material You on Android 12 and up.
+  - Optional **liquid glass** theme with translucent panels over a colour backdrop.
+  - Bundled **Lora, Inter Display and Poppins** fonts, your own `.ttf` and `.otf` fonts, and a **mix fonts** mode using up to three fonts by weight.
+  - **Gooey bubble merge** style (Android 12+) for the secondary cutout.
+  - Animation speed and timing sections to tune the island.
+- **Settings Search & Exempt Apps**: in-settings search for every toggle, plus per-orientation lists of apps that switch the island off (or, in portrait, make the pill static) while in the foreground.
+- **Shizuku & Diagnostics (`ShizukuManager.kt`, `DiagnosticsSection.kt`, `AppLogRecorder.kt`)**: broader Shizuku detection (forks, Sui, hidden packages), one-tap grant of the sensitive notification permission on Android 15+, hotspot start and stop through shell, a diagnostic log for missed calls, an environment snapshot, a main thread watchdog and a log that survives the process being killed.
+- **Baseline Profile Module**: bundled `:baselineprofile` module and CI workflow for ahead-of-time compiled startup and animation paths.
+- **New Permissions**: `READ_CALENDAR`, `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION`, `ACCESS_NOTIFICATION_POLICY`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE`, `WRITE_SETTINGS`, `KILL_BACKGROUND_PROCESSES`, `SET_ALARM` and the optional `RECEIVE_SENSITIVE_NOTIFICATIONS`.
+- **Tests & Docs**: dozens of new unit tests across the new model code, plus `NOTICE.md` and `THIRD_PARTY_FONTS.md` for bundled font licences.
+
+### Improved & Fixed
+
+- **Timer and Stopwatch Detection (`TimerStopwatchParser.kt`)**: alarms with snooze are never read as timers, paused stopwatches stay stopwatches, chat messages mentioning a timer or lap are ignored, and countdown deadlines use the most accurate source with HyperOS fallbacks.
+- **Navigation Parsing (`NavigationParser.kt`)**: delivery and ride apps never show as turn-by-turn navigation, only known map apps are trusted for the navigation category, and the card is split into distance, maneuver, hint and trip stats.
+- **Notification Filtering (`NotificationFilter.kt`)**: WhatsApp calls that carry the group-summary flag, CallStyle calls with an empty title, chat and inbox styles with empty text, wearable connection spam and sensitive system settings are all handled, and a suppressed notification now logs the rule that blocked it.
+- **Anti-Spam (`NotificationCooldownManager.kt`)**: finished download notifications are never held back, progress updates no longer count as spam, and system events such as a charger plugged in again and again or Wi-Fi that keeps reconnecting can be cooled down on their own.
+- **Transfers and Recorders**: per-app workarounds for apps whose transfers do not look like downloads, a voice recorder's cloud backup is classified as a transfer, and audio recorder apps get their own mode with paused recordings still counted.
+- **Idle Cutout Behaviour**: cards that have nothing actively running return to the idle cutout after a timeout, and bursts of cards pulse the cutout once.
+- **Shade and Foreground Detection**: accessibility window events now track the notification shade, quick settings, lock screen and the foreground app, so the island hides and reappears at the right moments.
+- **Hotspot Card (`HotspotUtil.kt`)**: reads the platform flag where the ROM allows it and falls back to the island's own card state.
+- **Camera Cutout Detection (`CameraCutoutDetector.kt`)**: portrait detection now respects the manual area and separates the detected hole from pill padding.
+
 ## [7.0.0] - 2026-09-20
 
 ### Major Release Highlights (v7.0.0)

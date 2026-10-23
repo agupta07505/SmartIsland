@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,7 +34,7 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,20 +43,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.BuildConfig
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -69,6 +64,8 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
 fun BackupRestoreSection(
@@ -78,13 +75,19 @@ fun BackupRestoreSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var showRestoreDialog by remember { mutableStateOf(false) }
-    var pendingRestoreSettings by remember { mutableStateOf<SmartIslandSettings?>(null) }
-    var pendingRestoreMetadata by remember { mutableStateOf<SmartIslandSettings.BackupMetadata?>(null) }
+    // Dialog state survives rotation: the picked backup is kept as its JSON text (a plain string
+    // that can be saved) and parsed again, instead of holding the parsed objects.
+    var showRestoreDialog by rememberSaveable { mutableStateOf(false) }
+    var pendingRestoreJson by rememberSaveable { mutableStateOf<String?>(null) }
+    val pendingRestoreSettings = remember(pendingRestoreJson) {
+        pendingRestoreJson?.let { runCatching { SmartIslandSettings.fromJson(it) }.getOrNull() }
+    }
+    val pendingRestoreMetadata = remember(pendingRestoreJson) {
+        pendingRestoreJson?.let { SmartIslandSettings.parseBackupMetadata(it) }
+    }
 
-    var showResetDialog by remember { mutableStateOf(false) }
+    var showResetDialog by rememberSaveable { mutableStateOf(false) }
 
-    // Storage Access Framework: Export Document Launcher
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
@@ -115,7 +118,6 @@ fun BackupRestoreSection(
         }
     }
 
-    // Storage Access Framework: Open Document Launcher
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -132,7 +134,6 @@ fun BackupRestoreSection(
                     return@launch
                 }
 
-                val metadata = SmartIslandSettings.parseBackupMetadata(jsonString)
                 val restored = runCatching { SmartIslandSettings.fromJson(jsonString) }.getOrNull()
 
                 if (restored == null) {
@@ -143,8 +144,7 @@ fun BackupRestoreSection(
                 }
 
                 withContext(Dispatchers.Main) {
-                    pendingRestoreSettings = restored
-                    pendingRestoreMetadata = metadata
+                    pendingRestoreJson = jsonString
                     showRestoreDialog = true
                 }
             } catch (e: Exception) {
@@ -163,7 +163,6 @@ fun BackupRestoreSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Section Header Card: Configuration Summary
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -213,7 +212,6 @@ fun BackupRestoreSection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Stats badge row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -245,7 +243,6 @@ fun BackupRestoreSection(
             }
         }
 
-        // Card 2: Export Backup
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -318,7 +315,6 @@ fun BackupRestoreSection(
             }
         }
 
-        // Card 3: Restore from Backup
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -387,7 +383,6 @@ fun BackupRestoreSection(
             }
         }
 
-        // Card 4: Factory Reset Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -456,7 +451,6 @@ fun BackupRestoreSection(
         }
     }
 
-    // Restore Confirmation Dialog
     if (showRestoreDialog && pendingRestoreSettings != null) {
         val metadata = pendingRestoreMetadata
         val dateStr = metadata?.let {
@@ -466,8 +460,7 @@ fun BackupRestoreSection(
         AlertDialog(
             onDismissRequest = {
                 showRestoreDialog = false
-                pendingRestoreSettings = null
-                pendingRestoreMetadata = null
+                pendingRestoreJson = null
             },
             icon = {
                 Icon(
@@ -508,8 +501,7 @@ fun BackupRestoreSection(
                             }
                         }
                         showRestoreDialog = false
-                        pendingRestoreSettings = null
-                        pendingRestoreMetadata = null
+                        pendingRestoreJson = null
                     }
                 ) {
                     Text(stringResource(R.string.btn_restore_backup))
@@ -519,8 +511,7 @@ fun BackupRestoreSection(
                 TextButton(
                     onClick = {
                         showRestoreDialog = false
-                        pendingRestoreSettings = null
-                        pendingRestoreMetadata = null
+                        pendingRestoreJson = null
                     }
                 ) {
                     Text(stringResource(android.R.string.cancel))
@@ -529,7 +520,6 @@ fun BackupRestoreSection(
         )
     }
 
-    // Reset All Settings Confirmation Dialog
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },

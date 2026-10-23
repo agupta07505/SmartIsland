@@ -44,7 +44,7 @@ class AutostartReceiver : BroadcastReceiver() {
                     ) {
                         val settings = settingsRepository.settings.first()
                         if (settings.enabled && ShizukuManager.hasPermission()) {
-                            ShizukuManager.autoGrantAllPermissions(context)
+                            ShizukuManager.reapplySavedSetup(context)
                         }
                     }
                 } finally {

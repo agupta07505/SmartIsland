@@ -8,6 +8,8 @@
 package com.agupta07505.smartisland.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
@@ -26,6 +28,7 @@ class SmartIslandSettingsTest {
         assertEquals(true, settings.showNotificationActions)
         assertEquals(true, settings.hideFromNotificationShade)
         assertEquals(true, settings.autoExpandOnNotification)
+        assertEquals(true, settings.autoExpandOnLockScreen)
         assertEquals(true, settings.enableShadow)
         assertEquals(14f, settings.shadowElevation)
         assertEquals(true, settings.enableMusicArtworkBackground)
@@ -51,14 +54,17 @@ class SmartIslandSettingsTest {
         assertEquals(true, settings.enableSwipeActions)
         assertEquals("DismissCurrent", settings.swipeUpAction)
         assertEquals("DismissAll", settings.swipeHoldUpAction)
-        assertEquals("FloatingWindow", settings.swipeDownAction)
+        assertEquals("None", settings.swipeDownAction)
         assertEquals("Expand", settings.swipeDownCollapsedAction)
+        assertEquals("NextEvent", settings.swipeLeftAction)
+        assertEquals("PreviousEvent", settings.swipeRightAction)
         assertEquals("NextPrevious", settings.swipeHorizontalCollapsedAction)
         assertEquals(true, settings.enablePillSwipeActions)
         assertEquals("DismissCurrent", settings.pillSwipeUpAction)
         assertEquals("Expand", settings.pillSwipeDownAction)
-        assertEquals("PreviousNotification", settings.pillSwipeLeftAction)
-        assertEquals("NextNotification", settings.pillSwipeRightAction)
+        assertEquals("NextEvent", settings.pillSwipeLeftAction)
+        assertEquals("PreviousEvent", settings.pillSwipeRightAction)
+        assertEquals("TogglePill", settings.longPressAction)
         assertEquals(SmartIslandSettings.CIRCLE_POSITION_RIGHT, settings.circlePosition)
     }
 
@@ -97,7 +103,7 @@ class SmartIslandSettingsTest {
             timerColor = 0xFFFB923CL,
             stopwatchColor = 0xFF0EA5E9L,
             enableAppShortcuts = false,
-            shortcutPackages = setOf("com.android.chrome", "com.spotify.music"),
+            shortcutPackages = listOf("com.android.chrome", "com.spotify.music"),
             showRecentApps = true,
             welcomeDialogShown = true,
             showOnLockScreen = true,
@@ -108,6 +114,7 @@ class SmartIslandSettingsTest {
             navigationEnabled = false,
             disabledNotificationPackages = setOf("com.spam.app"),
             disabledSoundPackages = setOf("com.noisy.app"),
+            disabledEvents = setOf("wifi", "battery_low"),
             hideWhenIdle = true,
             autoHidePill = true,
             autoHideTimeoutSeconds = 10,
@@ -118,6 +125,7 @@ class SmartIslandSettingsTest {
             notificationCooldownThreshold = 4,
             notificationCooldownExcludedPackages = setOf("com.priority.chat", "com.work.email"),
             autoExpandOnNotification = false,
+            autoExpandOnLockScreen = false,
             enableShadow = true,
             shadowElevation = 18f,
             enableMusicArtworkBackground = false,
@@ -134,6 +142,8 @@ class SmartIslandSettingsTest {
             swipeHoldUpAction = "None",
             swipeDownAction = "NotificationShade",
             swipeDownCollapsedAction = "DismissAll",
+            swipeLeftAction = "PreviousEvent",
+            swipeRightAction = "NextEvent",
             swipeHorizontalCollapsedAction = "None",
             enablePillSwipeActions = false,
             pillSwipeUpAction = "None",
@@ -156,7 +166,6 @@ class SmartIslandSettingsTest {
 
     @Test
     fun testSwipeActionModelAndSerialization() {
-        // Test SwipeAction.fromId
         assertEquals(com.agupta07505.smartisland.model.SwipeAction.DismissCurrent, com.agupta07505.smartisland.model.SwipeAction.fromId("DismissCurrent"))
         assertEquals(com.agupta07505.smartisland.model.SwipeAction.DismissAll, com.agupta07505.smartisland.model.SwipeAction.fromId("dismissall"))
         assertEquals(com.agupta07505.smartisland.model.SwipeAction.NextTrack, com.agupta07505.smartisland.model.SwipeAction.fromId("NextTrack"))
@@ -168,7 +177,6 @@ class SmartIslandSettingsTest {
         assertEquals(com.agupta07505.smartisland.model.SwipeAction.None, com.agupta07505.smartisland.model.SwipeAction.fromId(null))
         assertEquals(com.agupta07505.smartisland.model.SwipeAction.Expand, com.agupta07505.smartisland.model.SwipeAction.fromId("UnknownAction", default = com.agupta07505.smartisland.model.SwipeAction.Expand))
 
-        // Test disabled / custom swipe actions in JSON parsing
         val json = """
             {
                 "settings": {
@@ -177,6 +185,8 @@ class SmartIslandSettingsTest {
                     "swipeHoldUpAction": "Collapse",
                     "swipeDownAction": "None",
                     "swipeDownCollapsedAction": "NotificationShade",
+                    "swipeLeftAction": "NextEvent",
+                    "swipeRightAction": "PreviousEvent",
                     "swipeHorizontalCollapsedAction": "None",
                     "enablePillSwipeActions": false,
                     "pillSwipeUpAction": "None",
@@ -193,6 +203,8 @@ class SmartIslandSettingsTest {
         assertEquals("Collapse", settings.swipeHoldUpAction)
         assertEquals("None", settings.swipeDownAction)
         assertEquals("NotificationShade", settings.swipeDownCollapsedAction)
+        assertEquals("NextEvent", settings.swipeLeftAction)
+        assertEquals("PreviousEvent", settings.swipeRightAction)
         assertEquals("None", settings.swipeHorizontalCollapsedAction)
         assertEquals(false, settings.enablePillSwipeActions)
         assertEquals("None", settings.pillSwipeUpAction)
@@ -225,7 +237,6 @@ class SmartIslandSettingsTest {
         assertEquals(24f, settings.cornerRadius)
         assertEquals(0.9f, settings.opacity)
         assertEquals(4278190080L, settings.pillColor)
-        // Check defaults are preserved for unspecified fields
         assertEquals(SmartIslandSettings.Default.batteryColor, settings.batteryColor)
         assertEquals(SmartIslandSettings.Default.shortcutPackages, settings.shortcutPackages)
     }
@@ -275,5 +286,488 @@ class SmartIslandSettingsTest {
         val invalidJson = """{"settings": {"circlePosition": "top_center"}}"""
         val settingsInvalid = SmartIslandSettings.fromJson(invalidJson)
         assertEquals(SmartIslandSettings.CIRCLE_POSITION_RIGHT, settingsInvalid.circlePosition)
+    }
+
+    @Test
+    fun longPressActionDefaultsBacksUpAndRestores() {
+        assertEquals("TogglePill", SmartIslandSettings().longPressAction)
+        assertEquals(
+            com.agupta07505.smartisland.model.SwipeAction.TogglePill,
+            com.agupta07505.smartisland.model.SwipeAction.fromId("TogglePill")
+        )
+
+        val off = SmartIslandSettings(longPressAction = "None")
+        assertEquals("None", SmartIslandSettings.fromJson(off.toJson(appVersion = "1")).longPressAction)
+
+        // A backup made before the setting existed keeps the default.
+        val old = """{"settings": {"enableSwipeActions": true}}"""
+        assertEquals("TogglePill", SmartIslandSettings.fromJson(old).longPressAction)
+    }
+
+    @Test
+    fun timingDefaultsMatchTheOldFixedValues() {
+        val d = SmartIslandSettings.Default
+        assertEquals(5_000, d.idleTimeoutMs)
+        assertEquals(4_000, d.batteryWarningMs)
+        assertEquals(1_800, d.popupMs)
+        assertEquals(1_800, d.secondaryMergeMs)
+    }
+
+    @Test
+    fun timingRoundTripsThroughBackup() {
+        val custom = SmartIslandSettings(
+            idleTimeoutMs = 8_500,
+            batteryWarningMs = 2_000,
+            popupMs = 3_000,
+            secondaryMergeMs = 700
+        )
+        val restored = SmartIslandSettings.fromJson(custom.toJson(appVersion = "1"))
+        assertEquals(8_500, restored.idleTimeoutMs)
+        assertEquals(2_000, restored.batteryWarningMs)
+        assertEquals(3_000, restored.popupMs)
+        assertEquals(700, restored.secondaryMergeMs)
+    }
+
+    @Test
+    fun timingImportIsClampedAndOldBackupsKeepDefaults() {
+        val wild = """{"settings": {"idleTimeoutMs": 999999, "batteryWarningMs": -5, "popupMs": 1, "secondaryMergeMs": 600000}}"""
+        val clamped = SmartIslandSettings.fromJson(wild)
+        assertEquals(SmartIslandSettings.MAX_IDLE_TIMEOUT_MS, clamped.idleTimeoutMs)
+        assertEquals(SmartIslandSettings.MIN_BATTERY_WARNING_MS, clamped.batteryWarningMs)
+        assertEquals(SmartIslandSettings.MIN_POPUP_MS, clamped.popupMs)
+        assertEquals(SmartIslandSettings.MAX_SECONDARY_MERGE_MS, clamped.secondaryMergeMs)
+
+        val old = """{"settings": {"enableSwipeActions": true}}"""
+        val fromOld = SmartIslandSettings.fromJson(old)
+        assertEquals(SmartIslandSettings.Default.idleTimeoutMs, fromOld.idleTimeoutMs)
+        assertEquals(SmartIslandSettings.Default.popupMs, fromOld.popupMs)
+    }
+
+    @Test
+    fun animationSpeedDndAndAppRulesDefaultToToday() {
+        val d = SmartIslandSettings.Default
+        assertEquals("relaxed", d.animSpeedPortrait)
+        assertEquals("relaxed", d.animSpeedLandscape)
+        assertEquals(false, d.showDuringDnd)
+        assertEquals(emptySet<String>(), d.noExpandPackages)
+        assertEquals(emptySet<String>(), d.noAutoExpandPackages)
+    }
+
+    @Test
+    fun animationSpeedDndAndAppRulesSurviveJsonRoundTrip() {
+        val custom = SmartIslandSettings.Default.copy(
+            animSpeedPortrait = "snappy",
+            animSpeedLandscape = "relaxed",
+            showDuringDnd = true,
+            noExpandPackages = setOf("com.example.a"),
+            noAutoExpandPackages = setOf("com.example.b", "com.example.c")
+        )
+        val restored = SmartIslandSettings.fromJson(custom.toJson())
+        assertEquals("snappy", restored.animSpeedPortrait)
+        assertEquals("relaxed", restored.animSpeedLandscape)
+        assertEquals(true, restored.showDuringDnd)
+        assertEquals(setOf("com.example.a"), restored.noExpandPackages)
+        assertEquals(setOf("com.example.b", "com.example.c"), restored.noAutoExpandPackages)
+    }
+
+    @Test
+    fun autoExpandRulesDefaultToOffForAppsAndOnForEvents() {
+        val d = SmartIslandSettings.Default
+        assertEquals(emptySet<String>(), d.autoExpandPackages)
+        assertEquals(emptySet<String>(), d.noAutoExpandEvents)
+        assertEquals(true, d.isEventAutoExpand("battery_plugged_in"))
+    }
+
+    @Test
+    fun autoExpandAppsAndEventsSurviveJsonRoundTrip() {
+        val custom = SmartIslandSettings.Default.copy(
+            autoExpandPackages = setOf("com.example.on"),
+            noAutoExpandEvents = setOf("battery_plugged_in", "wifi")
+        )
+        val restored = SmartIslandSettings.fromJson(custom.toJson())
+        assertEquals(setOf("com.example.on"), restored.autoExpandPackages)
+        assertEquals(setOf("battery_plugged_in", "wifi"), restored.noAutoExpandEvents)
+        assertEquals(false, restored.isEventAutoExpand("wifi"))
+        assertEquals(true, restored.isEventAutoExpand("bluetooth"))
+    }
+
+    @Test
+    fun oldBackupsWithoutTheAutoExpandKeysLoadWithTheDefaults() {
+        val old = org.json.JSONObject(SmartIslandSettings.Default.toJson())
+        val settings = old.optJSONObject("settings") ?: old
+        settings.remove("autoExpandPackages")
+        settings.remove("noAutoExpandEvents")
+        val restored = SmartIslandSettings.fromJson(old.toString())
+        assertEquals(emptySet<String>(), restored.autoExpandPackages)
+        assertEquals(emptySet<String>(), restored.noAutoExpandEvents)
+    }
+
+    @Test
+    fun anAppInBothAutoExpandSetsImportsAsOffAndUnknownEventIdsAreDropped() {
+        val custom = SmartIslandSettings.Default.copy(
+            autoExpandPackages = setOf("com.example.both", "com.example.on"),
+            noAutoExpandPackages = setOf("com.example.both"),
+            noAutoExpandEvents = setOf("wifi", "not_an_event")
+        )
+        val restored = SmartIslandSettings.fromJson(custom.toJson())
+        assertEquals(setOf("com.example.on"), restored.autoExpandPackages)
+        assertEquals(setOf("com.example.both"), restored.noAutoExpandPackages)
+        assertEquals(setOf("wifi"), restored.noAutoExpandEvents)
+    }
+
+    @Test
+    fun hapticStrengthDefaultsRoundTripsAndFallsBack() {
+        assertEquals("normal", SmartIslandSettings.Default.hapticStrength)
+        val restored = SmartIslandSettings.fromJson(SmartIslandSettings.Default.copy(hapticStrength = "strong").toJson())
+        assertEquals("strong", restored.hapticStrength)
+        val bad = SmartIslandSettings.fromJson("""{"settings": {"hapticStrength": "earthquake"}}""")
+        assertEquals("normal", bad.hapticStrength)
+        val old = SmartIslandSettings.fromJson("""{"settings": {"width": 100}}""")
+        assertEquals("normal", old.hapticStrength)
+    }
+
+    @Test
+    fun gestureSensitivityDefaultsRoundTripsAndFallsBack() {
+        assertEquals("normal", SmartIslandSettings.Default.gestureSensitivity)
+        val restored = SmartIslandSettings.fromJson(SmartIslandSettings.Default.copy(gestureSensitivity = "low").toJson())
+        assertEquals("low", restored.gestureSensitivity)
+        val bad = SmartIslandSettings.fromJson("""{"settings": {"gestureSensitivity": "twitchy"}}""")
+        assertEquals("normal", bad.gestureSensitivity)
+        val old = SmartIslandSettings.fromJson("""{"settings": {"width": 100}}""")
+        assertEquals("normal", old.gestureSensitivity)
+    }
+
+    @Test
+    fun badAnimationSpeedFallsBackAndOldBackupsKeepDefaults() {
+        val bad = """{"settings": {"animSpeedPortrait": "warp", "animSpeedLandscape": ""}}"""
+        val parsed = SmartIslandSettings.fromJson(bad)
+        assertEquals("relaxed", parsed.animSpeedPortrait)
+        assertEquals("relaxed", parsed.animSpeedLandscape)
+        val old = SmartIslandSettings.fromJson("""{"settings": {"width": 100}}""")
+        assertEquals(false, old.showDuringDnd)
+        assertEquals(emptySet<String>(), old.noExpandPackages)
+    }
+
+    @Test
+    fun animationSpeedFollowsOrientation() {
+        val s = SmartIslandSettings.Default.copy(animSpeedPortrait = "snappy", animSpeedLandscape = "relaxed")
+        assertEquals(com.agupta07505.smartisland.util.AnimationSpeed.SNAPPY, s.animationSpeed(isLandscape = false))
+        assertEquals(com.agupta07505.smartisland.util.AnimationSpeed.RELAXED, s.animationSpeed(isLandscape = true))
+    }
+
+    @Test
+    fun restoreDialogCanRebuildItsStateFromTheSavedJson() {
+        // The restore dialog keeps only the backup's JSON text across rotation and parses it again.
+        val original = SmartIslandSettings.Default.copy(width = 130f, popupMs = 2_500)
+        val json = original.toJson("1.0")
+        assertEquals(130f, SmartIslandSettings.fromJson(json).width)
+        assertEquals(2_500, SmartIslandSettings.fromJson(json).popupMs)
+        assertEquals("1.0", SmartIslandSettings.parseBackupMetadata(json)?.appVersion)
+    }
+
+    // The media card's own blur and opacity.
+    @Test
+    fun oldBackupStartsMediaFromTheSharedBlurAndOpacity() {
+        val json = """{"opacity": 0.7, "expandedBlurEnabled": true, "expandedBlurRadius": 30.0}"""
+        val settings = SmartIslandSettings.fromJson(json)
+        assertEquals(0.7f, settings.mediaOpacity, 0.001f)
+        assertEquals(true, settings.mediaBlurEnabled)
+        assertEquals(30f, settings.mediaBlurRadius, 0.001f)
+    }
+
+    @Test
+    fun mediaValuesRoundTripAndStaySeparateFromTheShared() {
+        val original = SmartIslandSettings.Default.copy(
+            opacity = 0.9f, mediaOpacity = 0.5f,
+            expandedBlurEnabled = false, mediaBlurEnabled = true,
+            expandedBlurRadius = 10f, mediaBlurRadius = 40f
+        )
+        val restored = SmartIslandSettings.fromJson(original.toJson(appVersion = "1"))
+        assertEquals(0.5f, restored.mediaOpacity, 0.001f)
+        assertEquals(0.9f, restored.opacity, 0.001f)
+        assertEquals(true, restored.mediaBlurEnabled)
+        assertEquals(false, restored.expandedBlurEnabled)
+        assertEquals(40f, restored.mediaBlurRadius, 0.001f)
+    }
+
+    @Test
+    fun badMediaValuesAreClamped() {
+        val settings = SmartIslandSettings.fromJson("""{"mediaOpacity": 0.0, "mediaBlurRadius": 500.0}""")
+        assertEquals(SmartIslandSettings.MIN_OPACITY, settings.mediaOpacity, 0.001f)
+        assertEquals(SmartIslandSettings.MAX_EXPANDED_BLUR, settings.mediaBlurRadius, 0.001f)
+    }
+
+    @Test
+    fun forMediaSwapsInTheMediaValuesOnlyForMusicCards() {
+        val s = SmartIslandSettings.Default.copy(opacity = 1f, mediaOpacity = 0.6f, expandedBlurEnabled = false, mediaBlurEnabled = true)
+        assertEquals(0.6f, s.forMedia().opacity, 0.001f)
+        assertEquals(true, s.forMedia().expandedBlurEnabled)
+        assertEquals(1f, s.forCard(false).opacity, 0.001f)
+        assertEquals(0.6f, s.forCard(true).opacity, 0.001f)
+    }
+
+    @Test
+    fun islandFont_roundTripsAndFallsBackToDefault() {
+        val chosen = SmartIslandSettings.Default.copy(islandFont = SmartIslandSettings.FONT_POPPINS)
+        val restored = SmartIslandSettings.fromJson(chosen.toJson(appVersion = "7.0.0"))
+        assertEquals(SmartIslandSettings.FONT_POPPINS, restored.islandFont)
+
+        val bad = SmartIslandSettings.fromJson(
+            chosen.toJson(appVersion = "7.0.0").replace("\"islandFont\": \"poppins\"", "\"islandFont\": \"comic\"")
+        )
+        assertEquals(SmartIslandSettings.Default.islandFont, bad.islandFont)
+    }
+
+    @Test
+    fun islandFont_acceptsCustomIdsAndDropsRemovedFonts() {
+        assertTrue(SmartIslandSettings.isValidFont(SmartIslandSettings.FONT_LORA))
+        assertTrue(SmartIslandSettings.isValidFont("custom:My Font.ttf"))
+        assertFalse(SmartIslandSettings.isValidFont("custom:../x.ttf"))
+        assertFalse(SmartIslandSettings.isValidFont("custom:x.woff"))
+        // Fonts that no longer ship with the app fall back to the default.
+        assertFalse(SmartIslandSettings.isValidFont("georgia"))
+        assertFalse(SmartIslandSettings.isValidFont("sf_pro_auto"))
+
+        val custom = SmartIslandSettings.Default.copy(islandFont = "custom:My Font.ttf")
+        assertEquals("custom:My Font.ttf", SmartIslandSettings.fromJson(custom.toJson(appVersion = "7.0.0")).islandFont)
+        val removed = SmartIslandSettings.fromJson(
+            custom.toJson(appVersion = "7.0.0").replace("custom:My Font.ttf", "sf_pro_display")
+        )
+        assertEquals(SmartIslandSettings.Default.islandFont, removed.islandFont)
+    }
+
+    @Test
+    fun lockScreenAndNotificationSwitchesDefaultToTodaysBehaviour() {
+        val d = SmartIslandSettings.Default
+        assertEquals(false, d.hideAllOnLockScreen)
+        assertEquals(emptySet<String>(), d.hideOnLockScreenEvents)
+        assertEquals(true, d.notificationsEnabled)
+        com.agupta07505.smartisland.model.IslandEvent.entries.forEach {
+            assertEquals(false, d.isEventHiddenOnLockScreen(it.id))
+            assertEquals(true, d.isEventEnabled(it.id))
+        }
+    }
+
+    @Test
+    fun anEventIsHiddenOnTheLockScreenByItsOwnSwitchOrTheUniversalOne() {
+        val own = SmartIslandSettings.Default.copy(hideOnLockScreenEvents = setOf("music"))
+        assertEquals(true, own.isEventHiddenOnLockScreen("music"))
+        assertEquals(false, own.isEventHiddenOnLockScreen("timer"))
+
+        val all = SmartIslandSettings.Default.copy(hideAllOnLockScreen = true)
+        assertEquals(true, all.isEventHiddenOnLockScreen("timer"))
+    }
+
+    @Test
+    fun callsAreNeverHiddenOnTheLockScreen() {
+        val all = SmartIslandSettings.Default.copy(
+            hideAllOnLockScreen = true,
+            hideOnLockScreenEvents = setOf("call")
+        )
+        assertEquals(false, all.isEventHiddenOnLockScreen("call"))
+        assertEquals(false, com.agupta07505.smartisland.model.IslandEvent.CALL.canHideOnLockScreen)
+    }
+
+    @Test
+    fun theUniversalNotificationsSwitchTurnsOffOnlyTheNotificationEvent() {
+        val off = SmartIslandSettings.Default.copy(notificationsEnabled = false)
+        assertEquals(false, off.isEventEnabled("notification"))
+        assertEquals(false, off.isLandscapeEventEnabled("notification"))
+        assertEquals(true, off.isEventDisabledEverywhere("notification"))
+        assertEquals(true, off.isEventDisabledSomewhere("notification"))
+        // Every other event keeps its own switch.
+        assertEquals(true, off.isEventEnabled("music"))
+        assertEquals(true, off.isEventEnabled("call"))
+        assertEquals(false, off.isEventDisabledEverywhere("music"))
+    }
+
+    @Test
+    fun lockScreenAndNotificationSwitchesSurviveJsonRoundTrip() {
+        val custom = SmartIslandSettings.Default.copy(
+            hideAllOnLockScreen = true,
+            hideOnLockScreenEvents = setOf("music", "wifi"),
+            notificationsEnabled = false
+        )
+        val restored = SmartIslandSettings.fromJson(custom.toJson())
+        assertEquals(true, restored.hideAllOnLockScreen)
+        assertEquals(setOf("music", "wifi"), restored.hideOnLockScreenEvents)
+        assertEquals(false, restored.notificationsEnabled)
+    }
+
+    @Test
+    fun oldBackupsWithoutTheLockScreenKeysLoadWithTheDefaults() {
+        val old = org.json.JSONObject(SmartIslandSettings.Default.copy(notificationsEnabled = false).toJson())
+        val settings = old.optJSONObject("settings") ?: old
+        settings.remove("hideAllOnLockScreen")
+        settings.remove("hideOnLockScreenEvents")
+        settings.remove("notificationsEnabled")
+        val restored = SmartIslandSettings.fromJson(old.toString())
+        assertEquals(false, restored.hideAllOnLockScreen)
+        assertEquals(emptySet<String>(), restored.hideOnLockScreenEvents)
+        assertEquals(true, restored.notificationsEnabled)
+    }
+
+    @Test
+    fun liveEventsInForegroundIsOffByDefaultAndSurvivesRoundTrip() {
+        assertEquals(false, SmartIslandSettings.Default.showLiveEventsInForeground)
+        val custom = SmartIslandSettings.Default.copy(showLiveEventsInForeground = true)
+        assertEquals(true, SmartIslandSettings.fromJson(custom.toJson()).showLiveEventsInForeground)
+        val old = org.json.JSONObject(custom.toJson())
+        (old.optJSONObject("settings") ?: old).remove("showLiveEventsInForeground")
+        assertEquals(false, SmartIslandSettings.fromJson(old.toString()).showLiveEventsInForeground)
+    }
+
+    @Test
+    fun landscapeCircleStartsInvisibleAndMayBeSetToZero() {
+        assertEquals(0f, SmartIslandSettings.Default.landscapeCircleOpacity, 0f)
+        assertEquals(0f, SmartIslandSettings.MIN_CIRCLE_OPACITY, 0f)
+        val faded = SmartIslandSettings.Default.copy(landscapeCircleOpacity = 0.6f)
+        assertEquals(0.6f, SmartIslandSettings.fromJson(faded.toJson()).landscapeCircleOpacity, 0.001f)
+        // A backup that says 0 keeps 0 (it is not lifted to the 20 % floor).
+        val zero = SmartIslandSettings.Default.copy(landscapeCircleOpacity = 0f)
+        assertEquals(0f, SmartIslandSettings.fromJson(zero.toJson()).landscapeCircleOpacity, 0f)
+    }
+
+    @Test
+    fun mergeStyleDefaultsToSlideInBothOrientations() {
+        assertEquals("slide", SmartIslandSettings.Default.mergeStyle)
+        assertEquals("slide", SmartIslandSettings.Default.mergeStyleLandscape)
+    }
+
+    @Test
+    fun unknownEventIdsInTheLockScreenSetAreDroppedOnImport() {
+        val custom = SmartIslandSettings.Default.copy(hideOnLockScreenEvents = setOf("music", "not_an_event"))
+        assertEquals(setOf("music"), SmartIslandSettings.fromJson(custom.toJson()).hideOnLockScreenEvents)
+    }
+
+    @Test
+    fun perAppLockScreenRuleDefaultsToNoneAndSurvivesRoundTrip() {
+        assertEquals(emptySet<String>(), SmartIslandSettings.Default.hideOnLockScreenPackages)
+        val custom = SmartIslandSettings.Default.copy(hideOnLockScreenPackages = setOf("com.a", "com.b"))
+        assertEquals(setOf("com.a", "com.b"), SmartIslandSettings.fromJson(custom.toJson()).hideOnLockScreenPackages)
+        val old = org.json.JSONObject(custom.toJson())
+        (old.optJSONObject("settings") ?: old).remove("hideOnLockScreenPackages")
+        assertEquals(emptySet<String>(), SmartIslandSettings.fromJson(old.toString()).hideOnLockScreenPackages)
+    }
+
+    @Test
+    fun perAppLockScreenRuleNeverHidesACall() {
+        val s = SmartIslandSettings.Default.copy(hideOnLockScreenPackages = setOf("com.chat"))
+        assertEquals(true, s.isAppHiddenOnLockScreen("com.chat", com.agupta07505.smartisland.model.IslandMode.Notification))
+        assertEquals(false, s.isAppHiddenOnLockScreen("com.chat", com.agupta07505.smartisland.model.IslandMode.IncomingCall))
+        assertEquals(false, s.isAppHiddenOnLockScreen("com.other", com.agupta07505.smartisland.model.IslandMode.Notification))
+    }
+
+    @Test
+    fun manualCameraCutoutSurvivesBackupAndIsClamped() {
+        val s = SmartIslandSettings(
+            cameraCutoutManual = true, cameraCutoutX = -30f, cameraCutoutY = 9f,
+            cameraCutoutWidth = 44f, cameraCutoutHeight = 26f
+        )
+        val back = SmartIslandSettings.fromJson(s.toJson())
+        assertEquals(true, back.cameraCutoutManual)
+        assertEquals(-30f, back.cameraCutoutX, 0.01f)
+        assertEquals(9f, back.cameraCutoutY, 0.01f)
+        assertEquals(44f, back.cameraCutoutWidth, 0.01f)
+        assertEquals(26f, back.cameraCutoutHeight, 0.01f)
+        val wild = SmartIslandSettings.fromJson(s.copy(cameraCutoutWidth = 9999f, cameraCutoutX = 9999f).toJson())
+        assertEquals(SmartIslandSettings.MAX_CUTOUT_WIDTH, wild.cameraCutoutWidth, 0.01f)
+        assertEquals(SmartIslandSettings.MAX_X_OFFSET, wild.cameraCutoutX, 0.01f)
+    }
+    @Test
+    fun fontMixDefaultsToOffWithNoFontsOfItsOwn() {
+        val d = SmartIslandSettings.Default
+        assertEquals(false, d.fontMixEnabled)
+        assertEquals("", d.fontMixLight)
+        assertEquals("", d.fontMixRegular)
+        assertEquals("", d.fontMixMedium)
+    }
+
+    @Test
+    fun fontMixSurvivesABackupRoundTrip() {
+        val s = SmartIslandSettings(
+            fontMixEnabled = true,
+            fontMixLight = "poppins",
+            fontMixRegular = "custom:SF Pro Display Regular.otf",
+            fontMixMedium = "inter_display"
+        )
+        val back = SmartIslandSettings.fromJson(s.toJson())
+        assertEquals(true, back.fontMixEnabled)
+        assertEquals("poppins", back.fontMixLight)
+        assertEquals("custom:SF Pro Display Regular.otf", back.fontMixRegular)
+        assertEquals("inter_display", back.fontMixMedium)
+    }
+
+    @Test
+    fun fontMixDropsUnknownFontIdsFromABackup() {
+        val s = SmartIslandSettings(fontMixEnabled = true, fontMixLight = "../../etc/passwd", fontMixRegular = "nonsense", fontMixMedium = "lora")
+        val back = SmartIslandSettings.fromJson(s.toJson())
+        assertEquals("", back.fontMixLight)
+        assertEquals("", back.fontMixRegular)
+        assertEquals("lora", back.fontMixMedium)
+    }
+
+    @Test
+    fun anOldBackupWithoutFontMixLoadsWithItOff() {
+        val old = SmartIslandSettings.fromJson(SmartIslandSettings().toJson())
+        assertEquals(false, old.fontMixEnabled)
+        assertEquals("", old.fontMixMedium)
+    }
+
+    @Test
+    fun appFaceIdDefaultsOnWithItsOwnExpandedStyle() {
+        val d = SmartIslandSettings()
+        assertTrue(d.appFaceIdEnabled)
+        assertEquals("square_tick", d.appFaceIdStyle)
+    }
+
+    @Test
+    fun appFaceIdSettingsSurviveTheBackupIndependentlyOfTheLockScreenStyle() {
+        val restored = SmartIslandSettings.fromJson(
+            SmartIslandSettings(faceIdStyle = "cutout", appFaceIdStyle = "square", appFaceIdEnabled = false).toJson(appVersion = "7.0.0")
+        )
+        assertEquals("cutout", restored.faceIdStyle)
+        assertEquals("square", restored.appFaceIdStyle)
+        assertFalse(restored.appFaceIdEnabled)
+    }
+
+    @Test
+    fun fingerprintAnimationDefaultsOnAndSurvivesTheBackup() {
+        assertTrue(SmartIslandSettings().fingerprintAnimationEnabled)
+        val restored = SmartIslandSettings.fromJson(
+            SmartIslandSettings(fingerprintAnimationEnabled = false).toJson(appVersion = "7.0.0")
+        )
+        assertFalse(restored.fingerprintAnimationEnabled)
+    }
+
+    @Test
+    fun anOldBackupWithoutTheFingerprintSwitchLoadsItOn() {
+        val json = SmartIslandSettings().toJson(appVersion = "7.0.0").replace("fingerprintAnimationEnabled", "unknownKey")
+        assertTrue(SmartIslandSettings.fromJson(json).fingerprintAnimationEnabled)
+    }
+
+    @Test
+    fun anUnknownAppFaceIdStyleFallsBackToExpanded() {
+        val json = SmartIslandSettings(appFaceIdStyle = "cutout").toJson(appVersion = "7.0.0").replace("\"cutout\"", "\"bogus\"")
+        assertEquals("square_tick", SmartIslandSettings.fromJson(json).appFaceIdStyle)
+    }
+
+    @Test
+    fun faceIdStyleDefaultsToExpandedAndSurvivesTheBackup() {
+        assertEquals("square_tick", SmartIslandSettings().faceIdStyle)
+        val restored = SmartIslandSettings.fromJson(SmartIslandSettings(faceIdStyle = "cutout").toJson(appVersion = "7.0.0"))
+        assertEquals("cutout", restored.faceIdStyle)
+    }
+
+    @Test
+    fun theMixFaceIdStyleSurvivesTheBackup() {
+        val restored = SmartIslandSettings.fromJson(SmartIslandSettings(faceIdStyle = "square").toJson(appVersion = "7.0.0"))
+        assertEquals("square", restored.faceIdStyle)
+    }
+
+    @Test
+    fun anUnknownFaceIdStyleInABackupFallsBackToExpanded() {
+        val json = SmartIslandSettings(faceIdStyle = "cutout").toJson(appVersion = "7.0.0").replace("\"cutout\"", "\"bogus\"")
+        assertEquals("square_tick", SmartIslandSettings.fromJson(json).faceIdStyle)
     }
 }

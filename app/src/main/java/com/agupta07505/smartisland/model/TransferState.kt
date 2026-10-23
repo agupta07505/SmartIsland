@@ -1,0 +1,17 @@
+/*
+ * Smart Island (2026)
+ * © Animesh Gupta — github.com/agupta07505
+ * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
+ */
+
+package com.agupta07505.smartisland.model
+
+/** Where a transfer card is in its life; shown as the badge on the expanded card. */
+enum class TransferState(val badge: String?) {
+    ACTIVE(null),
+    PAUSED("Paused"),
+    WAITING("Waiting"),
+    FAILED("Failed"),
+    COMPLETE("Done")
+}

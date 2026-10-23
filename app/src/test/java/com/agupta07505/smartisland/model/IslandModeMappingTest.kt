@@ -41,6 +41,7 @@ class IslandModeMappingTest {
         every { extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) } returns 0
         every { extras.getInt(Notification.EXTRA_PROGRESS, 0) } returns 0
         every { extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) } returns false
+        every { extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) } returns false
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns null
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns null
         every { extras.getCharSequence(Notification.EXTRA_BIG_TEXT) } returns null
@@ -193,12 +194,16 @@ class IslandModeMappingTest {
         notification.category = Notification.CATEGORY_STATUS
         notification.actions = null
 
+        val sbn = mockk<StatusBarNotification>()
         val extras = createBaseExtras()
         notification.extras = extras
+        // Hotspot detection is gated on the posting package (system/tethering packages or known OEM hotspot apps).
+        every { sbn.packageName } returns "com.android.systemui"
+        every { sbn.notification } returns notification
         every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Mobile Hotspot"
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Active • 2 devices connected"
 
-        assertEquals(IslandMode.Hotspot, notification.toIslandMode())
+        assertEquals(IslandMode.Hotspot, notification.toIslandMode(sbn))
     }
 
     @Test
@@ -375,5 +380,36 @@ class IslandModeMappingTest {
         every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "07:00 AM"
 
         assertEquals(IslandMode.Notification, notification.toIslandMode(sbn))
+    }
+
+    @Test
+    fun testVoiceRecorderNotificationMapsToAudioRecordingRatherThanScreenRecording() {
+        val testCases = listOf(
+            Triple("com.sec.android.app.voicenote", "Voice recording", "SAMSUNG"),
+            Triple("com.miui.soundrecorder", "Sound Recorder", "XIAOMI_REDMI_POCO"),
+            Triple("com.google.android.apps.recorder", "Voice recording in progress", "GOOGLE_PIXEL")
+        )
+
+        for ((pkg, title, device) in testCases) {
+            val notification = mockk<Notification>()
+            notification.category = Notification.CATEGORY_SERVICE
+            notification.flags = Notification.FLAG_ONGOING_EVENT
+            notification.actions = null
+
+            val sbn = mockk<StatusBarNotification>()
+            val extras = createBaseExtras()
+            notification.extras = extras
+            every { sbn.packageName } returns pkg
+            every { sbn.notification } returns notification
+
+            every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns title
+            every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns "Recording active"
+
+            assertEquals(
+                "Expected $pkg to resolve to AudioRecording mode",
+                IslandMode.AudioRecording,
+                notification.toIslandMode(sbn, deviceType = device)
+            )
+        }
     }
 }

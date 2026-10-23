@@ -15,9 +15,6 @@ import android.database.sqlite.SQLiteOpenHelper
 import com.agupta07505.smartisland.util.runCatchingLogged
 import org.json.JSONArray
 
-/**
- * Native on-device SQLite helper for persistent, private Notification History.
- */
 class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
     context,
     DATABASE_NAME,
@@ -72,7 +69,6 @@ class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Future database migrations
     }
 
     fun insertEntry(entry: NotificationHistoryEntry): Long {

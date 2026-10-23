@@ -71,9 +71,7 @@ object GitHubApiService {
     private const val READ_TIMEOUT_MS = 6000
     private const val USER_AGENT = "SmartIsland-App"
 
-    /**
-     * Fetches the latest public release from GitHub without sending any user data.
-     */
+    /** Sends no user data. */
     suspend fun getLatestRelease(currentVersion: String = BuildConfig.VERSION_NAME): Result<GitHubRelease> = withContext(Dispatchers.IO) {
         runCatching {
             val jsonStr = makeHttpGet("$BASE_URL/releases/latest")
@@ -111,9 +109,6 @@ object GitHubApiService {
         }
     }
 
-    /**
-     * Fetches all releases from GitHub to compute total downloads and retrieve complete changelogs.
-     */
     suspend fun getAllReleases(currentVersion: String = BuildConfig.VERSION_NAME): Result<List<GitHubReleaseItem>> = withContext(Dispatchers.IO) {
         runCatching {
             val jsonStr = makeHttpGet("$BASE_URL/releases?per_page=50")
@@ -161,9 +156,7 @@ object GitHubApiService {
         }
     }
 
-    /**
-     * Fetches the public contributors list from GitHub without sending any user data.
-     */
+    /** Sends no user data. */
     suspend fun getContributors(): Result<List<GitHubContributor>> = withContext(Dispatchers.IO) {
         runCatching {
             val jsonStr = makeHttpGet("$BASE_URL/contributors?per_page=20")
@@ -184,9 +177,6 @@ object GitHubApiService {
         }
     }
 
-    /**
-     * Fetches the recent commits from the repository's default branch.
-     */
     suspend fun getRecentCommits(limit: Int = 5): Result<List<GitHubCommit>> = withContext(Dispatchers.IO) {
         runCatching {
             val jsonStr = makeHttpGet("$BASE_URL/commits?per_page=$limit")
@@ -217,9 +207,6 @@ object GitHubApiService {
         }
     }
 
-    /**
-     * Fetches repository statistics (Stars, Forks, Issues, etc.).
-     */
     suspend fun getRepoStats(): Result<GitHubRepoStats> = withContext(Dispatchers.IO) {
         runCatching {
             val jsonStr = makeHttpGet(BASE_URL)
@@ -243,9 +230,6 @@ object GitHubApiService {
         }
     }
 
-    /**
-     * Determines whether the remote version tag is strictly newer than the current local version.
-     */
     fun isNewerVersion(remoteTag: String, localVersion: String): Boolean {
         val cleanRemote = remoteTag.trim().removePrefix("v").removePrefix("V").split("-").firstOrNull().orEmpty()
         val cleanLocal = localVersion.trim().removePrefix("v").removePrefix("V").split("-").firstOrNull().orEmpty()

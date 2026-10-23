@@ -1,7 +1,8 @@
 /*
  * Smart Island (2026)
- * Copyright Animesh Gupta — github.com/agupta07505
+ * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
 package com.agupta07505.smartisland.util
@@ -25,6 +26,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object SystemServiceRecovery {
     private val accessibilityRefreshAttempted = AtomicBoolean(false)
+
+    fun resetAccessibilityRefreshAttempt() {
+        accessibilityRefreshAttempted.set(false)
+    }
 
     fun requestRecovery(context: Context) {
         runCatchingLogged(TAG, "System-service recovery failed") {

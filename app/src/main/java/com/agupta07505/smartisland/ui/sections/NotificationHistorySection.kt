@@ -7,16 +7,15 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.collection.LruCache
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -63,7 +62,7 @@ import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
+import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -77,21 +76,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -116,16 +112,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-private data class RetentionOption(val hours: Int, val label: String)
-
-private val RETENTION_OPTIONS = listOf(
-    RetentionOption(24, "24 Hours (1 Day)"),
-    RetentionOption(72, "3 Days (Recommended)"),
-    RetentionOption(168, "7 Days (1 Week)"),
-    RetentionOption(720, "30 Days (1 Month)"),
-    RetentionOption(-1, "Keep Forever")
-)
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 private object AppIconMemoryCache {
     private val cache = LruCache<String, ImageBitmap>(120)
@@ -164,6 +152,16 @@ data class AppNotificationSummary(
     val count: Int
 )
 
+private val AppSummarySaver: Saver<AppNotificationSummary?, Any> = listSaver(
+    save = { summary ->
+        if (summary == null) emptyList<Any>() else listOf(summary.packageName, summary.appName, summary.count)
+    },
+    restore = { saved ->
+        if (saved.size < 3) null
+        else AppNotificationSummary(saved[0] as String, saved[1] as String, saved[2] as Int)
+    }
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NotificationHistorySection(
@@ -182,16 +180,20 @@ fun NotificationHistorySection(
     }
 
     val historyEntries by resolvedHistoryRepo.history.collectAsState(initial = emptyList())
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilterPackage by remember { mutableStateOf<String?>(null) }
-    var showClearAllConfirm by remember { mutableStateOf(false) }
-    var showAppFilterDialog by remember { mutableStateOf(false) }
-    var showDeleteByAppDialog by remember { mutableStateOf(false) }
-    var packageToDeleteConfirm by remember { mutableStateOf<AppNotificationSummary?>(null) }
-    var selectedEntryForDetails by remember { mutableStateOf<NotificationHistoryEntry?>(null) }
-    var retentionMenuExpanded by remember { mutableStateOf(false) }
+    // Dialog and filter state is saved, so rotating the phone keeps an open dialog open.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedFilterPackage by rememberSaveable { mutableStateOf<String?>(null) }
+    var showClearAllConfirm by rememberSaveable { mutableStateOf(false) }
+    var showAppFilterDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteByAppDialog by rememberSaveable { mutableStateOf(false) }
+    var packageToDeleteConfirm by rememberSaveable(stateSaver = AppSummarySaver) {
+        mutableStateOf<AppNotificationSummary?>(null)
+    }
+    // Only the id is saved; the entry is looked up again in the live history list.
+    var selectedEntryIdForDetails by rememberSaveable { mutableStateOf<Long?>(null) }
+    val selectedEntryForDetails = selectedEntryIdForDetails?.let { id -> historyEntries.firstOrNull { it.id == id } }
+    var retentionMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Aggregate unique apps for "Delete by App" feature
     val appSummaries = remember(historyEntries) {
         historyEntries
             .groupBy { it.packageName }
@@ -226,7 +228,6 @@ fun NotificationHistorySection(
         groupEntriesByDay(filteredEntries)
     }
 
-    // Confirm Clear All Dialog
     if (showClearAllConfirm) {
         AlertDialog(
             onDismissRequest = { showClearAllConfirm = false },
@@ -254,7 +255,6 @@ fun NotificationHistorySection(
         )
     }
 
-    // Confirm Delete By Package Dialog
     packageToDeleteConfirm?.let { targetApp ->
         AlertDialog(
             onDismissRequest = { packageToDeleteConfirm = null },
@@ -285,7 +285,6 @@ fun NotificationHistorySection(
         )
     }
 
-    // App Filter Dialog
     if (showAppFilterDialog) {
         AppFilterDialog(
             appSummaries = appSummaries,
@@ -299,7 +298,6 @@ fun NotificationHistorySection(
         )
     }
 
-    // Delete By App Manager Dialog
     if (showDeleteByAppDialog) {
         DeleteByAppDialog(
             appSummaries = appSummaries,
@@ -314,15 +312,14 @@ fun NotificationHistorySection(
         )
     }
 
-    // Notification Details Dialog
     selectedEntryForDetails?.let { entry ->
         NotificationDetailDialog(
             entry = entry,
-            onDismiss = { selectedEntryForDetails = null },
+            onDismiss = { selectedEntryIdForDetails = null },
             onDelete = {
                 scope.launch {
                     resolvedHistoryRepo.deleteEntry(entry.id)
-                    selectedEntryForDetails = null
+                    selectedEntryIdForDetails = null
                 }
             },
             onDeleteAllFromApp = {
@@ -331,7 +328,7 @@ fun NotificationHistorySection(
                     appName = entry.appName,
                     count = historyEntries.count { it.packageName == entry.packageName }
                 )
-                selectedEntryForDetails = null
+                selectedEntryIdForDetails = null
             }
         )
     }
@@ -341,7 +338,6 @@ fun NotificationHistorySection(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 28.dp)
     ) {
-        // Master Toggle Hero Card
         item(key = "header_master_toggle") {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -475,7 +471,6 @@ fun NotificationHistorySection(
                 }
             }
         } else {
-            // Settings & Retention & Search Card
             item(key = "header_controls") {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -487,7 +482,6 @@ fun NotificationHistorySection(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Retention row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -589,7 +583,6 @@ fun NotificationHistorySection(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
-                        // Search Box
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
@@ -613,7 +606,6 @@ fun NotificationHistorySection(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Quick App Filter Chips (All Apps at top/start, followed by individual apps)
                         if (appSummaries.isNotEmpty()) {
                             LazyRow(
                                 modifier = Modifier.fillMaxWidth(),
@@ -687,7 +679,6 @@ fun NotificationHistorySection(
                             }
                         }
 
-                        // Active Filter Badge (if any)
                         if (!selectedFilterPackage.isNullOrBlank()) {
                             val activeAppName = appSummaries.find { it.packageName == selectedFilterPackage }?.appName ?: selectedFilterPackage
                             Surface(
@@ -716,7 +707,6 @@ fun NotificationHistorySection(
                             }
                         }
 
-                        // Action Buttons: Filter by App, Delete By App & Clear All
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -822,7 +812,6 @@ fun NotificationHistorySection(
                     }
                 }
             } else {
-                // High-performance virtualized items grouped by day
                 groupedByDay.forEach { (dateHeader, entriesForDay) ->
                     item(key = "date_header_$dateHeader") {
                         Row(
@@ -862,7 +851,7 @@ fun NotificationHistorySection(
                     ) { entry ->
                         NotificationHistoryItemCard(
                             entry = entry,
-                            onCardClick = { selectedEntryForDetails = entry },
+                            onCardClick = { selectedEntryIdForDetails = entry.id },
                             onDelete = {
                                 scope.launch { resolvedHistoryRepo.deleteEntry(entry.id) }
                             }
@@ -902,7 +891,6 @@ private fun NotificationHistoryItemCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header Row: App icon, app name, mode badge, time, delete button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -979,7 +967,6 @@ private fun NotificationHistoryItemCard(
                 }
             }
 
-            // Message Title & Body
             if (entry.title.isNotBlank()) {
                 Text(
                     text = entry.title,
@@ -1012,7 +999,6 @@ private fun NotificationHistoryItemCard(
                 )
             }
 
-            // Action Intent Buttons List (if any)
             if (entry.actionTitles.isNotEmpty()) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1036,7 +1022,6 @@ private fun NotificationHistoryItemCard(
                 }
             }
 
-            // Action Bar: Copy, Launch App
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1141,7 +1126,6 @@ private fun AppFilterDialog(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // TOP OPTION: "All Apps" (view all app notifications together)
                     item(key = "filter_dialog_all_apps") {
                         val isAllSelected = selectedPackage == null
                         Card(
@@ -1204,7 +1188,6 @@ private fun AppFilterDialog(
                         }
                     }
 
-                    // Individual App Items
                     items(appSummaries, key = { it.packageName }) { app ->
                         val isSelected = selectedPackage == app.packageName
                         val icon = rememberAppIcon(app.packageName)
@@ -1441,7 +1424,6 @@ private fun NotificationDetailDialog(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1463,7 +1445,6 @@ private fun NotificationDetailDialog(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Scrollable Detail Fields
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1496,7 +1477,6 @@ private fun NotificationDetailDialog(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                // Footer Buttons
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)

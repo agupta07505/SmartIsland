@@ -15,5 +15,6 @@ buildscript {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21")
         classpath("org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.3.21")
         classpath("com.google.dagger:hilt-android-gradle-plugin:2.60.1")
+        classpath("androidx.baselineprofile:androidx.baselineprofile.gradle.plugin:1.4.1")
     }
 }

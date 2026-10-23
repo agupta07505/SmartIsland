@@ -7,9 +7,6 @@
 
 package com.agupta07505.smartisland.data
 
-/**
- * Represents a single persisted on-device notification record in the notification history.
- */
 data class NotificationHistoryEntry(
     val id: Long = 0L,
     val notificationKey: String,

@@ -7,20 +7,13 @@
 
 package com.agupta07505.smartisland.util
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
 
 object OemAutostartUtil {
 
     /**
-     * Attempts to open manufacturer-specific Autostart / Background App Management screen
-     * to prevent OEM power managers (MIUI Powerkeeper, ColorOS, Samsung Care, Vivo)
-     * from killing background accessibility services.
-     * 100% crash-proof against un-mocked JVM stubs and missing OEM intents.
+     * Opens the manufacturer's Autostart / background management screen, so OEM power managers (MIUI Powerkeeper,
+     * ColorOS, Samsung Care, Vivo) stop killing background accessibility services. Never throws.
      */
     fun openAutostartSettings(context: Context, deviceType: String? = null): Boolean {
         return try {

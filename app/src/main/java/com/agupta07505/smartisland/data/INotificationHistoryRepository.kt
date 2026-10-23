@@ -9,9 +9,6 @@ package com.agupta07505.smartisland.data
 
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Interface defining notification history operations.
- */
 interface INotificationHistoryRepository {
     val history: StateFlow<List<NotificationHistoryEntry>>
     suspend fun saveEntry(entry: NotificationHistoryEntry)

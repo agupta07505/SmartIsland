@@ -10,6 +10,7 @@ package com.agupta07505.smartisland
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.IslandCollapsedContent
@@ -34,7 +35,8 @@ class IslandOverlaySmokeTest {
                         title = "Charging", text = "49%", timeMillis = 0,
                         mode = IslandMode.Battery
                     ),
-                    collapsedAlpha = 1f
+                    collapsedAlpha = 1f,
+                    settings = SmartIslandSettings.Default
                 )
             }
         }

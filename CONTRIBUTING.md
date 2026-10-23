@@ -8,6 +8,7 @@ Thanks for helping make Smart Island better. This project is public, so please k
 - Suggest focused feature ideas.
 - Improve Compose UI, animations, accessibility, or Android compatibility.
 - Add tests, documentation, and device-specific notes.
+- Translate Smart Island into your language or polish existing strings (see `app/src/main/res/values-*/` and `scripts/translate_strings.py`).
 - Refactor carefully when it reduces real complexity.
 
 ## Development Setup

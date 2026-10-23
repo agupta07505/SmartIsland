@@ -370,4 +370,61 @@ class TimerStopwatchParserTest {
 
         assertFalse(TimerStopwatchParser.isTimerFinished(notification))
     }
+
+    @Test
+    fun pausedTimerReadsRemainingTimeNotTheTitleLength() {
+        val card = com.agupta07505.smartisland.model.IslandNotification(
+            key = "k",
+            packageName = "com.google.android.deskclock",
+            appName = "Clock",
+            title = "30M TIMER",
+            text = "29:52",
+            timeMillis = 0L
+        )
+        assertEquals(29L * 60 + 52, TimerStopwatchParser.parseTimerRemainingSeconds(card))
+    }
+
+    @Test
+    fun unitStyleTitleStillWorksWhenThereIsNoClockText() {
+        val card = com.agupta07505.smartisland.model.IslandNotification(
+            key = "k",
+            packageName = "com.google.android.deskclock",
+            appName = "Clock",
+            title = "5 min timer",
+            text = "Running",
+            timeMillis = 0L
+        )
+        assertEquals(300L, TimerStopwatchParser.parseTimerRemainingSeconds(card))
+    }
+
+    private fun chatLikeNotification(text: String, pkg: String): StatusBarNotification {
+        val extras = createBaseExtras()
+        every { extras.getCharSequence(Notification.EXTRA_TITLE) } returns "Working on it"
+        every { extras.getCharSequence(Notification.EXTRA_TEXT) } returns text
+
+        val notification = mockk<Notification>()
+        notification.extras = extras
+        notification.flags = Notification.FLAG_ONGOING_EVENT
+        notification.actions = null
+        notification.`when` = 0L
+        notification.tickerText = null
+        notification.category = null
+
+        val sbn = mockk<StatusBarNotification>()
+        every { sbn.packageName } returns pkg
+        every { sbn.notification } returns notification
+        return sbn
+    }
+
+    @Test
+    fun otherAppsTextMentioningStopwatchIsNotAStopwatch() {
+        val sbn = chatLikeNotification("Next I'm matching the stopwatch card and the elapsed time", "com.example.assistant")
+        assertFalse(TimerStopwatchParser.isStopwatch(sbn))
+    }
+
+    @Test
+    fun lapInsideAnotherWordDoesNotCount() {
+        val sbn = chatLikeNotification("Checking the overlap and the collapse animation", "com.example.assistant")
+        assertFalse(TimerStopwatchParser.isStopwatch(sbn))
+    }
 }

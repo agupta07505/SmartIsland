@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.material3.LinearProgressIndicator
+import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -57,11 +57,19 @@ fun DownloadExpanded(
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val context = LocalContext.current
-    val textCombined = "${notification.title} ${notification.text}".lowercase()
-    val uploadKeywords = listOf("upload", "uploading", "sending", "posting", "exporting", "backing up", "backup")
-    val isUpload = remember(textCombined) { uploadKeywords.any { textCombined.contains(it) } }
+    val kind = notification.transferKind
+    val isUpload = kind.pointsUp
 
-    val accentColor = Color(settings.transferColor)
+    val state = notification.transferState
+    val baseAccent = Color(settings.transferColor)
+    // Paused/waiting turn amber and failed turns red so a stuck transfer reads at a glance.
+    val accentColor = when (state) {
+        com.agupta07505.smartisland.model.TransferState.FAILED -> LocalIslandPalette.current.danger
+        com.agupta07505.smartisland.model.TransferState.PAUSED,
+        com.agupta07505.smartisland.model.TransferState.WAITING -> LocalIslandPalette.current.warning
+        else -> baseAccent
+    }
+    val badgeLabel = state.badge ?: kind.badge
     val containerBadgeBg = accentColor.copy(alpha = 0.2f)
 
     val progressFraction = remember(notification.progress, notification.progressMax) {
@@ -80,13 +88,13 @@ fun DownloadExpanded(
         }
     }
 
-    // Strip out duplicate percentage text from subtitle so percentage is displayed ONCE on the right side
-    val cleanSubtitle = remember(notification.text) {
+    // Strip the duplicate percentage from the subtitle so it shows once, on the right.
+    val cleanSubtitle = remember(notification.text, kind) {
         notification.text
             .replace(Regex("""\s*[•·-]?\s*\d+%\s*"""), "")
             .replace(Regex("""\s*\d+%\s*[•·-]?\s*"""), "")
             .trim()
-            .ifBlank { if (isUpload) "Uploading..." else "Downloading..." }
+            .ifBlank { "${kind.badge}..." }
     }
 
     Column(
@@ -103,13 +111,11 @@ fun DownloadExpanded(
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Top Header Row matching NotificationExpanded alignment
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // App Icon (42.dp matching NotificationExpanded)
             val largeIcon = notification.largeIcon
             val icon = notification.icon
             val mainIcon = largeIcon ?: icon
@@ -128,7 +134,7 @@ fun DownloadExpanded(
                             modifier = Modifier
                                 .size(16.dp)
                                 .align(Alignment.BottomEnd)
-                                .background(Color.Black, CircleShape)
+                                .background(LocalIslandPalette.current.surface, CircleShape)
                                 .padding(1.5.dp)
                         ) {
                             Image(
@@ -151,17 +157,16 @@ fun DownloadExpanded(
                 ) {
                     Text(
                         text = notification.appName.firstOrNull()?.uppercase() ?: "D",
-                        color = Color.White,
+                        color = LocalIslandPalette.current.text,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            // Title & Subtitle Column matching NotificationExpanded font sizes
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = notification.title.ifBlank { if (isUpload) "Uploading file" else "Downloading file" },
-                    color = Color.White,
+                    text = notification.title.ifBlank { kind.fallbackTitle },
+                    color = LocalIslandPalette.current.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 17.sp,
@@ -170,7 +175,7 @@ fun DownloadExpanded(
                 )
                 Text(
                     text = cleanSubtitle,
-                    color = Color(0xFFD5DAE0),
+                    color = LocalIslandPalette.current.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -178,7 +183,6 @@ fun DownloadExpanded(
                 )
             }
 
-            // Right side: Badge Tag & Timestamp
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -199,7 +203,7 @@ fun DownloadExpanded(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = if (isUpload) "Uploading" else "Downloading",
+                            text = badgeLabel,
                             color = accentColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -209,31 +213,50 @@ fun DownloadExpanded(
 
                 Text(
                     text = formatNotificationTime(notification.timeMillis),
-                    color = Color(0xFFB7C0CA),
+                    color = LocalIslandPalette.current.textTertiary,
                     fontSize = 11.sp
                 )
             }
         }
 
-        // Progress Bar & Percentage Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color(0x33FFFFFF))
-            ) {
+            if (notification.progressMax > 0) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progressFraction)
+                        .weight(1f)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(accentColor)
+                        .background(LocalIslandPalette.current.tint(0.2f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progressFraction)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(accentColor)
+                    )
+                }
+            } else if (state == com.agupta07505.smartisland.model.TransferState.ACTIVE) {
+                // No known progress: a moving bar instead of a made-up 45% fill.
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = accentColor,
+                    trackColor = LocalIslandPalette.current.tint(0.2f)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(accentColor.copy(alpha = 0.35f))
                 )
             }
 
@@ -247,7 +270,21 @@ fun DownloadExpanded(
             }
         }
 
-        // Action Intents (if present)
+        // Speed / ETA read from the notification, or the measured speed of an estimated card
+        val detailLine = listOfNotNull(
+            notification.transferDetail.takeIf { it.isNotBlank() },
+            "Estimated from network speed".takeIf { notification.isEstimatedTransfer }
+        ).joinToString(" · ")
+        if (detailLine.isNotBlank()) {
+            Text(
+                text = detailLine,
+                color = LocalIslandPalette.current.textTertiary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
         if (notification.actionIntents.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -259,7 +296,7 @@ fun DownloadExpanded(
                         modifier = Modifier
                             .height(28.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFFE2E8F0))
+                            .background(LocalIslandPalette.current.chipFill)
                             .bounceClick {
                                 if (action.pendingIntent != null) {
                                     triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)

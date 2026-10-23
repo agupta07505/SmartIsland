@@ -7,9 +7,9 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +20,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -45,9 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import com.agupta07505.smartisland.data.SmartIslandSettings
-import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.util.NavigationCardText
 import com.agupta07505.smartisland.util.NavigationParser
 import com.agupta07505.smartisland.util.TurnDirection
 
@@ -62,27 +61,23 @@ fun NavigationExpanded(
     val context = LocalContext.current
     val navColor = Color(settings.navigationColor)
 
-    val navInfo = remember(notification) {
+    val card = remember(notification) {
         if (notification == null) {
-            Tuple3("In 300 m", "Turn left onto MG Road", "24 min remaining • 8.5 km", TurnDirection.LEFT)
+            NavigationCardText(
+                distance = "In 300 m",
+                instruction = "Turn left onto MG Road",
+                detail = "Stay in the left lane",
+                eta = "24 min remaining \u2022 8.5 km"
+            )
         } else {
-            val title = notification.title
-            val text = notification.text
-            val combined = "$title $text".lowercase()
-
-            val pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:m|km|ft|mi|miles?|meters?)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
-            val matcher = pattern.matcher(combined)
-            val dist = if (matcher.find()) "In ${matcher.group(0)}" else "In 200 m"
-            val turnDir = NavigationParser.parseTurnDirection(combined)
-
-            val mainTitle = if (title.isNotBlank()) title else "Navigation"
-            val subText = if (text.isNotBlank()) text else "Turn-by-turn guidance"
-
-            Tuple3(dist, mainTitle, subText, turnDir)
+            NavigationParser.cardText(notification.title, notification.text)
         }
     }
-
-    val (distanceText, maneuverTitle, subStatusText, turnDirection) = navInfo
+    val turnDirection = remember(notification) {
+        if (notification == null) TurnDirection.LEFT
+        else NavigationParser.parseTurnDirection("${notification.title} ${notification.text}".lowercase())
+    }
+    val distanceText = card.distance
 
     val angle = when (turnDirection) {
         TurnDirection.LEFT -> -90f
@@ -96,12 +91,11 @@ fun NavigationExpanded(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .wrapContentHeight()
+            .heightIn(min = NAVIGATION_EXPANDED_HEIGHT)
             .clickable { onOpenNotification() }
             .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Section: App Icon + App Name & ETA Subtitle + Navigation Badge
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -141,7 +135,7 @@ fun NavigationExpanded(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = notification?.appName ?: "Google Maps",
-                    color = Color.White,
+                    color = LocalIslandPalette.current.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 17.sp,
@@ -149,8 +143,8 @@ fun NavigationExpanded(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = subStatusText,
-                    color = Color(0xFFD5DAE0),
+                    text = card.eta.ifEmpty { "Turn-by-turn guidance" },
+                    color = LocalIslandPalette.current.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontSize = 13.sp,
@@ -158,7 +152,6 @@ fun NavigationExpanded(
                 )
             }
 
-            // Distance / Maneuver Badge
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
@@ -175,19 +168,18 @@ fun NavigationExpanded(
             }
         }
 
-        // Maneuver Direction Card
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(Color(0xFF1E293B))
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                .background(LocalIslandPalette.current.pick(Color(0xFF1E293B), Color(0xFFE4E2E6)))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(NAVIGATION_ARROW_CIRCLE)
                     .clip(CircleShape)
                     .background(navColor.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
@@ -197,7 +189,7 @@ fun NavigationExpanded(
                         imageVector = Icons.Rounded.LocationOn,
                         contentDescription = null,
                         tint = navColor,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(NAVIGATION_ARROW_ICON)
                     )
                 } else {
                     Icon(
@@ -205,7 +197,7 @@ fun NavigationExpanded(
                         contentDescription = null,
                         tint = navColor,
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(NAVIGATION_ARROW_ICON)
                             .rotate(angle)
                     )
                 }
@@ -213,13 +205,24 @@ fun NavigationExpanded(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = maneuverTitle,
-                    color = Color.White,
-                    fontSize = 16.sp,
+                    text = card.instruction,
+                    color = LocalIslandPalette.current.text,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (card.detail.isNotEmpty()) {
+                    Text(
+                        text = card.detail,
+                        color = LocalIslandPalette.current.textSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Text(
                     text = distanceText,
                     color = navColor,
@@ -229,7 +232,6 @@ fun NavigationExpanded(
             }
         }
 
-        // Action Buttons Row & Collapse Arrow
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -239,24 +241,21 @@ fun NavigationExpanded(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(androidx.compose.foundation.rememberScrollState())
                 ) {
-                    notification.actionIntents.take(2).forEach { action ->
+                    // Every button the app put in its notification, not just the first two.
+                    notification.actionIntents.forEach { action ->
                         Box(
                             modifier = Modifier
                                 .height(28.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFFE2E8F0))
+                                .background(LocalIslandPalette.current.chipFill)
                                 .bounceClick {
-                                    if (action.pendingIntent != null) {
-                                        triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
-                                    } else {
-                                        Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
-                                    }
-                                    val repo = SmartIslandRepositories.notificationRepository(context)
-                                    repo.removeNotification(notification.key)
-                                    repo.sendCommand(com.agupta07505.smartisland.data.SmartIslandCommand.CancelNotification(notification.key))
-                                    onCollapse()
+                                    // Like the shade: fire the app's button and leave the card to the app,
+                                    // which removes or updates its notification itself.
+                                    notification.fireAction(context, action)
                                 }
                                 .padding(horizontal = 12.dp),
                             contentAlignment = Alignment.Center
@@ -273,24 +272,11 @@ fun NavigationExpanded(
             } else {
                 Spacer(modifier = Modifier.weight(1f))
             }
-
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF222222))
-                    .bounceClick { onOpenNotification() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
         }
     }
 }
 
-private data class Tuple3<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+private val NAVIGATION_ARROW_CIRCLE = 56.dp
+private val NAVIGATION_ARROW_ICON = 36.dp
+
+internal val NAVIGATION_EXPANDED_HEIGHT = 240.dp

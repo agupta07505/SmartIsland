@@ -15,7 +15,6 @@ import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.data.SmartIslandCommand
-import com.agupta07505.smartisland.util.runCatchingLogged
 
 fun IslandNotification?.trySendFirstAction(context: Context, vararg keywords: String): Boolean {
     if (this == null) return false
@@ -51,46 +50,107 @@ fun formatDuration(valueMs: Long?): String {
     return "%d:%02d".format(minutes, seconds)
 }
 
-fun triggerAction(context: Context, packageName: String, actionIntent: PendingIntent?, actionTitle: String, contentIntent: PendingIntent?) {
+fun triggerAction(context: Context, packageName: String, actionIntent: PendingIntent?, actionTitle: String, contentIntent: PendingIntent?): Boolean {
     android.util.Log.d("ExpandedActions", "triggerAction: actionTitle=$actionTitle, hasActionIntent=${actionIntent != null}, hasContentIntent=${contentIntent != null}")
-    if (actionIntent == null) return
+    if (actionIntent == null) return false
 
-    // If it is a Reply action, since typing inside the overlay window is blocked by focus rules,
-    // trigger the main notification's content intent to open the target chat directly!
+    // Typing inside the overlay window is blocked by focus rules, so a Reply action opens the target chat through the content intent.
     if (actionTitle.contains("reply", ignoreCase = true) && contentIntent != null) {
         android.util.Log.d("ExpandedActions", "triggerAction: Firing contentIntent (reply fallback)")
-        sendIntentWithOptions(context, contentIntent)
-    } else {
-        android.util.Log.d("ExpandedActions", "triggerAction: Firing actionIntent")
-        sendIntentWithOptions(context, actionIntent)
+        return sendIntentWithOptions(context, contentIntent)
+    }
+    android.util.Log.d("ExpandedActions", "triggerAction: Firing actionIntent")
+    return sendIntentWithOptions(context, actionIntent)
+}
+
+/** Sends the intent the way the shade would. Returns false when every attempt failed (for example the app replaced it). */
+fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent): Boolean {
+    android.util.Log.d("ExpandedActions", "sendIntentWithOptions: sending pendingIntent=$pendingIntent")
+    val attempts = buildList<() -> Unit> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            add {
+                val options = ActivityOptions.makeBasic()
+                    .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                    .toBundle()
+                pendingIntent.send(context, 0, null, null, null, null, options)
+            }
+        }
+        add { pendingIntent.send(context, 0, null) }
+        add { pendingIntent.send() }
+    }
+    val sent = com.agupta07505.smartisland.util.SendAttempts.anySucceeds(attempts)
+    if (!sent) android.util.Log.e("ExpandedActions", "All attempts to send PendingIntent failed")
+    return sent
+}
+
+enum class ActionRole { Pause, Resume, Stop, Lap, Reset, AddMinute, Other }
+
+private val PAUSE_WORDS = listOf("pause", "pausa", "pausar", "sospendi", "interrompi", "onderbreek", "रोकें", "暂停", "一時停止", "пауза")
+private val RESUME_WORDS = listOf("resume", "continue", "unpause", "play", "start", "reanudar", "reprendre", "weiter", "riprendi", "continuar", "शुरू", "继续", "再開", "возобновить")
+private val STOP_WORDS = listOf("stop", "finish", "save", "detener", "parar", "arrêter", "beenden", "停止", "结束", "стоп")
+private val RESET_WORDS = listOf("reset", "cancel", "clear", "delete", "dismiss", "annuler", "abbrechen", "eliminar", "borrar", "重置", "取消")
+private val LAP_WORDS = listOf("lap", "split", "vuelta", "tour", "runde", "分段")
+
+private val ADD_MINUTE_SIGN = Regex("""(?<![\d:])\+\s*0?1(:00)?\s*(m|min|mins|minute|minutes)?(?![\d:a-z])""")
+private val ADD_MINUTE_WORDS = Regex("""(add|extend|more|another)\s*(an?\s*)?(1|one)\s*(m|min|mins|minute|minutes)\b""")
+
+fun classifyAction(title: String): ActionRole {
+    val t = title.lowercase()
+    return when {
+        ADD_MINUTE_SIGN.containsMatchIn(t) || ADD_MINUTE_WORDS.containsMatchIn(t) -> ActionRole.AddMinute
+        LAP_WORDS.any { t.contains(it) } -> ActionRole.Lap
+        PAUSE_WORDS.any { t.contains(it) } -> ActionRole.Pause
+        RESUME_WORDS.any { t.contains(it) } -> ActionRole.Resume
+        RESET_WORDS.any { t.contains(it) } -> ActionRole.Reset
+        STOP_WORDS.any { t.contains(it) } -> ActionRole.Stop
+        else -> ActionRole.Other
     }
 }
 
-fun sendIntentWithOptions(context: Context, pendingIntent: PendingIntent) {
-    android.util.Log.d("ExpandedActions", "sendIntentWithOptions: sending pendingIntent=$pendingIntent")
-    var sent = false
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        try {
-            val options = ActivityOptions.makeBasic()
-                .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-                .toBundle()
-            pendingIntent.send(context, 0, null, null, null, null, options)
-            sent = true
-        } catch (e: Exception) {
-            android.util.Log.w("ExpandedActions", "pendingIntent.send with ActivityOptions failed: ${e.message}, attempting direct send fallback")
-        }
+fun IslandNotification?.actionWithRole(vararg roles: ActionRole): com.agupta07505.smartisland.model.IslandNotificationAction? {
+    if (this == null) return null
+    return actionIntents.firstOrNull { it.pendingIntent != null && classifyAction(it.title) in roles }
+}
+
+fun IslandNotification?.offersResume(): Boolean =
+    this != null && actionIntents.any { classifyAction(it.title) == ActionRole.Resume }
+
+/**
+ * Fires the notification's own button like tapping it in the shade. Island state is untouched: the listener re-posts
+ * the notification when the app updates it.
+ */
+fun IslandNotification.fireAction(context: Context, action: com.agupta07505.smartisland.model.IslandNotificationAction): Boolean {
+    val intent = action.pendingIntent
+    val refusal = com.agupta07505.smartisland.util.ButtonPress.refusal(
+        hasIntent = intent != null,
+        viaView = action.viaView,
+        liveLabels = if (action.viaView) com.agupta07505.smartisland.util.NotificationViewInspector.liveLabels(key) else emptyList(),
+        title = action.title
+    )
+    if (refusal != null || intent == null) {
+        com.agupta07505.smartisland.util.AppLogRecorder.w(
+            "ButtonPress",
+            "pkg=$packageName '${action.title}' (${classifyAction(action.title)}) not sent: $refusal"
+        )
+        return false
     }
-    if (!sent) {
-        try {
-            pendingIntent.send(context, 0, null)
-            sent = true
-        } catch (e: Exception) {
-            try {
-                pendingIntent.send()
-                sent = true
-            } catch (e2: Exception) {
-                android.util.Log.e("ExpandedActions", "All attempts to send PendingIntent failed", e2)
-            }
-        }
-    }
+    val sent = triggerAction(context, packageName, intent, action.title, contentIntent)
+    com.agupta07505.smartisland.util.AppLogRecorder.d(
+        "ButtonPress",
+        "pkg=$packageName '${action.title}' (${classifyAction(action.title)}) via=${if (action.viaView) "view" else "app"} sent=$sent"
+    )
+    if (sent) SmartIslandRepositories.notificationRepository(context).resetTimer()
+    return sent
+}
+
+/**
+ * Like [fireAction], for buttons whose PendingIntent starts an activity (voice recorder Save / Stop): if the app's
+ * window pops up, the accessibility service sends the user straight back, so the recording is saved without the app
+ * staying open.
+ */
+fun IslandNotification.fireActionSilently(context: Context, action: com.agupta07505.smartisland.model.IslandNotificationAction): Boolean {
+    com.agupta07505.smartisland.util.SilentActionGuard.arm(packageName)
+    val fired = fireAction(context, action)
+    if (!fired) com.agupta07505.smartisland.util.SilentActionGuard.disarm()
+    return fired
 }

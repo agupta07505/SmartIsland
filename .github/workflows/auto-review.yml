@@ -7,8 +7,6 @@ name: Automated PR & Issue Review
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited]
-    branches:
-      - '**'
   issues:
     types: [opened, edited]
 
@@ -23,12 +21,6 @@ jobs:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-
       - name: Review PR & Post Review Comment
         uses: actions/github-script@v7
         with:
@@ -38,7 +30,7 @@ jobs:
             const body = pr.body || '';
             const title = pr.title || '';
             const isDraft = pr.draft === true;
-            
+
             const labelsToAdd = [];
             const checksPassed = [];
             const checksWarning = [];
@@ -64,8 +56,8 @@ jobs:
               checksPassed.push('**Description**: Context and description provided.');
             }
 
-            // 3. Inspect modified files
-            const { data: files } = await github.rest.pulls.listFiles({
+            // 3. Inspect modified files (paginated to handle PRs with >30 files)
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number
@@ -212,6 +204,22 @@ jobs:
               }
             } catch (err) {
               console.error('Failed to post/update PR review comment: ', err);
+            }
+
+            // 8. Also submit an official PR Review event on initial review (opened / ready_for_review)
+            try {
+              if (context.payload.action === 'opened' || context.payload.action === 'ready_for_review') {
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  event: 'COMMENT',
+                  body: commentBody
+                });
+                console.log('Submitted official PR review.');
+              }
+            } catch (reviewErr) {
+              console.log('Note: createReview skipped or failed: ' + reviewErr.message);
             }
 
   triage_issue:

@@ -21,9 +21,6 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Default implementation of [INotificationHistoryRepository] using native SQLite storage.
- */
 @Singleton
 class NotificationHistoryRepository @Inject constructor(
     @ApplicationContext context: Context

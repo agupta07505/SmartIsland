@@ -42,3 +42,12 @@ socials.txt
 # Critical README.md
 install.ps1
 ISLAND_HORIZONTAL_ALIGNMENT_FIX.md
+.config/gh/hosts.yml
+
+
+
+# Translation
+.translate-env/
+
+# Scripts
+scripts/

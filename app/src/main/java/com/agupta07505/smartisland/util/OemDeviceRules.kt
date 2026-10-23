@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.util
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
@@ -14,7 +15,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.service.notification.StatusBarNotification
 
 enum class OemDeviceType(val displayName: String, val brandKeywords: List<String>) {
     AUTO("Auto-Detect (Current Device)", emptyList()),
@@ -55,6 +55,15 @@ object OemDeviceRules {
     )
 
     private val XIAOMI_SCREEN_RECORDER_PACKAGES = setOf(
+        "com.miui.screenrecorder"
+    )
+
+    private val XIAOMI_VOICE_RECORDER_PACKAGES = setOf(
+        "com.miui.soundrecorder",
+        "com.android.soundrecorder"
+    )
+
+    private val XIAOMI_SCREEN_RECORDER_PACKAGES_LEGACY = setOf(
         "com.miui.screenrecorder",
         "com.miui.soundrecorder",
         "com.android.soundrecorder"
@@ -178,9 +187,24 @@ object OemDeviceRules {
     private val HOTSPOT_PACKAGES = setOf(
         "com.samsung.android.app.mobilehotspot",
         "com.samsung.android.server.wifi.mobilehotspot",
-        "com.miui.securitycenter",
         "com.vivo.easyshare",
         "com.google.android.tethering.entitlement"
+    )
+
+    private val HOTSPOT_KEYWORD_PACKAGES = setOf(
+        "android",
+        "com.android.settings",
+        "com.android.systemui",
+        "com.android.networkstack.tethering",
+        "com.google.android.networkstack.tethering",
+        "com.google.android.tethering",
+        "com.miui.securitycenter",
+        "com.miui.networkassistant",
+        "com.coloros.wirelesssettings",
+        "com.oplus.wirelesssettings",
+        "com.vivo.settings",
+        "com.huawei.systemmanager",
+        "com.motorola.settings"
     )
 
     private val HOTSPOT_KEYWORDS = listOf(
@@ -213,27 +237,106 @@ object OemDeviceRules {
         return runCatching { OemDeviceType.valueOf(deviceTypeSetting) }.getOrDefault(detectCurrentDevice())
     }
 
+    fun isMiuiOrHyperOs(device: OemDeviceType = detectCurrentDevice()): Boolean {
+        if (device == OemDeviceType.XIAOMI_REDMI_POCO) return true
+        val brand = (runCatching { Build.BRAND }.getOrNull() ?: "").lowercase()
+        val manufacturer = (runCatching { Build.MANUFACTURER }.getOrNull() ?: "").lowercase()
+        if (brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco") ||
+            brand.contains("blackshark") || manufacturer.contains("xiaomi")
+        ) {
+            return true
+        }
+        val miuiProp = getSystemProperty("ro.miui.ui.version.name")
+        if (!miuiProp.isNullOrBlank()) return true
+        val hyperOsProp = getSystemProperty("ro.mi.os.version.name")
+        if (!hyperOsProp.isNullOrBlank()) return true
+        return false
+    }
+
+    fun isMiuiOrHyperOs(deviceTypeSetting: String?): Boolean {
+        return isMiuiOrHyperOs(resolveEffectiveDevice(deviceTypeSetting))
+    }
+
+    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    private fun getSystemProperty(key: String): String? {
+        return runCatching {
+            val c = Class.forName("android.os.SystemProperties")
+            val get = c.getMethod("get", String::class.java)
+            (get.invoke(null, key) as? String)?.takeIf { it.isNotBlank() }
+        }.getOrNull()
+    }
+
     fun isScreenRecording(
         packageName: String,
         titleText: String,
         device: OemDeviceType = detectCurrentDevice()
     ): Boolean {
+        if (isMiuiOrHyperOs(device)) {
+            if (packageName in XIAOMI_VOICE_RECORDER_PACKAGES) return false
+        }
         val lowerText = titleText.lowercase()
         val isKeywordMatch = SCREEN_RECORDING_KEYWORDS.any { lowerText.contains(it) }
 
         val isPackageMatch = when (device) {
             OemDeviceType.SAMSUNG -> packageName in SAMSUNG_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.XIAOMI_REDMI_POCO -> packageName in XIAOMI_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
+            OemDeviceType.XIAOMI_REDMI_POCO -> {
+                if (isMiuiOrHyperOs(device)) {
+                    packageName in XIAOMI_SCREEN_RECORDER_PACKAGES
+                } else {
+                    packageName in XIAOMI_SCREEN_RECORDER_PACKAGES_LEGACY || packageName in ALL_OEM_RECORDER_PACKAGES
+                }
+            }
             OemDeviceType.VIVO_IQOO -> packageName in VIVO_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
             OemDeviceType.REALME_OPPO_ONEPLUS -> packageName in REALME_OPPO_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
             OemDeviceType.HUAWEI_HONOR -> packageName in HUAWEI_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
             OemDeviceType.MOTOROLA -> packageName in MOTOROLA_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
             OemDeviceType.TRANSSION -> packageName in TRANSSION_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
             OemDeviceType.NUBIA -> packageName in NUBIA_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            else -> packageName in ALL_OEM_RECORDER_PACKAGES
+            else -> {
+                if (isMiuiOrHyperOs(device)) {
+                    (ALL_OEM_RECORDER_PACKAGES - XIAOMI_VOICE_RECORDER_PACKAGES).contains(packageName)
+                } else {
+                    packageName in ALL_OEM_RECORDER_PACKAGES
+                }
+            }
         }
 
         return isPackageMatch || isKeywordMatch
+    }
+
+    private val SCREENISH_KEYWORDS = listOf(
+        "screen recording", "recording screen", "screen recorder", "screen record",
+        "record screen", "smart capture", "s-capture", "capturing screen", "capture screen"
+    )
+
+    private val AUDIO_RECORDING_KEYWORDS = listOf(
+        "audio recording", "recording audio", "voice recording", "voice recorder",
+        "audio recorder", "sound recorder", "recording call", "call recording"
+    )
+
+    /**
+     * Voice / audio recorder apps (Google Recorder, Samsung Voice Recorder, OEM sound recorders ...). Screen-recorder
+     * packages and screen-recording wording always win, so this never claims them.
+     */
+    fun isAudioRecording(packageName: String, titleText: String): Boolean {
+        val pkg = packageName.lowercase()
+        val lower = titleText.lowercase()
+        if (pkg.contains("screen") || pkg.contains("videocapture") || SCREENISH_KEYWORDS.any { lower.contains(it) }) {
+            return false
+        }
+        return isRecorderPackage(pkg) || AUDIO_RECORDING_KEYWORDS.any { lower.contains(it) }
+    }
+
+    /** Package names of voice / sound recorder apps (no screen recorders, see isAudioRecording). */
+    fun isRecorderPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        if (pkg.contains("screen") || pkg.contains("videocapture")) return false
+        return pkg.contains("soundrecorder") ||
+            pkg.contains("voicenote") ||
+            pkg.contains("voicerecorder") ||
+            pkg.contains("apps.recorder") ||
+            pkg.endsWith(".recorder") ||
+            pkg.endsWith(".record")
     }
 
     fun isScreenRecordingComplete(
@@ -250,6 +353,8 @@ object OemDeviceRules {
             "audio saved", "ended", "tap to open", "tap to play"
         )
         if (completionKeywords.any { lowerText.contains(it) }) return true
+        // A paused recording is still a recording, even if the app drops the ongoing flag while paused.
+        if (RecordingClock.looksPaused(notification)) return false
         if (!isOngoing) return true
 
         return false
@@ -274,8 +379,10 @@ object OemDeviceRules {
         packageName: String,
         titleText: String
     ): Boolean {
+        if (packageName in HOTSPOT_PACKAGES) return true
+        if (packageName !in HOTSPOT_KEYWORD_PACKAGES) return false
         val lowerText = titleText.lowercase()
-        return packageName in HOTSPOT_PACKAGES || HOTSPOT_KEYWORDS.any { lowerText.contains(it) }
+        return HOTSPOT_KEYWORDS.any { lowerText.contains(it) }
     }
 
     fun isNonNavigationContent(
@@ -328,7 +435,6 @@ object OemDeviceRules {
                 intents.add(Intent().setComponent(ComponentName("com.zte.heartyservice", "com.zte.heartyservice.autorun.AppAutoRunManager")))
             }
             else -> {
-                // Generic fallback
             }
         }
 

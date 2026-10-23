@@ -19,15 +19,53 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+    <!-- Never granted by the install dialog. Android 15+ replaces the text of notifications it thinks are
+         sensitive (and, on some ROMs, all of them) with "Sensitive notification content hidden" for every
+         notification listener without this permission. Granted from Shizuku or adb (see ShizukuManager). -->
+    <uses-permission
+        android:name="android.permission.RECEIVE_SENSITIVE_NOTIFICATIONS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Brightness slider on the Utilities page: writing the screen brightness needs this special permission (granted in system settings). -->
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- A normal permission, granted at install. Lets the Clear cache utility stop background apps. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
+    <!-- A normal permission, granted at install. Lets the Timer utility start a countdown in the clock app without opening it. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Lets the app appear in "Do Not Disturb access": the mode idle widget reads which mode (Bedtime, Driving, ...) is on. Nothing is changed. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!-- Lets the call card mute the mic and switch earpiece / speaker / Bluetooth for apps whose call
+         notification has no such buttons. A normal permission, granted at install. -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <queries>
+        <!-- Lets the Shizuku check see the Shizuku app (Android 11+ hides apps that are not listed here). -->
+        <package android:name="moe.shizuku.privileged.api" />
+        <package android:name="com.android.systemui" />
+        <package android:name="com.libremobileos.freeform" />
+        <!-- Lets a settings page (hotspot, Wi-Fi) be found by its intent so LMO Freeform can open it in a window. -->
+        <package android:name="com.android.settings" />
+        <!-- Lets the Timer utility find the clock app (to open it in a floating window when the timer cannot start directly). -->
+        <intent>
+            <action android:name="android.intent.action.SHOW_TIMERS" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Lets the split-screen shortcut tell the home screen apart from an open app. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
         </intent>
     </queries>
 
@@ -39,7 +77,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
-        android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.SmartIsland">
 
         <activity
@@ -51,6 +88,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The island's own pickers (pinned apps, utilities) in a see-through window of their own: choosing never opens the app. -->
+        <activity
+            android:name=".ui.pickers.PickerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|uiMode|density|fontScale|layoutDirection|locale"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.SmartIsland.Picker" />
 
         <service
             android:name=".service.SmartIslandOverlayService"
@@ -81,7 +129,7 @@
         </service>
         <receiver
             android:name=".receiver.AutostartReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
@@ -89,6 +137,14 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".receiver.StopwatchActionReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receiver.TimerActionReceiver"
+            android:exported="false" />
 
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

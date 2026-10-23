@@ -28,7 +28,7 @@ import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +82,7 @@ fun FlashlightExpanded(
             Column {
                 Text(
                     text = "Flashlight ON",
-                    color = Color.White,
+                    color = LocalIslandPalette.current.text,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )

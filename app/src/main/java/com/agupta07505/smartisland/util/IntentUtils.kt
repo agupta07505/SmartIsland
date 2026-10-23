@@ -1,7 +1,8 @@
 /*
  * Smart Island (2026)
- * Copyright Animesh Gupta — github.com/agupta07505
+ * © Animesh Gupta — github.com/agupta07505
  * Licensed under the GNU GPL v3 License
+ * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
 
 package com.agupta07505.smartisland.util
@@ -11,10 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 
-/**
- * Opens a system or external activity without allowing a missing/OEM-restricted
- * destination to crash Smart Island.
- */
+/** Swallows a missing or OEM-restricted destination instead of crashing. */
 fun Context.safeStartActivity(
     intent: Intent,
     errorMessage: String? = "This setting is not available on your device.",

@@ -26,30 +26,90 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Diagnostic logger and process logcat aggregator for Smart Island troubleshooting.
- * Captures in-memory log events and disk buffer, with one-tap export to storage via SAF.
- */
 object AppLogRecorder {
     private const val TAG = "SmartIslandLog"
     private const val MAX_IN_MEMORY_LOGS = 3000
     private const val LOG_FILE_NAME = "smartisland_debug_log.txt"
+    private const val MAX_FILE_BYTES = 1_000_000L
+    private const val ENTRY_SEPARATOR = '\u001E'
+    private const val STATE_PREFS = "smartisland_log_state"
+    private const val KEY_RECORDING = "recording"
 
     private val inMemoryLogs = ConcurrentLinkedQueue<String>()
     private val logCount = AtomicInteger(0)
 
+    // Disk copy of the buffer: when the system or an OEM task killer stops the listener, the process
+    // and its in-memory buffer die too. One thread keeps the file writes in order.
+    private val diskExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SmartIslandLogWriter").apply { isDaemon = true } }
+    @Volatile private var logFile: File? = null
+
     @Volatile
     var isRecording: Boolean = false
-        private set
+        private set(value) {
+            field = value
+            if (value) MainThreadWatchdog.start() else MainThreadWatchdog.stop()
+        }
+
+    /** Safe to call on every settings emission: it only acts when the value changes. */
+    fun applySetting(context: Context, enabled: Boolean) {
+        attach(context)
+        if (enabled != isRecording) updateRecordingState(context, enabled)
+    }
+
+    /** Call early in each process (Application and service onCreate), so a system restart of the app is itself logged. */
+    fun restore(context: Context) {
+        attach(context)
+    }
 
     fun updateRecordingState(context: Context, enabled: Boolean) {
-        isRecording = enabled
+        attach(context)
         if (enabled) {
-            record("I", TAG, "Diagnostic log recording started for Smart Island v${BuildConfig.VERSION_NAME}")
+            isRecording = true
+            saveRecordingFlag(context, true)
+            record("I", TAG, "Diagnostic log recording started for Smart Island v${BuildConfig.VERSION_NAME} (pid ${Process.myPid()})")
+            record("I", TAG, "Environment: " + runCatching { EnvironmentDiagnostics.snapshot(context) }.getOrDefault("unavailable"))
         } else {
             record("I", TAG, "Diagnostic log recording paused")
+            isRecording = false
+            saveRecordingFlag(context, false)
+        }
+    }
+
+    private fun saveRecordingFlag(context: Context, value: Boolean) {
+        runCatching {
+            context.applicationContext.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_RECORDING, value).apply()
+        }
+    }
+
+    @Synchronized
+    private fun attach(context: Context) {
+        if (logFile != null) return
+        val file = runCatching { File(context.applicationContext.filesDir, LOG_FILE_NAME) }.getOrNull() ?: return
+        logFile = file
+        runCatching {
+            if (file.exists()) {
+                file.readText(Charsets.UTF_8)
+                    .split(ENTRY_SEPARATOR)
+                    .map { it.trim('\n') }
+                    .filter { it.isNotBlank() }
+                    .takeLast(MAX_IN_MEMORY_LOGS)
+                    .forEach {
+                        inMemoryLogs.add(it)
+                        logCount.incrementAndGet()
+                    }
+            }
+        }
+        val wasRecording = runCatching {
+            context.applicationContext.getSharedPreferences(STATE_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_RECORDING, false)
+        }.getOrDefault(false)
+        if (wasRecording) {
+            isRecording = true
+            record("I", TAG, "Process started (pid ${Process.myPid()}, v${BuildConfig.VERSION_NAME}); recording resumed from the last session. Earlier lines above belong to the previous process.")
         }
     }
 
@@ -66,10 +126,29 @@ object AppLogRecorder {
         }
 
         inMemoryLogs.add(entry)
-        val count = logCount.incrementAndGet()
-        while (count > MAX_IN_MEMORY_LOGS) {
-            inMemoryLogs.poll()
+        logCount.incrementAndGet()
+        // Re-read the counter on every pass: a stale value here would spin forever once full.
+        while (logCount.get() > MAX_IN_MEMORY_LOGS) {
+            if (inMemoryLogs.poll() == null) break
             logCount.decrementAndGet()
+        }
+        appendToDisk(entry)
+    }
+
+    private fun appendToDisk(entry: String) {
+        val file = logFile ?: return
+        runCatching {
+            diskExecutor.execute {
+                runCatching {
+                    if (file.exists() && file.length() > MAX_FILE_BYTES) {
+                        // Keep the newest half of the file.
+                        val text = file.readText(Charsets.UTF_8)
+                        val cut = text.indexOf(ENTRY_SEPARATOR, text.length / 2)
+                        file.writeText(if (cut >= 0) text.substring(cut + 1) else "", Charsets.UTF_8)
+                    }
+                    FileWriter(file, true).use { it.write(entry + ENTRY_SEPARATOR + "\n") }
+                }
+            }
         }
     }
 
@@ -80,20 +159,39 @@ object AppLogRecorder {
 
     fun getLogCount(): Int = logCount.get()
 
-    fun clear(context: Context) {
+    /** Writes synchronously because the process is dying, and records even when the recorder is off. */
+    fun recordCrash(thread: Thread, error: Throwable) {
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
+        val entry = "[$timestamp] [Thread: ${thread.name}] [E/CRASH] Uncaught exception, process is dying\n" +
+            Log.getStackTraceString(error)
+        inMemoryLogs.add(entry)
+        logCount.incrementAndGet()
+        val file = logFile ?: return
+        runCatching { FileWriter(file, true).use { it.write(entry + ENTRY_SEPARATOR + "\n") } }
+    }
+
+    internal fun startRecordingForTest() {
+        resetForTest()
+        isRecording = true
+    }
+
+    internal fun resetForTest() {
+        isRecording = false
         inMemoryLogs.clear()
         logCount.set(0)
-        runCatching {
-            val file = File(context.filesDir, LOG_FILE_NAME)
-            if (file.exists()) file.delete()
-        }
+    }
+
+    internal fun lastEntryForTest(): String? = inMemoryLogs.lastOrNull()
+
+    fun clear(context: Context) {
+        attach(context)
+        inMemoryLogs.clear()
+        logCount.set(0)
+        val file = logFile
+        runCatching { diskExecutor.execute { runCatching { if (file != null && file.exists()) file.delete() } } }
         record("I", TAG, "Log buffer cleared by user")
     }
 
-    /**
-     * Reads process-level logcat filtered to this application's PID.
-     * Captures all standard android.util.Log messages and framework events.
-     */
     fun getProcessLogcat(): String {
         return runCatching {
             val pid = Process.myPid()
@@ -113,14 +211,6 @@ object AppLogRecorder {
         }.getOrElse { "Failed to read process logcat: ${it.localizedMessage}" }
     }
 
-    /**
-     * Compiles a comprehensive diagnostic report containing:
-     * - System & Hardware Metadata
-     * - Application State & Permissions
-     * - Complete Settings Configuration JSON
-     * - In-Memory Recorded Event Stream
-     * - Full Process Logcat
-     */
     suspend fun generateDiagnosticReport(context: Context, settings: SmartIslandSettings): String = withContext(Dispatchers.IO) {
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.US).format(Date())
         val displayMetrics = context.resources.displayMetrics
@@ -162,6 +252,7 @@ object AppLogRecorder {
             appendLine("Shizuku Authorized: $shizukuActive")
             appendLine("Notification Listener Enabled: ${isNotificationListenerEnabled(context)}")
             appendLine("App Usage Access: ${AppShortcutProvider.hasUsageAccess(context)}")
+            appendLine("Environment now: ${runCatching { EnvironmentDiagnostics.snapshot(context) }.getOrDefault("unavailable")}")
             appendLine()
             appendLine("--- 4. SMART ISLAND SETTINGS SNAPSHOT ---")
             appendLine(settings.toJson(appVersion = BuildConfig.VERSION_NAME))
@@ -184,9 +275,6 @@ object AppLogRecorder {
         }
     }
 
-    /**
-     * Exports the diagnostic report to the user-selected Storage Access Framework URI.
-     */
     suspend fun exportLogsToUri(
         context: Context,
         uri: Uri,
