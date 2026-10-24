@@ -7,11 +7,8 @@
 
 package com.agupta07505.smartisland.model
 
-/**
- * Utilities page of the quick-launch window: a 2x4 grid of utilities (one cell each) and app widgets (1x1 up to the
- * whole grid). Rules and saved form only; no Android types.
- */
-enum class UtilityType(val id: String) {
+/** IDs are persisted in quick-launch layouts. */
+enum class UtilityType(override val id: String) : StableId {
     MobileData("mobile_data"),
     WiFi("wifi"),
     Hotspot("hotspot"),
@@ -35,9 +32,8 @@ enum class UtilityType(val id: String) {
     val resizable: Boolean get() = this == AppWidget
 
     companion object {
-        fun fromId(id: String?): UtilityType? = entries.firstOrNull { it.id == id }
+        fun fromId(id: String?): UtilityType? = enumByIdOrNull(id)
 
-        /** Utilities that can be added once each, in the add menu's order. Widgets are added separately. */
         val singles: List<UtilityType> = entries.filter { it != AppWidget }
     }
 }
@@ -46,10 +42,6 @@ object UtilityGrid {
     const val ROWS = 2
     const val COLUMNS = 4
 
-    /**
-     * The page scrolls sideways through [TABS] tabs of [ROWS] x [COLUMNS] cells, stored as one tall grid: rows 0-1
-     * are the first tab, rows 2-3 the second.
-     */
     const val TABS = 2
     const val TOTAL_ROWS = ROWS * TABS
     const val NO_WIDGET = -1
@@ -59,10 +51,6 @@ object UtilityGrid {
     fun localRow(row: Int): Int = row % ROWS
 }
 
-/**
- * One thing on the grid. [row] and [col] are zero-based; [rowSpan] and [colSpan] are cells. [widgetId] is the Android
- * app widget id for an [UtilityType.AppWidget], else [UtilityGrid.NO_WIDGET].
- */
 data class UtilityPlacement(
     val type: UtilityType,
     val row: Int,
@@ -71,16 +59,13 @@ data class UtilityPlacement(
     val colSpan: Int = 1,
     val widgetId: Int = UtilityGrid.NO_WIDGET
 ) {
-    /** Stable identity: a utility is unique by type, a widget by its id. */
     val key: String get() = if (type == UtilityType.AppWidget) "widget:$widgetId" else type.id
 
     val bottom: Int get() = row + rowSpan
     val right: Int get() = col + colSpan
 
-    /** Tab this item sits on (an item never spans two tabs, see [isValid]). */
     val tab: Int get() = UtilityGrid.tabOfRow(row)
 
-    /** Inside the grid, spans of at least one cell, and a span the [type] allows. */
     val isValid: Boolean
         get() = rowSpan >= 1 && colSpan >= 1 &&
             row >= 0 && col >= 0 &&
@@ -99,12 +84,12 @@ object UtilityLayout {
 
     private const val VERSION_PREFIX = "v2:"
 
-    /** Layout as one string: `v2:` then `type,row,col,rowSpan,colSpan,widgetId` per item, joined by `;`. */
     fun encode(layout: List<UtilityPlacement>): String {
         val items = normalize(layout)
         if (items.isEmpty()) return ""
         return VERSION_PREFIX + items.joinToString(ITEM_SEPARATOR.toString()) {
-            listOf(it.type.id, it.row, it.col, it.rowSpan, it.colSpan, it.widgetId).joinToString(FIELD_SEPARATOR.toString())
+            listOf(it.type.id, it.row, it.col, it.rowSpan, it.colSpan, it.widgetId)
+                .joinToString(FIELD_SEPARATOR.toString())
         }
     }
 
@@ -125,15 +110,12 @@ object UtilityLayout {
         return normalize(if (current) items else items.map { it.transposed() })
     }
 
-    /**
-     * Cleans a layout: drops anything outside the grid, a second copy of a utility or widget id, a widget with no id,
-     * and anything overlapping an earlier item (first wins).
-     */
     fun normalize(layout: List<UtilityPlacement>): List<UtilityPlacement> {
         val kept = ArrayList<UtilityPlacement>()
         val keys = HashSet<String>()
         for (raw in layout) {
-            val p = if (raw.type.resizable) raw else raw.copy(rowSpan = 1, colSpan = 1, widgetId = UtilityGrid.NO_WIDGET)
+            val p = if (raw.type.resizable) raw else raw.copy(rowSpan = 1, colSpan = 1,
+                widgetId = UtilityGrid.NO_WIDGET)
             if (!p.isValid) continue
             if (!keys.add(p.key)) continue
             if (kept.any { it.overlaps(p) }) { keys.remove(p.key); continue }
@@ -142,14 +124,9 @@ object UtilityLayout {
         return kept
     }
 
-    /**
-     * True when [candidate] fits the grid and overlaps nothing, ignoring the item with key [ignoringKey] (the one
-     * being moved or resized).
-     */
     fun canPlace(layout: List<UtilityPlacement>, candidate: UtilityPlacement, ignoringKey: String? = null): Boolean =
         candidate.isValid && layout.none { it.key != ignoringKey && it.overlaps(candidate) }
 
-    /** First free spot, tab by tab and row by row, for a [rowSpan] x [colSpan] item; null when there is no room. */
     fun firstFreeSpot(layout: List<UtilityPlacement>, rowSpan: Int = 1, colSpan: Int = 1): Pair<Int, Int>? {
         for (tab in 0 until UtilityGrid.TABS) {
             for (local in 0..UtilityGrid.ROWS - rowSpan) {
@@ -168,17 +145,14 @@ object UtilityLayout {
 
     fun remove(layout: List<UtilityPlacement>, key: String): List<UtilityPlacement> = layout.filter { it.key != key }
 
-    /** Moves the item to ([row], [col]), keeping its size; unchanged when it would not fit. */
+    /** Moves the item to ([row], [col]) keeping its size, unchanged when it would not fit. */
     fun move(layout: List<UtilityPlacement>, key: String, row: Int, col: Int): List<UtilityPlacement> {
         val item = layout.firstOrNull { it.key == key } ?: return layout
         val moved = item.copy(row = row, col = col)
-        return if (canPlace(layout, moved, ignoringKey = key)) layout.map { if (it.key == key) moved else it } else layout
+        return if (canPlace(layout, moved,
+            ignoringKey = key)) layout.map { if (it.key == key) moved else it } else layout
     }
 
-    /**
-     * Drops the item [key] with its top-left on ([row], [col]). A free spot just moves it; landing on another item
-     * trades places with it when both fit; anything else leaves the layout unchanged.
-     */
     fun drop(layout: List<UtilityPlacement>, key: String, row: Int, col: Int): List<UtilityPlacement> {
         val item = layout.firstOrNull { it.key == key } ?: return layout
         if (row == item.row && col == item.col) return layout
@@ -200,10 +174,6 @@ object UtilityLayout {
         }
     }
 
-    /**
-     * Cell [item] snaps to when dragged so its top-left sits at ([x], [y]) px, with [pitchX] x [pitchY] px per cell;
-     * kept inside the grid and the item's own tab ([y] is measured from that tab's top).
-     */
     fun snapCell(item: UtilityPlacement, x: Float, y: Float, pitchX: Float, pitchY: Float): Pair<Int, Int> {
         if (pitchX <= 0f || pitchY <= 0f) return item.row to item.col
         val col = Math.round(x / pitchX).coerceIn(0, maxOf(0, UtilityGrid.COLUMNS - item.colSpan))
@@ -211,19 +181,18 @@ object UtilityLayout {
         return item.tab * UtilityGrid.ROWS + local to col
     }
 
-    /** Resizes from the top-left corner; unchanged for a fixed-size utility or when it would not fit. */
+    /** Resizes from the top-left corner, unchanged for a fixed-size utility or when it would not fit. */
     fun resize(layout: List<UtilityPlacement>, key: String, rowSpan: Int, colSpan: Int): List<UtilityPlacement> {
         val item = layout.firstOrNull { it.key == key } ?: return layout
         if (!item.type.resizable) return layout
         val resized = item.copy(rowSpan = rowSpan, colSpan = colSpan)
-        return if (canPlace(layout, resized, ignoringKey = key)) layout.map { if (it.key == key) resized else it } else layout
+        return if (canPlace(layout, resized,
+            ignoringKey = key)) layout.map { if (it.key == key) resized else it } else layout
     }
 
-    /** Rows of the first tab the layout reaches down to (0 when empty); the page is only as tall as needed. */
     fun usedRows(layout: List<UtilityPlacement>): Int =
         layout.filter { it.tab == 0 }.maxOfOrNull { it.bottom } ?: 0
 
-    /** True when every cell of [tab] is covered by an item. */
     fun isTabFull(layout: List<UtilityPlacement>, tab: Int): Boolean {
         val base = tab * UtilityGrid.ROWS
         for (r in base until base + UtilityGrid.ROWS) for (c in 0 until UtilityGrid.COLUMNS) {
