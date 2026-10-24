@@ -21,7 +21,6 @@ import android.os.SystemClock
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 
-/** What a media session says right now. */
 data class MediaSnapshot(
     val packageName: String,
     val title: String?,
@@ -30,11 +29,11 @@ data class MediaSnapshot(
     val durationMs: Long?,
     val positionMs: Long?,
     val isPlaying: Boolean,
-    /** The session this snapshot came from; null when unknown (then cards are matched by package only). */
+    /** Session this snapshot came from, null when unknown (cards are then matched by package only). */
     val sessionToken: MediaSession.Token? = null
 )
 
-/** True while a session is playing or only briefly between playing states (buffering, connecting, skipping). */
+/** True while playing or only briefly between playing states (buffering, connecting, skipping). */
 fun isPlayingLike(state: Int?): Boolean = when (state) {
     PlaybackState.STATE_PLAYING,
     PlaybackState.STATE_BUFFERING,
@@ -47,11 +46,10 @@ fun isPlayingLike(state: Int?): Boolean = when (state) {
     else -> false
 }
 
-/** Applies a [MediaSnapshot] to a stored Music card; fields the session does not report are kept. */
 object MediaCardPatch {
     fun appliesTo(card: IslandNotification, snapshot: MediaSnapshot): Boolean {
         if (card.mode != IslandMode.Music || card.packageName != snapshot.packageName) return false
-        // An app with two sessions: each session only updates its own card.
+        // An app with two sessions: each session only updates its own card
         val cardToken = card.mediaToken
         val snapToken = snapshot.sessionToken
         return cardToken == null || snapToken == null || cardToken == snapToken
@@ -62,9 +60,9 @@ object MediaCardPatch {
         val trackChanged = newTitle != null && old.title.isNotBlank() && newTitle != old.title
         return old.copy(
             title = newTitle ?: old.title,
-            // A new track with no artist known yet must not keep the previous artist.
+            // A new track with no artist known yet must not keep the previous artist
             text = s.artist?.takeIf { it.isNotBlank() } ?: if (trackChanged) "" else old.text,
-            // The previous track's cover is wrong too; the notification brings the new one shortly.
+            // The previous track's cover is wrong too; the notification brings the new one shortly
             largeIcon = s.artwork ?: if (trackChanged) null else old.largeIcon,
             mediaDurationMs = s.durationMs ?: if (trackChanged) null else old.mediaDurationMs,
             mediaPositionMs = s.positionMs ?: old.mediaPositionMs,
@@ -73,10 +71,7 @@ object MediaCardPatch {
     }
 }
 
-/**
- * Listens to every active media session and reports a [MediaSnapshot] when its track or play state changes. Needs
- * notification-listener access (the same one the island already has).
- */
+/** Listens to every active media session, reports a [MediaSnapshot] when its track or play state changes. */
 class MediaSessionWatcher(
     context: Context,
     private val listener: ComponentName,
@@ -114,8 +109,10 @@ class MediaSessionWatcher(
 
     fun stop() {
         if (started) {
-            runCatchingLogged(TAG, "Media session watcher could not stop") {
+            try {
                 manager?.removeOnActiveSessionsChangedListener(sessionsListener)
+            } catch (e: Exception) {
+                AppLogRecorder.e(TAG, "Media session watcher could not stop", e)
             }
         }
         started = false
@@ -129,7 +126,7 @@ class MediaSessionWatcher(
         for ((token, controller) in live) {
             if (token in watched) continue
             val w = runCatchingLogged(TAG, "Media session could not be read") {
-                // One read each when the session appears; afterwards the callbacks hand over every change.
+                // One read each when the session appears, then the callbacks hand over every change
                 Watched(controller, controller.metadata, controller.playbackState)
             } ?: continue
             val callback = object : MediaController.Callback() {
@@ -148,8 +145,10 @@ class MediaSessionWatcher(
                 }
             }
             w.callback = callback
-            runCatchingLogged(TAG, "Media session callback could not be registered") {
+            try {
                 controller.registerCallback(callback, handler)
+            } catch (e: Exception) {
+                AppLogRecorder.e(TAG, "Media session callback could not be registered", e)
             }
             watched[token] = w
         }
@@ -158,7 +157,8 @@ class MediaSessionWatcher(
     private fun release(w: Watched) {
         w.report?.let { handler.removeCallbacks(it) }
         w.report = null
-        w.callback?.let { cb -> runCatchingLogged(TAG, "Media session callback could not be removed") { w.controller.unregisterCallback(cb) } }
+        w.callback?.let { cb ->
+            runCatchingLogged(TAG, "Media session callback could not be removed") { w.controller.unregisterCallback(cb) } }
         w.callback = null
     }
 
@@ -171,8 +171,8 @@ class MediaSessionWatcher(
             onSnapshot(snapshot)
         }
         w.report = task
-        // A drop out of "playing" waits a moment: track changes and audio-focus blips pass through
-        // paused states for a second or less and must not reorder the cutouts.
+        // A drop out of "playing" waits a moment, track changes and audio-focus blips pass through paused for a second
+        // or less and must not reorder the cutouts
         val dropping = w.lastReportedPlaying && !isPlayingLike(w.state?.state)
         handler.postDelayed(task, if (dropping) PAUSE_CONFIRM_MS else MERGE_MS)
     }
@@ -182,7 +182,8 @@ class MediaSessionWatcher(
         val st = w.state
         return MediaSnapshot(
             packageName = w.controller.packageName,
-            title = md?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE),
+            title = md?.getString(MediaMetadata.METADATA_KEY_TITLE)
+                ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE),
             artist = md?.getString(MediaMetadata.METADATA_KEY_ARTIST)
                 ?: md?.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
                 ?: md?.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST),
@@ -198,14 +199,14 @@ class MediaSessionWatcher(
 
     private companion object {
         const val TAG = "MediaSessionWatcher"
-        /** Metadata and playback callbacks of one track change arrive within a few ms of each other. */
+        /** Metadata and playback callbacks of 1 track change arrive within a few ms of each other. */
         const val MERGE_MS = 30L
-        /** How long a drop out of "playing" must hold before the island believes it. */
+        /** Time a drop out of "playing" must hold before the island believes it. */
         const val PAUSE_CONFIRM_MS = 1200L
     }
 }
 
-/** Where a session's playhead is now, from its last report (no call into the app). Null when the position is unknown. */
+/** Where the playhead is now, from the last report (no call into the app). Null when unknown. */
 fun estimatedPositionMs(state: PlaybackState): Long? {
     if (state.position < 0) return null
     if (state.state != PlaybackState.STATE_PLAYING) return state.position

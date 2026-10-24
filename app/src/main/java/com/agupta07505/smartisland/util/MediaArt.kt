@@ -9,35 +9,36 @@ package com.agupta07505.smartisland.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaMetadata
 import android.media.session.MediaController
+import android.net.Uri
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.agupta07505.smartisland.model.IslandNotification
-import com.agupta07505.smartisland.ui.expanded.mediaIsExplicit
 
 /**
- * Everything the media card needs from the session's metadata, worked out off the main thread so that the tap that
- * opens the island does not leave the collapsed pill looking dead.
+ * What the media card needs from the session's metadata, read off the main thread so the tap that opens the island does
+ * not leave the pill looking dead
  */
 object MediaArt {
 
-    /** [image] is the background picture, already reduced (and, when [blurred], already blurred): drawn as a plain image. */
+    /** [image] is the background, already reduced (and already blurred when [blurred]), drawn as a plain image. */
     class Result(
         val image: ImageBitmap?,
         val tint: ArtworkTint?,
         val hasArtwork: Boolean,
         val explicit: Boolean,
         /**
-         * True when the picture is the session's own (full size); false for the notification's small picture or its
-         * app icon, which may still be replaced.
+         * True for the session's own picture (full size), false for the notification's small picture or app icon, which
+         * may still be replaced
          */
         val fromSession: Boolean = false,
-        /** True when the picture is only the app's own icon (no session picture, no large icon). */
+        /** Picture is only the app's own icon (no session picture, no large icon). */
         val isFallbackIcon: Boolean = false
     )
 
-    private const val MAX_EDGE_PX = 1080
+    private const val MAX_EDGE_PX = 2048
 
     private const val BLUR_WORK_EDGE_PX = 128
 
@@ -60,7 +61,8 @@ object MediaArt {
 
     private fun goodKey(cardKey: String, blurRadiusDp: Float?) = "$cardKey|${blurRadiusDp?.toInt() ?: -1}"
 
-    fun lastGood(cardKey: String, blurRadiusDp: Float?): Result? = synchronized(lastGoodCovers) { lastGoodCovers[goodKey(cardKey, blurRadiusDp)] }
+    fun lastGood(cardKey: String, blurRadiusDp: Float?): Result? =
+            synchronized(lastGoodCovers) { lastGoodCovers[goodKey(cardKey, blurRadiusDp)] }
 
     private val lastGlyphs = object : LinkedHashMap<String, Bitmap>(8, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Bitmap>?): Boolean = size > CACHE_SIZE
@@ -78,11 +80,12 @@ object MediaArt {
     }
 
     /**
-     * What the card can show at once, without any metadata read: the notification's own 128 px picture (not blurred)
-     * and its colour. Only used for the moment before [load] has finished.
+     * What the card can show at once, no metadata read: the notification's own 128 px picture (not blurred) and its
+     * colour. Only for the moment before [load] finishes
      */
     fun quick(n: IslandNotification?, blurRadiusDp: Float? = null): Result {
-        // No picture of its own yet (a track change, the picture comes a moment later): the cover shown before, not the app icon.
+        // No picture of its own yet (a track change, it comes a moment later): keep the cover shown before, not the app
+        // icon
         if (n != null && n.largeIcon == null) lastGood(n.key, blurRadiusDp)?.let { return it }
         val small = n?.largeIcon ?: n?.icon
         return Result(
@@ -95,8 +98,8 @@ object MediaArt {
     }
 
     /**
-     * Blocking: call from a background thread. [blurRadiusDp] null = no blur (the picture is only reduced), else the
-     * radius the media blur setting asks for.
+     * Blocking, call from a background thread. [blurRadiusDp] null means no blur (only reduced), else the media blur
+     * setting's radius
      */
     fun load(context: Context, n: IslandNotification, blurRadiusDp: Float?): Result {
         val key = keyFor(n, blurRadiusDp)
@@ -107,12 +110,27 @@ object MediaArt {
         val meta = runCatchingLogged("MediaArt", "Failed to read the metadata") { controller?.metadata }
         val sessionArt = meta?.let { m ->
             runCatchingLogged("MediaArt", "Failed to extract metadata artwork") {
-                m.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                val uriArt = sequenceOf(
+                    MediaMetadata.METADATA_KEY_ART_URI,
+                    MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                    MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI
+                ).mapNotNull { key ->
+                    m.getString(key)?.takeIf { it.isNotBlank() }?.let(Uri::parse)
+                }.mapNotNull { uri ->
+                    quietly {
+                        context.contentResolver.openInputStream(uri)
+                            ?.use { stream -> BitmapFactory.decodeStream(stream) }
+                    }
+                }.firstOrNull()
+
+                uriArt
+                    ?: m.getBitmap(MediaMetadata.METADATA_KEY_ART)
                     ?: m.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                     ?: m.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
             }
         }
-        // The session's own artwork first (full size, what the shade draws); the notification's large icon is only 128 px.
+        // The session's own artwork first (full size, what the shade draws), the notification's large icon is only 128
+        // px
         val source = sessionArt ?: n.largeIcon ?: n.icon
         val readable = source?.let { toReadable(it) }
         AppLogRecorder.i(
@@ -134,14 +152,14 @@ object MediaArt {
         if (!result.isFallbackIcon && result.hasArtwork) {
             synchronized(lastGoodCovers) { lastGoodCovers[goodKey(n.key, blurRadiusDp)] = result }
         }
-        // The session often posts the title before its picture: a result without the session's picture is not kept.
+        // The session often posts the title before its picture, a result without the session's picture is not kept
         if (sessionArt != null) synchronized(cache) { cache[key] = result }
         return result
     }
 
     /**
-     * A notification card's own backdrop picture, reduced once so that drawing it back up is the blur (no render
-     * effect every frame of the card's animation). Null radius = unchanged picture.
+     * The notification card's backdrop, reduced once so drawing it back up is the blur (no render effect every frame of
+     * the animation). Null radius leaves the picture unchanged
      */
     fun blurredBackdrop(source: Bitmap, blurRadiusDp: Float?): Bitmap? {
         if (blurRadiusDp == null) return null
@@ -152,13 +170,15 @@ object MediaArt {
     private fun toReadable(bitmap: Bitmap): Bitmap? =
         if (bitmap.config == Bitmap.Config.HARDWARE) bitmap.copy(Bitmap.Config.ARGB_8888, false) else bitmap
 
-    private fun reduce(source: Bitmap, blurRadiusDp: Float?): Bitmap? = runCatchingLogged("MediaArt", "Failed to reduce the artwork") {
+    private fun reduce(source: Bitmap, blurRadiusDp: Float?): Bitmap? =
+            runCatchingLogged("MediaArt", "Failed to reduce the artwork") {
         val longest = maxOf(source.width, source.height).coerceAtLeast(1)
         val edge = if (blurRadiusDp == null) MAX_EDGE_PX else BLUR_WORK_EDGE_PX
         val scale = minOf(1f, edge.toFloat() / longest)
         val w = (source.width * scale).toInt().coerceAtLeast(1)
         val h = (source.height * scale).toInt().coerceAtLeast(1)
-        val scaled = if (w == source.width && h == source.height) source else Bitmap.createScaledBitmap(source, w, h, true)
+        val scaled = if (w == source.width && h == source.height) source else Bitmap.createScaledBitmap(source, w, h,
+            true)
         if (blurRadiusDp == null) return@runCatchingLogged scaled
         val radiusPx = (blurRadiusDp * BLUR_PX_PER_DP).toInt().coerceIn(1, maxOf(1, minOf(w, h) / 2))
         blur(scaled, radiusPx)
@@ -202,3 +222,10 @@ object MediaArt {
         }
     }
 }
+
+private const val EXPLICIT_KEY = "android.media.IS_EXPLICIT"
+
+internal fun mediaIsExplicit(meta: MediaMetadata): Boolean =
+    runCatchingLogged("MediaShade", "Failed to read the explicit flag") {
+        meta.description?.extras?.getLong(EXPLICIT_KEY, 0L) == 1L || meta.getLong(EXPLICIT_KEY) == 1L
+    } == true

@@ -10,11 +10,8 @@ package com.agupta07505.smartisland.util
 import android.app.Notification
 import kotlin.math.abs
 
-/**
- * Elapsed time of a screen / voice recording, tracked from the recorder's own notification.
- */
 object RecordingClock {
-    /** [startMillis] is `now - elapsed` while running; [frozenMs] is non-null while paused / finished. */
+    /** [startMillis] is `now - elapsed` while running, [frozenMs] is non-null while paused / finished. */
     data class State(val startMillis: Long, val frozenMs: Long?) {
         fun elapsedMs(nowMillis: Long): Long = (frozenMs ?: (nowMillis - startMillis)).coerceAtLeast(0L)
     }
@@ -34,11 +31,11 @@ object RecordingClock {
     /** First "mm:ss" or "h:mm:ss" found in the given texts, in milliseconds. */
     fun parseElapsedMs(vararg texts: String?): Long? {
         for (text in texts) {
-            if (text.isNullOrBlank()) continue
-            val m = TIME.find(text) ?: continue
-            val hours = m.groupValues[1].toLongOrNull() ?: 0L
-            val minutes = m.groupValues[2].toLongOrNull() ?: continue
-            val seconds = m.groupValues[3].toLongOrNull() ?: continue
+            if (text == null) continue
+            val match = TIME.find(text) ?: continue
+            val hours = match.groupValues[1].toLongOrNull() ?: 0L
+            val minutes = match.groupValues[2].toLong()
+            val seconds = match.groupValues[3].toLong()
             return ((hours * 60 + minutes) * 60 + seconds) * 1000L
         }
         return null
@@ -62,15 +59,15 @@ object RecordingClock {
     }
 
     /**
-     * The state a post continues from: the card's own, or, for a paused post, the app's last one. A running post
-     * never borrows another card's clock.
+     * State a post continues from: the card's own, or for a paused post the app's last one. A running post never
+     * borrows another card's clock
      */
     fun continuation(own: State?, lastForApp: State?, paused: Boolean): State? =
         own ?: lastForApp?.takeIf { paused }
 
     /**
-     * Paused state that survives a clock app's cancel-and-repost (the new post may show neither "Resume" nor
-     * "paused"). Counts as running again only once the app offers "Pause".
+     * Paused state that survives a clock app's cancel-and-repost (the new post may show neither "Resume" nor "paused").
+     * Running again only once the app offers "Pause"
      */
     fun resolvePaused(detected: Boolean, lastForApp: State?, actionTitles: List<String>): Boolean {
         if (detected) return true
@@ -80,8 +77,8 @@ object RecordingClock {
     }
 
     /**
-     * The next clock state. [exactFrozenMs] ([TimerClock.elapsedFromChronometer]) wins while paused; [exactStart]
-     * means [chronometerBaseMs] is exact, so the start is not smoothed towards the previous one.
+     * Next clock state. [exactFrozenMs] ([TimerClock.elapsedFromChronometer]) wins while paused, [exactStart] means
+     * [chronometerBaseMs] is exact so the start is not smoothed towards the previous one
      */
     fun next(
         previous: State?,
@@ -102,7 +99,7 @@ object RecordingClock {
             return previous
         }
         if (paused || finished) {
-            // A paused post often prints 00:00.
+            // A paused post often prints 00:00
             val frozen = parsedMs?.takeIf { it > 0L }
                 ?: previousElapsed?.takeIf { it > 0L }
                 ?: fallbackFrozenMs?.takeIf { it > 0L }
@@ -116,22 +113,20 @@ object RecordingClock {
             ?: previousElapsed
             ?: 0L
         val candidateStart = nowMillis - elapsed
-        // Keep the old start unless it moved beyond whole-second jitter.
+        // keep the old start unless it moved beyond whole-second jitter
         val start = if (!exactStart && previous != null && previous.frozenMs == null &&
             abs(previous.startMillis - candidateStart) <= JITTER_MS
         ) previous.startMillis else candidateStart
         return State(startMillis = start, frozenMs = null)
     }
 
-    /** True when a recorder's notification is a paused recording. */
     fun looksPaused(n: Notification): Boolean {
-        val titles = runCatching { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
-            .getOrDefault(emptyList())
+        val titles = quietly(emptyList()) { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
         val ex = n.extras
-        val text = runCatching {
+        val text = quietly("") {
             "${ex?.getCharSequence(Notification.EXTRA_TITLE)} ${ex?.getCharSequence(Notification.EXTRA_TEXT)} " +
                 "${ex?.getCharSequence(Notification.EXTRA_BIG_TEXT)}"
-        }.getOrDefault("")
+        }
         return isPaused(titles, text)
     }
 }

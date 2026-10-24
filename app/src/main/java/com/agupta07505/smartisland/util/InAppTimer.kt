@@ -18,16 +18,15 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import com.agupta07505.smartisland.di.SmartIslandRepositories
+import com.agupta07505.smartisland.model.FallbackTitles
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
 import com.agupta07505.smartisland.model.TimerState
-import com.agupta07505.smartisland.receiver.TimerActionReceiver
 
-/**
- * A countdown the island runs itself, shown as the normal Timer card. Its buttons are broadcasts to
- * [TimerActionReceiver].
- */
+private const val TAG = "InAppTimer"
+
+/** Countdown the island runs itself, shown as the Timer card. Buttons are broadcasts to `TimerActionReceiver`. */
 object InAppTimer {
     const val KEY = "smartisland.timer"
 
@@ -43,7 +42,7 @@ object InAppTimer {
     private const val FINISHED_LINGER_MS = 60_000L
     private const val RING_MS = 8_000L
 
-    // The labels stay English on purpose: the expanded card tells Pause, Resume, +1 min and Stop apart by these words.
+    // Labels stay English on purpose, the card tells Pause, Resume, +1 min and Stop apart by these words
     private const val LABEL_PAUSE = "Pause"
     private const val LABEL_RESUME = "Resume"
     private const val LABEL_ADD_MINUTE = "+1 min"
@@ -55,10 +54,10 @@ object InAppTimer {
     @Volatile var state: TimerState = TimerState()
         private set
 
-    /** True while a timer exists (running, paused or finished and not yet stopped): the Timer tile lights up. */
+    /** True while a timer exists (running, paused or finished, not yet stopped), lights the Timer tile. */
     val isActive: Boolean get() = state.active
 
-    /** Safe to call repeatedly. */
+    /** Safe to call repeatedly */
     fun restore(context: Context) {
         val app = context.applicationContext
         val saved = TimerState.decode(prefs(app).getString(PREF_STATE, null))
@@ -66,12 +65,11 @@ object InAppTimer {
         state = saved
         val now = System.currentTimeMillis()
         if (state.isDue(now)) {
-            // Ended while the app was away: ring only if that was just now, otherwise the timer is long over.
+            // Ended while the app was away: ring only if that was just now
             if (now - state.endMs > FINISHED_LINGER_MS) stop(app) else finish(app)
             return
         }
         if (state.finished) {
-            // A finished timer that outlived a restart is cleared.
             stop(app)
             return
         }
@@ -99,7 +97,7 @@ object InAppTimer {
         cancelSchedule(app)
         state = TimerState()
         save(app)
-        runCatching { SmartIslandRepositories.notificationRepository(app).removeNotification(KEY) }
+        runCatchingLogged(TAG, "Could not remove the timer card") { SmartIslandRepositories.notificationRepository(app).removeNotification(KEY) }
     }
 
     fun handle(context: Context, action: String?) {
@@ -133,7 +131,8 @@ object InAppTimer {
     }
 
     private val clearRunnable = Runnable { appContext?.let { if (state.finished) stop(it) } }
-    private val finishRunnable = Runnable { appContext?.let { if (state.isDue(System.currentTimeMillis())) finish(it) } }
+    private val finishRunnable =
+        Runnable { appContext?.let { if (state.isDue(System.currentTimeMillis())) finish(it) } }
     @Volatile private var appContext: Context? = null
 
     private fun schedule(app: Context) {
@@ -145,10 +144,12 @@ object InAppTimer {
         if (!s.active || !s.running || s.finished) return
         val delay = (s.endMs - System.currentTimeMillis()).coerceAtLeast(0L)
         main.postDelayed(finishRunnable, delay)
-        // The backup: wakes the app if the process is gone by then (no special permission; may run a little late in doze).
-        runCatching {
+        // backup that wakes the app if the process is gone, no special permission, may run late in doze
+        try {
             val am = app.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, s.endMs, broadcast(app, ACTION_FINISH))
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not set the backup alarm", e)
         }
     }
 
@@ -159,26 +160,34 @@ object InAppTimer {
     }
 
     private fun cancelAlarm(app: Context) {
-        runCatching { (app.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(broadcast(app, ACTION_FINISH)) }
+        runCatchingLogged(TAG, "Could not cancel the alarm") { (app.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(broadcast(app, ACTION_FINISH)) }
     }
 
     private fun ring(app: Context) {
         silence()
-        runCatching {
+        try {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             ringtone = RingtoneManager.getRingtone(app, uri)?.also { it.play() }
             main.postDelayed({ silence() }, RING_MS)
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not play the timer ringtone", e)
         }
-        runCatching {
+        try {
             @Suppress("DEPRECATION")
             val vibrator = app.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 250, 400, 250, 400), -1))
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not vibrate for the timer", e)
         }
     }
 
     private fun silence() {
-        runCatching { ringtone?.stop() }
+        try {
+            ringtone?.stop()
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not stop the ringtone", e)
+        }
         ringtone = null
     }
 
@@ -188,7 +197,8 @@ object InAppTimer {
         val now = System.currentTimeMillis()
         val actions = buildList {
             if (!s.finished) {
-                add(IslandNotificationAction(if (s.running) LABEL_PAUSE else LABEL_RESUME, broadcast(app, ACTION_TOGGLE)))
+                add(IslandNotificationAction(if (s.running) LABEL_PAUSE else LABEL_RESUME,
+                    broadcast(app, ACTION_TOGGLE)))
                 add(IslandNotificationAction(LABEL_ADD_MINUTE, broadcast(app, ACTION_ADD_MINUTE)))
             }
             add(IslandNotificationAction(LABEL_STOP, broadcast(app, ACTION_STOP)))
@@ -198,27 +208,32 @@ object InAppTimer {
             key = KEY,
             packageName = app.packageName,
             appName = "Timer",
-            title = "Timer",
+            title = FallbackTitles.TIMER,
             text = when {
                 s.finished -> "Time's up"
                 s.running -> "Running"
                 else -> "Paused"
             },
-            // A running timer counts down to its end; a paused or finished one does not move.
+            // A running timer counts down to its end; a paused or finished one does not move
             timeMillis = if (s.running) s.endMs else now + remaining,
             actionIntents = actions,
-            // A tap on the card does nothing; without this it would open this app.
+            // A tap on the card does nothing; without this it would open this app
             contentIntent = broadcast(app, ACTION_NOOP),
             mode = IslandMode.Timer,
             recordingFrozenMs = if (s.running) null else remaining,
-            recordingPaused = !s.running && !s.finished
+            recordingPaused = !s.running && !s.finished,
+            timerTotalMs = s.totalMs.takeIf { it > 0L },
+            quietArrival = true,
+            timerFinished = s.finished
         )
-        runCatching { SmartIslandRepositories.notificationRepository(app).postNotification(card, autoExpand = false) }
+        // The end of the timer is announced, every other update of the card stays quiet
+        runCatchingLogged(TAG, "Could not post the timer card") { SmartIslandRepositories.notificationRepository(app).postNotification(card, autoExpand = s.finished) }
     }
 
     private fun broadcast(app: Context, action: String): PendingIntent {
-        val intent = Intent(app, TimerActionReceiver::class.java).setAction(action)
-        return PendingIntent.getBroadcast(app, action.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val intent = Intent().setClassName(app, AppComponents.TIMER_RECEIVER).setAction(action)
+        return PendingIntent.getBroadcast(app, action.hashCode(), intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     private fun save(app: Context) {
