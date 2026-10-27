@@ -12,14 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-/**
- * The "try the Shizuku methods" check offered during setup. Shell commands differ between phones and Android versions, so
- * instead of guessing, the app tries each Shizuku method once and remembers what worked. The Utilities page then uses a
- * shell method only when it passed, and falls back to the system page (or the quick settings) when it did not.
- *
- * Wi-Fi, mobile data, the screen recorder and cache trimming are only probed (nothing is switched). The hotspot is really
- * switched on and off once, because that is the only way to know the command works; the person is told first.
- */
+/** Tests the available Shizuku shell methods and remembers the first working option. */
 object ShizukuMethodCheck {
     enum class Method(val id: String) {
         Shell("shell"),
@@ -37,7 +30,10 @@ object ShizukuMethodCheck {
     private const val PREF_CHECKED = "checked"
     internal const val OK_MARKER = "SI_OK"
 
-    /** The read-only probe of a method: prints [OK_MARKER] when the tool is there. Null for the hotspot, which is tested for real. */
+    /**
+     * Read-only probe of a method: prints [OK_MARKER] when the tool is there. Null for the hotspot, which is tested for
+     * real
+     */
     internal fun probeCommand(method: Method): String? = when (method) {
         Method.Shell -> "id >/dev/null 2>&1 && echo $OK_MARKER"
         Method.WifiData -> "command -v svc >/dev/null 2>&1 && echo $OK_MARKER"
@@ -50,7 +46,7 @@ object ShizukuMethodCheck {
 
     fun hasRun(context: Context): Boolean = prefs(context).getBoolean(PREF_CHECKED, false)
 
-    /** The outcomes of the last check; every method is [Outcome.NotTested] before the first one. */
+    /** Outcomes of the last check, every method is [Outcome.NotTested] before the first. */
     fun saved(context: Context): Map<Method, Outcome> {
         val p = prefs(context)
         return Method.entries.associateWith { m ->
@@ -64,15 +60,15 @@ object ShizukuMethodCheck {
 
     fun works(context: Context, method: Method): Boolean = saved(context)[method] == Outcome.Works
 
-    /** Whether a shell method may be used: Shizuku is ready and the method did not fail a check. */
+    /** True if a shell method may be used: Shizuku is ready and the method did not fail a check. */
     fun usable(context: Context, method: Method): Boolean {
         if (!ShizukuManager.isBinderAvailable() || !ShizukuManager.hasPermission()) return false
         return saved(context)[method] != Outcome.Missing
     }
 
     /**
-     * Runs the check and saves the outcomes. [testHotspot] switches the hotspot on and off once; without it the
-     * hotspot is left as it was (not tested).
+     * Runs the check and saves the outcomes. [testHotspot] switches the hotspot on and off once, without it the hotspot
+     * is left as it was (not tested)
      */
     suspend fun run(context: Context, testHotspot: Boolean): List<Result> = withContext(Dispatchers.IO) {
         val app = context.applicationContext
@@ -102,7 +98,7 @@ object ShizukuMethodCheck {
         if (wasOn) return Outcome.NotTested // leave a hotspot that is already in use alone
         ShizukuManager.runShellForOutput(HotspotUtil.START_COMMAND)
         val cameOn = waitFor(on = true) { HotspotUtil.isOn(app) }
-        // Always try to put it back, whatever the answer.
+        // Always try to put it back, whatever the answer
         ShizukuManager.runShellForOutput(HotspotUtil.STOP_COMMAND)
         waitFor(on = false) { HotspotUtil.isOn(app) }
         return if (cameOn) Outcome.Works else Outcome.Missing

@@ -12,20 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-
-data class GitHubRelease(
-    val tagName: String,
-    val name: String,
-    val body: String,
-    val htmlUrl: String,
-    val publishedAt: String,
-    val isNewer: Boolean,
-    val downloadUrl: String?
-)
 
 data class GitHubReleaseItem(
     val tagName: String,
@@ -71,46 +59,9 @@ object GitHubApiService {
     private const val READ_TIMEOUT_MS = 6000
     private const val USER_AGENT = "SmartIsland-App"
 
-    /** Sends no user data. */
-    suspend fun getLatestRelease(currentVersion: String = BuildConfig.VERSION_NAME): Result<GitHubRelease> = withContext(Dispatchers.IO) {
-        runCatching {
-            val jsonStr = makeHttpGet("$BASE_URL/releases/latest")
-            val json = JSONObject(jsonStr)
-            val tagName = json.optString("tag_name", "")
-            val name = json.optString("name", tagName)
-            val body = json.optString("body", "")
-            val htmlUrl = json.optString("html_url", "https://github.com/$REPO_OWNER/$REPO_NAME/releases")
-            val publishedAt = json.optString("published_at", "")
-
-            var downloadUrl: String? = null
-            val assets = json.optJSONArray("assets")
-            if (assets != null && assets.length() > 0) {
-                for (i in 0 until assets.length()) {
-                    val asset = assets.getJSONObject(i)
-                    val assetName = asset.optString("name", "")
-                    if (assetName.endsWith(".apk", ignoreCase = true)) {
-                        downloadUrl = asset.optString("browser_download_url").takeIf { it.isNotBlank() }
-                        break
-                    }
-                }
-            }
-
-            val isNewer = isNewerVersion(tagName, currentVersion)
-
-            GitHubRelease(
-                tagName = tagName,
-                name = name,
-                body = body,
-                htmlUrl = htmlUrl,
-                publishedAt = publishedAt,
-                isNewer = isNewer,
-                downloadUrl = downloadUrl ?: htmlUrl
-            )
-        }
-    }
-
-    suspend fun getAllReleases(currentVersion: String = BuildConfig.VERSION_NAME): Result<List<GitHubReleaseItem>> = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun getAllReleases(currentVersion: String = BuildConfig.VERSION_NAME): Result<List<GitHubReleaseItem>> =
+            withContext(Dispatchers.IO) {
+        runSuspendCatching {
             val jsonStr = makeHttpGet("$BASE_URL/releases?per_page=50")
             val array = JSONArray(jsonStr)
             val list = mutableListOf<GitHubReleaseItem>()
@@ -158,7 +109,7 @@ object GitHubApiService {
 
     /** Sends no user data. */
     suspend fun getContributors(): Result<List<GitHubContributor>> = withContext(Dispatchers.IO) {
-        runCatching {
+        runSuspendCatching {
             val jsonStr = makeHttpGet("$BASE_URL/contributors?per_page=20")
             val array = JSONArray(jsonStr)
             val list = mutableListOf<GitHubContributor>()
@@ -178,7 +129,7 @@ object GitHubApiService {
     }
 
     suspend fun getRecentCommits(limit: Int = 5): Result<List<GitHubCommit>> = withContext(Dispatchers.IO) {
-        runCatching {
+        runSuspendCatching {
             val jsonStr = makeHttpGet("$BASE_URL/commits?per_page=$limit")
             val array = JSONArray(jsonStr)
             val list = mutableListOf<GitHubCommit>()
@@ -208,7 +159,7 @@ object GitHubApiService {
     }
 
     suspend fun getRepoStats(): Result<GitHubRepoStats> = withContext(Dispatchers.IO) {
-        runCatching {
+        runSuspendCatching {
             val jsonStr = makeHttpGet(BASE_URL)
             val json = JSONObject(jsonStr)
             val stars = json.optInt("stargazers_count", 0)

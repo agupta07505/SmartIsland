@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.util
 
-/** Stops taps that are really the end of a scroll in the reader text or its thumbnail column. */
 class ReaderScrollTracker {
     var scrolling: Boolean = false
         private set
@@ -39,12 +38,14 @@ class ReaderScrollTracker {
     }
 }
 
-/** A tap this soon after a reader scroll stopped is the scroll's own (a finger landing to stop the fling, or just after). */
+/**
+ * A tap this soon after a reader scroll stopped is the scroll's own (a finger landing to stop the fling, or just after)
+ */
 const val READER_SCROLL_SETTLE_MS = 250L
 
 /**
- * True when a touch that ended in a lift may count as a tap as far as the reader scroll goes: it did not start on a
- * scrolling reader, and the reader did not move while the finger was down.
+ * True when a touch that ended in a lift may count as a tap: it did not start on a scrolling reader, and the reader did
+ * not move while the finger was down
  */
 fun readerTapAccepted(startedOnScroll: Boolean, movesAtDown: Long, movesAtLift: Long): Boolean =
     !startedOnScroll && movesAtDown == movesAtLift

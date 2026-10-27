@@ -19,7 +19,8 @@ object UnlockTypeTracker {
 
     fun record(type: UnlockType, nowMillis: Long): Boolean {
         val prev = _last.value
-        if (prev != null && prev.type == type && nowMillis - prev.atMillis in 0..FaceUnlockLog.SAME_UNLOCK_MS) return false
+        if (prev != null && prev.type == type
+            && nowMillis - prev.atMillis in 0..FaceUnlockLog.SAME_UNLOCK_MS) return false
         _last.value = UnlockRecord(type, nowMillis)
         return true
     }

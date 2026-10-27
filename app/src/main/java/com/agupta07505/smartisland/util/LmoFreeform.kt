@@ -12,6 +12,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 
 /** LMO Freeform (LibreMobileOS, bundled in several custom ROMs). */
 object LmoFreeform {
@@ -34,13 +35,13 @@ object LmoFreeform {
         pm.getLaunchIntentForPackage(packageName)?.component
 
     /**
-     * The activity an activity-type PendingIntent would open, asked of the system (Android 14+
-     * `queryIntentComponents`, reached by reflection because it is not in the public SDK).
+     * Activity an activity-type PendingIntent would open (Android 14+ `queryIntentComponents`, by reflection as it is
+     * not in the public SDK)
      */
     fun pendingIntentActivity(pending: PendingIntent): ComponentName? = try {
         val infos = PendingIntent::class.java.getMethod("queryIntentComponents", Int::class.javaPrimitiveType)
             .invoke(pending, 0) as? List<*>
-        val info = (infos?.firstOrNull() as? android.content.pm.ResolveInfo)?.activityInfo
+        val info = (infos?.firstOrNull() as? ResolveInfo)?.activityInfo
         info?.let { ComponentName(it.packageName, it.name) }
     } catch (_: Throwable) {
         null
@@ -55,13 +56,13 @@ object LmoFreeform {
             putExtra(EXTRA_TASK_ID, taskId)
         }
 
-    /** A running task as listed by `am stack list`. [component] is its top activity (the real chat screen). */
+    /** Running task from `am stack list`, [component] is its top activity (the real chat screen). */
     data class TaskInfo(val taskId: Int, val packageName: String, val className: String, val userId: Int) {
-        /** Built on demand so parsing stays plain strings (android.content.ComponentName is a stub in JVM unit tests). */
+        /** Built on demand so parsing stays plain strings (ComponentName is a stub in JVM unit tests). */
         val component: ComponentName get() = ComponentName(packageName, className)
     }
 
-    /** Shell command that lists tasks; `cmd activity stack list` is the same thing on builds without `am stack`. */
+    /** Shell command that lists tasks, `cmd activity stack list` is the same on builds without `am stack`. */
     const val LIST_TASKS_COMMAND = "am stack list 2>/dev/null || cmd activity stack list 2>/dev/null"
 
     // "  taskId=123: com.pkg/com.pkg.Act bounds=[..] userId=0 visible=true topActivity=ComponentInfo{com.pkg/com.pkg.Act}"
@@ -85,8 +86,8 @@ object LmoFreeform {
     }.toList()
 
     /**
-     * The task a just-opened notification landed in: the newest task of [packageName] that was not in [before] (task
-     * ids only grow); if the app reused a task it already had, its front-most one.
+     * Task a just-opened notification landed in: the newest task of [packageName] not in [before] (ids only grow), or
+     * the front-most one if the app reused a task
      */
     fun pickTask(after: List<TaskInfo>, before: Set<Int>, packageName: String): TaskInfo? {
         val mine = after.filter { it.packageName == packageName }
@@ -105,7 +106,7 @@ object LmoFreeform {
             .mapNotNull { it.groupValues[2].toIntOrNull() }
             .toSet()
 
-    /** taskId -> displayId, read from `am stack list` (task lines sit under their RootTask line). */
+    /** taskId -> displayId, from `am stack list` (task lines sit under their RootTask). */
     fun taskDisplays(output: String): Map<Int, Int> {
         val result = HashMap<Int, Int>()
         var display = 0
@@ -118,11 +119,12 @@ object LmoFreeform {
 
     fun summarize(tasks: List<TaskInfo>, packageName: String): String =
         tasks.filter { it.packageName == packageName }
-            .joinToString(prefix = "[", postfix = "]") { "${it.taskId}@u${it.userId}(${it.className.substringAfterLast('.')})" }
+            .joinToString(prefix = "[",
+                postfix = "]") { "${it.taskId}@u${it.userId}(${it.className.substringAfterLast('.')})" }
 
     /**
-     * Raw `am stack list` lines that mention [packageName] (trimmed). When nothing matches, the first lines of the
-     * output are returned instead, which shows a format [TASK_LINE] does not understand.
+     * Raw `am stack list` lines mentioning [packageName]. With no match the first lines come back instead, which shows
+     * a format [TASK_LINE] does not understand
      */
     fun rawLinesFor(output: String, packageName: String, maxLines: Int = 6, maxChars: Int = 260): String {
         val lines = output.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()

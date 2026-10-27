@@ -23,12 +23,14 @@ data class LiveActivityInfo(
 
 object LiveActivityParser {
 
-    private val ETA_PATTERN = Pattern.compile("(\\d+)(?:\\s*-\\s*\\d+)?\\s*(?:mins?|minutes?|min|минут[аы]?|мин|хв|minutos?|minuti|minuten|minuut|dakika|dk|menit|phút|分钟|分鐘|分|분|دقيقة|دقائق|मिनट)(?![\\p{L}\\p{N}])", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE)
+    private val ETA_PATTERN =
+        Pattern.compile("(\\d+)(?:\\s*-\\s*\\d+)?\\s*(?:mins?|minutes?|min|минут[аы]?|мин|хв|minutos?|minuti|minuten|minuut|dakika|dk|menit|phút|分钟|分鐘|分|분|دقيقة|دقائق|मिनट)(?![\\p{L}\\p{N}])", Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE)
     private val DISTANCE_PATTERN = Pattern.compile("(\\d+(?:\\.\\d+)?)\\s*(?:km|miles?|m)\\b", Pattern.CASE_INSENSITIVE)
 
     private val STATUS_STAGE_1 = listOf("placed", "accepted", "booked", "finding", "searching", "confirmed", "assigned",
         "принят", "подтвержд", "ищем", "pedido recibido", "confirmado", "commande confirmée", "bestellung bestätigt", "ordine confermato", "已接单", "已下单", "주문 접수")
-    private val STATUS_STAGE_3 = listOf("arriving", "arrived", "reaching", "at location", "nearby", "delivered", "completed",
+    private val STATUS_STAGE_3 =
+        listOf("arriving", "arrived", "reaching", "at location", "nearby", "delivered", "completed",
         "прибыл", "приехал", "доставлен", "llegando", "ha llegado", "entregado", "livré", "angekommen", "geliefert", "in arrivo", "consegnato", "已送达", "已到达", "司机已到", "配達完了", "배달 완료")
 
     fun getBrandColor(packageName: String?): Long {
@@ -121,7 +123,8 @@ object LiveActivityParser {
     }
 
     private fun isPromoNotification(content: String): Boolean {
-        val promoKeywords = listOf("order now", "flat ", "% off", "off on", "discount", "coupon", "code ", "cashback", "sale", "craving")
+        val promoKeywords =
+            listOf("order now", "flat ", "% off", "off on", "discount", "coupon", "code ", "cashback", "sale", "craving")
         return promoKeywords.any { content.contains(it) }
     }
 
