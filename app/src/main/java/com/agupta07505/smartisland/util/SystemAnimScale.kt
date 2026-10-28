@@ -13,14 +13,14 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 
-/**
- * The system's "Animator duration scale"; "Remove animations" in Accessibility sets it to 0.
- */
+private const val TAG = "SystemAnimScale"
+
+/** System's "Animator duration scale", "Remove animations" in Accessibility sets it to 0. */
 object SystemAnimScale {
     /** Largest scale honoured (Developer options offers up to 10x). */
     const val MAX_SCALE = 10f
 
-    /** Stiffness given to a spring when animations are off: it settles in a frame or two. */
+    /** Stiffness for a spring when animations are off: settles in a frame or 2. */
     const val SNAP_STIFFNESS = 1_000_000f
 
     @Volatile
@@ -48,25 +48,27 @@ object SystemAnimScale {
                 scale = read(app)
             }
         }
-        runCatching {
+        try {
             app.contentResolver.registerContentObserver(
                 Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, obs
             )
             observer = obs
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not watch the animation scale", e)
         }
     }
 
     fun stop(context: Context) {
         val obs = observer ?: return
-        runCatching { context.applicationContext.contentResolver.unregisterContentObserver(obs) }
+        runCatchingLogged(TAG, "Could not stop watching the animation scale") { context.applicationContext.contentResolver.unregisterContentObserver(obs) }
         observer = null
     }
 
     private fun read(context: Context): Float =
         sanitize(
-            runCatching {
+            quietly(1f) {
                 Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-            }.getOrDefault(1f)
+            }
         )
 
     fun sanitize(raw: Float): Float = when {
@@ -74,7 +76,10 @@ object SystemAnimScale {
         else -> raw.coerceAtMost(MAX_SCALE)
     }
 
-    /** A spring's time scales with 1 / sqrt(stiffness), so to take [scale] times as long its stiffness is divided by scale squared. */
+    /**
+     * A spring's time scales with 1 / sqrt(stiffness), so to take [scale] times as long, divide stiffness by scale
+     * squared
+     */
     fun scaledStiffness(base: Float, scale: Float): Float =
         if (scale <= 0f) SNAP_STIFFNESS else base / (scale * scale)
 
