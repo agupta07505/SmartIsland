@@ -21,7 +21,8 @@ enum class OemDeviceType(val displayName: String, val brandKeywords: List<String
     SAMSUNG("Samsung Galaxy (One UI)", listOf("samsung", "sec")),
     XIAOMI_REDMI_POCO("Xiaomi / Redmi / Poco (MIUI & HyperOS)", listOf("xiaomi", "redmi", "poco", "blackshark")),
     VIVO_IQOO("Vivo / iQOO (Funtouch OS & OriginOS)", listOf("vivo", "iqoo", "bbk")),
-    REALME_OPPO_ONEPLUS("Realme / OPPO / OnePlus (ColorOS / Realme UI / OxygenOS)", listOf("oppo", "realme", "oneplus", "oplus", "heytap")),
+    REALME_OPPO_ONEPLUS("Realme / OPPO / OnePlus (ColorOS / Realme UI / OxygenOS)",
+        listOf("oppo", "realme", "oneplus", "oplus", "heytap")),
     GOOGLE_PIXEL("Google Pixel & Stock Android", listOf("google", "pixel", "aosp")),
     HUAWEI_HONOR("Huawei / Honor (EMUI & MagicOS)", listOf("huawei", "honor")),
     MOTOROLA("Motorola / Lenovo (My UX)", listOf("motorola", "lenovo", "moto")),
@@ -59,12 +60,6 @@ object OemDeviceRules {
     )
 
     private val XIAOMI_VOICE_RECORDER_PACKAGES = setOf(
-        "com.miui.soundrecorder",
-        "com.android.soundrecorder"
-    )
-
-    private val XIAOMI_SCREEN_RECORDER_PACKAGES_LEGACY = setOf(
-        "com.miui.screenrecorder",
         "com.miui.soundrecorder",
         "com.android.soundrecorder"
     )
@@ -212,20 +207,32 @@ object OemDeviceRules {
         "wifi hotspot", "usb tethering", "bluetooth tethering"
     )
 
+    private fun buildNames(): Pair<String, String> =
+        Build.BRAND.orEmpty().lowercase() to Build.MANUFACTURER.orEmpty().lowercase()
+
     fun detectCurrentDevice(): OemDeviceType {
-        val brand = (runCatching { Build.BRAND }.getOrNull() ?: "").lowercase()
-        val manufacturer = (runCatching { Build.MANUFACTURER }.getOrNull() ?: "").lowercase()
+        val (brand, manufacturer) = buildNames()
 
         return when {
-            brand.contains("samsung") || manufacturer.contains("samsung") || brand.contains("sec") -> OemDeviceType.SAMSUNG
-            brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco") || manufacturer.contains("xiaomi") -> OemDeviceType.XIAOMI_REDMI_POCO
-            brand.contains("vivo") || brand.contains("iqoo") || manufacturer.contains("vivo") || manufacturer.contains("bbk") -> OemDeviceType.VIVO_IQOO
-            brand.contains("oppo") || brand.contains("realme") || brand.contains("oneplus") || manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus") || manufacturer.contains("oplus") -> OemDeviceType.REALME_OPPO_ONEPLUS
-            brand.contains("google") || manufacturer.contains("google") || brand.contains("pixel") -> OemDeviceType.GOOGLE_PIXEL
-            brand.contains("huawei") || brand.contains("honor") || manufacturer.contains("huawei") || manufacturer.contains("honor") -> OemDeviceType.HUAWEI_HONOR
-            brand.contains("motorola") || brand.contains("lenovo") || brand.contains("moto") || manufacturer.contains("motorola") -> OemDeviceType.MOTOROLA
-            brand.contains("infinix") || brand.contains("tecno") || brand.contains("itel") || manufacturer.contains("transsion") -> OemDeviceType.TRANSSION
-            brand.contains("nubia") || brand.contains("redmagic") || brand.contains("zte") || manufacturer.contains("nubia") || manufacturer.contains("zte") -> OemDeviceType.NUBIA
+            brand.contains("samsung") || manufacturer.contains("samsung")
+                || brand.contains("sec") -> OemDeviceType.SAMSUNG
+            brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco")
+                || manufacturer.contains("xiaomi") -> OemDeviceType.XIAOMI_REDMI_POCO
+            brand.contains("vivo") || brand.contains("iqoo") || manufacturer.contains("vivo")
+                || manufacturer.contains("bbk") -> OemDeviceType.VIVO_IQOO
+            brand.contains("oppo") || brand.contains("realme") || brand.contains("oneplus")
+                || manufacturer.contains("oppo") || manufacturer.contains("realme") || manufacturer.contains("oneplus")
+                || manufacturer.contains("oplus") -> OemDeviceType.REALME_OPPO_ONEPLUS
+            brand.contains("google") || manufacturer.contains("google")
+                || brand.contains("pixel") -> OemDeviceType.GOOGLE_PIXEL
+            brand.contains("huawei") || brand.contains("honor") || manufacturer.contains("huawei")
+                || manufacturer.contains("honor") -> OemDeviceType.HUAWEI_HONOR
+            brand.contains("motorola") || brand.contains("lenovo") || brand.contains("moto")
+                || manufacturer.contains("motorola") -> OemDeviceType.MOTOROLA
+            brand.contains("infinix") || brand.contains("tecno") || brand.contains("itel")
+                || manufacturer.contains("transsion") -> OemDeviceType.TRANSSION
+            brand.contains("nubia") || brand.contains("redmagic") || brand.contains("zte")
+                || manufacturer.contains("nubia") || manufacturer.contains("zte") -> OemDeviceType.NUBIA
             else -> OemDeviceType.GENERIC
         }
     }
@@ -234,13 +241,12 @@ object OemDeviceRules {
         if (deviceTypeSetting.isNullOrBlank() || deviceTypeSetting == OemDeviceType.AUTO.name) {
             return detectCurrentDevice()
         }
-        return runCatching { OemDeviceType.valueOf(deviceTypeSetting) }.getOrDefault(detectCurrentDevice())
+        return OemDeviceType.values().firstOrNull { it.name == deviceTypeSetting } ?: detectCurrentDevice()
     }
 
     fun isMiuiOrHyperOs(device: OemDeviceType = detectCurrentDevice()): Boolean {
         if (device == OemDeviceType.XIAOMI_REDMI_POCO) return true
-        val brand = (runCatching { Build.BRAND }.getOrNull() ?: "").lowercase()
-        val manufacturer = (runCatching { Build.MANUFACTURER }.getOrNull() ?: "").lowercase()
+        val (brand, manufacturer) = buildNames()
         if (brand.contains("xiaomi") || brand.contains("redmi") || brand.contains("poco") ||
             brand.contains("blackshark") || manufacturer.contains("xiaomi")
         ) {
@@ -259,11 +265,11 @@ object OemDeviceRules {
 
     @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
     private fun getSystemProperty(key: String): String? {
-        return runCatching {
+        return quietly {
             val c = Class.forName("android.os.SystemProperties")
             val get = c.getMethod("get", String::class.java)
             (get.invoke(null, key) as? String)?.takeIf { it.isNotBlank() }
-        }.getOrNull()
+        }
     }
 
     fun isScreenRecording(
@@ -271,37 +277,16 @@ object OemDeviceRules {
         titleText: String,
         device: OemDeviceType = detectCurrentDevice()
     ): Boolean {
-        if (isMiuiOrHyperOs(device)) {
-            if (packageName in XIAOMI_VOICE_RECORDER_PACKAGES) return false
-        }
-        val lowerText = titleText.lowercase()
-        val isKeywordMatch = SCREEN_RECORDING_KEYWORDS.any { lowerText.contains(it) }
+        if (packageName in XIAOMI_VOICE_RECORDER_PACKAGES && isMiuiOrHyperOs(device)) return false
 
-        val isPackageMatch = when (device) {
-            OemDeviceType.SAMSUNG -> packageName in SAMSUNG_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.XIAOMI_REDMI_POCO -> {
-                if (isMiuiOrHyperOs(device)) {
-                    packageName in XIAOMI_SCREEN_RECORDER_PACKAGES
-                } else {
-                    packageName in XIAOMI_SCREEN_RECORDER_PACKAGES_LEGACY || packageName in ALL_OEM_RECORDER_PACKAGES
-                }
-            }
-            OemDeviceType.VIVO_IQOO -> packageName in VIVO_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.REALME_OPPO_ONEPLUS -> packageName in REALME_OPPO_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.HUAWEI_HONOR -> packageName in HUAWEI_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.MOTOROLA -> packageName in MOTOROLA_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.TRANSSION -> packageName in TRANSSION_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            OemDeviceType.NUBIA -> packageName in NUBIA_SCREEN_RECORDER_PACKAGES || packageName in ALL_OEM_RECORDER_PACKAGES
-            else -> {
-                if (isMiuiOrHyperOs(device)) {
-                    (ALL_OEM_RECORDER_PACKAGES - XIAOMI_VOICE_RECORDER_PACKAGES).contains(packageName)
-                } else {
-                    packageName in ALL_OEM_RECORDER_PACKAGES
-                }
-            }
+        val packages = if (device == OemDeviceType.XIAOMI_REDMI_POCO) {
+            XIAOMI_SCREEN_RECORDER_PACKAGES
+        } else {
+            ALL_OEM_RECORDER_PACKAGES
         }
-
-        return isPackageMatch || isKeywordMatch
+        if (packageName in packages) return true
+        val text = titleText.lowercase()
+        return SCREEN_RECORDING_KEYWORDS.any { it in text }
     }
 
     private val SCREENISH_KEYWORDS = listOf(
@@ -316,7 +301,7 @@ object OemDeviceRules {
 
     /**
      * Voice / audio recorder apps (Google Recorder, Samsung Voice Recorder, OEM sound recorders ...). Screen-recorder
-     * packages and screen-recording wording always win, so this never claims them.
+     * packages and wording always win, so this never claims them
      */
     fun isAudioRecording(packageName: String, titleText: String): Boolean {
         val pkg = packageName.lowercase()
@@ -353,11 +338,9 @@ object OemDeviceRules {
             "audio saved", "ended", "tap to open", "tap to play"
         )
         if (completionKeywords.any { lowerText.contains(it) }) return true
-        // A paused recording is still a recording, even if the app drops the ongoing flag while paused.
+        // A paused recording is still a recording, even if the app drops the ongoing flag while paused
         if (RecordingClock.looksPaused(notification)) return false
-        if (!isOngoing) return true
-
-        return false
+        return !isOngoing
     }
 
     fun isInCallPackage(
@@ -366,10 +349,13 @@ object OemDeviceRules {
     ): Boolean {
         return when (device) {
             OemDeviceType.SAMSUNG -> packageName in SAMSUNG_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
-            OemDeviceType.XIAOMI_REDMI_POCO -> packageName in XIAOMI_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
+            OemDeviceType.XIAOMI_REDMI_POCO -> packageName in XIAOMI_INCALL_PACKAGES
+                || packageName in ALL_OEM_INCALL_PACKAGES
             OemDeviceType.VIVO_IQOO -> packageName in VIVO_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
-            OemDeviceType.REALME_OPPO_ONEPLUS -> packageName in REALME_OPPO_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
-            OemDeviceType.HUAWEI_HONOR -> packageName in HUAWEI_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
+            OemDeviceType.REALME_OPPO_ONEPLUS -> packageName in REALME_OPPO_INCALL_PACKAGES
+                || packageName in ALL_OEM_INCALL_PACKAGES
+            OemDeviceType.HUAWEI_HONOR -> packageName in HUAWEI_INCALL_PACKAGES
+                || packageName in ALL_OEM_INCALL_PACKAGES
             OemDeviceType.NUBIA -> packageName in NUBIA_INCALL_PACKAGES || packageName in ALL_OEM_INCALL_PACKAGES
             else -> packageName in ALL_OEM_INCALL_PACKAGES
         }
@@ -392,7 +378,8 @@ object OemDeviceRules {
         val lowerText = titleText.lowercase()
         val isRecording = isScreenRecording(packageName, lowerText)
         val isHotspotAlert = isHotspot(packageName, lowerText)
-        val isCallAlert = ALL_OEM_INCALL_PACKAGES.contains(packageName) || listOf("incoming call", "ongoing call", "calling...", "ringing").any { lowerText.contains(it) }
+        val isCallAlert = ALL_OEM_INCALL_PACKAGES.contains(packageName)
+            || listOf("incoming call", "ongoing call", "calling...", "ringing").any { lowerText.contains(it) }
         return isRecording || isHotspotAlert || isCallAlert
     }
 
@@ -401,51 +388,69 @@ object OemDeviceRules {
 
         when (device) {
             OemDeviceType.XIAOMI_REDMI_POCO -> {
-                intents.add(Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.miui.securitycenter", "com.miui.powerkeeper.ui.HiddenAppsConfigActivity")))
             }
             OemDeviceType.REALME_OPPO_ONEPLUS -> {
-                intents.add(Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.oplus.securitypermission", "com.oplus.securitypermission.startup.StartupAppListActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.oplus.securitypermission", "com.oplus.securitypermission.startup.StartupAppListActivity")))
             }
             OemDeviceType.VIVO_IQOO -> {
-                intents.add(Intent().setComponent(ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager")))
             }
             OemDeviceType.SAMSUNG -> {
-                intents.add(Intent().setComponent(ComponentName("com.samsung.android.looper", "com.samsung.android.sm.ui.battery.BatteryActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.samsung.android.sm_cn", "com.samsung.android.sm.ui.ram.AutoRunActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.samsung.android.sm", "com.samsung.android.sm.ui.dashboard.SmartManagerDashBoardActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.samsung.android.looper", "com.samsung.android.sm.ui.battery.BatteryActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.samsung.android.sm_cn", "com.samsung.android.sm.ui.ram.AutoRunActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.samsung.android.sm", "com.samsung.android.sm.ui.dashboard.SmartManagerDashBoardActivity")))
             }
             OemDeviceType.HUAWEI_HONOR -> {
-                intents.add(Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.appcontrol.activity.StartupAppControlActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity")))
             }
             OemDeviceType.MOTOROLA -> {
-                intents.add(Intent().setComponent(ComponentName("com.asus.mobilemanager", "com.asus.mobilemanager.autostart.AutoStartActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.asus.mobilemanager", "com.asus.mobilemanager.autostart.AutoStartActivity")))
             }
             OemDeviceType.NUBIA -> {
-                intents.add(Intent().setComponent(ComponentName("cn.nubia.security2", "cn.nubia.security.permission.activity.AccessControlActivity")))
-                intents.add(Intent().setComponent(ComponentName("cn.nubia.security2", "cn.nubia.security.power.ui.PowerControlActivity")))
-                intents.add(Intent().setComponent(ComponentName("cn.nubia.neosafe", "cn.nubia.neosafe.permission.StartupManagerActivity")))
-                intents.add(Intent().setComponent(ComponentName("cn.nubia.neosafe", "cn.nubia.neosafe.permission.AutoStartPermissionActivity")))
-                intents.add(Intent().setComponent(ComponentName("com.zte.heartyservice", "com.zte.heartyservice.autorun.AppAutoRunManager")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("cn.nubia.security2", "cn.nubia.security.permission.activity.AccessControlActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("cn.nubia.security2", "cn.nubia.security.power.ui.PowerControlActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("cn.nubia.neosafe", "cn.nubia.neosafe.permission.StartupManagerActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("cn.nubia.neosafe", "cn.nubia.neosafe.permission.AutoStartPermissionActivity")))
+                intents.add(Intent()
+                    .setComponent(ComponentName("com.zte.heartyservice", "com.zte.heartyservice.autorun.AppAutoRunManager")))
             }
             else -> {
             }
         }
 
         // Generic fallback to App Info / Battery Settings
-        try {
-            intents.add(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                }
-            )
-        } catch (_: Throwable) { }
+        intents.add(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+        )
 
         return intents
     }

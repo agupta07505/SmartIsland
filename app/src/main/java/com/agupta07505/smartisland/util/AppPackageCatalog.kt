@@ -7,12 +7,6 @@
 
 package com.agupta07505.smartisland.util
 
-/**
- * Package names of apps the island treats specially, shared by the navigation and live-activity parsers so a delivery or
- * ride app is never read as navigation and a map app never as an order tracker.
- *
- * IDs marked "unverified" are from general knowledge only; a wrong ID never matches, so it cannot misclassify.
- */
 object AppPackageCatalog {
 
     /** Includes the alternative builds (F-Droid, Huawei) some of these apps ship. */
@@ -20,10 +14,10 @@ object AppPackageCatalog {
         // Google
         "com.google.android.apps.maps",
         "com.google.android.apps.mapslite",
-        // Waze, Citymapper
+        // waze, Citymapper
         "com.waze",
         "com.citymapper.app.release",
-        // Yandex, 2GIS
+        // yandex, 2GIS
         "ru.yandex.yandexnavi",
         "ru.yandex.yandexmaps",
         "ru.dublgis.dgismobile",
@@ -67,39 +61,39 @@ object AppPackageCatalog {
     )
 
     val RIDE_HAILING: Set<String> = setOf(
-        "com.ubercab",                 // Uber
-        "me.lyft.android",             // Lyft
-        "com.grabtaxi.passenger",      // Grab (rides, food, mart)
-        "com.gojek.app",               // Gojek
-        "xyz.be.customer",             // Be (Vietnam)
-        "com.taxsee.taxsee",           // Maxim
-        "com.olacabs.customer",        // Ola
-        "com.rapido.passenger",        // Rapido
-        "ee.mtakso.client",            // Bolt (unverified)
-        "ru.yandex.taxi",              // Yandex Go (unverified)
-        "com.careem.acma",             // Careem (unverified)
+        "com.ubercab",                 // uber
+        "me.lyft.android",             // lyft
+        "com.grabtaxi.passenger",      // grab (rides, food, mart)
+        "com.gojek.app",               // gojek
+        "xyz.be.customer",             // be (Vietnam)
+        "com.taxsee.taxsee",           // maxim
+        "com.olacabs.customer",        // ola
+        "com.rapido.passenger",        // rapido
+        "ee.mtakso.client",            // bolt (unverified)
+        "ru.yandex.taxi",              // yandex Go (unverified)
+        "com.careem.acma",             // careem (unverified)
         "sinet.startup.inDriver",      // inDrive (unverified)
-        "in.juspay.nammayatri"         // Namma Yatri (unverified)
+        "in.juspay.nammayatri"         // namma Yatri (unverified)
     )
 
     val DELIVERY: Set<String> = setOf(
-        "com.application.zomato",      // Zomato
-        "in.swiggy.android",           // Swiggy & Instamart
-        "com.grofers.customerapp",     // Blinkit
-        "com.zepto.consumer",          // Zepto
-        "com.dunzo.user",              // Dunzo
-        "com.Dominos",                 // Domino's
-        "com.ubercab.eats",            // Uber Eats
+        "com.application.zomato",      // zomato
+        "in.swiggy.android",           // swiggy & Instamart
+        "com.grofers.customerapp",     // blinkit
+        "com.zepto.consumer",          // zepto
+        "com.dunzo.user",              // dunzo
+        "com.Dominos",                 // domino's
+        "com.ubercab.eats",            // uber Eats
         "com.dd.doordash",             // DoorDash
-        "com.postmates.android",       // Postmates
-        "com.deliveroo.orderapp",      // Deliveroo
-        "com.glovo",                   // Glovo
-        "com.wolt.android",            // Wolt
-        "com.grubhub.android",         // Grubhub (unverified)
+        "com.postmates.android",       // postmates
+        "com.deliveroo.orderapp",      // deliveroo
+        "com.glovo",                   // glovo
+        "com.wolt.android",            // wolt
+        "com.grubhub.android",         // grubhub (unverified)
         "com.global.foodpanda.android", // foodpanda (unverified)
-        "com.talabat",                 // Talabat (unverified)
-        "ru.yandex.eda",               // Yandex Eats (unverified)
-        "com.grability.rappi",         // Rappi (unverified)
+        "com.talabat",                 // talabat (unverified)
+        "ru.yandex.eda",               // yandex Eats (unverified)
+        "com.grability.rappi",         // rappi (unverified)
         "br.com.brainweb.ifood",       // iFood (unverified)
         "com.bigbasket.mobileapp"      // BigBasket (unverified)
     )
@@ -110,7 +104,7 @@ object AppPackageCatalog {
 
     fun isLiveActivityApp(packageName: String): Boolean = packageName in LIVE_ACTIVITY
 
-    /** Brand colour (ARGB) for a live-activity app, or null when there is no specific one. */
+    /** Brand colour (ARGB), null when the app has none. */
     fun brandColor(packageName: String?): Long? = when (packageName) {
         "com.application.zomato" -> 0xFFE23744L
         "in.swiggy.android" -> 0xFFFC8019L

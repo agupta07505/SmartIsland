@@ -55,7 +55,8 @@ object FaceUnlockLog {
     private val END = Regex("\\[Finishing\\].*Face\\w*AuthenticationClient.*success:\\s*false", RegexOption.IGNORE_CASE)
 
     // "success: true" also prints on timeout, so it is not a match
-    private val FINISHED_OK = Regex("\\[Finishing\\].*Face\\w*AuthenticationClient.*success:\\s*true", RegexOption.IGNORE_CASE)
+    private val FINISHED_OK = Regex("\\[Finishing\\].*Face\\w*AuthenticationClient.*success:\\s*true",
+        RegexOption.IGNORE_CASE)
 
     private const val MATCHED = "onAuthenticated\\(true\\)\\W+ID:\\s*[1-9]\\d*"
 
@@ -101,7 +102,7 @@ object FaceUnlockLog {
         "FaceAuthenticationClient.*(start|run|begin)"
     ).map { Regex(it, RegexOption.IGNORE_CASE) }
 
-    // failures first, so "authenticated=false" is never a success
+    // Failures first, so "authenticated=false" is never a success
     fun classify(line: String): FaceUnlockLogEvent? {
         if (!FACE.containsMatchIn(line)) return null
         if (IGNORED.any { it.containsMatchIn(line) }) return null
@@ -129,7 +130,8 @@ object FaceUnlockLog {
         return !isKeyguardOwner(owner)
     }
 
-    private val APP_UNLOCKED = Regex("AppLockManagerService(?:\\(\\s*\\d+\\))?:\\s*unlockPackage:\\s*packageName\\s*=\\s*([A-Za-z0-9_.]+)")
+    private val APP_UNLOCKED =
+        Regex("AppLockManagerService(?:\\(\\s*\\d+\\))?:\\s*unlockPackage:\\s*packageName\\s*=\\s*([A-Za-z0-9_.]+)")
 
     private val APP_LOCK_REQUIRED = Regex("AppLockManagerService(?:\\(\\s*\\d+\\))?:\\s*requireUnlock\\s*=\\s*true")
 

@@ -7,9 +7,9 @@
 
 package com.agupta07505.smartisland.util
 
+import com.agupta07505.smartisland.model.ActionRole
 import com.agupta07505.smartisland.model.IslandNotificationAction
-import com.agupta07505.smartisland.ui.expanded.ActionRole
-import com.agupta07505.smartisland.ui.expanded.classifyAction
+import com.agupta07505.smartisland.model.classifyAction
 
 object ShadeActions {
 
@@ -26,7 +26,8 @@ object ShadeActions {
         return if (role == ActionRole.Other && END_WORD.containsMatchIn(title.lowercase())) ActionRole.Stop else role
     }
 
-    fun enforceState(actions: List<IslandNotificationAction>, kind: TimerStopwatchParser.ClockKind): List<IslandNotificationAction> {
+    fun enforceState(actions: List<IslandNotificationAction>,
+            kind: TimerStopwatchParser.ClockKind): List<IslandNotificationAction> {
         val roles = actions.map { roleOf(it.title) }
         val offersPause = ActionRole.Pause in roles
         val offersResume = ActionRole.Resume in roles
@@ -49,7 +50,7 @@ object ShadeActions {
         kind: TimerStopwatchParser.ClockKind? = null
     ): List<IslandNotificationAction> {
         if (kind == null) return mirrorUnchecked(standard, view)
-        // Filter before the shade limit so a hidden button cannot push out a shown one.
+        // Filter before the shade limit so a hidden button cannot push out a shown one
         val ownButtons = enforceState(standard.filter { it.pendingIntent != null }, kind)
         val shown = mirrorUnchecked(
             ownButtons,
@@ -77,7 +78,7 @@ object ShadeActions {
         val fromView = view.filter { roleOf(it.title) in CLOCK_ROLES }
 
         if (fromView.isNotEmpty()) {
-            // Prefer the app's own intent over the view proxy.
+            // Prefer the app's own intent over the view proxy
             val used = HashSet<Int>()
             return fromView.map { shown ->
                 val match = real.withIndex().firstOrNull { (i, a) -> i !in used && sameButton(a, shown) }
