@@ -14,8 +14,10 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 
-/** App widgets on the Utilities page. */
+private const val TAG = "UtilityWidgets"
+
 object UtilityWidgets {
     private const val HOST_ID = 0x5349
     private val lock = Any()
@@ -29,45 +31,47 @@ object UtilityWidgets {
     fun manager(context: Context): AppWidgetManager = AppWidgetManager.getInstance(context.applicationContext)
 
     fun acquire(context: Context) = synchronized(lock) {
-        if (listeners++ == 0) runCatching { host(context).startListening() }
+        if (listeners++ == 0) quietly { host(context).startListening() }
         Unit
     }
 
     fun release(context: Context) = synchronized(lock) {
-        if (listeners > 0 && --listeners == 0) runCatching { host(context).stopListening() }
+        if (listeners > 0 && --listeners == 0) quietly { host(context).stopListening() }
         Unit
     }
 
     fun installedProviders(context: Context): List<AppWidgetProviderInfo> {
         val pm = context.packageManager
-        return runCatching { manager(context).installedProviders }.getOrDefault(emptyList())
+        return quietly(emptyList()) { manager(context).installedProviders }
             .sortedBy { it.loadLabel(pm)?.lowercase().orEmpty() }
     }
 
     fun allocateId(context: Context): Int = host(context).allocateAppWidgetId()
 
     fun deleteId(context: Context, widgetId: Int) {
-        runCatching { host(context).deleteAppWidgetId(widgetId) }
+        runCatchingLogged(TAG, "Could not delete the widget id") { host(context)
+            .deleteAppWidgetId(widgetId) }
     }
 
     fun bindIfAllowed(context: Context, widgetId: Int, provider: ComponentName): Boolean =
-        runCatching { manager(context).bindAppWidgetIdIfAllowed(widgetId, provider) }.getOrDefault(false)
+        quietly(false) { manager(context).bindAppWidgetIdIfAllowed(widgetId, provider) }
 
-    fun bindIntent(widgetId: Int, provider: ComponentName): android.content.Intent =
-        android.content.Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
+    fun bindIntent(widgetId: Int, provider: ComponentName): Intent =
+        Intent(AppWidgetManager.ACTION_APPWIDGET_BIND)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
 
     fun info(context: Context, widgetId: Int): AppWidgetProviderInfo? =
-        runCatching { manager(context).getAppWidgetInfo(widgetId) }.getOrNull()
+        quietly { manager(context).getAppWidgetInfo(widgetId) }
 
     fun createView(context: Context, widgetId: Int): AppWidgetHostView? {
         val info = info(context, widgetId) ?: return null
-        return runCatching { host(context).createView(context, widgetId, info) }.getOrNull()
+        return quietly { host(context).createView(context, widgetId, info) }
     }
 
     fun resize(view: AppWidgetHostView, widthDp: Int, heightDp: Int) {
-        runCatching { view.updateAppWidgetSize(null, widthDp, heightDp, widthDp, heightDp) }
+        runCatchingLogged(TAG, "Could not resize the widget") { view.updateAppWidgetSize(null, widthDp,
+            heightDp, widthDp, heightDp) }
     }
 
     private const val REQUEST_CONFIGURE = 0x5350
@@ -85,7 +89,7 @@ object UtilityWidgets {
         }
     }
 
-    /** Called from the activity's onActivityResult; true when the result was the configure step's. */
+    /** Called from the activity's onActivityResult, true when the result was the configure step's. */
     fun onActivityResult(requestCode: Int, resultCode: Int): Boolean {
         if (requestCode != REQUEST_CONFIGURE) return false
         val done = pendingConfigure
