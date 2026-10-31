@@ -12,6 +12,7 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Process
+import com.agupta07505.smartisland.util.quietly
 
 data class LaunchableApp(
     val packageName: String,
@@ -19,7 +20,6 @@ data class LaunchableApp(
 )
 
 object AppShortcutProvider {
-    /** The pinned entries whose apps are still installed, in the order they were pinned. */
     fun selectedApps(context: Context, packages: List<String>): List<LaunchableApp> =
         packages.mapNotNull { entry ->
             if (PinnedApps.isFolder(entry)) {
@@ -30,9 +30,9 @@ object AppShortcutProvider {
             }
         }
 
-    private fun appLabel(context: Context, packageName: String): String? = runCatching {
+    private fun appLabel(context: Context, packageName: String): String? = quietly {
         context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(packageName, 0)).toString()
-    }.getOrNull()
+    }
 
     fun installedApps(context: Context): List<LaunchableApp> {
         val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
@@ -51,7 +51,7 @@ object AppShortcutProvider {
     }
 
     fun hasUsageAccess(context: Context): Boolean {
-        return runCatching {
+        return quietly(false) {
             val appOps = context.getSystemService(AppOpsManager::class.java) ?: return false
             val mode = appOps.checkOpNoThrow(
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
@@ -59,7 +59,7 @@ object AppShortcutProvider {
                 context.packageName
             )
             mode == AppOpsManager.MODE_ALLOWED
-        }.getOrDefault(false)
+        }
     }
 
     fun shortcuts(
@@ -83,10 +83,10 @@ object AppShortcutProvider {
 
         val end = System.currentTimeMillis()
         val start = end - RECENT_WINDOW_MS
-        val usage = runCatching {
+        val usage = quietly(emptyList()) {
             val usageManager = context.getSystemService(UsageStatsManager::class.java)
             usageManager?.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end).orEmpty()
-        }.getOrDefault(emptyList())
+        }
             .sortedByDescending { it.lastTimeUsed }
             .mapNotNull { byPackage[it.packageName] }
             .filter { it.packageName !in pinnedPackages }
