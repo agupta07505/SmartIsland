@@ -7,30 +7,38 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.content.Context
+import android.media.AudioManager
+import android.media.session.MediaController
+import android.view.KeyEvent
 import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.SwipeAction
 import com.agupta07505.smartisland.ui.expanded.trySendFirstAction
+import com.agupta07505.smartisland.util.AppLogRecorder
 import com.agupta07505.smartisland.util.HapticKind
 import com.agupta07505.smartisland.util.HapticStrength
 import com.agupta07505.smartisland.util.IslandHaptics
+import com.agupta07505.smartisland.util.quietly
+
+private const val TAG = "IslandSwipeActions"
 
 /**
- * Expand and collapse buzz when the island's state actually changes, so the Expand/Collapse swipe actions must not
- * add a second buzz of their own.
+ * Expand and collapse buzz when the island's state actually changes, so the Expand/Collapse swipe actions must not add
+ * a second one
  */
 internal fun swipeNeedsOwnHaptic(action: SwipeAction): Boolean =
     action != SwipeAction.None && action != SwipeAction.Expand && action != SwipeAction.Collapse
 
 private fun trySkipMedia(
-    context: android.content.Context?,
+    context: Context?,
     notification: IslandNotification?,
     forward: Boolean
 ): Boolean {
     if (context == null) return false
 
-    // Direct notification action PendingIntent (e.g. Spotify, YouTube Music, podcasts)
+    // Direct notification action PendingIntent (e.g. Spotify, YouTube Music, podcasts).
     val actionSent = if (forward) {
         notification.trySendFirstAction(context, "next", "skip", "forward")
     } else {
@@ -38,86 +46,88 @@ private fun trySkipMedia(
     }
     if (actionSent) return true
 
-    // Notification MediaSession token
     val token = notification?.mediaToken
     if (token != null) {
-        val success = runCatching {
-            val controller = android.media.session.MediaController(context, token)
+        val success = quietly(false) {
+            val controller = MediaController(context, token)
             if (forward) controller.transportControls.skipToNext() else controller.transportControls.skipToPrevious()
             true
-        }.getOrDefault(false)
+        }
         if (success) return true
     }
 
-    // Delegate to NotificationListenerService via SmartIslandCommand
-    runCatching {
+    try {
         val repo = SmartIslandRepositories.notificationRepository(context)
         if (forward) {
             repo.sendCommand(SmartIslandCommand.SkipNext(notification?.packageName))
         } else {
             repo.sendCommand(SmartIslandCommand.SkipPrevious(notification?.packageName))
         }
+    } catch (e: Exception) {
+        AppLogRecorder.e(TAG, "Could not send the skip command", e)
     }
 
-    // Fallback: AudioManager media key events
-    runCatching {
-        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-        val keyCode = if (forward) android.view.KeyEvent.KEYCODE_MEDIA_NEXT else android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
-        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
-        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
+    // fallback: AudioManager media key events
+    try {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val keyCode = if (forward) KeyEvent.KEYCODE_MEDIA_NEXT else KeyEvent.KEYCODE_MEDIA_PREVIOUS
+        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode)
         audioManager?.dispatchMediaKeyEvent(down)
         audioManager?.dispatchMediaKeyEvent(up)
+    } catch (e: Exception) {
+        AppLogRecorder.e(TAG, "Media key skip failed", e)
     }
 
     return true
 }
 
 private fun tryPlayPauseMedia(
-    context: android.content.Context?,
+    context: Context?,
     notification: IslandNotification?
 ) {
     if (context == null) return
 
-    // Direct notification action PendingIntent
     val actionSent = notification.trySendFirstAction(context, "play", "pause", "resume", "toggle")
     if (actionSent) return
 
-    // Notification MediaSession token
     val token = notification?.mediaToken
     if (token != null) {
-        val success = runCatching {
-            val controller = android.media.session.MediaController(context, token)
+        val success = quietly(false) {
+            val controller = MediaController(context, token)
             if (notification.mediaIsPlaying) {
                 controller.transportControls.pause()
             } else {
                 controller.transportControls.play()
             }
             true
-        }.getOrDefault(false)
+        }
         if (success) return
     }
 
-    // Delegate to NotificationListenerService via SmartIslandCommand
-    runCatching {
+    try {
         val repo = SmartIslandRepositories.notificationRepository(context)
         repo.sendCommand(SmartIslandCommand.PlayPause(notification?.packageName))
+    } catch (e: Exception) {
+        AppLogRecorder.e(TAG, "Could not send the play/pause command", e)
     }
 
-    // Fallback: AudioManager media key events
-    runCatching {
-        val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
-        val keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-        val down = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
-        val up = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
+    try {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val keyCode = KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode)
         audioManager?.dispatchMediaKeyEvent(down)
         audioManager?.dispatchMediaKeyEvent(up)
+    } catch (e: Exception) {
+        AppLogRecorder.e(TAG, "Media key play/pause failed", e)
     }
 }
 
 internal fun executeSwipeAction(
     action: SwipeAction,
     currentNotification: IslandNotification?,
-    context: android.content.Context? = null,
+    context: Context? = null,
     hapticStrength: HapticStrength = HapticStrength.NORMAL,
     onDismiss: () -> Unit,
     onDismissAll: () -> Unit,
@@ -130,13 +140,12 @@ internal fun executeSwipeAction(
     currentIndex: Int,
     onSwitchEvent: (forward: Boolean) -> Unit = {},
     /**
-     * Entry-skipping switch (all cards of one app count as one entry). Returns false when there is only one entry.
-     * When null, the legacy one-card-at-a-time page change is used.
+     * Entry-skipping switch (all cards of one app count as one entry), returns false when there is only one entry. When
+     * null the legacy one-card-at-a-time page change is used
      */
     onSwitchNotification: ((forward: Boolean) -> Boolean)? = null,
-    /** Expanded-island sibling switch; returns false when the current card has no sibling. */
+    /** Expanded-island sibling switch, returns false when the current card has no sibling. */
     onSwitchSibling: (forward: Boolean) -> Boolean = { false },
-    /** Long-press toggle: hide / show the collapsed pill. */
     onTogglePillHidden: () -> Unit = {}
 ) {
     if (context != null && swipeNeedsOwnHaptic(action)) {
@@ -180,7 +189,7 @@ internal fun executeSwipeAction(
         }
         SwipeAction.NextEvent -> onSwitchEvent(true)
         SwipeAction.PreviousEvent -> onSwitchEvent(false)
-        // No sibling: nothing happens (never a track skip, never a jump to another app).
+        // No sibling: nothing happens (never a track skip, never a jump to another app)
         SwipeAction.NextSibling -> { onSwitchSibling(true) }
         SwipeAction.PreviousSibling -> { onSwitchSibling(false) }
         SwipeAction.NextTrack -> {
