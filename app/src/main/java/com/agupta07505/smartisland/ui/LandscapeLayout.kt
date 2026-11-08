@@ -8,8 +8,8 @@
 package com.agupta07505.smartisland.ui
 
 /**
- * Landscape expanded card top: the portrait-style [baseDp] plus one pill height and one gap, so the collapsed pill
- * beside the card never overlaps it.
+ * Landscape expanded card top: portrait-style [baseDp] plus 1 pill height and 1 gap, so the collapsed pill beside
+ * the card never overlaps it
  */
 internal fun landscapeExpandedTopOffsetDp(
     baseDp: Float,
@@ -23,20 +23,13 @@ internal fun landscapeExpandedTopOffsetDp(
     return wanted.coerceAtMost(lowest)
 }
 
-/**
- * Gap (dp) between the screen's top edge and the app shortcuts window in landscape, whatever the collapsed cutout was
- * (with or without content).
- */
+/** Gap (dp) between the top edge and the app shortcuts window in landscape, whatever the collapsed cutout was. */
 internal const val LANDSCAPE_LAUNCHER_TOP_GAP_DP = 4f
 
-/** Gap between the screen's top edge and the expanded card when the collapsed pill sits in a corner. */
+/** Gap between the top edge and the expanded card when the collapsed pill sits in a corner. */
 internal const val LANDSCAPE_EDGE_GAP_DP = 10f
 
-/**
- * True when the collapsed cutout group (pill plus companion circle, [groupStartDp]..[groupEndDp] from the left screen
- * edge) would touch the expanded card ([cardLeftDp]..[cardRightDp]) once [gapDp] of breathing room is added on both
- * sides.
- */
+/** True if the collapsed cutout group would overlap the expanded card with [gapDp] spacing on each side. */
 internal fun landscapePillOverlapsCard(
     groupStartDp: Float,
     groupEndDp: Float,
@@ -45,14 +38,7 @@ internal fun landscapePillOverlapsCard(
     gapDp: Float
 ): Boolean = groupEndDp + gapDp > cardLeftDp && groupStartDp - gapDp < cardRightDp
 
-/**
- * Top of the expanded card in landscape.
- *
- * - Pill clear of the card (left / right corner): [edgeGapDp] from the top of the screen.
- * - Pill above the card (middle): one [gapDp] below the pill's bottom edge [pillBottomDp], never
- *   higher than [baseDp].
- * Either way the card is held back so its bottom plus one gap still fits on screen.
- */
+/** Puts the landscape card below the pill when they overlap, else [edgeGapDp] from the top, kept within the screen. */
 internal fun landscapeExpandedTopDp(
     pillOverlapsCard: Boolean,
     baseDp: Float,
