@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.ui
 
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -17,7 +16,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.model.IslandMode
 
-/** The height the expanded card is (or is expected to be). */
+/** Height the expanded card is (or is expected to be). */
 @Composable
 internal fun rememberExpandedHeight(
     activeMode: IslandMode,
