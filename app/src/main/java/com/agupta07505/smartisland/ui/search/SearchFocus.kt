@@ -15,22 +15,19 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
-/**
- * Which row a search result asked the screen to bring into view. [jumpTo] sets the row key and bumps [token]; every
- * [searchAnchor] with that key then scrolls itself into view and flashes.
- */
+/** [jumpTo] sets the row key and bumps [token], every [searchAnchor] with that key scrolls into view and flashes. */
 class SearchFocusState {
     var key: String? by mutableStateOf(null)
         private set
@@ -49,12 +46,12 @@ class SearchFocusState {
 
 val LocalSearchFocus = compositionLocalOf<SearchFocusState?> { null }
 
-/** How long a jump stays armed. Long enough for the screen transition plus the flash. */
+/** Long enough for the screen transition plus the flash. */
 const val SEARCH_FOCUS_ARMED_MS = 4000L
 
 /**
- * Marks a row as a search target. When a search result with the same [key] is chosen the row is scrolled into view
- * (inside a plain `verticalScroll` parent) and flashes briefly.
+ * Scrolled into view (inside a plain `verticalScroll` parent) and flashes briefly when a result with the same [key] is
+ * chosen
  */
 @OptIn(ExperimentalFoundationApi::class)
 fun Modifier.searchAnchor(key: String?): Modifier = composed {
@@ -67,7 +64,7 @@ fun Modifier.searchAnchor(key: String?): Modifier = composed {
         val color = MaterialTheme.colorScheme.primary
         LaunchedEffect(focus.token) {
             if (focus.key != key) return@LaunchedEffect
-            // Let the screen transition and the first layout finish before scrolling.
+            // Let the screen transition and the first layout finish before scrolling
             delay(380)
             requester.bringIntoView()
             repeat(2) {

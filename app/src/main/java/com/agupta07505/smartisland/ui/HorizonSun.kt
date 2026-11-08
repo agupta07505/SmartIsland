@@ -8,13 +8,13 @@
 package com.agupta07505.smartisland.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.runtime.Composable
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -30,15 +30,15 @@ private const val CLIP_BOTTOM = 19f
 private val RAY_ANGLES = floatArrayOf(0f, 45f, 90f, 135f, 180f)
 
 /**
- * The half sun on its horizon line, drawn like the Material "twilight" glyph but in two parts: the horizon line stays
- * fixed, and the sun (disc and rays) can sit anywhere between hidden behind it ([lift] 0) and fully up ([lift] 1).
+ * Half sun on its horizon line, like the Material "twilight" glyph in 2 parts: the line stays fixed, the sun (disc
+ * and rays) sits anywhere from hidden behind it ([lift] 0) to fully up ([lift] 1)
  */
 @Composable
 internal fun HorizonSunGlyph(lift: Float, modifier: Modifier = Modifier, color: Color = Color.White) {
     Canvas(modifier = modifier) {
         val k = size.width / GRID
         val stroke = STROKE * k
-        // How far down the sun has to go to be completely hidden: its highest ray tip to the clip line.
+        // How far down the sun goes to be hidden: highest ray tip to the clip line
         val hide = (CLIP_BOTTOM - (SUN_CENTER_Y - RAY_TO)) * k + stroke
         clipRect(left = 0f, top = 0f, right = size.width, bottom = CLIP_BOTTOM * k) {
             translate(top = hide * (1f - lift.coerceIn(0f, 1f))) {
