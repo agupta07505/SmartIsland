@@ -392,7 +392,7 @@
     <string name="empty_history_desc">启用历史记录后，过往通知会被归档保存在这里</string>
     <string name="confirm_clear_history_title">清空通知历史？</string>
     <string name="confirm_clear_history_msg">这将永久删除设备数据库中所有已保存的通知记录。</string>
-    <string name="confirm_delete_app_history_title">删除%1$的历史记录？</string>
+    <string name="confirm_delete_app_history_title">删除%1$s的历史记录？</string>
     <string name="confirm_delete_app_history_msg">这将永久删除已记录的%1$d条%2$s通知。</string>
     <string name="retention_24h">24小时（1天）</string>
     <string name="retention_72h">3天（推荐）</string>
