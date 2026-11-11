@@ -11,18 +11,20 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.agupta07505.smartisland.data.SmartIslandSettings
-import com.agupta07505.smartisland.data.INotificationRepository
-import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
-import com.agupta07505.smartisland.ui.SmartIslandHomeScreen
-import com.agupta07505.smartisland.ui.SmartIslandTheme
-import com.agupta07505.smartisland.util.SystemServiceRecovery
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.agupta07505.smartisland.data.INotificationRepository
+import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.service.SystemServiceRecovery
+import com.agupta07505.smartisland.ui.SmartIslandHomeScreen
+import com.agupta07505.smartisland.ui.SmartIslandTheme
+import com.agupta07505.smartisland.ui.UtilityNavigation
+import com.agupta07505.smartisland.util.UtilityWidgets
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -33,7 +35,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedSection = intent?.getStringExtra(com.agupta07505.smartisland.util.UtilityActions.EXTRA_OPEN_SECTION)
+        requestedSection = intent?.getStringExtra(UtilityNavigation.EXTRA_OPEN_SECTION)
         SystemServiceRecovery.requestRecovery(this)
 
         setContent {
@@ -59,13 +61,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        requestedSection = intent.getStringExtra(com.agupta07505.smartisland.util.UtilityActions.EXTRA_OPEN_SECTION)
+        requestedSection = intent.getStringExtra(UtilityNavigation.EXTRA_OPEN_SECTION)
     }
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        // The app widget setup screen reports back by request code; the result is also passed on as usual.
-        com.agupta07505.smartisland.util.UtilityWidgets.onActivityResult(requestCode, resultCode)
+        // The app widget setup screen reports back by request code; the result is also passed on as usual
+        UtilityWidgets.onActivityResult(requestCode, resultCode)
         super.onActivityResult(requestCode, resultCode, data)
     }
 
