@@ -30,9 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.util.SystemAnimScale
 import kotlinx.coroutines.delay
 
-/** The Wi-Fi card's picture, in the same 46 dp tinted box as the VPN globe and the Bluetooth earbuds. See [WifiArcs]. */
+/** Same 46 dp box as the VPN globe and Bluetooth earbuds, see [WifiArcs]. */
 @Composable
 internal fun WifiSignalBox(accent: Color, modifier: Modifier = Modifier, lost: Boolean = false) {
     val shape = RoundedCornerShape(14.dp)
@@ -48,16 +49,13 @@ internal fun WifiSignalBox(accent: Color, modifier: Modifier = Modifier, lost: B
     }
 }
 
-/**
- * A dot and three arcs drawn as lines, scaled to whatever size it is given (the expanded card's box uses 32 dp, the
- * collapsed pill 20 dp).
- */
+/** Scales to any size (expanded card 32 dp, collapsed pill 20 dp). */
 @Composable
 internal fun WifiArcs(accent: Color, modifier: Modifier = Modifier, lost: Boolean = false) {
     var level by remember { mutableIntStateOf(if (lost) 3 else 1) }
-    val animate = !lost && !com.agupta07505.smartisland.util.SystemAnimScale.animationsOff()
+    val animate = !lost && !SystemAnimScale.animationsOff()
     if (animate) {
-        // One tiny state change every step; only this glyph is redrawn.
+        // 1 tiny state change every step; only this glyph is redrawn
         LaunchedEffect(Unit) {
             var i = 0
             while (true) {
@@ -74,7 +72,7 @@ internal fun WifiArcs(accent: Color, modifier: Modifier = Modifier, lost: Boolea
     val arc3 by animateFloatAsState(if (level >= 3) 1f else WIFI_ARC_OFF_ALPHA, tween(WIFI_FADE_MS), label = "wifiArc3")
     Canvas(modifier = modifier) {
         val unit = size.minDimension / 2f / 20f
-        // 1.9 dp on the 32 dp card glyph, in proportion at every other size.
+        // 1.9 dp on the 32 dp card glyph, in proportion at every other size
         val line = size.minDimension * 0.0594f
         val stroke = Stroke(width = line, cap = StrokeCap.Round)
         val origin = Offset(size.width / 2f, size.height / 2f + 11f * unit)
