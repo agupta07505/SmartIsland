@@ -173,7 +173,7 @@ fun IslandOverlayView(
         notchMode = settings.enableNotchMode,
         screenWidthDp = screenWidth.value,
         animSpeed = settings.animationSpeed(isLandscape),
-        pillOnScreen = !((settings.hideWhenIdle && notifications.isEmpty()) || (settings.autoHidePill && ui.isAutoHidden))
+        pillOnScreen = !(settings.autoHidePill && ui.isAutoHidden)
     )
     @Suppress("NAME_SHADOWING")
     val settings = pillExit.frozenNow ?: settings

@@ -396,7 +396,7 @@ internal fun rememberIslandLayout(
         else (expandedTopOffsetBase - LAUNCHER_EXPANDED_LIFT_DP.dp).coerceAtLeast(0.dp)
     } else expandedTopOffsetBase
     val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
-    val isHiding = (isIdleHiding || (settings.autoHidePill && isAutoHidden))
+    val isHiding = (settings.autoHidePill && isAutoHidden)
     val hidingAlphaState = animateFloatAsState(
         targetValue = if (isHiding) 0f else 1f,
         animationSpec = tween(
@@ -466,8 +466,21 @@ internal fun rememberIslandLayout(
             dampingRatio = PILL_STRETCH_DAMPING,
             stiffness = animSpeed.stiffness(PILL_STRETCH_STIFFNESS)
         )
+    val cameraCutoutArea = rememberCameraCutoutArea(settings, isLandscape)
+    val idleCutoutWidth = if (settings.cameraCutoutManual) {
+        settings.cameraCutoutWidth.dp
+    } else {
+        (cameraCutoutArea?.widthDp ?: 21f).dp
+    }
+    val idleCutoutHeight = if (settings.cameraCutoutManual) {
+        settings.cameraCutoutHeight.dp
+    } else {
+        (cameraCutoutArea?.widthDp ?: 21f).dp
+    }
+    val idleCutoutRadius = idleCutoutHeight / 2f
+
     val widthState = transition.animateDp(transitionSpec = { if (initialState == targetState) stretchSpec else if (!targetState && collapseOnPill) collapseWidthSpec else sizeSpec }, label = "islandWidth") {
-        if (it) expandedWidth else settings.width.dp
+        if (it) expandedWidth else if (isIdleHiding) idleCutoutWidth else settings.width.dp
     }
     // The height of an island that STAYS expanded (another card is swiped in, a text opens, a step finishes).
     val heightFollowSpec = spring<androidx.compose.ui.unit.Dp>(
@@ -490,7 +503,7 @@ internal fun rememberIslandLayout(
         else if (!targetState && collapseOnPill) collapseSettleSpec
         else heightSpec
     }, label = "islandHeight") {
-        if (it) expandedHeight else settings.height.dp
+        if (it) expandedHeight else if (isIdleHiding) idleCutoutHeight else settings.height.dp
     }
     // Landscape only: lowers the collapsed cutouts inside a window that starts at the screen top.
     val collapsedTopShift = collapsedTopShiftDp(isLandscape, settings.enableNotchMode, settings.yOffset).dp
@@ -498,7 +511,7 @@ internal fun rememberIslandLayout(
         if (it) 0.dp else collapsedTopShift
     }
     val radiusState = transition.animateDp(transitionSpec = { if (initialState == targetState) settleOrSnap else if (!targetState && collapseOnPill) collapseSettleSpec else sizeSpec }, label = "islandRadius") {
-        if (it) 34.dp else settings.cornerRadius.dp
+        if (it) 34.dp else if (isIdleHiding) idleCutoutRadius else settings.cornerRadius.dp
     }
 
     // Expanding: the collapsed content leaves quickly while the card grows, then the card content
@@ -533,7 +546,7 @@ internal fun rememberIslandLayout(
         },
         label = "collapsedAlpha"
     ) {
-        if (it || isHiding) 0f else 1f
+        if (it || isHiding || isIdleHiding) 0f else 1f
     }
 
     val expandedAlphaState = transition.animateFloat(
