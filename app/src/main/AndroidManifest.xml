@@ -42,6 +42,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <!-- Lets the call card mute the mic and switch earpiece / speaker / Bluetooth for apps whose call
          notification has no such buttons. A normal permission, granted at install. -->

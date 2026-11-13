@@ -850,6 +850,15 @@
     <string name="idle_widget_notifications_desc">Unread messages and mail from all your messaging and email apps, as a number on the left of the cutout. Tap it to see how many each app has. Skipped while there are none.</string>
     <string name="idle_widget_modes_title">Do Not Disturb / mode</string>
     <string name="idle_widget_modes_desc">The active mode (Do Not Disturb, Bedtime, Driving, …) as its icon on the left of the cutout. Tap it for the mode\'s name. Skipped while none is on. Grant Do Not Disturb access to tell the modes apart (Android 15 or later).</string>
+    <string name="idle_widget_aqi_title">Air quality (AQI)</string>
+    <string name="idle_widget_aqi_desc">Current Air Quality Index (US AQI). Color-coded from green (good) to purple/maroon (hazardous). Uses Open-Meteo.</string>
+    <string name="idle_widget_aqi_island_sub">Air Quality Index</string>
+    <string name="idle_widget_steps_title">Step counter</string>
+    <string name="idle_widget_steps_desc">Live daily steps from the hardware pedometer sensor. Resets daily at midnight with zero battery drain.</string>
+    <string name="idle_widgets_steps_permission_note">Step counter requires physical activity recognition permission to count steps from your device\'s hardware sensor.</string>
+    <string name="idle_widgets_allow_steps">Allow step tracking</string>
+    <string name="idle_widget_uv_title">UV index</string>
+    <string name="idle_widget_uv_desc">Solar ultraviolet radiation index with sun protection guidance. Uses Open-Meteo.</string>
     <string name="idle_modes_access_desc">The mode widget shows Do Not Disturb as it is. To tell Bedtime, Driving and your other modes apart (Android 15 or later) and show their names, allow Smart Island under Do Not Disturb access. It only reads which mode is on; it changes nothing.</string>
     <string name="idle_modes_access_button">Grant Do Not Disturb access</string>
     <string name="idle_widgets_cycle_title">Switch every</string>

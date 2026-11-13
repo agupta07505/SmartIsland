@@ -36,8 +36,8 @@ object WidgetIslandContent {
         modeActive: Boolean = false
     ): Boolean = when (kind) {
         IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> false
-        IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock -> true
-        IdleWidgetKind.Weather, IdleWidgetKind.Wind -> hasWeather
+        IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock, IdleWidgetKind.Steps -> true
+        IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Aqi, IdleWidgetKind.Uv -> hasWeather
         // Not charging, the battery island says when it will run out; charging, how long to full.
         IdleWidgetKind.Battery -> true
         IdleWidgetKind.NextAlarm -> nextAlarmMs > nowMs

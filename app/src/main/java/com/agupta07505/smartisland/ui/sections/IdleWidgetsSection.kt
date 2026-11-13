@@ -25,6 +25,9 @@ import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.DirectionsWalk
+import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.AccessTime
@@ -87,10 +90,15 @@ fun IdleWidgetsSection(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val selected = remember(settings.idleWidgetIds) { IdleWidgets.parse(settings.idleWidgetIds) }
-    val weatherOn = anyEnabled && (IdleWidgetKind.Weather in selected || IdleWidgetKind.Wind in selected)
+    val weatherOn = anyEnabled && (IdleWidgetKind.Weather in selected || IdleWidgetKind.Wind in selected || IdleWidgetKind.Aqi in selected || IdleWidgetKind.Uv in selected)
     var locationGranted by remember { mutableStateOf(IdleWeather.hasLocationPermission(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationGranted = granted
+    }
+    val stepsOn = anyEnabled && IdleWidgetKind.Steps in selected
+    var stepPermissionGranted by remember { mutableStateOf(com.agupta07505.smartisland.util.StepTracker.hasPermission(context)) }
+    val stepPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        stepPermissionGranted = granted
     }
     // The app is in front here, so this is the moment the last known place can be read and kept for the weather widget.
     LaunchedEffect(weatherOn, locationGranted) {
@@ -186,7 +194,7 @@ fun IdleWidgetsSection(
                     NoteText(stringResource(R.string.idle_widgets_battery_metric_desc))
                 }
 
-                if (IdleWidgetKind.Weather in selected || IdleWidgetKind.Wind in selected) {
+                if (IdleWidgetKind.Weather in selected || IdleWidgetKind.Wind in selected || IdleWidgetKind.Aqi in selected || IdleWidgetKind.Uv in selected) {
                     ChoiceBlock(title = stringResource(R.string.idle_widgets_unit_title)) {
                         listOf(
                             IdleWidgets.UNIT_AUTO to stringResource(R.string.idle_widgets_unit_auto),
@@ -219,6 +227,15 @@ fun IdleWidgetsSection(
                     }
                 }
 
+                if (stepsOn && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !stepPermissionGranted) {
+                    NoteText(stringResource(R.string.idle_widgets_steps_permission_note))
+                    Button(
+                        onClick = { stepPermissionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) }
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_steps))
+                    }
+                }
+
                 NoteText(stringResource(R.string.idle_widgets_landscape_note))
             }
         }
@@ -239,6 +256,9 @@ internal fun kindIcon(kind: IdleWidgetKind): ImageVector = when (kind) {
     IdleWidgetKind.DayMoments -> Icons.Rounded.WbTwilight
     IdleWidgetKind.Notifications -> Icons.Rounded.Notifications
     IdleWidgetKind.Modes -> Icons.Rounded.DoNotDisturbOn
+    IdleWidgetKind.Aqi -> Icons.Rounded.Eco
+    IdleWidgetKind.Steps -> Icons.Rounded.DirectionsWalk
+    IdleWidgetKind.Uv -> Icons.Rounded.BrightnessHigh
 }
 
 internal fun kindTint(kind: IdleWidgetKind): Color = when (kind) {
@@ -253,6 +273,9 @@ internal fun kindTint(kind: IdleWidgetKind): Color = when (kind) {
     IdleWidgetKind.DayMoments -> Color(0xFFFB923C)
     IdleWidgetKind.Notifications -> Color(0xFF3B82F6)
     IdleWidgetKind.Modes -> Color(0xFF8B5CF6)
+    IdleWidgetKind.Aqi -> Color(0xFF10B981)
+    IdleWidgetKind.Steps -> Color(0xFF34D399)
+    IdleWidgetKind.Uv -> Color(0xFFF59E0B)
 }
 
 internal fun kindTitle(kind: IdleWidgetKind): Int = when (kind) {
@@ -267,6 +290,9 @@ internal fun kindTitle(kind: IdleWidgetKind): Int = when (kind) {
     IdleWidgetKind.DayMoments -> R.string.idle_widget_daymoments_title
     IdleWidgetKind.Notifications -> R.string.idle_widget_notifications_title
     IdleWidgetKind.Modes -> R.string.idle_widget_modes_title
+    IdleWidgetKind.Aqi -> R.string.idle_widget_aqi_title
+    IdleWidgetKind.Steps -> R.string.idle_widget_steps_title
+    IdleWidgetKind.Uv -> R.string.idle_widget_uv_title
 }
 
 internal fun kindDesc(kind: IdleWidgetKind): Int = when (kind) {
@@ -281,6 +307,9 @@ internal fun kindDesc(kind: IdleWidgetKind): Int = when (kind) {
     IdleWidgetKind.DayMoments -> R.string.idle_widget_daymoments_desc
     IdleWidgetKind.Notifications -> R.string.idle_widget_notifications_desc
     IdleWidgetKind.Modes -> R.string.idle_widget_modes_desc
+    IdleWidgetKind.Aqi -> R.string.idle_widget_aqi_desc
+    IdleWidgetKind.Steps -> R.string.idle_widget_steps_desc
+    IdleWidgetKind.Uv -> R.string.idle_widget_uv_desc
 }
 
 @Composable

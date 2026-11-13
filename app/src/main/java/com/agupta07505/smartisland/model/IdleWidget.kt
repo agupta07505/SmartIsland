@@ -34,7 +34,13 @@ enum class IdleWidgetKind(val id: String) {
     /** Unread messages and mail count on the left; the island lists the apps. Sits out while there are none. */
     Notifications("notifications"),
     /** Active Do Not Disturb / mode glyph on the left; the island names it. Sits out while no mode is on. */
-    Modes("modes");
+    Modes("modes"),
+    /** Current Air Quality Index (US AQI). Color-coded by EPA standard. */
+    Aqi("aqi"),
+    /** Live step count for today from hardware pedometer. */
+    Steps("steps"),
+    /** Current Solar Ultraviolet (UV) Index. */
+    Uv("uv");
 
     companion object {
         fun fromId(id: String): IdleWidgetKind? = values().firstOrNull { it.id == id }
@@ -149,6 +155,18 @@ object IdleWidgets {
             else -> "${Math.round(b / 1_000_000.0)}M"
         }
     }
+
+    /** Short pill step count text ("850", "4.2k", "12k"). */
+    fun formatSteps(steps: Int): String = when {
+        steps < 0 -> "--"
+        steps < 1_000 -> steps.toString()
+        steps < 10_000 -> String.format(java.util.Locale.US, "%.1fk", steps / 1000f)
+        else -> "${steps / 1000}k"
+    }
+
+    fun displayAqi(aqi: Int): String = if (aqi < 0) "--" else aqi.toString()
+
+    fun displayUv(uv: Float): String = if (uv < 0f) "--" else Math.round(uv).toString()
 }
 
 /** Weather lookup result: temperature in Celsius and the WMO weather code Open-Meteo reports. */
@@ -166,7 +184,11 @@ data class WeatherSnapshot(
     /** True when the lookup asked for the feels-like and humidity fields. */
     val detailed: Boolean = false,
     /** Extra readings behind the island rows; null = none asked for. */
-    val extras: WeatherExtras? = null
+    val extras: WeatherExtras? = null,
+    /** Current Solar Ultraviolet (UV) Index; negative = not known. */
+    val uvIndex: Float = -1f,
+    /** Air quality index (US AQI); negative = not known. */
+    val aqi: Int = -1
 )
 
 /** Weather code grouped to the few icons the pill can show. */

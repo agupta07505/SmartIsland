@@ -70,6 +70,9 @@ import androidx.compose.material.icons.rounded.Battery5Bar
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BatteryFull
+import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.DirectionsWalk
+import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Bedtime
@@ -249,6 +252,9 @@ internal fun IdleWidgetIslandContent(
                 IdleWidgetKind.Notifications -> NotificationsIslandBody(shown)
                 IdleWidgetKind.Modes -> ModesIslandBody(shown)
                 IdleWidgetKind.LiveClock -> ClockIslandBody(shown)
+                IdleWidgetKind.Aqi -> AqiIslandBody(shown)
+                IdleWidgetKind.Steps -> StepsIslandBody(shown)
+                IdleWidgetKind.Uv -> UvIslandBody(shown)
                 IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> Unit
             }
         }
@@ -481,6 +487,104 @@ private fun WindIslandBody(frame: IdleWidgetFrame) {
             )
             Text(
                 text = listOfNotNull("Wind", direction).joinToString(" \u00B7 "),
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun AqiIslandBody(frame: IdleWidgetFrame) {
+    val aqi = frame.data.weather?.extras?.aqi ?: frame.data.weather?.aqi ?: -1
+    val label = WeatherDisplay.aqiLabel(aqi)
+    val color = aqiColor(aqi)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Aqi, frame, size = 30.dp)
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (aqi < 0) "--" else "$aqi",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = label,
+                    color = color,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Text(
+                text = stringResource(R.string.idle_widget_aqi_island_sub),
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun StepsIslandBody(frame: IdleWidgetFrame) {
+    val steps = frame.data.stepCount
+    val distanceKm = if (steps > 0) String.format(Locale.US, "%.2f km", steps * 0.00076f) else "-- km"
+    val calories = if (steps > 0) "${Math.round(steps * 0.04f)} kcal" else "-- kcal"
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Steps, frame, size = 30.dp)
+        Column {
+            Text(
+                text = if (steps < 0) "-- steps" else String.format(Locale.US, "%,d steps", steps),
+                color = Color.White,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = "$distanceKm  \u00B7  $calories",
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun UvIslandBody(frame: IdleWidgetFrame) {
+    val uv = frame.data.weather?.extras?.uvIndex ?: frame.data.weather?.uvIndex ?: -1f
+    val label = WeatherDisplay.uvLabel(uv)
+    val color = uvColor(uv)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Uv, frame, size = 30.dp)
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (uv < 0f) "UV --" else "UV ${Math.round(uv)}",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = label,
+                    color = color,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Text(
+                text = uvProtectionAdvice(uv),
                 color = SOFT_WHITE,
                 fontSize = 11.sp,
                 maxLines = 1
@@ -772,6 +876,36 @@ private val GREEN = Color(0xFF34C759)
 private val RED = Color(0xFFFF453A)
 private val SKY = Color(0xFF38BDF8)
 private val SOFT_WHITE = Color(0xFFE5E7EB)
+private val MINT = Color(0xFF34D399)
+private val PURPLE = Color(0xFFA855F7)
+private val MAROON = Color(0xFF881337)
+
+internal fun aqiColor(aqi: Int): Color = when {
+    aqi < 0 -> SOFT_WHITE
+    aqi <= 50 -> GREEN
+    aqi <= 100 -> AMBER
+    aqi <= 150 -> ORANGE
+    aqi <= 200 -> RED
+    aqi <= 300 -> PURPLE
+    else -> MAROON
+}
+
+internal fun uvColor(uv: Float): Color = when {
+    uv < 0f -> SOFT_WHITE
+    uv <= 2.5f -> GREEN
+    uv <= 5.5f -> AMBER
+    uv <= 7.5f -> ORANGE
+    uv <= 10.5f -> RED
+    else -> PURPLE
+}
+
+private fun uvProtectionAdvice(uv: Float): String = when (Math.round(uv)) {
+    in Int.MIN_VALUE..2 -> "Minimal protection needed"
+    in 3..5 -> "Wear SPF 30+ & sunglasses"
+    in 6..7 -> "Seek shade during midday"
+    in 8..10 -> "Extra protection needed"
+    else -> "Avoid midday sun"
+}
 
 /**
  * What the collapsed cutout draws for the idle widgets, or null when none is due (switched off, a card is on the
@@ -965,7 +1099,8 @@ internal fun rememberIdleWidgetFrame(
 }
 
 private val NEEDS_CONTENT_KINDS = setOf(
-    IdleWidgetKind.Clock, IdleWidgetKind.DayMoments, IdleWidgetKind.Battery, IdleWidgetKind.Notifications, IdleWidgetKind.Modes
+    IdleWidgetKind.Clock, IdleWidgetKind.DayMoments, IdleWidgetKind.Battery, IdleWidgetKind.Notifications, IdleWidgetKind.Modes,
+    IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv
 )
 
 private fun isAvailable(
@@ -984,6 +1119,9 @@ private fun isAvailable(
     }
     IdleWidgetKind.Weather -> data.weather != null && weatherShown
     IdleWidgetKind.Wind -> (data.weather?.windKmh ?: -1f) >= 0f
+    IdleWidgetKind.Aqi -> (data.weather?.extras?.aqi ?: data.weather?.aqi ?: -1) >= 0
+    IdleWidgetKind.Uv -> (data.weather?.extras?.uvIndex ?: data.weather?.uvIndex ?: -1f) >= 0f
+    IdleWidgetKind.Steps -> data.stepCount >= 0
     IdleWidgetKind.Battery -> data.batteryPercent >= 0 && (data.charging || !batteryOnlyWhenCharging)
     IdleWidgetKind.NetSpeed -> netShown
     else -> true
@@ -1051,6 +1189,9 @@ private fun beatKey(kind: IdleWidgetKind, frame: IdleWidgetFrame): Any? {
             }
         }
         IdleWidgetKind.NextAlarm -> d.nextAlarmMs
+        IdleWidgetKind.Aqi -> d.weather?.extras?.aqi ?: d.weather?.aqi ?: -1
+        IdleWidgetKind.Steps -> d.stepCount
+        IdleWidgetKind.Uv -> d.weather?.extras?.uvIndex ?: d.weather?.uvIndex ?: -1f
         else -> null
     }
 }
@@ -1356,6 +1497,15 @@ internal fun IdleWidgetIcon(kind: IdleWidgetKind, frame: IdleWidgetFrame, size: 
             if (data.speedIsUpload) Icons.Rounded.ArrowUpward to ORANGE else Icons.Rounded.ArrowDownward to SKY
         IdleWidgetKind.Notifications -> Icons.Rounded.Notifications to SOFT_WHITE
         IdleWidgetKind.Modes -> modeFallbackIcon(data.mode.kind) to SOFT_WHITE
+        IdleWidgetKind.Aqi -> {
+            val aqi = data.weather?.extras?.aqi ?: data.weather?.aqi ?: -1
+            Icons.Rounded.Eco to aqiColor(aqi)
+        }
+        IdleWidgetKind.Steps -> Icons.Rounded.DirectionsWalk to MINT
+        IdleWidgetKind.Uv -> {
+            val uv = data.weather?.extras?.uvIndex ?: data.weather?.uvIndex ?: -1f
+            Icons.Rounded.BrightnessHigh to uvColor(uv)
+        }
     }
     val snapshot = data.weather
     if (kind == IdleWidgetKind.Weather && snapshot != null) {
@@ -1609,10 +1759,25 @@ internal fun IdleWidgetValue(kind: IdleWidgetKind, frame: IdleWidgetFrame, compa
         IdleWidgetKind.Notifications -> text = NotificationCounts.badgeText(data.notificationSummary.total)
         // The small circle has no room for a name: the mode's own glyph is drawn there instead ([IdleWidgetCompact]).
         IdleWidgetKind.Modes -> text = ""
+        IdleWidgetKind.Aqi -> {
+            val aqi = data.weather?.extras?.aqi ?: data.weather?.aqi ?: -1
+            text = if (aqi < 0) "--" else aqi.toString()
+            color = aqiColor(aqi)
+        }
+        IdleWidgetKind.Steps -> {
+            text = IdleWidgets.formatSteps(data.stepCount)
+            color = MINT
+        }
+        IdleWidgetKind.Uv -> {
+            val uv = data.weather?.extras?.uvIndex ?: data.weather?.uvIndex ?: -1f
+            text = if (uv < 0f) "--" else if (compact) Math.round(uv).toString() else "UV " + Math.round(uv)
+            color = uvColor(uv)
+        }
     }
     if (monochrome) color = Color.White
     val size = if (!compact) (11f * frame.glyphScale).sp else when (kind) {
-        IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Battery -> 10.sp
+        IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Battery,
+        IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv -> 10.sp
         else -> 8.sp
     }
     Text(
