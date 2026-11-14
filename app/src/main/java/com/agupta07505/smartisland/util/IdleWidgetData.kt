@@ -133,6 +133,10 @@ class IdleWidgetData internal constructor() {
     var mode by mutableStateOf(ModeStatus.Off)
         internal set
 
+    /** Device-wide foreground screen time today and most used app; empty snapshot if unread. */
+    var screenTime by mutableStateOf(ScreenTimeSnapshot())
+        internal set
+
     companion object {
         const val NO_TEMPERATURE = Int.MIN_VALUE
     }
@@ -163,6 +167,19 @@ fun rememberIdleWidgetData(
     val wantsNotifications = active && IdleWidgetKind.Notifications in kinds
     val wantsMode = active && IdleWidgetKind.Modes in kinds
     val wantsSteps = active && IdleWidgetKind.Steps in kinds
+    val wantsScreenTime = active && IdleWidgetKind.ScreenTime in kinds
+
+    LaunchedEffect(wantsScreenTime) {
+        if (!wantsScreenTime) {
+            data.screenTime = ScreenTimeSnapshot()
+            return@LaunchedEffect
+        }
+        while (true) {
+            val snapshot = withContext(Dispatchers.IO) { ScreenTimeReader.readToday(context) }
+            data.screenTime = snapshot
+            delay(SCREEN_TIME_POLL_MS)
+        }
+    }
 
     DisposableEffect(context, wantsSteps) {
         if (!wantsSteps) {
@@ -244,7 +261,7 @@ fun rememberIdleWidgetData(
     }
 
     // The calendar is read once a minute (and the permission checked each time, so allowing it takes effect within a minute).
-    val wantsCalendar = active && IdleWidgetKind.Date in kinds
+    val wantsCalendar = active && (IdleWidgetKind.Date in kinds || IdleWidgetKind.NextEvent in kinds)
     LaunchedEffect(wantsCalendar) {
         if (!wantsCalendar) {
             data.nextEvent = null
@@ -370,6 +387,7 @@ fun rememberIdleWidgetData(
 private const val SPEED_SAMPLE_MS = 2000L
 
 private const val CALENDAR_POLL_MS = 60_000L
+private const val SCREEN_TIME_POLL_MS = 30_000L
 
 
 private const val USAGE_SAVE_EVERY = 15

@@ -40,7 +40,11 @@ enum class IdleWidgetKind(val id: String) {
     /** Live step count for today from hardware pedometer. */
     Steps("steps"),
     /** Current Solar Ultraviolet (UV) Index. */
-    Uv("uv");
+    Uv("uv"),
+    /** Daily screen-on time and top application. */
+    ScreenTime("screentime"),
+    /** Upcoming scheduled calendar event countdown within 24 hours. */
+    NextEvent("event");
 
     companion object {
         fun fromId(id: String): IdleWidgetKind? = values().firstOrNull { it.id == id }
@@ -167,6 +171,34 @@ object IdleWidgets {
     fun displayAqi(aqi: Int): String = if (aqi < 0) "--" else aqi.toString()
 
     fun displayUv(uv: Float): String = if (uv < 0f) "--" else Math.round(uv).toString()
+
+    /** Short screen time text ("45m", "2h 15m"; compact: "45m", "2h"). */
+    fun formatScreenTime(ms: Long, compact: Boolean = false): String {
+        if (ms <= 0L) return "0m"
+        val totalMinutes = ms / 60_000L
+        val hours = totalMinutes / 60L
+        val mins = totalMinutes % 60L
+        if (compact) {
+            return if (hours == 0L) "${mins}m" else "${hours}h"
+        }
+        return when {
+            hours == 0L -> if (mins == 0L) "<1m" else "${mins}m"
+            mins == 0L -> "${hours}h"
+            else -> "${hours}h ${mins}m"
+        }
+    }
+
+    /** Event countdown text ("now", "in 25m", "in 2h", "in 2h 15m"). */
+    fun formatEventCountdown(beginMs: Long, nowMs: Long): String {
+        val diff = beginMs - nowMs
+        if (diff <= 0L) return "now"
+        val totalMins = diff / 60_000L
+        if (totalMins < 1L) return "<1m"
+        if (totalMins < 60L) return "in ${totalMins}m"
+        val hours = totalMins / 60L
+        val mins = totalMins % 60L
+        return if (mins == 0L) "in ${hours}h" else "in ${hours}h ${mins}m"
+    }
 }
 
 /** Weather lookup result: temperature in Celsius and the WMO weather code Open-Meteo reports. */

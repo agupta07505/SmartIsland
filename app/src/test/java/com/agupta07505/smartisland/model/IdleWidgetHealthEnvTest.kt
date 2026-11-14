@@ -19,10 +19,12 @@ class IdleWidgetHealthEnvTest {
         assertEquals(IdleWidgetKind.Aqi, IdleWidgetKind.fromId("aqi"))
         assertEquals(IdleWidgetKind.Steps, IdleWidgetKind.fromId("steps"))
         assertEquals(IdleWidgetKind.Uv, IdleWidgetKind.fromId("uv"))
+        assertEquals(IdleWidgetKind.ScreenTime, IdleWidgetKind.fromId("screentime"))
+        assertEquals(IdleWidgetKind.NextEvent, IdleWidgetKind.fromId("event"))
 
-        val kinds = listOf(IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv)
+        val kinds = listOf(IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv, IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent)
         val serialized = IdleWidgets.serialize(kinds)
-        assertEquals("aqi,steps,uv", serialized)
+        assertEquals("aqi,steps,uv,screentime,event", serialized)
         assertEquals(kinds, IdleWidgets.parse(serialized))
     }
 
@@ -63,6 +65,51 @@ class IdleWidgetHealthEnvTest {
         assertTrue(WidgetIslandContent.hasContent(IdleWidgetKind.Aqi, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = true))
         assertFalse(WidgetIslandContent.hasContent(IdleWidgetKind.Uv, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = false))
         assertTrue(WidgetIslandContent.hasContent(IdleWidgetKind.Uv, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = true))
+    }
+
+    @Test
+    fun formatScreenTimeFormatsNicely() {
+        assertEquals("0m", IdleWidgets.formatScreenTime(0L))
+        assertEquals("<1m", IdleWidgets.formatScreenTime(30_000L))
+        assertEquals("45m", IdleWidgets.formatScreenTime(45 * 60_000L))
+        assertEquals("2h", IdleWidgets.formatScreenTime(2 * 3600_000L))
+        assertEquals("2h 15m", IdleWidgets.formatScreenTime(2 * 3600_000L + 15 * 60_000L))
+
+        // Compact mode
+        assertEquals("0m", IdleWidgets.formatScreenTime(0L, compact = true))
+        assertEquals("45m", IdleWidgets.formatScreenTime(45 * 60_000L, compact = true))
+        assertEquals("2h", IdleWidgets.formatScreenTime(2 * 3600_000L + 15 * 60_000L, compact = true))
+    }
+
+    @Test
+    fun formatEventCountdownRules() {
+        val now = 10_000_000L
+        assertEquals("now", IdleWidgets.formatEventCountdown(now, now))
+        assertEquals("now", IdleWidgets.formatEventCountdown(now - 1000L, now))
+        assertEquals("<1m", IdleWidgets.formatEventCountdown(now + 30_000L, now))
+        assertEquals("in 25m", IdleWidgets.formatEventCountdown(now + 25 * 60_000L, now))
+        assertEquals("in 2h", IdleWidgets.formatEventCountdown(now + 2 * 3600_000L, now))
+        assertEquals("in 2h 15m", IdleWidgets.formatEventCountdown(now + 2 * 3600_000L + 15 * 60_000L, now))
+    }
+
+    @Test
+    fun widgetIslandContentRulesForScreenTimeAndNextEvent() {
+        assertTrue(WidgetIslandContent.hasContent(IdleWidgetKind.ScreenTime, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = false, hasScreenTime = true))
+        assertFalse(WidgetIslandContent.hasContent(IdleWidgetKind.ScreenTime, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = false, hasScreenTime = false))
+
+        assertTrue(WidgetIslandContent.hasContent(IdleWidgetKind.NextEvent, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = false, hasNextEvent = true))
+        assertFalse(WidgetIslandContent.hasContent(IdleWidgetKind.NextEvent, charging = false, nextAlarmMs = 0L, nowMs = 0L, hasWeather = false, hasNextEvent = false))
+    }
+
+    @Test
+    fun allNewWidgetsHaveLedIcons() {
+        val newIcons = listOf(LedIcon.Leaf, LedIcon.Walk, LedIcon.Uv, LedIcon.Hourglass, LedIcon.Bell, LedIcon.Dnd)
+        for (icon in newIcons) {
+            val grid = LedFont.icon(icon)
+            assertEquals(7, grid.cols)
+            assertEquals(7, grid.rows)
+            assertTrue(grid.bits.any { it })
+        }
     }
 
     @Test

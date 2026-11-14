@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.CalendarRules
 import com.agupta07505.smartisland.model.IdleWidgetKind
 import com.agupta07505.smartisland.model.WidgetIslandContent
 import com.agupta07505.smartisland.model.WidgetIslandTimer
@@ -95,7 +96,9 @@ internal fun WidgetIslandLayer(
         nowMs = source.data.nowMs,
         hasWeather = source.data.weather != null,
         notificationCount = source.data.notificationSummary.total,
-        modeActive = source.data.mode.active
+        modeActive = source.data.mode.active,
+        hasNextEvent = source.data.nextEvent?.let { CalendarRules.islandShows(it.beginMs, source.data.nowMs) } == true,
+        hasScreenTime = source.data.screenTime.totalMs > 0L
     )
     // Only calls and live events close it ([cardClosesWidgetIsland]); other cards wait behind the island, and the
     // idle widget leaving the pill for them does not count as losing the widget.

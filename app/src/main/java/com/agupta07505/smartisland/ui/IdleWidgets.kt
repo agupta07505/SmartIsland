@@ -89,6 +89,7 @@ import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.DataSaverOn
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.SettingsEthernet
 import androidx.compose.material.icons.rounded.SignalCellularAlt
@@ -255,6 +256,8 @@ internal fun IdleWidgetIslandContent(
                 IdleWidgetKind.Aqi -> AqiIslandBody(shown)
                 IdleWidgetKind.Steps -> StepsIslandBody(shown)
                 IdleWidgetKind.Uv -> UvIslandBody(shown)
+                IdleWidgetKind.ScreenTime -> ScreenTimeIslandBody(shown)
+                IdleWidgetKind.NextEvent -> EventIslandBody(shown)
                 IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> Unit
             }
         }
@@ -588,6 +591,70 @@ private fun UvIslandBody(frame: IdleWidgetFrame) {
                 color = SOFT_WHITE,
                 fontSize = 11.sp,
                 maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScreenTimeIslandBody(frame: IdleWidgetFrame) {
+    val snapshot = frame.data.screenTime
+    val totalText = IdleWidgets.formatScreenTime(snapshot.totalMs)
+    val subText = snapshot.topAppName?.let { app ->
+        stringResource(R.string.idle_widget_screentime_sub, app, IdleWidgets.formatScreenTime(snapshot.topAppMs))
+    } ?: stringResource(R.string.idle_widget_screentime_today)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.ScreenTime, frame, size = 30.dp)
+        Column {
+            Text(
+                text = totalText,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = subText,
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventIslandBody(frame: IdleWidgetFrame) {
+    val event = frame.data.nextEvent ?: return
+    val context = LocalContext.current
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val locale = Locale.getDefault()
+    val timeFormat = remember(is24, locale) { SimpleDateFormat(if (is24) "HH:mm" else "h:mm a", locale) }
+    val weekdayName = remember(locale) { SimpleDateFormat("EEE", locale) }
+    val at = event.beginMs
+    val whenText = (if (sameCalendarDay(at, frame.data.nowMs)) "" else weekdayName.format(Date(at)) + " ") + timeFormat.format(Date(at))
+    val countdown = "in " + WidgetIslandContent.durationText(at - frame.data.nowMs)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.NextEvent, frame, size = 30.dp)
+        Column {
+            Text(
+                text = CalendarRules.shortTitle(event.title, 24),
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "$whenText  \u00B7  $countdown",
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -1100,7 +1167,7 @@ internal fun rememberIdleWidgetFrame(
 
 private val NEEDS_CONTENT_KINDS = setOf(
     IdleWidgetKind.Clock, IdleWidgetKind.DayMoments, IdleWidgetKind.Battery, IdleWidgetKind.Notifications, IdleWidgetKind.Modes,
-    IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv
+    IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv, IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent
 )
 
 private fun isAvailable(
@@ -1124,6 +1191,8 @@ private fun isAvailable(
     IdleWidgetKind.Steps -> data.stepCount >= 0
     IdleWidgetKind.Battery -> data.batteryPercent >= 0 && (data.charging || !batteryOnlyWhenCharging)
     IdleWidgetKind.NetSpeed -> netShown
+    IdleWidgetKind.ScreenTime -> data.screenTime.totalMs > 0L
+    IdleWidgetKind.NextEvent -> data.nextEvent?.let { CalendarRules.islandShows(it.beginMs, data.nowMs) } == true
     else -> true
 }
 
@@ -1192,6 +1261,8 @@ private fun beatKey(kind: IdleWidgetKind, frame: IdleWidgetFrame): Any? {
         IdleWidgetKind.Aqi -> d.weather?.extras?.aqi ?: d.weather?.aqi ?: -1
         IdleWidgetKind.Steps -> d.stepCount
         IdleWidgetKind.Uv -> d.weather?.extras?.uvIndex ?: d.weather?.uvIndex ?: -1f
+        IdleWidgetKind.ScreenTime -> d.screenTime.totalMs / 60_000L
+        IdleWidgetKind.NextEvent -> d.nextEvent?.beginMs
         else -> null
     }
 }
@@ -1506,6 +1577,8 @@ internal fun IdleWidgetIcon(kind: IdleWidgetKind, frame: IdleWidgetFrame, size: 
             val uv = data.weather?.extras?.uvIndex ?: data.weather?.uvIndex ?: -1f
             Icons.Rounded.BrightnessHigh to uvColor(uv)
         }
+        IdleWidgetKind.ScreenTime -> Icons.Rounded.HourglassTop to Color(0xFF818CF8)
+        IdleWidgetKind.NextEvent -> Icons.Rounded.Event to Color(0xFFF43F5E)
     }
     val snapshot = data.weather
     if (kind == IdleWidgetKind.Weather && snapshot != null) {
@@ -1773,11 +1846,28 @@ internal fun IdleWidgetValue(kind: IdleWidgetKind, frame: IdleWidgetFrame, compa
             text = if (uv < 0f) "--" else if (compact) Math.round(uv).toString() else "UV " + Math.round(uv)
             color = uvColor(uv)
         }
+        IdleWidgetKind.ScreenTime -> {
+            text = IdleWidgets.formatScreenTime(data.screenTime.totalMs, compact)
+            color = Color(0xFF818CF8)
+        }
+        IdleWidgetKind.NextEvent -> {
+            val event = data.nextEvent
+            val at = event?.beginMs ?: 0L
+            text = if (event == null || at <= data.nowMs) "--"
+            else if (compact) {
+                val totalMins = (at - data.nowMs) / 60_000L
+                if (totalMins < 60L) "${totalMins}m" else "${totalMins / 60L}h"
+            } else {
+                IdleWidgets.formatEventCountdown(at, data.nowMs)
+            }
+            color = Color(0xFFF43F5E)
+        }
     }
     if (monochrome) color = Color.White
     val size = if (!compact) (11f * frame.glyphScale).sp else when (kind) {
         IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Battery,
-        IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv -> 10.sp
+        IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv,
+        IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent -> 10.sp
         else -> 8.sp
     }
     Text(

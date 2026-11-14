@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -28,6 +30,8 @@ import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.BrightnessHigh
 import androidx.compose.material.icons.rounded.DirectionsWalk
 import androidx.compose.material.icons.rounded.Eco
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.AccessTime
@@ -69,7 +73,13 @@ import com.agupta07505.smartisland.model.IdleWidgets
 import com.agupta07505.smartisland.model.WidgetIslandContent
 import com.agupta07505.smartisland.model.WidgetIslandTimer
 import com.agupta07505.smartisland.ui.search.searchAnchor
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.agupta07505.smartisland.util.CalendarReader
 import com.agupta07505.smartisland.util.IdleWeather
+import com.agupta07505.smartisland.util.ScreenTimeReader
+import com.agupta07505.smartisland.util.safeStartActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -95,10 +105,31 @@ fun IdleWidgetsSection(
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationGranted = granted
     }
+    val lifecycleOwner = LocalLifecycleOwner.current
     val stepsOn = anyEnabled && IdleWidgetKind.Steps in selected
     var stepPermissionGranted by remember { mutableStateOf(com.agupta07505.smartisland.util.StepTracker.hasPermission(context)) }
     val stepPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         stepPermissionGranted = granted
+    }
+    val screenTimeOn = anyEnabled && IdleWidgetKind.ScreenTime in selected
+    var usageGranted by remember { mutableStateOf(ScreenTimeReader.hasPermission(context)) }
+    val nextEventOn = anyEnabled && IdleWidgetKind.NextEvent in selected
+    var calendarGranted by remember { mutableStateOf(CalendarReader.hasPermission(context)) }
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        calendarGranted = granted
+    }
+
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                usageGranted = ScreenTimeReader.hasPermission(context)
+                calendarGranted = CalendarReader.hasPermission(context)
+                locationGranted = IdleWeather.hasLocationPermission(context)
+                stepPermissionGranted = com.agupta07505.smartisland.util.StepTracker.hasPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     // The app is in front here, so this is the moment the last known place can be read and kept for the weather widget.
     LaunchedEffect(weatherOn, locationGranted) {
@@ -236,6 +267,29 @@ fun IdleWidgetsSection(
                     }
                 }
 
+                if (screenTimeOn && !usageGranted) {
+                    NoteText(stringResource(R.string.idle_widgets_screentime_permission_note))
+                    Button(
+                        onClick = {
+                            context.safeStartActivity(
+                                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                                "Cannot open Usage access settings on this device."
+                            )
+                        }
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_screentime))
+                    }
+                }
+
+                if (nextEventOn && !calendarGranted) {
+                    NoteText(stringResource(R.string.idle_widgets_event_permission_note))
+                    Button(
+                        onClick = { calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR) }
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_event))
+                    }
+                }
+
                 NoteText(stringResource(R.string.idle_widgets_landscape_note))
             }
         }
@@ -259,6 +313,8 @@ internal fun kindIcon(kind: IdleWidgetKind): ImageVector = when (kind) {
     IdleWidgetKind.Aqi -> Icons.Rounded.Eco
     IdleWidgetKind.Steps -> Icons.Rounded.DirectionsWalk
     IdleWidgetKind.Uv -> Icons.Rounded.BrightnessHigh
+    IdleWidgetKind.ScreenTime -> Icons.Rounded.HourglassTop
+    IdleWidgetKind.NextEvent -> Icons.Rounded.Event
 }
 
 internal fun kindTint(kind: IdleWidgetKind): Color = when (kind) {
@@ -276,6 +332,8 @@ internal fun kindTint(kind: IdleWidgetKind): Color = when (kind) {
     IdleWidgetKind.Aqi -> Color(0xFF10B981)
     IdleWidgetKind.Steps -> Color(0xFF34D399)
     IdleWidgetKind.Uv -> Color(0xFFF59E0B)
+    IdleWidgetKind.ScreenTime -> Color(0xFF818CF8)
+    IdleWidgetKind.NextEvent -> Color(0xFFF43F5E)
 }
 
 internal fun kindTitle(kind: IdleWidgetKind): Int = when (kind) {
@@ -293,6 +351,8 @@ internal fun kindTitle(kind: IdleWidgetKind): Int = when (kind) {
     IdleWidgetKind.Aqi -> R.string.idle_widget_aqi_title
     IdleWidgetKind.Steps -> R.string.idle_widget_steps_title
     IdleWidgetKind.Uv -> R.string.idle_widget_uv_title
+    IdleWidgetKind.ScreenTime -> R.string.idle_widget_screentime_title
+    IdleWidgetKind.NextEvent -> R.string.idle_widget_nextevent_title
 }
 
 internal fun kindDesc(kind: IdleWidgetKind): Int = when (kind) {
@@ -310,6 +370,8 @@ internal fun kindDesc(kind: IdleWidgetKind): Int = when (kind) {
     IdleWidgetKind.Aqi -> R.string.idle_widget_aqi_desc
     IdleWidgetKind.Steps -> R.string.idle_widget_steps_desc
     IdleWidgetKind.Uv -> R.string.idle_widget_uv_desc
+    IdleWidgetKind.ScreenTime -> R.string.idle_widget_screentime_desc
+    IdleWidgetKind.NextEvent -> R.string.idle_widget_nextevent_desc
 }
 
 @Composable

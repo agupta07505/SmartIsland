@@ -216,7 +216,7 @@ fun IdleWidgetsSettingsSection(
                         val openSettings: (() -> Unit)? = when (kind) {
                             IdleWidgetKind.Weather, IdleWidgetKind.Wind -> onOpenWeatherSettings
                             IdleWidgetKind.NetSpeed -> onOpenNetSpeedSettings
-                            IdleWidgetKind.Date -> onOpenCalendarSettings
+                            IdleWidgetKind.Date, IdleWidgetKind.NextEvent -> onOpenCalendarSettings
                             else -> null
                         }
                         if (openSettings != null) {
@@ -226,7 +226,7 @@ fun IdleWidgetsSettingsSection(
                                     contentDescription = stringResource(
                                         when (kind) {
                                             IdleWidgetKind.NetSpeed -> R.string.net_cfg_open
-                                            IdleWidgetKind.Date -> R.string.cal_cfg_open
+                                            IdleWidgetKind.Date, IdleWidgetKind.NextEvent -> R.string.cal_cfg_open
                                             else -> R.string.weather_cfg_open
                                         }
                                     ),

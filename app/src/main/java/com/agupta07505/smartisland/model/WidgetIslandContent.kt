@@ -33,7 +33,9 @@ object WidgetIslandContent {
         nowMs: Long,
         hasWeather: Boolean,
         notificationCount: Int = 0,
-        modeActive: Boolean = false
+        modeActive: Boolean = false,
+        hasNextEvent: Boolean = true,
+        hasScreenTime: Boolean = true
     ): Boolean = when (kind) {
         IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> false
         IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock, IdleWidgetKind.Steps -> true
@@ -43,6 +45,8 @@ object WidgetIslandContent {
         IdleWidgetKind.NextAlarm -> nextAlarmMs > nowMs
         IdleWidgetKind.Notifications -> notificationCount > 0
         IdleWidgetKind.Modes -> modeActive
+        IdleWidgetKind.ScreenTime -> hasScreenTime
+        IdleWidgetKind.NextEvent -> hasNextEvent
     }
 
     fun alarmInWindow(nextAlarmMs: Long, nowMs: Long): Boolean =
