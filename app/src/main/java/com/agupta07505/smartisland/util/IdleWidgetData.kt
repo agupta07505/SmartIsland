@@ -186,11 +186,21 @@ fun rememberIdleWidgetData(
             data.stepCount = -1
             return@DisposableEffect onDispose { }
         }
-        data.stepCount = if (StepTracker.hasPermission(context)) StepTracker.cachedSteps(context) else -1
+        data.stepCount = if (StepTracker.hasPermission(context)) StepTracker.getTodaySteps(context) else -1
         val unregister = StepTracker.register(context) { steps ->
             data.stepCount = steps
         }
         onDispose { unregister?.invoke() }
+    }
+    LaunchedEffect(wantsSteps) {
+        if (!wantsSteps) return@LaunchedEffect
+        while (true) {
+            delay(10_000L)
+            val steps = withContext(Dispatchers.IO) { StepTracker.getTodaySteps(context) }
+            if (steps >= 0 && steps != data.stepCount) {
+                data.stepCount = steps
+            }
+        }
     }
 
     LaunchedEffect(wantsNotifications) {

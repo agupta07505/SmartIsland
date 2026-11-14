@@ -14,12 +14,15 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import java.util.Calendar
 
 /**
- * Tracks daily steps via the device's hardware pedometer [Sensor.TYPE_STEP_COUNTER].
+ * Tracks daily steps via the device's hardware pedometer [Sensor.TYPE_STEP_COUNTER]
+ * and system step providers (such as MIUI / HyperOS [miui.stepcounter.StepProvider]).
  * Zero CPU overhead: runs on hardware sensor hub DSP. Automatically detects midnight
  * day turnover and device reboots, keeping today's count accurate across reboots.
  */
@@ -48,12 +51,76 @@ internal object StepTracker {
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
 
+    /** Returns today's step count using the most accurate available source. */
+    fun getTodaySteps(context: Context): Int {
+        if (!hasPermission(context)) return -1
+        // 1. First, check system step provider (MIUI / HyperOS Steps.db)
+        val providerSteps = readMiuiSteps(context)
+        if (providerSteps >= 0) {
+            val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            p.edit()
+                .putInt(KEY_DAY, todayKey())
+                .putInt(KEY_SAVED_STEPS, providerSteps)
+                .apply()
+            return providerSteps
+        }
+        // 2. Hardware pedometer cached steps
+        return cachedSteps(context)
+    }
+
     /** Returns the cached steps for today (or -1 if never initialized or no permission). */
     fun cachedSteps(context: Context): Int {
         if (!hasPermission(context)) return -1
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val savedDay = p.getInt(KEY_DAY, -1)
+        if (savedDay == todayKey()) {
+            val steps = p.getInt(KEY_SAVED_STEPS, 0)
+            if (steps > 0) return steps
+        }
+        val providerSteps = readMiuiSteps(context)
+        if (providerSteps >= 0) {
+            p.edit()
+                .putInt(KEY_DAY, todayKey())
+                .putInt(KEY_SAVED_STEPS, providerSteps)
+                .apply()
+            return providerSteps
+        }
         return if (savedDay == todayKey()) p.getInt(KEY_SAVED_STEPS, 0) else 0
+    }
+
+    /**
+     * Reads today's total steps directly from Xiaomi / POCO / Redmi HyperOS StepProvider.
+     * Returns -1 if unavailable or not on MIUI.
+     */
+    fun readMiuiSteps(context: Context): Int {
+        return runCatching {
+            val uri = Uri.parse("content://com.miui.providers.steps/item")
+            val midnight = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            val cursor = context.contentResolver.query(
+                uri,
+                arrayOf("_begin_time", "_steps"),
+                "_begin_time >= ?",
+                arrayOf(midnight.toString()),
+                null
+            ) ?: return -1
+
+            var total = 0
+            cursor.use { c ->
+                val stepsIdx = c.getColumnIndex("_steps")
+                if (stepsIdx >= 0) {
+                    while (c.moveToNext()) {
+                        total += c.getInt(stepsIdx)
+                    }
+                }
+            }
+            total
+        }.getOrDefault(-1)
     }
 
     /**
@@ -76,9 +143,25 @@ internal object StepTracker {
                 var offset = p.getInt(KEY_OFFSET, 0)
                 val lastRaw = p.getInt(KEY_LAST_RAW, -1)
 
+                val midnight = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                val bootTime = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+
                 val todaySteps: Int
                 if (savedDay != today || baseline < 0) {
-                    baseline = if (lastRaw in 0..raw) lastRaw else raw
+                    baseline = if (bootTime >= midnight) {
+                        // Device booted today after midnight: all raw steps were walked today!
+                        0
+                    } else if (lastRaw in 0..raw) {
+                        lastRaw
+                    } else {
+                        val miui = readMiuiSteps(context)
+                        if (miui in 0..raw) raw - miui else raw
+                    }
                     offset = 0
                     todaySteps = (raw - baseline).coerceAtLeast(0)
                     p.edit()
@@ -90,8 +173,9 @@ internal object StepTracker {
                         .apply()
                 } else {
                     if (raw < lastRaw) {
+                        // Device rebooted mid-day: raw reset to 0! Add previous steps to offset!
                         offset += (lastRaw - baseline).coerceAtLeast(0)
-                        baseline = raw
+                        baseline = 0
                     }
                     todaySteps = (offset + (raw - baseline)).coerceAtLeast(0)
                     p.edit()

@@ -43,6 +43,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- Normal permission on Xiaomi / HyperOS / MIUI devices. Allows reading today's step count provider. -->
+    <uses-permission android:name="miui.permission.READ_STEPS" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <!-- Lets the call card mute the mic and switch earpiece / speaker / Bluetooth for apps whose call
          notification has no such buttons. A normal permission, granted at install. -->
@@ -55,6 +57,7 @@
         <package android:name="com.libremobileos.freeform" />
         <!-- Lets a settings page (hotspot, Wi-Fi) be found by its intent so LMO Freeform can open it in a window. -->
         <package android:name="com.android.settings" />
+        <provider android:authorities="com.miui.providers.steps" />
         <!-- Lets the Timer utility find the clock app (to open it in a floating window when the timer cannot start directly). -->
         <intent>
             <action android:name="android.intent.action.SHOW_TIMERS" />
