@@ -238,7 +238,7 @@ internal fun IdleWidgetIslandContent(
         AnimatedContent(
             modifier = Modifier.weight(1f),
             targetState = frame.kind,
-            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+            transitionSpec = { fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(220, easing = FastOutSlowInEasing)) },
             contentAlignment = Alignment.Center,
             label = "widgetIslandBody"
         ) { kind ->
@@ -1047,7 +1047,7 @@ internal fun rememberIdleWidgetFrame(
     }
     val appear = animateFloatAsState(
         targetValue = if (active && settled) 1f else 0f,
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
         label = "idleWidgetAppear"
     )
     // A swipe moves the rotation by hand; the automatic timer then starts its count again, so a widget never flips right after one.
@@ -1208,15 +1208,16 @@ internal fun IdleWidgetSlot(frame: IdleWidgetFrame?, right: Boolean) {
         targetState = frame.kind,
         transitionSpec = {
             if (frame.autoSwitch && frame.tickAnimates) {
-                // The automatic switch: the active glyph steps out to the right in three ticks while the next one steps in from the left.
-                // The right slot follows the left a little later, so the two read as one flip.
-                val ease = Easing { IdleSlots.tickProgress(it) }
+                // The automatic switch: fluid, organic slide and cross-fade without stepped jitter
                 val lag = if (right) IdleSlots.STAGGER_MS else 0
-                val travel = tween<IntOffset>(SWITCH_MS, delayMillis = lag, easing = ease)
-                (slideInHorizontally(travel) { -it * 2 } + fadeIn(tween(SWITCH_MS, delayMillis = lag, easing = ease))) togetherWith
-                    (slideOutHorizontally(travel) { it * 2 } + fadeOut(tween(SWITCH_MS, delayMillis = lag, easing = ease)))
+                val duration = 280
+                (slideInHorizontally(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)) { -it / 2 } +
+                    fadeIn(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing))) togetherWith
+                (slideOutHorizontally(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)) { it / 2 } +
+                    fadeOut(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)))
             } else {
-                fadeIn(tween(220)) togetherWith fadeOut(tween(160))
+                fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith
+                    fadeOut(tween(260, easing = FastOutSlowInEasing))
             }
         },
         label = "idleWidgetSlot"
@@ -1483,17 +1484,17 @@ private fun <T> VerticalTick(target: T, towardsDown: Boolean, lagMs: Int = 0, an
         transitionSpec = {
             if (!animate) {
                 // Battery Saver or "remove animations": no move, a plain cross-fade.
-                fadeIn(tween(220)) togetherWith fadeOut(tween(160))
+                fadeIn(tween(240, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(240, easing = FastOutSlowInEasing))
             } else {
-                // A clock's heavy tick: the glyph hangs back a little, slowly, then snaps through and settles; the fades wait for the snap.
+                // A clock's heavy tick: smooth snap and matching fade curves
                 val settled = Easing { IdleSlots.settledTickProgress(it, TICK_MS) }
                 val total = TICK_MS + IdleSlots.SETTLE_MS
                 val windUp = (TICK_MS * IdleSlots.HEAVY_WINDUP_SHARE).toInt()
                 val snap = TICK_MS - windUp
                 (slideInVertically(tween(total, delayMillis = lagMs, easing = settled)) { -dir * it * 3 / 4 } +
-                    fadeIn(tween(snap, delayMillis = windUp + lagMs))) togetherWith
+                    fadeIn(tween(snap, delayMillis = windUp + lagMs, easing = FastOutSlowInEasing))) togetherWith
                     (slideOutVertically(tween(total, delayMillis = lagMs, easing = settled)) { dir * it * 3 / 4 } +
-                        fadeOut(tween(snap * 2 / 3, delayMillis = windUp + lagMs)))
+                        fadeOut(tween(snap, delayMillis = windUp + lagMs, easing = FastOutSlowInEasing)))
             }
         },
         label = "idleSlotTick"
@@ -1539,7 +1540,7 @@ internal fun IdleWidgetCompact(frame: IdleWidgetFrame?) {
     AnimatedContent(
         modifier = Modifier.graphicsLayer { alpha = frame.appear.value },
         targetState = frame.kind,
-        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+        transitionSpec = { fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(260, easing = FastOutSlowInEasing)) },
         label = "idleWidgetCompact"
     ) { kind ->
         Box(contentAlignment = Alignment.Center) {
