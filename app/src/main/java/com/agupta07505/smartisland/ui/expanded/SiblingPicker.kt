@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import android.os.SystemClock
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -28,15 +29,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
@@ -55,8 +56,7 @@ import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.formatNotificationTime
 import kotlin.math.abs
 import kotlin.math.hypot
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.ui.IslandText as Text
 
 private val HEADER_HEIGHT = 44.dp
 private val ROW_HEIGHT = 56.dp
@@ -65,22 +65,19 @@ private val VERTICAL_PADDING = 12.dp
 private val ROW_GAP = 4.dp
 private const val MAX_VISIBLE_ROWS = 3
 
-/**
- * Picker height for [count] cards: a header, up to three rows, the rest scrolls. Stays inside the expanded island's
- * height range (72 to 240 dp).
- */
 internal fun siblingPickerHeight(count: Int, compact: Boolean = false): Dp =
     HEADER_HEIGHT + (if (compact) COMPACT_ROW_HEIGHT else ROW_HEIGHT) * count.coerceIn(1, MAX_VISIBLE_ROWS) +
         ROW_GAP * (count.coerceIn(1, MAX_VISIBLE_ROWS) - 1) + VERTICAL_PADDING
 
-/** Row to show first so the current card is visible without scrolling; 0 when it already fits among the first [MAX_VISIBLE_ROWS]. */
+/** 0 when the current card already fits among the first [MAX_VISIBLE_ROWS]. */
 internal fun siblingPickerFirstVisible(count: Int, currentPosition: Int): Int =
     if (currentPosition < MAX_VISIBLE_ROWS) 0
     else (currentPosition - MAX_VISIBLE_ROWS + 1).coerceAtMost((count - MAX_VISIBLE_ROWS).coerceAtLeast(0))
 
 /**
- * True when a drag belongs to the picker's list rather than an island swipe: the picker was open at touch-down, the
- * touch landed on the rows ([downYDp] below the island's top, under the header) and the finger moved.
+ * True when a drag belongs to the picker list rather than an island swipe
+ * The picker was open at touch-down, the touch landed on the rows ([downYDp] below the island's top) and the finger
+ * moved
  */
 internal fun siblingPickerOwnsDrag(
     pickerOpen: Boolean,
@@ -89,17 +86,13 @@ internal fun siblingPickerOwnsDrag(
     dragY: Float,
     sideBySide: Boolean = false,
     downXFraction: Float = 0f,
-    // The picker's inner edge as a fraction of the island's width (its right edge when the picker is on the left).
+    // Picker's inner edge as a fraction of the island width (right edge when the picker is on the left)
     pickerLeftFraction: Float = 0.5f,
     pickerOnLeft: Boolean = false
 ): Boolean = siblingPickerOwnsTouch(pickerOpen, sideBySide, downXFraction, pickerLeftFraction, pickerOnLeft) &&
     downYDp >= HEADER_HEIGHT.value &&
-    (kotlin.math.abs(dragX) > DRAG_MOVE_EPSILON || kotlin.math.abs(dragY) > DRAG_MOVE_EPSILON)
+    (abs(dragX) > DRAG_MOVE_EPSILON || abs(dragY) > DRAG_MOVE_EPSILON)
 
-/**
- * True when a touch that began at [downXFraction] of the island's width landed on the picker (open, and in the
- * landscape split on the picker's island).
- */
 internal fun siblingPickerOwnsTouch(
     pickerOpen: Boolean,
     sideBySide: Boolean,
@@ -109,13 +102,11 @@ internal fun siblingPickerOwnsTouch(
 ): Boolean = pickerOpen &&
     (!sideBySide || if (pickerOnLeft) downXFraction <= pickerLeftFraction else downXFraction >= pickerLeftFraction)
 
-/** A touch on a picker row is a tap only while the finger stays within this many dp (scaled by the gesture sensitivity). */
+/** Tap only while the finger stays within this many dp (scaled by gesture sensitivity). */
 internal const val PICKER_TAP_SLOP_DP = 10f
 
-/** Taps are ignored this long after the rows moved (picker just opened, a card arrived or left): they were aimed at where a row was. */
 internal const val PICKER_LAYOUT_SETTLE_MS = 250L
 
-/** Whether a touch on a picker row ends as a tap that selects it. */
 internal fun siblingRowTapAccepted(
     peakTravelPx: Float,
     slopPx: Float,
@@ -129,10 +120,6 @@ internal fun siblingRowTapAccepted(
     layoutAgeAtDownMs >= PICKER_LAYOUT_SETTLE_MS &&
     !layoutShiftedDuringPress
 
-/**
- * Row order that does not jump under the finger: listed cards keep their place, new ones are appended, gone ones
- * dropped.
- */
 internal fun stableSiblingOrder(previous: List<String>, current: List<String>): List<String> {
     val present = current.toHashSet()
     val kept = previous.filter { it in present }
@@ -140,24 +127,19 @@ internal fun stableSiblingOrder(previous: List<String>, current: List<String>): 
     return kept + current.filter { it !in keptSet }
 }
 
-/**
- * True while the expanded text is open for reading (it scrolls): a moving drag belongs to the text. A tap, the
- * collapse button and a tap outside still close it.
- */
 internal fun readingTextOwnsDrag(readingText: Boolean, dragX: Float, dragY: Float): Boolean =
-    readingText && (kotlin.math.abs(dragX) > DRAG_MOVE_EPSILON || kotlin.math.abs(dragY) > DRAG_MOVE_EPSILON)
+    readingText && (abs(dragX) > DRAG_MOVE_EPSILON || abs(dragY) > DRAG_MOVE_EPSILON)
 
 private const val DRAG_MOVE_EPSILON = 0.5f
 
-/** The portrait sibling list sits on the island surface; this is the least opaque that keeps its white text readable. */
 internal const val SIBLING_PICKER_MIN_OPACITY = 0.85f
 
-/** The surface the picker uses: fully opaque like the card beside it; at 0.85 the app behind showed through the rows. */
+/** Fully opaque like the card beside it, at 0.85 the app behind showed through the rows. */
 internal const val SIBLING_PICKER_SURFACE_OPACITY = 1f
 
 /**
- * Alpha of an extra pill-coloured layer behind the rows so surface plus layer reach [target] opacity: `1 - (1 -
- * surface) * (1 - backing) = target`. Zero when the surface is already that opaque.
+ * Alpha of a pill-coloured layer behind the rows so surface plus layer reach [target]: `1 - (1 - surface) * (1 -
+ * backing) = target`, 0 when already that opaque
  */
 internal fun siblingPickerBackingAlpha(surfaceOpacity: Float, target: Float = SIBLING_PICKER_MIN_OPACITY): Float {
     val surface = surfaceOpacity.coerceIn(0f, 1f)
@@ -165,7 +147,7 @@ internal fun siblingPickerBackingAlpha(surfaceOpacity: Float, target: Float = SI
     return (1f - (1f - target) / (1f - surface)).coerceIn(0f, 1f)
 }
 
-/** Every card of the current app, drawn inside the expanded island (no extra window). A row selects its card. */
+/** Drawn inside the expanded island (no extra window), a row selects its card. */
 @Composable
 fun SiblingPicker(
     siblings: List<IslandNotification>,
@@ -181,26 +163,25 @@ fun SiblingPicker(
     val rowPx = with(LocalDensity.current) { (rowHeight + ROW_GAP).roundToPx() }
     val tapSlopPx = with(LocalDensity.current) { tapSlop.toPx() }
 
-    // Rows keep their place while the picker is open: a card that is re-posted must not move under the finger.
+    // A re-posted card must not move under the finger
     val orderHolder = remember { arrayOf(emptyList<String>()) }
     val keys = stableSiblingOrder(orderHolder[0], siblings.map { it.key })
     orderHolder[0] = keys
     val byKey = siblings.associateBy { it.key }
     val ordered = keys.mapNotNull { byKey[it] }
 
-    // When the rows last moved (opened, a card came or went). Taps right after that are ignored.
-    val layoutShift = remember { longArrayOf(android.os.SystemClock.uptimeMillis()) }
-    LaunchedEffect(keys) { layoutShift[0] = android.os.SystemClock.uptimeMillis() }
+    // Taps right after the rows moved are ignored
+    val layoutShift = remember { longArrayOf(SystemClock.uptimeMillis()) }
+    LaunchedEffect(keys) { layoutShift[0] = SystemClock.uptimeMillis() }
 
-    // The rows are lazy: only those on screen are composed (an app with 23 cards does not compose all 23 when the
-    // picker opens).
+    // Lazy, an app with 23 cards does not compose all 23 when the picker opens
     val startIndex = siblingPickerFirstVisible(
         ordered.size,
         ordered.indexOfFirst { it.key == currentKey }.coerceAtLeast(0)
     )
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = startIndex)
 
-    // Once the user has touched the list, it is theirs: nothing scrolls it back to the current card.
+    // Once touched the list is the user's, nothing scrolls it back
     var touched by remember { mutableStateOf(false) }
     LaunchedEffect(ordered.size, currentKey) {
         if (touched) return@LaunchedEffect
@@ -276,7 +257,6 @@ fun SiblingPicker(
 
 private const val SIBLING_ROW_TYPE = "sibling_row"
 
-/** The list's scroll position in px, from the first visible row (rows are [rowPx] apart, the gap included). */
 internal fun siblingScrollPositionPx(firstVisibleIndex: Int, firstVisibleOffsetPx: Int, rowPx: Int): Int =
     firstVisibleIndex * rowPx + firstVisibleOffsetPx
 
@@ -284,8 +264,8 @@ private fun LazyListState.scrollPositionPx(rowPx: Int): Int =
     siblingScrollPositionPx(firstVisibleItemIndex, firstVisibleItemScrollOffset, rowPx)
 
 /**
- * Tap handling of a picker row, replacing `clickable`, which fired when a scroll began within the touch slop, when a
- * touch only stopped a flinging list, and when the rows had just moved.
+ * Replaces `clickable`, which fired when a scroll began within the slop, when a touch only stopped a fling and when the
+ * rows had just moved
  */
 internal fun Modifier.siblingRowTap(
     listState: LazyListState,
@@ -302,7 +282,7 @@ internal fun Modifier.siblingRowTap(
         val startedWhileScrolling = listState.isScrollInProgress
         val startScroll = listState.scrollPositionPx(rowPx)
         val shiftAtDown = layoutShiftStamp()
-        val ageAtDown = android.os.SystemClock.uptimeMillis() - shiftAtDown
+        val ageAtDown = SystemClock.uptimeMillis() - shiftAtDown
         var travelX = 0f
         var travelY = 0f
         var peak = 0f
@@ -312,7 +292,8 @@ internal fun Modifier.siblingRowTap(
             while (true) {
                 val event = awaitPointerEvent()
                 val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
-                // positionChange is the finger's movement on the screen, so a scroll that carries the row along still counts.
+                // positionChange is the finger's movement on screen, so a scroll that carries the row along still
+                // counts
                 val move = change.positionChange()
                 travelX += move.x
                 travelY += move.y
@@ -360,7 +341,7 @@ private fun SiblingRow(
 ) {
     val bitmap = card.largeIcon ?: card.icon
     val image = remember(bitmap) { bitmap?.asImageBitmap() }
-    // True only while this touch can still end as a tap; a scroll, a long drag or a moving list clears it.
+    // A scroll, a long drag or a moving list clears it
     var pressed by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
