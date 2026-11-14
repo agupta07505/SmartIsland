@@ -10,12 +10,11 @@ package com.agupta07505.smartisland.ui.expanded
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -37,7 +35,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -47,6 +44,8 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.LiveActivityParser
+import java.util.regex.Pattern
+import com.agupta07505.smartisland.ui.IslandText as Text
 
 @Composable
 fun LiveActivityExpanded(
@@ -56,10 +55,12 @@ fun LiveActivityExpanded(
     onCollapse: () -> Unit = {},
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
-    val context = LocalContext.current
 
-    val brandColor = remember(notification?.packageName, settings.liveActivityColor) {
-        if (notification != null) {
+    val brandColor = remember(notification?.packageName, settings.liveActivityColor, settings.cardEventColor) {
+        if (settings.cardEventColor != null) {
+            // the colour the user gave the event beats the app's own brand colour
+            Color(settings.cardEventColor)
+        } else if (notification != null) {
             Color(LiveActivityParser.getBrandColor(notification.packageName))
         } else {
             Color(settings.liveActivityColor)
@@ -71,7 +72,8 @@ fun LiveActivityExpanded(
             Tuple4("Active", 0.65f, "Live Tracking", "Tracking in real-time")
         } else {
             val text = "${notification.title} ${notification.text}"
-            val matcher = java.util.regex.Pattern.compile("(\\d+)\\s*(?:mins?|minutes?|min|m)\\b", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text)
+            val matcher = Pattern.compile("(\\d+)\\s*(?:mins?|minutes?|min|m)\\b", Pattern.CASE_INSENSITIVE)
+                .matcher(text)
             val eta = if (matcher.find()) "${matcher.group(1)} min" else "Active"
             val pct = if (notification.progressMax > 0) (notification.progress.toFloat() / notification.progressMax.toFloat()).coerceIn(0.15f, 0.95f) else 0.65f
             val title = if (notification.title.isNotBlank()) notification.title else notification.appName
@@ -92,200 +94,191 @@ fun LiveActivityExpanded(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val largeIcon = notification?.largeIcon
-            val icon = notification?.icon
-            val mainIcon = largeIcon ?: icon
+            LiveActivityIcon(notification, brandColor)
+            LiveActivityStatusText(statusTitle, subStatusText)
+            LiveActivityEtaChip(etaText, brandColor)
+        }
 
-            if (mainIcon != null) {
-                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
-                Box(modifier = Modifier.size(42.dp)) {
+        LiveActivityProgress(progressRatio, brandColor)
+
+        LiveActivityActionRow(notification, onOpenNotification)
+    }
+}
+
+@Composable
+private fun LiveActivityIcon(notification: IslandNotification?, brandColor: Color) {
+    val largeIcon = notification?.largeIcon
+    val icon = notification?.icon
+    val mainIcon = largeIcon ?: icon
+
+    if (mainIcon != null) {
+        val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
+        Box(modifier = Modifier.size(42.dp)) {
+            Image(
+                bitmap = mainIcon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(clipShape)
+            )
+            if (largeIcon != null && icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .align(Alignment.BottomEnd)
+                        .background(LocalIslandPalette.current.surface, CircleShape)
+                        .padding(1.5.dp)
+                ) {
                     Image(
-                        bitmap = mainIcon.asImageBitmap(),
+                        bitmap = icon.asImageBitmap(),
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(clipShape)
-                    )
-                    if (largeIcon != null && icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(LocalIslandPalette.current.surface, CircleShape)
-                                .padding(1.5.dp)
-                        ) {
-                            Image(
-                                bitmap = icon.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(brandColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = notification?.appName?.firstOrNull()?.uppercase() ?: "L",
-                        color = LocalIslandPalette.current.text,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                            .clip(CircleShape)
                     )
                 }
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = statusTitle,
-                    color = LocalIslandPalette.current.text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 17.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = subStatusText,
-                    color = LocalIslandPalette.current.textSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(brandColor.copy(alpha = 0.18f))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = etaText,
-                    color = brandColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
-
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+    } else {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(brandColor),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val trackColor = LocalIslandPalette.current.tint(0.2f)
-                val currentRing = LocalIslandPalette.current.inverseFill
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val width = size.width
-                    val cy = size.height / 2f
-                    val strokeWidth = 4.dp.toPx()
+            Text(
+                text = notification?.appName?.firstOrNull()?.uppercase() ?: "L",
+                color = LocalIslandPalette.current.text,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
+    }
+}
 
-                    drawLine(
-                        color = trackColor,
-                        start = Offset(12.dp.toPx(), cy),
-                        end = Offset(width - 12.dp.toPx(), cy),
-                        strokeWidth = strokeWidth,
-                        cap = StrokeCap.Round
-                    )
+@Composable
+private fun RowScope.LiveActivityStatusText(statusTitle: String, subStatusText: String) {
+    Column(modifier = Modifier.weight(1f)) {
+        Text(
+            text = statusTitle,
+            color = LocalIslandPalette.current.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 17.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = subStatusText,
+            color = LocalIslandPalette.current.textSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 13.sp,
+            lineHeight = 16.sp
+        )
+    }
+}
 
-                    val currentX = (12.dp.toPx() + (width - 24.dp.toPx()) * progressRatio).coerceIn(12.dp.toPx(), width - 12.dp.toPx())
-                    drawLine(
-                        color = brandColor,
-                        start = Offset(12.dp.toPx(), cy),
-                        end = Offset(currentX, cy),
-                        strokeWidth = strokeWidth,
-                        cap = StrokeCap.Round
-                    )
+@Composable
+private fun LiveActivityEtaChip(etaText: String, brandColor: Color) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(brandColor.copy(alpha = 0.18f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = etaText,
+            color = brandColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
 
-                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(12.dp.toPx(), cy))
+@Composable
+private fun LiveActivityProgress(progressRatio: Float, brandColor: Color) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            val trackColor = LocalIslandPalette.current.tint(0.2f)
+            val currentRing = LocalIslandPalette.current.inverseFill
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val width = size.width
+                val cy = size.height / 2f
+                val strokeWidth = 4.dp.toPx()
 
-                    drawCircle(color = currentRing, radius = 6.dp.toPx(), center = Offset(currentX, cy))
-                    drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(currentX, cy))
+                drawLine(
+                    color = trackColor,
+                    start = Offset(12.dp.toPx(), cy),
+                    end = Offset(width - 12.dp.toPx(), cy),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
 
-                    drawCircle(color = Color(0xFF64748B), radius = 4.dp.toPx(), center = Offset(width - 12.dp.toPx(), cy))
-                }
-            }
+                val currentX = (12.dp.toPx() + (width - 24.dp.toPx()) * progressRatio)
+                    .coerceIn(12.dp.toPx(), width - 12.dp.toPx())
+                drawLine(
+                    color = brandColor,
+                    start = Offset(12.dp.toPx(), cy),
+                    end = Offset(currentX, cy),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Initial", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
-                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("Destination", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
+                drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(12.dp.toPx(), cy))
+
+                drawCircle(color = currentRing, radius = 6.dp.toPx(), center = Offset(currentX, cy))
+                drawCircle(color = brandColor, radius = 4.dp.toPx(), center = Offset(currentX, cy))
+
+                drawCircle(color = Color(0xFF64748B), radius = 4.dp.toPx(), center = Offset(width - 12.dp.toPx(), cy))
             }
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            if (notification != null && notification.actionIntents.isNotEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(androidx.compose.foundation.rememberScrollState())
-                ) {
-                    // Every button the app put in its notification, not just the first two.
-                    notification.actionIntents.forEach { action ->
-                        Box(
-                            modifier = Modifier
-                                .height(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(LocalIslandPalette.current.chipFill)
-                                .bounceClick {
-                                    // Like the shade: fire the app's button and leave the card to the app,
-                                    // which removes or updates its notification itself.
-                                    notification.fireAction(context, action)
-                                }
-                                .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = action.title,
-                                color = Color(0xFF1F2937),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                }
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
+            Text("Initial", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
+            Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp,
+                fontWeight = FontWeight.Bold)
+            Text("Destination", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
+        }
+    }
+}
 
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(LocalIslandPalette.current.pick(Color(0xFF222222), Color(0xFFD9D8DB)))
-                    .bounceClick { onOpenNotification() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
-                    tint = LocalIslandPalette.current.text,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+@Composable
+private fun LiveActivityActionRow(notification: IslandNotification?, onOpenNotification: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NotificationActionChips(notification)
+
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(LocalIslandPalette.current.pick(Color(0xFF222222), Color(0xFFD9D8DB)))
+                .bounceClick { onOpenNotification() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.KeyboardArrowDown,
+                contentDescription = "Open App",
+                tint = LocalIslandPalette.current.text,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
