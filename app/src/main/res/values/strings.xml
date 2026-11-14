@@ -869,6 +869,8 @@
     <string name="idle_widget_nextevent_desc">Countdown and details for your upcoming calendar event in the next 24 hours.</string>
     <string name="idle_widgets_event_permission_note">Next event widget requires calendar permission to display upcoming scheduled events.</string>
     <string name="idle_widgets_allow_event">Allow calendar access</string>
+    <string name="idle_widget_no_events">No upcoming events</string>
+    <string name="idle_widget_no_events_sub">Calendar free for next 24h</string>
     <string name="idle_modes_access_desc">The mode widget shows Do Not Disturb as it is. To tell Bedtime, Driving and your other modes apart (Android 15 or later) and show their names, allow Smart Island under Do Not Disturb access. It only reads which mode is on; it changes nothing.</string>
     <string name="idle_modes_access_button">Grant Do Not Disturb access</string>
     <string name="idle_widgets_cycle_title">Switch every</string>

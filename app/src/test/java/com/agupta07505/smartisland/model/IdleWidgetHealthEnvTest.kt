@@ -127,4 +127,31 @@ class IdleWidgetHealthEnvTest {
         """.trimIndent()
         assertEquals(182, WeatherParser.parseAqi(sampleJson))
     }
+
+    @Test
+    fun resolvedUvAndAqiFallback() {
+        val snapshotWithDirectUv = WeatherSnapshot(
+            temperatureC = 25f,
+            weatherCode = 0,
+            isDay = true,
+            fetchedAtMs = 1000L,
+            uvIndex = 6.2f,
+            aqi = 150,
+            extras = WeatherExtras(uvIndex = -1f, aqi = -1)
+        )
+        assertEquals(6.2f, snapshotWithDirectUv.resolvedUv)
+        assertEquals(150, snapshotWithDirectUv.resolvedAqi)
+
+        val snapshotWithExtrasUv = WeatherSnapshot(
+            temperatureC = 25f,
+            weatherCode = 0,
+            isDay = true,
+            fetchedAtMs = 1000L,
+            uvIndex = -1f,
+            aqi = -1,
+            extras = WeatherExtras(uvIndex = 4.5f, aqi = 75)
+        )
+        assertEquals(4.5f, snapshotWithExtrasUv.resolvedUv)
+        assertEquals(75, snapshotWithExtrasUv.resolvedAqi)
+    }
 }

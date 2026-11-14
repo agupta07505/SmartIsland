@@ -48,8 +48,9 @@ internal object StepTracker {
         return c.get(Calendar.YEAR) * 10000 + (c.get(Calendar.MONTH) + 1) * 100 + c.get(Calendar.DAY_OF_MONTH)
     }
 
-    /** Returns the cached steps for today (or -1 if never initialized). */
+    /** Returns the cached steps for today (or -1 if never initialized or no permission). */
     fun cachedSteps(context: Context): Int {
+        if (!hasPermission(context)) return -1
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val savedDay = p.getInt(KEY_DAY, -1)
         return if (savedDay == todayKey()) p.getInt(KEY_SAVED_STEPS, 0) else 0
@@ -77,9 +78,9 @@ internal object StepTracker {
 
                 val todaySteps: Int
                 if (savedDay != today || baseline < 0) {
-                    baseline = raw
+                    baseline = if (lastRaw in 0..raw) lastRaw else raw
                     offset = 0
-                    todaySteps = 0
+                    todaySteps = (raw - baseline).coerceAtLeast(0)
                     p.edit()
                         .putInt(KEY_DAY, today)
                         .putInt(KEY_BASELINE, baseline)

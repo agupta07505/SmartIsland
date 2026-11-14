@@ -33,9 +33,17 @@ internal object ScreenTimeReader {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-        val stats = runCatching {
-            manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, midnight, now).orEmpty()
-        }.getOrDefault(emptyList())
+        val statsMap = runCatching {
+            manager.queryAndAggregateUsageStats(midnight, now)
+        }.getOrNull()
+
+        val stats = if (!statsMap.isNullOrEmpty()) {
+            statsMap.values
+        } else {
+            runCatching {
+                manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, midnight, now).orEmpty()
+            }.getOrDefault(emptyList())
+        }
 
         if (stats.isEmpty()) return ScreenTimeSnapshot()
 
@@ -46,7 +54,7 @@ internal object ScreenTimeReader {
 
         for (s in stats) {
             val time = s.totalTimeInForeground
-            if (time > 0L && s.lastTimeUsed >= midnight) {
+            if (time > 0L) {
                 // Filter out system UI & android internal packages to match Digital Wellbeing
                 if (s.packageName != "com.android.systemui" && s.packageName != "android") {
                     total += time

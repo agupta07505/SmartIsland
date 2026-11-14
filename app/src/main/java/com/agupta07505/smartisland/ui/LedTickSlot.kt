@@ -188,17 +188,17 @@ internal fun LedSlot(kind: IdleWidgetKind, frame: IdleWidgetFrame, right: Boolea
         IdleWidgetKind.Clock ->
             if (right) LedFace.Text(timeFormat.format(Date(data.nowMs))) else LedFace.Icon(LedIcon.Clock)
         IdleWidgetKind.Aqi -> {
-            val aqi = data.weather?.extras?.aqi ?: data.weather?.aqi ?: -1
+            val aqi = data.weather?.resolvedAqi ?: -1
             if (right) LedFace.Text(if (aqi < 0) "--" else aqi.toString())
             else LedFace.Icon(LedIcon.Leaf)
         }
         IdleWidgetKind.Steps -> {
             val steps = data.stepCount
-            if (right) LedFace.Text(IdleWidgets.formatSteps(steps).uppercase())
+            if (right) LedFace.Text(if (steps < 0) "--" else IdleWidgets.formatSteps(steps).uppercase())
             else LedFace.Icon(LedIcon.Walk)
         }
         IdleWidgetKind.Uv -> {
-            val uv = data.weather?.extras?.uvIndex ?: data.weather?.uvIndex ?: -1f
+            val uv = data.weather?.resolvedUv ?: -1f
             if (right) LedFace.Text(if (uv < 0f) "--" else "UV" + Math.round(uv))
             else LedFace.Icon(LedIcon.Uv)
         }
@@ -211,7 +211,8 @@ internal fun LedSlot(kind: IdleWidgetKind, frame: IdleWidgetFrame, right: Boolea
             val event = data.nextEvent
             val at = event?.beginMs ?: 0L
             if (right) {
-                val text = if (event == null || at <= data.nowMs) "--"
+                val text = if (event == null) "--"
+                else if (at <= data.nowMs && event.endMs > data.nowMs) "NOW"
                 else {
                     val totalMins = (at - data.nowMs) / 60_000L
                     when {

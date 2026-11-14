@@ -186,7 +186,7 @@ fun rememberIdleWidgetData(
             data.stepCount = -1
             return@DisposableEffect onDispose { }
         }
-        data.stepCount = StepTracker.cachedSteps(context)
+        data.stepCount = if (StepTracker.hasPermission(context)) StepTracker.cachedSteps(context) else -1
         val unregister = StepTracker.register(context) { steps ->
             data.stepCount = steps
         }
@@ -539,7 +539,8 @@ object IdleWeather {
             }
             val uvToSave = if (snapshot.uvIndex >= 0f) snapshot.uvIndex else (snapshot.extras?.uvIndex ?: -1f)
             val aqiToSave = if (snapshot.aqi >= 0) snapshot.aqi else (snapshot.extras?.aqi ?: -1)
-            snapshot = snapshot.copy(uvIndex = uvToSave, aqi = aqiToSave)
+            val updatedExtras = (snapshot.extras ?: WeatherExtras(asked = readouts.toSet())).copy(uvIndex = uvToSave, aqi = aqiToSave)
+            snapshot = snapshot.copy(extras = updatedExtras, uvIndex = uvToSave, aqi = aqiToSave)
 
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putFloat("t", snapshot.temperatureC)

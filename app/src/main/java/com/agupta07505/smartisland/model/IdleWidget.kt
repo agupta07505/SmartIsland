@@ -221,7 +221,13 @@ data class WeatherSnapshot(
     val uvIndex: Float = -1f,
     /** Air quality index (US AQI); negative = not known. */
     val aqi: Int = -1
-)
+) {
+    val resolvedUv: Float
+        get() = if (uvIndex >= 0f) uvIndex else (extras?.uvIndex ?: -1f)
+
+    val resolvedAqi: Int
+        get() = if (aqi >= 0) aqi else (extras?.aqi ?: -1)
+}
 
 /** Weather code grouped to the few icons the pill can show. */
 enum class WeatherLook { Clear, PartlyCloudy, Cloudy, Fog, Rain, Snow, Storm }

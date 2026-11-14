@@ -72,6 +72,7 @@ import com.agupta07505.smartisland.model.IdleWidgetKind
 import com.agupta07505.smartisland.model.IdleWidgets
 import com.agupta07505.smartisland.model.WidgetIslandContent
 import com.agupta07505.smartisland.model.WidgetIslandTimer
+import com.agupta07505.smartisland.model.WeatherConfig
 import com.agupta07505.smartisland.ui.search.searchAnchor
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -240,19 +241,43 @@ fun IdleWidgetsSection(
                             )
                         }
                     }
-                    when {
-                        !settings.allowNetworkChecks -> NoteText(stringResource(R.string.idle_widgets_weather_needs_network))
-                        settings.weatherLocationSource == com.agupta07505.smartisland.model.WeatherConfig.SOURCE_MANUAL ->
-                            NoteText(stringResource(R.string.idle_widgets_weather_manual_note))
-                        settings.weatherLocationSource == com.agupta07505.smartisland.model.WeatherConfig.SOURCE_LAST_KNOWN ->
-                            NoteText(stringResource(R.string.idle_widgets_weather_last_known_note))
-                        locationGranted -> NoteText(stringResource(R.string.idle_widgets_weather_location_ok))
-                        else -> {
-                            NoteText(stringResource(R.string.idle_widgets_weather_no_location))
-                            Button(
-                                onClick = { permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
-                            ) {
-                                Text(stringResource(R.string.idle_widgets_allow_location))
+                    Text(
+                        text = stringResource(R.string.weather_cfg_source_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    ChoiceBlock(title = "") {
+                        listOf(
+                            WeatherConfig.SOURCE_AUTO to stringResource(R.string.weather_cfg_source_auto),
+                            WeatherConfig.SOURCE_MANUAL to stringResource(R.string.weather_cfg_source_manual)
+                        ).forEach { (id, label) ->
+                            ChoiceChip(
+                                label = label,
+                                selected = settings.weatherLocationSource == id,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    scope.launch { repository.setWeatherLocationSource(id) }
+                                    if (id == WeatherConfig.SOURCE_AUTO && !locationGranted) {
+                                        permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    if (settings.weatherLocationSource == WeatherConfig.SOURCE_MANUAL) {
+                        ManualCity(settings.weatherManualCity, repository)
+                    } else {
+                        when {
+                            !settings.allowNetworkChecks -> NoteText(stringResource(R.string.idle_widgets_weather_needs_network))
+                            locationGranted -> NoteText(stringResource(R.string.idle_widgets_weather_location_ok))
+                            else -> {
+                                NoteText(stringResource(R.string.idle_widgets_weather_no_location))
+                                Button(
+                                    onClick = { permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+                                ) {
+                                    Text(stringResource(R.string.idle_widgets_allow_location))
+                                }
                             }
                         }
                     }
@@ -396,7 +421,7 @@ private fun ChoiceBlock(title: String, content: @Composable androidx.compose.fou
 }
 
 @Composable
-private fun ChoiceChip(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+internal fun ChoiceChip(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(9.dp))

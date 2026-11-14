@@ -97,8 +97,8 @@ internal fun WidgetIslandLayer(
         hasWeather = source.data.weather != null,
         notificationCount = source.data.notificationSummary.total,
         modeActive = source.data.mode.active,
-        hasNextEvent = source.data.nextEvent?.let { CalendarRules.islandShows(it.beginMs, source.data.nowMs) } == true,
-        hasScreenTime = source.data.screenTime.totalMs > 0L
+        hasNextEvent = true,
+        hasScreenTime = true
     )
     // Only calls and live events close it ([cardClosesWidgetIsland]); other cards wait behind the island, and the
     // idle widget leaving the pill for them does not count as losing the widget.
