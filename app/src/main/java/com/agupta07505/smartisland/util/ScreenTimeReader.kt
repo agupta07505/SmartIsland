@@ -42,7 +42,7 @@ internal object ScreenTimeReader {
             return eventSnapshot
         }
 
-        // 2. Fallback: UsageStats aggregation (filtered to ignore launcher, self, system UI)
+        // 2. Fallback: UsageStats aggregation (filtered to ignore launcher and system UI)
         return readTodayFromUsageStats(context, manager, midnight, now)
     }
 
@@ -52,19 +52,19 @@ internal object ScreenTimeReader {
         midnight: Long,
         now: Long
     ): ScreenTimeSnapshot? {
-        val events = runCatching { manager.queryEvents(midnight, now) }.getOrNull() ?: return null
+        // Look back 1 hour before midnight to accurately pick up any app active across the midnight turnover
+        val queryStart = midnight - 3600_000L
+        val events = runCatching { manager.queryEvents(queryStart, now) }.getOrNull() ?: return null
         if (!events.hasNextEvent()) return null
 
         val pm = context.packageManager
         val homePackage = getHomePackage(pm)
-        val selfPackage = context.packageName
 
         val event = UsageEvents.Event()
         val durations = mutableMapOf<String, Long>()
 
         var currentForegroundPkg: String? = null
         var currentForegroundStart: Long = 0L
-        var isScreenOn = true
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
@@ -72,15 +72,13 @@ internal object ScreenTimeReader {
             val pkg = event.packageName
 
             when (event.eventType) {
-                UsageEvents.Event.SCREEN_INTERACTIVE -> {
-                    isScreenOn = true
-                }
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE,
-                UsageEvents.Event.KEYGUARD_SHOWN -> {
-                    isScreenOn = false
+                UsageEvents.Event.DEVICE_SHUTDOWN -> {
                     if (currentForegroundPkg != null && currentForegroundStart > 0L) {
-                        val duration = (time - currentForegroundStart).coerceAtLeast(0L)
-                        if (duration > 0L) {
+                        val sessionStart = maxOf(currentForegroundStart, midnight)
+                        val sessionEnd = minOf(time, now)
+                        if (sessionEnd > sessionStart) {
+                            val duration = sessionEnd - sessionStart
                             durations[currentForegroundPkg] = (durations[currentForegroundPkg] ?: 0L) + duration
                         }
                         currentForegroundPkg = null
@@ -90,24 +88,28 @@ internal object ScreenTimeReader {
                 UsageEvents.Event.ACTIVITY_RESUMED -> {
                     // Close previous active app session
                     if (currentForegroundPkg != null && currentForegroundStart > 0L) {
-                        val duration = (time - currentForegroundStart).coerceAtLeast(0L)
-                        if (duration > 0L) {
+                        val sessionStart = maxOf(currentForegroundStart, midnight)
+                        val sessionEnd = minOf(time, now)
+                        if (sessionEnd > sessionStart) {
+                            val duration = sessionEnd - sessionStart
                             durations[currentForegroundPkg] = (durations[currentForegroundPkg] ?: 0L) + duration
                         }
                         currentForegroundPkg = null
                         currentForegroundStart = 0L
                     }
 
-                    if (isScreenOn && shouldCountPackage(pkg, homePackage, selfPackage)) {
+                    if (shouldCountPackage(pkg, homePackage)) {
                         currentForegroundPkg = pkg
-                        currentForegroundStart = maxOf(time, midnight)
+                        currentForegroundStart = time
                     }
                 }
                 UsageEvents.Event.ACTIVITY_PAUSED,
                 UsageEvents.Event.ACTIVITY_STOPPED -> {
                     if (currentForegroundPkg == pkg && currentForegroundStart > 0L) {
-                        val duration = (time - currentForegroundStart).coerceAtLeast(0L)
-                        if (duration > 0L) {
+                        val sessionStart = maxOf(currentForegroundStart, midnight)
+                        val sessionEnd = minOf(time, now)
+                        if (sessionEnd > sessionStart) {
+                            val duration = sessionEnd - sessionStart
                             durations[pkg] = (durations[pkg] ?: 0L) + duration
                         }
                         currentForegroundPkg = null
@@ -117,10 +119,12 @@ internal object ScreenTimeReader {
             }
         }
 
-        // If an app is still in foreground right now
-        if (isScreenOn && currentForegroundPkg != null && currentForegroundStart > 0L) {
-            val duration = (now - currentForegroundStart).coerceAtLeast(0L)
-            if (duration > 0L) {
+        // If an app is still in foreground right now at `now`
+        if (currentForegroundPkg != null && currentForegroundStart > 0L) {
+            val sessionStart = maxOf(currentForegroundStart, midnight)
+            val sessionEnd = now
+            if (sessionEnd > sessionStart) {
+                val duration = sessionEnd - sessionStart
                 durations[currentForegroundPkg] = (durations[currentForegroundPkg] ?: 0L) + duration
             }
         }
@@ -158,7 +162,6 @@ internal object ScreenTimeReader {
 
         val pm = context.packageManager
         val homePackage = getHomePackage(pm)
-        val selfPackage = context.packageName
 
         var total = 0L
         var topPkg: String? = null
@@ -166,7 +169,7 @@ internal object ScreenTimeReader {
 
         for (s in stats) {
             val time = s.totalTimeInForeground
-            if (time > 0L && shouldCountPackage(s.packageName, homePackage, selfPackage)) {
+            if (time > 0L && shouldCountPackage(s.packageName, homePackage)) {
                 val clampedTime = time.coerceAtMost(now - midnight)
                 total += clampedTime
                 if (clampedTime > maxTime) {
@@ -183,10 +186,9 @@ internal object ScreenTimeReader {
         return ScreenTimeSnapshot(totalMs = total, topAppName = topAppName, topAppMs = maxTime)
     }
 
-    private fun shouldCountPackage(pkg: String?, homePackage: String?, selfPackage: String): Boolean {
+    private fun shouldCountPackage(pkg: String?, homePackage: String?): Boolean {
         if (pkg.isNullOrEmpty()) return false
         if (pkg == "android" || pkg == "com.android.systemui") return false
-        if (pkg == selfPackage) return false
         if (homePackage != null && pkg == homePackage) return false
         if (pkg == "com.mi.android.globallauncher" || pkg == "com.miui.home" || pkg == "com.google.android.apps.nexuslauncher") return false
         return true
