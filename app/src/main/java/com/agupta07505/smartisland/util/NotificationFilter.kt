@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.util
 
+import com.agupta07505.smartisland.BuildConfig
 import android.app.Notification
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -24,7 +25,7 @@ object NotificationFilter {
         "com.google.android.permissioncontroller",
         "com.android.packageinstaller",
         "com.google.android.packageinstaller",
-        "com.agupta07505.smartisland"
+        BuildConfig.APPLICATION_ID
     )
 
     private val TRANSFER_ALLOWED_SYSTEM_PACKAGES = setOf("com.android.bluetooth")
@@ -58,7 +59,7 @@ object NotificationFilter {
 
         // Hotspot, Screen Recording, Timer, Stopwatch notifications are allowed even if posted by system/OEM frameworks
         if (mode == IslandMode.Hotspot || mode == IslandMode.ScreenRecording || mode == IslandMode.AudioRecording || mode == IslandMode.IncomingCall || mode == IslandMode.Timer || mode == IslandMode.Stopwatch) {
-            if (packageName == "com.agupta07505.smartisland") return "own-package"
+            if (packageName == BuildConfig.APPLICATION_ID) return "own-package"
             if (packageName in disabledNotificationPackages) return "app-disabled-in-settings"
         } else {
             // Transfers (downloads, backups, file operations) often come from foreground services with the SERVICE or
@@ -102,7 +103,7 @@ object NotificationFilter {
         // The island manages the torch itself through CameraManager.TorchCallback.
         val titleText = "$title $text".lowercase()
         val isTorchNotification = listOf("flashlight", "torch", "flash light").any { titleText.contains(it) }
-        if (isTorchNotification && packageName != "com.agupta07505.smartisland") {
+        if (isTorchNotification && packageName != BuildConfig.APPLICATION_ID) {
             return "torch-notification"
         }
 

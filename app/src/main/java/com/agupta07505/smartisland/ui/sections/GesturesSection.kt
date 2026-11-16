@@ -225,7 +225,27 @@ private enum class ConfigurableGesture(
         descRes = R.string.long_press_gesture_desc,
         icon = Icons.Rounded.TouchApp,
         allowedActions = listOf(
+            SwipeAction.OpenApp,
+            SwipeAction.Screenshot,
+            SwipeAction.ToggleFlashlight,
+            SwipeAction.CycleRinger,
             SwipeAction.TogglePill,
+            SwipeAction.None
+        ),
+        isPillGesture = false,
+        isLongPress = true
+    ),
+
+    // Idle tap: what a tap does on the idle pill (no cards). Shares the long-press category.
+    IdleTap(
+        titleRes = R.string.idle_tap_gesture_title,
+        descRes = R.string.idle_tap_gesture_desc,
+        icon = Icons.Rounded.Widgets,
+        allowedActions = listOf(
+            SwipeAction.WidgetDetail,
+            SwipeAction.Screenshot,
+            SwipeAction.ToggleFlashlight,
+            SwipeAction.CycleRinger,
             SwipeAction.None
         ),
         isPillGesture = false,
@@ -495,6 +515,13 @@ fun GesturesSection(
         LongPressCard(
             action = getActionForGesture(ConfigurableGesture.PillLongPress, settings),
             onClick = { activeGestureDialog = ConfigurableGesture.PillLongPress }
+        )
+
+        LongPressCard(
+            action = getActionForGesture(ConfigurableGesture.IdleTap, settings),
+            onClick = { activeGestureDialog = ConfigurableGesture.IdleTap },
+            titleRes = R.string.idle_tap_card_title,
+            descRes = R.string.idle_tap_card_desc
         )
 
         Card(
@@ -820,7 +847,8 @@ private fun getActionForGesture(gesture: ConfigurableGesture, settings: SmartIsl
     ConfigurableGesture.ExpandedSwipeDown -> FIXED_EXPANDED_SWIPE_DOWN_ACTION
     ConfigurableGesture.ExpandedSwipeLeft -> SwipeAction.fromId(settings.swipeLeftAction, SwipeAction.None)
     ConfigurableGesture.ExpandedSwipeRight -> SwipeAction.fromId(settings.swipeRightAction, SwipeAction.None)
-    ConfigurableGesture.PillLongPress -> SwipeAction.fromId(settings.longPressAction, SwipeAction.TogglePill)
+    ConfigurableGesture.PillLongPress -> SwipeAction.fromId(settings.longPressAction, SwipeAction.OpenApp)
+    ConfigurableGesture.IdleTap -> SwipeAction.fromId(settings.idleTapAction, SwipeAction.WidgetDetail)
 }
 
 private fun saveActionForGesture(
@@ -841,6 +869,7 @@ private fun saveActionForGesture(
             ConfigurableGesture.ExpandedSwipeLeft -> repository?.setSwipeLeftAction(action.id)
             ConfigurableGesture.ExpandedSwipeRight -> repository?.setSwipeRightAction(action.id)
             ConfigurableGesture.PillLongPress -> repository?.setLongPressAction(action.id)
+            ConfigurableGesture.IdleTap -> repository?.setIdleTapAction(action.id)
         }
     }
 }
@@ -864,6 +893,10 @@ internal fun getSwipeActionTitle(action: SwipeAction): String = when (action) {
     SwipeAction.PreviousTrack -> stringResource(R.string.swipe_action_prev_track_title)
     SwipeAction.PlayPause -> stringResource(R.string.swipe_action_play_pause_title)
     SwipeAction.TogglePill -> stringResource(R.string.swipe_action_toggle_pill_title)
+    SwipeAction.Screenshot -> stringResource(R.string.swipe_action_screenshot_title)
+    SwipeAction.ToggleFlashlight -> stringResource(R.string.swipe_action_toggle_flashlight_title)
+    SwipeAction.CycleRinger -> stringResource(R.string.swipe_action_cycle_ringer_title)
+    SwipeAction.WidgetDetail -> stringResource(R.string.swipe_action_widget_detail_title)
     SwipeAction.None -> stringResource(R.string.swipe_action_none_title)
 }
 
@@ -886,6 +919,10 @@ private fun getSwipeActionDescription(action: SwipeAction): String = when (actio
     SwipeAction.PreviousTrack -> stringResource(R.string.swipe_action_prev_track_desc)
     SwipeAction.PlayPause -> stringResource(R.string.swipe_action_play_pause_desc)
     SwipeAction.TogglePill -> stringResource(R.string.swipe_action_toggle_pill_desc)
+    SwipeAction.Screenshot -> stringResource(R.string.swipe_action_screenshot_desc)
+    SwipeAction.ToggleFlashlight -> stringResource(R.string.swipe_action_toggle_flashlight_desc)
+    SwipeAction.CycleRinger -> stringResource(R.string.swipe_action_cycle_ringer_desc)
+    SwipeAction.WidgetDetail -> stringResource(R.string.swipe_action_widget_detail_desc)
     SwipeAction.None -> stringResource(R.string.swipe_action_none_desc)
 }
 
@@ -907,13 +944,19 @@ private fun getSwipeActionIcon(action: SwipeAction): ImageVector = when (action)
     SwipeAction.PreviousTrack -> Icons.Rounded.SkipPrevious
     SwipeAction.PlayPause -> Icons.Rounded.PlayArrow
     SwipeAction.TogglePill -> Icons.Rounded.VisibilityOff
+    SwipeAction.Screenshot -> Icons.Rounded.Screenshot
+    SwipeAction.ToggleFlashlight -> Icons.Rounded.FlashlightOn
+    SwipeAction.CycleRinger -> Icons.Rounded.Vibration
+    SwipeAction.WidgetDetail -> Icons.Rounded.Widgets
     SwipeAction.None -> Icons.Rounded.Block
 }
 
 @Composable
 private fun LongPressCard(
     action: SwipeAction,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    titleRes: Int = R.string.long_press_card_title,
+    descRes: Int = R.string.long_press_card_desc
 ) {
     val isOff = action == SwipeAction.None
     Card(
@@ -928,13 +971,13 @@ private fun LongPressCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = stringResource(R.string.long_press_card_title),
+                text = stringResource(titleRes),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = stringResource(R.string.long_press_card_desc),
+                text = stringResource(descRes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

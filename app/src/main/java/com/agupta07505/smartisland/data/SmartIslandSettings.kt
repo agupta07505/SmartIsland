@@ -157,7 +157,13 @@ data class SmartIslandSettings(
     val pillSwipeLeftAction: String = "NextEvent",
     val pillSwipeRightAction: String = "PreviousEvent",
     // Long press on the collapsed pill. One real action (hide / show the pill) or "None" to turn it off.
-    val longPressAction: String = "TogglePill",
+    val longPressAction: String = "OpenApp",
+    /** Tap on an idle pill (no cards). "WidgetDetail" keeps today's behaviour. */
+    val idleTapAction: String = "WidgetDetail",
+    /** "Stack" shows 2+ live cards as a vertical stack; "Single" keeps the old pager. */
+    val expandStyle: String = "Stack",
+    /** Landscape: draw the collapsed pill vertical on the camera's side edge. */
+    val landscapeVerticalPill: Boolean = true,
     val circlePosition: String = CIRCLE_POSITION_RIGHT,
     /**
      * Portrait collapsed cutout with content (a card on the pill): true keeps the idle cutout's size; false stretches
@@ -546,6 +552,9 @@ data class SmartIslandSettings(
         settingsObj.put("pillSwipeLeftAction", pillSwipeLeftAction)
         settingsObj.put("pillSwipeRightAction", pillSwipeRightAction)
         settingsObj.put("longPressAction", longPressAction)
+        settingsObj.put("idleTapAction", idleTapAction)
+        settingsObj.put("expandStyle", expandStyle)
+        settingsObj.put("landscapeVerticalPill", landscapeVerticalPill)
         settingsObj.put("circlePosition", circlePosition)
         settingsObj.put("landscapeShape", landscapeShape)
         settingsObj.put("landscapeWidth", landscapeWidth.toDouble())
@@ -986,6 +995,9 @@ data class SmartIslandSettings(
                 pillSwipeLeftAction = obj.optString("pillSwipeLeftAction", defaults.pillSwipeLeftAction),
                 pillSwipeRightAction = obj.optString("pillSwipeRightAction", defaults.pillSwipeRightAction),
                 longPressAction = obj.optString("longPressAction", defaults.longPressAction),
+                idleTapAction = obj.optString("idleTapAction", defaults.idleTapAction),
+                expandStyle = obj.optString("expandStyle", defaults.expandStyle),
+                landscapeVerticalPill = obj.optBoolean("landscapeVerticalPill", defaults.landscapeVerticalPill),
                 circlePosition = obj.optString("circlePosition", defaults.circlePosition).let {
                     if (it == CIRCLE_POSITION_LEFT || it == CIRCLE_POSITION_RIGHT) it else defaults.circlePosition
                 },

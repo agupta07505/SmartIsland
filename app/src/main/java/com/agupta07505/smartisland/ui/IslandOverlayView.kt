@@ -569,7 +569,7 @@ fun IslandOverlayView(
                 IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
                 val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
                 if (longPress != SwipeAction.None) {
-                    runner.runLongPress(longPress)
+                    runner.runLongPress(longPress, cb.currentNotifications.getOrNull(cb.currentSelectedIndex))
                 }
             }
         )
@@ -598,7 +598,7 @@ fun IslandOverlayView(
                 IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
                 val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
                 if (longPress != SwipeAction.None) {
-                    runner.runLongPress(longPress)
+                    runner.runLongPress(longPress, cb.currentNotifications.getOrNull(cb.currentSelectedIndex))
                 }
             }
         )
@@ -619,7 +619,7 @@ fun IslandOverlayView(
                 IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
                 val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
                 if (longPress != SwipeAction.None) {
-                    runner.runLongPress(longPress)
+                    runner.runLongPress(longPress, cb.currentNotifications.getOrNull(cb.currentSelectedIndex))
                 }
             }
         )

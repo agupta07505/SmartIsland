@@ -92,10 +92,10 @@ internal fun CornerPill(
                             kotlinx.coroutines.delay(HOLD_GESTURE_THRESHOLD_MS)
                             IslandHaptics.play(context, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Hold)
                             if (!isDragging && !triggered) {
-                                val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
+                                val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.OpenApp)
                                 if (longPress != SwipeAction.None) {
                                     triggered = true
-                                    runner.runLongPress(longPress)
+                                    runner.runLongPress(longPress, cb.currentNotifications.getOrNull(cb.currentSelectedIndex))
                                 }
                             }
                         }

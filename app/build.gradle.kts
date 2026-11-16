@@ -28,7 +28,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.agupta07505.smartisland"
+        applicationId = "app.staticboat.island"
         minSdk = 26
         targetSdk = 36
         versionCode = 9
