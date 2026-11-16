@@ -64,7 +64,7 @@ class SmartIslandSettingsTest {
         assertEquals("Expand", settings.pillSwipeDownAction)
         assertEquals("NextEvent", settings.pillSwipeLeftAction)
         assertEquals("PreviousEvent", settings.pillSwipeRightAction)
-        assertEquals("TogglePill", settings.longPressAction)
+        assertEquals("OpenApp", settings.longPressAction)
         assertEquals(SmartIslandSettings.CIRCLE_POSITION_RIGHT, settings.circlePosition)
     }
 
@@ -290,7 +290,7 @@ class SmartIslandSettingsTest {
 
     @Test
     fun longPressActionDefaultsBacksUpAndRestores() {
-        assertEquals("TogglePill", SmartIslandSettings().longPressAction)
+        assertEquals("OpenApp", SmartIslandSettings().longPressAction)
         assertEquals(
             com.agupta07505.smartisland.model.SwipeAction.TogglePill,
             com.agupta07505.smartisland.model.SwipeAction.fromId("TogglePill")
@@ -301,7 +301,7 @@ class SmartIslandSettingsTest {
 
         // A backup made before the setting existed keeps the default.
         val old = """{"settings": {"enableSwipeActions": true}}"""
-        assertEquals("TogglePill", SmartIslandSettings.fromJson(old).longPressAction)
+        assertEquals("OpenApp", SmartIslandSettings.fromJson(old).longPressAction)
     }
 
     @Test

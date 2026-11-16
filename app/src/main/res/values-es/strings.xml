@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Smart Island</string>
+    <string name="app_name">Static Boat</string>
     <string name="app_subtitle">Sobrecarga dinámica flotante</string>
     <string name="app_description">Smart Island reimagina las notificaciones de Android con una hermosa experiencia flotante, controles interactivos y animaciones de fluidos, manteniendo todo importante sólo un vistazo.</string>
-    <string name="accessibility_service_label">Smart Island Service</string>
+    <string name="accessibility_service_label">Static Boat Service</string>
     <string name="accessibility_service_description">Permite la superposición de Smart Island para sentarse en la parte superior de la barra de estado para que pueda tocar la píldora alrededor de su corte de cámara sin interferencia táctil.</string>
     <string name="grant_accessibility">Grant Accessibility permission to start overlay over status bar</string>
     <string name="made_by">Hecho con нельных por Animesh Gupta</string>

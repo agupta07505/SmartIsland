@@ -11,10 +11,12 @@ import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.di.SmartIslandRepositories
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.SwipeAction
+import com.agupta07505.smartisland.model.UtilityType
 import com.agupta07505.smartisland.ui.expanded.trySendFirstAction
 import com.agupta07505.smartisland.util.HapticKind
 import com.agupta07505.smartisland.util.HapticStrength
 import com.agupta07505.smartisland.util.IslandHaptics
+import com.agupta07505.smartisland.util.UtilityActions
 
 /**
  * Expand and collapse buzz when the island's state actually changes, so the Expand/Collapse swipe actions must not
@@ -193,6 +195,11 @@ internal fun executeSwipeAction(
             tryPlayPauseMedia(context, currentNotification)
         }
         SwipeAction.TogglePill -> onTogglePillHidden()
+        SwipeAction.Screenshot -> context?.let { UtilityActions.run(it, UtilityType.Screenshot) }
+        SwipeAction.ToggleFlashlight -> context?.let { UtilityActions.run(it, UtilityType.Flashlight) }
+        SwipeAction.CycleRinger -> context?.let { UtilityActions.toggleRinger(it) }
+        // Idle tap: handled by IslandActionRunner.runIdleTap, which calls the default when this is chosen.
+        SwipeAction.WidgetDetail -> Unit
         SwipeAction.None -> {
         }
     }

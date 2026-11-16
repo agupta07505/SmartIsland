@@ -93,6 +93,8 @@ internal fun Modifier.islandMainGestures(
                     return@awaitEachGesture
                 }
                 ui.userTouched()
+                // Touching an open card keeps it open: a finger on it restarts the auto-collapse timer (5 s).
+                if (cb.currentExpanded) SmartIslandRepositories.notificationRepository(context).resetTimer()
                 // A new touch takes the card over: an ease-back or "no card came" timer from the last swipe must not fight the finger.
                 ui.cardBackJob?.cancel()
                 ui.cardWaitJob?.cancel()
@@ -211,7 +213,8 @@ internal fun Modifier.islandMainGestures(
                             pillWidthPx = settings.width * displayMetrics.density,
                             pillHeightPx = settings.height * displayMetrics.density
                         )
-                        val opensApps = com.agupta07505.smartisland.model.longPressOpensApps(
+                        // The apps launcher opens only on an idle pill; with a card on it, a long press acts on that card.
+                        val opensApps = cb.currentNotifications.isEmpty() && com.agupta07505.smartisland.model.longPressOpensApps(
                             isLandscape = isLandscape,
                             notchMode = cb.currentSettings.enableNotchMode,
                             shortcutsEnabled = cb.currentSettings.enableAppShortcuts,
@@ -219,7 +222,8 @@ internal fun Modifier.islandMainGestures(
                             touchInCentreBand = inCentreBand,
                             pillHasContent = pillHasContent
                         )
-                        val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.TogglePill)
+                        val longPress = SwipeAction.fromId(cb.currentSettings.longPressAction, SwipeAction.OpenApp)
+                        val currentCard = cb.currentNotifications.getOrNull(cb.currentSelectedIndex)
                         if (opensApps) {
                             // Blocks any swipe action for the rest of this touch. No buzz: opening the shortcuts is silent.
                             pillGestureTriggered = true
@@ -230,7 +234,7 @@ internal fun Modifier.islandMainGestures(
                             if (longPress != SwipeAction.None) {
                                 // Blocks any swipe action for the rest of this touch.
                                 pillGestureTriggered = true
-                                runner.runLongPress(longPress)
+                                runner.runLongPress(longPress, currentCard)
                             }
                         }
                     }
@@ -384,7 +388,16 @@ internal fun Modifier.islandMainGestures(
                                         } else {
                                             WidgetTapAction.None
                                         }
-                                        if (settings.autoHidePill && ui.isAutoHidden) {
+                                        // A custom idle tap (Settings > Tap on idle island) replaces the widget tap. WidgetDetail is the default.
+                                        val idleAction = SwipeAction.fromId(settings.idleTapAction, SwipeAction.WidgetDetail)
+                                        val customIdleTap = cb.currentNotifications.isEmpty() && idleAction != SwipeAction.WidgetDetail
+                                        if (customIdleTap) {
+                                            if (settings.autoHidePill && ui.isAutoHidden) {
+                                                ui.isAutoHidden = false
+                                                ui.touch()
+                                            }
+                                            runner.run(idleAction, null)
+                                        } else if (settings.autoHidePill && ui.isAutoHidden) {
                                             ui.isAutoHidden = false
                                             ui.touch()
                                         } else if (widgetTap == WidgetTapAction.GlyphTap && ui.onWidgetGlyphTap != null) {

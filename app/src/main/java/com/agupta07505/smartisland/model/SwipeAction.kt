@@ -36,6 +36,11 @@ enum class SwipeAction(val id: String) {
     Expand("Expand"),
     /** Long press on the collapsed pill: hide it (idle pill shown) or bring it back. */
     TogglePill("TogglePill"),
+    Screenshot("Screenshot"),
+    ToggleFlashlight("ToggleFlashlight"),
+    CycleRinger("CycleRinger"),
+    /** Idle tap only: keeps today's behaviour (open the showing idle widget, or reveal stored cards). */
+    WidgetDetail("WidgetDetail"),
     None("None");
 
     companion object {

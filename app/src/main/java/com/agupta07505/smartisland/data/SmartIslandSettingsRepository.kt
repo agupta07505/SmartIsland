@@ -143,6 +143,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
         val PillSwipeLeftAction = stringPreferencesKey("pill_swipe_left_action")
         val PillSwipeRightAction = stringPreferencesKey("pill_swipe_right_action")
         val LongPressAction = stringPreferencesKey("long_press_action")
+        val IdleTapAction = stringPreferencesKey("idle_tap_action")
+        val ExpandStyle = stringPreferencesKey("expand_style")
+        val LandscapeVerticalPill = booleanPreferencesKey("landscape_vertical_pill")
         val CirclePosition = stringPreferencesKey("circle_position")
         val LandscapeShape = stringPreferencesKey("landscape_shape")
         val LandscapeWidth = floatPreferencesKey("landscape_width")
@@ -451,6 +454,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
                 pillSwipeLeftAction = prefs[Keys.PillSwipeLeftAction] ?: defaults.pillSwipeLeftAction,
                 pillSwipeRightAction = prefs[Keys.PillSwipeRightAction] ?: defaults.pillSwipeRightAction,
                 longPressAction = prefs[Keys.LongPressAction] ?: defaults.longPressAction,
+                idleTapAction = prefs[Keys.IdleTapAction] ?: defaults.idleTapAction,
+                expandStyle = prefs[Keys.ExpandStyle] ?: defaults.expandStyle,
+                landscapeVerticalPill = prefs[Keys.LandscapeVerticalPill] ?: defaults.landscapeVerticalPill,
                 circlePosition = prefs[Keys.CirclePosition]?.takeIf { it in VALID_CIRCLE_POSITIONS } ?: defaults.circlePosition,
                 landscapeShape = prefs[Keys.LandscapeShape]?.takeIf { it in VALID_LANDSCAPE_SHAPES } ?: defaults.landscapeShape,
                 landscapeWidth = validDimension(prefs[Keys.LandscapeWidth], defaults.landscapeWidth, SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH),
@@ -1306,6 +1312,12 @@ class SmartIslandSettingsRepository(private val context: Context) {
     suspend fun setPillSwipeUpAction(value: String) = editSafely {
         it[Keys.PillSwipeUpAction] = value
     }
+    suspend fun setIdleTapAction(value: String) = editSafely { it[Keys.IdleTapAction] = value }
+
+    suspend fun setExpandStyle(value: String) = editSafely { it[Keys.ExpandStyle] = value }
+
+    suspend fun setLandscapeVerticalPill(value: Boolean) = editSafely { it[Keys.LandscapeVerticalPill] = value }
+
     suspend fun setLongPressAction(value: String) = editSafely {
         it[Keys.LongPressAction] = value
     }
@@ -1534,6 +1546,9 @@ class SmartIslandSettingsRepository(private val context: Context) {
         prefs[Keys.PillSwipeLeftAction] = settings.pillSwipeLeftAction
         prefs[Keys.PillSwipeRightAction] = settings.pillSwipeRightAction
         prefs[Keys.LongPressAction] = settings.longPressAction
+        prefs[Keys.IdleTapAction] = settings.idleTapAction
+        prefs[Keys.ExpandStyle] = settings.expandStyle
+        prefs[Keys.LandscapeVerticalPill] = settings.landscapeVerticalPill
         prefs[Keys.CirclePosition] = if (settings.circlePosition in VALID_CIRCLE_POSITIONS) {
             settings.circlePosition
         } else {

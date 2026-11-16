@@ -6,10 +6,10 @@
   Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
 -->
 <resources>
-    <string name="app_name">Smart Island</string>
+    <string name="app_name">Static Boat</string>
     <string name="app_subtitle">Floating Dynamic Overlay</string>
     <string name="app_description">Smart Island reimagines Android notifications with a beautiful floating experience, interactive controls, and fluid animations—keeping everything important just a glance away.</string>
-    <string name="accessibility_service_label">Smart Island Service</string>
+    <string name="accessibility_service_label">Static Boat Service</string>
     <string name="accessibility_service_description">Enables the Smart Island overlay to sit on top of the status bar so you can tap the pill around your camera cutout without touch interference.</string>
     <string name="grant_accessibility">Grant Accessibility permission to start overlay over status bar</string>
     <string name="made_by">Made with ❤️ by Animesh Gupta</string>
@@ -644,6 +644,18 @@
     <string name="long_press_gesture_desc">Press and hold the collapsed pill</string>
     <string name="swipe_action_toggle_pill_title">Hide / show collapsed pill</string>
     <string name="swipe_action_toggle_pill_desc">Hides the collapsed pill until a call comes (the idle pill is shown instead). Long press the idle pill to show it again</string>
+    <string name="swipe_action_screenshot_title">Screenshot</string>
+    <string name="swipe_action_screenshot_desc">Takes a screenshot of the screen</string>
+    <string name="swipe_action_toggle_flashlight_title">Flashlight</string>
+    <string name="swipe_action_toggle_flashlight_desc">Turns the torch on or off</string>
+    <string name="swipe_action_cycle_ringer_title">Cycle ringer</string>
+    <string name="swipe_action_cycle_ringer_desc">Cycles Sound, Vibrate and Silent</string>
+    <string name="swipe_action_widget_detail_title">Widget detail</string>
+    <string name="swipe_action_widget_detail_desc">Opens the detail of the idle widget showing on the pill, or reveals stored cards</string>
+    <string name="idle_tap_gesture_title">Tap on idle island</string>
+    <string name="idle_tap_gesture_desc">Tap the idle pill while no card is showing</string>
+    <string name="idle_tap_card_title">Tap on idle island</string>
+    <string name="idle_tap_card_desc">Tap the idle pill while nothing is showing. Widget detail is the default</string>
     <string name="toggle_transfer_speed_title">Detect transfers by network speed</string>
     <string name="toggle_transfer_speed_desc">Last resort when an app shows no download or upload notification (for example its notifications are blocked). Shows an estimated card from overall network speed while the screen is on. It cannot tell which app is transferring.</string>
     <string name="toggle_hide_all_lock_screen_title">Hide every event on the lock screen</string>

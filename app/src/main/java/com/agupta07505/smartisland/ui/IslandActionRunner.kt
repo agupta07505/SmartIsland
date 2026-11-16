@@ -20,12 +20,16 @@ internal class IslandActionRunner(
     private val context: android.content.Context,
     private val cb: IslandCallbacks
 ) {
-    fun run(action: SwipeAction, notification: IslandNotification?) {
+    fun run(
+        action: SwipeAction,
+        notification: IslandNotification?,
+        hapticStrength: HapticStrength = HapticStrength.fromId(cb.currentSettings.hapticStrength)
+    ) {
         executeSwipeAction(
             action = action,
             currentNotification = notification,
             context = context,
-            hapticStrength = HapticStrength.fromId(cb.currentSettings.hapticStrength),
+            hapticStrength = hapticStrength,
             onDismiss = cb.currentOnDismiss,
             onDismissAll = cb.currentOnDismissAll,
             onToggle = cb.currentOnToggle,
@@ -41,22 +45,13 @@ internal class IslandActionRunner(
         )
     }
 
-    /** Long press on a pill: no card, no context (the hold already buzzed), only the pill hide / show action works. */
-    fun runLongPress(action: SwipeAction) {
-        executeSwipeAction(
-            action = action,
-            currentNotification = null,
-            context = null,
-            onDismiss = {},
-            onDismissAll = {},
-            onToggle = {},
-            onOpenNotification = {},
-            onOpenFloatingWindow = {},
-            onOpenNotificationShade = {},
-            onPageSelected = {},
-            notificationsSize = 0,
-            currentIndex = 0,
-            onTogglePillHidden = cb.currentOnTogglePillHidden
-        )
+    /**
+     * Long press on a pill. The hold has already buzzed, so no second haptic ([HapticStrength.OFF]). The active card
+     * is passed in, so "open app" and the other card actions work from a long press too.
+     */
+    fun runLongPress(action: SwipeAction, notification: IslandNotification?) {
+        // With no card, "open app" has nothing to open, so it falls back to hiding the pill (the old behaviour).
+        val resolved = if (action == SwipeAction.OpenApp && notification == null) SwipeAction.TogglePill else action
+        run(resolved, notification, hapticStrength = HapticStrength.OFF)
     }
 }
