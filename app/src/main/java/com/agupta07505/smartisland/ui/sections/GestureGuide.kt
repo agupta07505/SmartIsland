@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,9 +34,7 @@ import androidx.compose.material.icons.rounded.Swipe
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
-import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,7 +43,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,8 +56,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.SwipeAction
-
-// What each gesture does right now.
+import com.agupta07505.smartisland.ui.SettingsCard
+import com.agupta07505.smartisland.ui.glass.Card
 
 private data class GestureLine(val icon: ImageVector, val gesture: String, val result: String)
 
@@ -78,7 +74,7 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
     val longPress = SwipeAction.fromId(settings.longPressAction, SwipeAction.TogglePill)
     val longPressTitle = getSwipeActionTitle(longPress)
     val longPressText = if (settings.enableAppShortcuts) {
-        "On a glyph: opens your quick-launch apps (see Quick-launch window below). In the middle band: $longPressTitle. " +
+        "On a glyph: a buzz and a faint glow tell you it is ready; lift to open your quick-launch apps (see Quick-launch window below), or swipe left or right to pulse the current event again. In the middle band: $longPressTitle. " +
             "If the middle band is clear of the camera hole, a long press anywhere on the pill opens the apps. In landscape the pill always opens them."
     } else {
         "$longPressTitle, anywhere on the pill."
@@ -95,10 +91,12 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
                         "With only an idle widget or nothing on the pill: brings back cards the idle timeout put away, when there are any. " +
                         "Landscape: the pill is not over the camera, so the whole pill expands."
                 ),
-                GestureLine(Icons.Rounded.Swipe, "Swipe left", actionText(settings.pillSwipeLeftAction, SwipeAction.PreviousNotification, pill)),
-                GestureLine(Icons.Rounded.Swipe, "Swipe right", actionText(settings.pillSwipeRightAction, SwipeAction.NextNotification, pill)),
-                GestureLine(Icons.Rounded.ArrowUpward, "Swipe up", actionText(settings.pillSwipeUpAction, SwipeAction.DismissCurrent, pill)),
-                GestureLine(Icons.Rounded.ArrowDownward, "Swipe down", "Expands the island (fixed, cannot be changed)."),
+                GestureLine(Icons.Rounded.Swipe, "Swipe left",
+                    actionText(settings.pillSwipeLeftAction, SwipeAction.PreviousNotification, pill)),
+                GestureLine(Icons.Rounded.Swipe, "Swipe right",
+                    actionText(settings.pillSwipeRightAction, SwipeAction.NextNotification, pill)),
+                GestureLine(Icons.Rounded.ArrowUpward, "Swipe up",
+                    actionText(settings.pillSwipeUpAction, SwipeAction.DismissCurrent, pill)),
                 GestureLine(Icons.Rounded.TouchApp, "Long press", longPressText),
             )
         ),
@@ -153,11 +151,17 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
                 GestureLine(Icons.Rounded.TouchApp, "Tap the card", "Opens the app the card came from."),
                 GestureLine(Icons.Rounded.TouchApp, "Tap the middle of the top edge", "Portrait: that is the camera spot. It closes the island with the second pill's merge, then puts the cards away. A long press there runs $longPressTitle. The glyphs on either side keep switching cards."),
                 GestureLine(Icons.Rounded.TouchApp, "Tap outside the card", "Closes things in order: an open picture first, then an open sibling list, then the island collapses back into the pill."),
-                GestureLine(Icons.Rounded.ArrowUpward, "Swipe up", actionText(settings.swipeUpAction, SwipeAction.DismissCurrent, card) + ". Inside a card with several steps it goes back one step first."),
-                GestureLine(Icons.Rounded.DeleteSweep, "Hold, then swipe up", actionText(settings.swipeHoldUpAction, SwipeAction.DismissAll, card) + ". Hold about 300 ms until you feel the pulse, then swipe."),
+                GestureLine(Icons.Rounded.ArrowUpward, "Swipe up",
+                    actionText(settings.swipeUpAction, SwipeAction.DismissCurrent,
+                    card) + ". Inside a card with several steps it goes back one step first."),
+                GestureLine(Icons.Rounded.DeleteSweep, "Hold, then swipe up",
+                    actionText(settings.swipeHoldUpAction, SwipeAction.DismissAll,
+                    card) + ". Hold about 300 ms until you feel the pulse, then swipe."),
                 GestureLine(Icons.Rounded.ArrowDownward, "Swipe down", "Opens expandable text, a picture or a sticker when the card has one; otherwise nothing (fixed)."),
-                GestureLine(Icons.Rounded.Swipe, "Swipe left", actionText(settings.swipeLeftAction, SwipeAction.None, card)),
-                GestureLine(Icons.Rounded.Swipe, "Swipe right", actionText(settings.swipeRightAction, SwipeAction.None, card)),
+                GestureLine(Icons.Rounded.Swipe, "Swipe left",
+                    actionText(settings.swipeLeftAction, SwipeAction.None, card)),
+                GestureLine(Icons.Rounded.Swipe, "Swipe right",
+                    actionText(settings.swipeRightAction, SwipeAction.None, card)),
                 GestureLine(Icons.Rounded.ArrowDownward, "Pull the handle", "The handle at the card's bottom edge opens the floating window with a longer, calmer pull (when Floating window is on)."),
             )
         ),
@@ -204,17 +208,11 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
     )
 }
 
-/** The full list of gestures, grouped by where they happen. Shows the actions as they are set right now. */
+/** Full list of gestures, grouped by where they happen. */
 @Composable
 fun GestureReferenceCard(settings: SmartIslandSettings) {
     val groups = gestureGroups(settings)
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
+    SettingsCard {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IconBadge(Icons.Rounded.Gesture, size = 36)
@@ -228,17 +226,21 @@ fun GestureReferenceCard(settings: SmartIslandSettings) {
                 }
             }
             groups.forEachIndexed { index, group ->
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                Text(group.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                SettingsDivider(0.3f)
+                Text(group.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary)
                 group.note?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(it, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 group.lines.forEach { line ->
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         IconBadge(line.icon, size = 30)
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(line.gesture, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                            Text(line.result, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)
+                            Text(line.gesture, style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold)
+                            Text(line.result, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)
                         }
                     }
                 }
@@ -256,11 +258,12 @@ private fun IconBadge(icon: ImageVector, size: Int) {
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size((size * 0.55f).dp))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size((size * 0.55f).dp))
     }
 }
 
-// The tour for new users: a few steps, one idea each, in the order a person meets them.
+// The tour for new users: a few steps, 1 idea each
 
 private data class TourStep(val icon: ImageVector, val title: String, val points: List<String>, val tip: String)
 
@@ -297,8 +300,7 @@ private fun tourSteps(settings: SmartIslandSettings): List<TourStep> {
             listOf(
                 "Swipe left: $left.",
                 "Swipe right: $right.",
-                "Swipe up: $up.",
-                "Swipe down: expands the island."
+                "Swipe up: $up."
             ),
             "The island follows your finger. Change your mind halfway and pull back to cancel."
         ),
@@ -347,10 +349,6 @@ private fun tourSteps(settings: SmartIslandSettings): List<TourStep> {
     )
 }
 
-/**
- * The new-user tour: a dialog of steps with Back / Next. Reached from the welcome dialog and from the top of the
- * Gestures screen. [onFinish] is called by Done, by Skip and by tapping outside.
- */
 @Composable
 fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
     val steps = tourSteps(settings)
@@ -391,7 +389,8 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     IconBadge(step.icon, size = 48)
                     Text(step.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 }
@@ -410,7 +409,8 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
                             )
-                            Text(point, style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp, modifier = Modifier.weight(1f))
+                            Text(point, style = MaterialTheme.typography.bodyMedium, lineHeight = 20.sp,
+                                modifier = Modifier.weight(1f))
                         }
                     }
                     Surface(
@@ -418,9 +418,12 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                            Text(step.tip, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)
+                        Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Rounded.Lightbulb, contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Text(step.tip, style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 17.sp)
                         }
                     }
                 }
@@ -438,7 +441,7 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
     }
 }
 
-/** The card at the top of the Gestures screen that opens the tour. */
+/** Card at the top of the Gestures screen that opens the tour. */
 @Composable
 fun NewUserTourCard(onStart: () -> Unit) {
     Card(
