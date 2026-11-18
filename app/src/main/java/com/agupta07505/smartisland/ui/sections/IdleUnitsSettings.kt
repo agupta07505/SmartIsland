@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,8 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.agupta07505.smartisland.ui.glass.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,23 +31,18 @@ import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IdleWidgets
+import com.agupta07505.smartisland.ui.SettingsCard
 import com.agupta07505.smartisland.ui.search.searchAnchor
 import kotlinx.coroutines.launch
 
 /**
- * Settings > Idle widgets > Units: the temperature unit (Auto, °C, °F) and the wind speed unit (Auto, km/h, m/s, mph, kn). Auto
- * follows the region of the phone. Always visible, so the choice does not hide behind the Weather widget being selected.
+ * Temperature (Auto, °C, °F) and wind speed (Auto, km/h, m/s, mph, kn), Auto follows the phone's region
+ * Always visible so the choice does not hide behind the Weather widget
  */
 @Composable
 internal fun IdleUnitsCard(settings: SmartIslandSettings, repository: SmartIslandSettingsRepository) {
     val scope = rememberCoroutineScope()
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth().searchAnchor("idle.units")
-    ) {
+    SettingsCard(modifier = Modifier.searchAnchor("idle.units")) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = stringResource(R.string.idle_units_title),
@@ -90,7 +82,8 @@ internal fun IdleUnitsCard(settings: SmartIslandSettings, repository: SmartIslan
 }
 
 @Composable
-private fun UnitChoices(title: String, options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+private fun UnitChoices(title: String, options: List<Pair<String, String>>, selected: String,
+        onSelect: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = title,

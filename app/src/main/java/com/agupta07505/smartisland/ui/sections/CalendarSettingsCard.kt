@@ -7,16 +7,13 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,13 +31,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.agupta07505.smartisland.R
-import com.agupta07505.smartisland.ui.glass.Card
+import com.agupta07505.smartisland.ui.SettingsCard
 import com.agupta07505.smartisland.util.CalendarReader
 
-/**
- * Settings > Idle widgets > Calendar (shown while the Date widget is switched on): the permission to read the
- * calendar.
- */
+/** Permission to read the calendar, shown while the Date widget is on. */
 @Composable
 internal fun CalendarSettingsCard(
     modifier: Modifier = Modifier
@@ -49,7 +43,7 @@ internal fun CalendarSettingsCard(
     val lifecycleOwner = LocalLifecycleOwner.current
     var granted by remember { mutableStateOf(CalendarReader.hasPermission(context)) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    // The answer is read again when the person comes back from the system settings.
+    // the answer is read again when the person comes back from the system settings
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) granted = CalendarReader.hasPermission(context)
@@ -57,13 +51,7 @@ internal fun CalendarSettingsCard(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
+    SettingsCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = stringResource(R.string.cal_cfg_title),
@@ -88,7 +76,7 @@ internal fun CalendarSettingsCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Button(onClick = { launcher.launch(android.Manifest.permission.READ_CALENDAR) }) {
+                Button(onClick = { launcher.launch(Manifest.permission.READ_CALENDAR) }) {
                     Text(stringResource(R.string.cal_cfg_allow))
                 }
             }
