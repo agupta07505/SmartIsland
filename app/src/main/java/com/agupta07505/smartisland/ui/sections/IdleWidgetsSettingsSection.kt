@@ -69,6 +69,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.agupta07505.smartisland.util.DndModeReader
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.agupta07505.smartisland.model.WeatherConfig
+import com.agupta07505.smartisland.util.CalendarReader
+import com.agupta07505.smartisland.util.IdleWeather
+import com.agupta07505.smartisland.util.ScreenTimeReader
+import com.agupta07505.smartisland.util.StepTracker
+import com.agupta07505.smartisland.util.safeStartActivity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -113,9 +123,28 @@ fun IdleWidgetsSettingsSection(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var dndAccess by remember { mutableStateOf(DndModeReader.hasPolicyAccess(context)) }
+    var locationGranted by remember { mutableStateOf(IdleWeather.hasLocationPermission(context)) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        locationGranted = granted
+    }
+    var stepPermissionGranted by remember { mutableStateOf(StepTracker.hasPermission(context)) }
+    val stepPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        stepPermissionGranted = granted
+    }
+    var usageGranted by remember { mutableStateOf(ScreenTimeReader.hasPermission(context)) }
+    var calendarGranted by remember { mutableStateOf(CalendarReader.hasPermission(context)) }
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        calendarGranted = granted
+    }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) dndAccess = DndModeReader.hasPolicyAccess(context)
+            if (event == Lifecycle.Event.ON_RESUME) {
+                dndAccess = DndModeReader.hasPolicyAccess(context)
+                usageGranted = ScreenTimeReader.hasPermission(context)
+                calendarGranted = CalendarReader.hasPermission(context)
+                locationGranted = IdleWeather.hasLocationPermission(context)
+                stepPermissionGranted = StepTracker.hasPermission(context)
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -216,7 +245,7 @@ fun IdleWidgetsSettingsSection(
                         val openSettings: (() -> Unit)? = when (kind) {
                             IdleWidgetKind.Weather, IdleWidgetKind.Wind -> onOpenWeatherSettings
                             IdleWidgetKind.NetSpeed -> onOpenNetSpeedSettings
-                            IdleWidgetKind.Date -> onOpenCalendarSettings
+                            IdleWidgetKind.Date, IdleWidgetKind.NextEvent -> onOpenCalendarSettings
                             else -> null
                         }
                         if (openSettings != null) {
@@ -226,7 +255,7 @@ fun IdleWidgetsSettingsSection(
                                     contentDescription = stringResource(
                                         when (kind) {
                                             IdleWidgetKind.NetSpeed -> R.string.net_cfg_open
-                                            IdleWidgetKind.Date -> R.string.cal_cfg_open
+                                            IdleWidgetKind.Date, IdleWidgetKind.NextEvent -> R.string.cal_cfg_open
                                             else -> R.string.weather_cfg_open
                                         }
                                     ),
@@ -291,6 +320,97 @@ fun IdleWidgetsSettingsSection(
                         Text(stringResource(R.string.idle_modes_access_button), fontWeight = FontWeight.SemiBold)
                     }
                 }
+                if (IdleWidgetKind.Steps in selected && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !stepPermissionGranted) {
+                    Text(
+                        text = stringResource(R.string.idle_widgets_steps_permission_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = { stepPermissionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_steps), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                if (IdleWidgetKind.ScreenTime in selected && !usageGranted) {
+                    Text(
+                        text = stringResource(R.string.idle_widgets_screentime_permission_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = {
+                            context.safeStartActivity(
+                                Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                                "Cannot open Usage access settings on this device."
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_screentime), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                if (IdleWidgetKind.NextEvent in selected && !calendarGranted) {
+                    Text(
+                        text = stringResource(R.string.idle_widgets_event_permission_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = { calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.idle_widgets_allow_event), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                val weatherOrAqiOrUvOn = IdleWidgetKind.Weather in selected || IdleWidgetKind.Aqi in selected || IdleWidgetKind.Uv in selected || IdleWidgetKind.Wind in selected
+                if (weatherOrAqiOrUvOn) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                    Text(
+                        text = stringResource(R.string.weather_cfg_source_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            WeatherConfig.SOURCE_AUTO to stringResource(R.string.weather_cfg_source_auto),
+                            WeatherConfig.SOURCE_MANUAL to stringResource(R.string.weather_cfg_source_manual)
+                        ).forEach { (id, label) ->
+                            ChoiceChip(
+                                label = label,
+                                selected = settings.weatherLocationSource == id,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    scope.launch { repository.setWeatherLocationSource(id) }
+                                    if (id == WeatherConfig.SOURCE_AUTO && !locationGranted) {
+                                        locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    if (settings.weatherLocationSource == WeatherConfig.SOURCE_MANUAL) {
+                        ManualCity(settings.weatherManualCity, repository)
+                    } else if (!locationGranted) {
+                        Text(
+                            text = stringResource(R.string.idle_widgets_weather_no_location),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FilledTonalButton(
+                            onClick = { locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.idle_widgets_allow_location), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
             }
         }
 
@@ -352,6 +472,14 @@ fun IdleWidgetsSettingsSection(
             onOpenNetSpeed = onOpenNetSpeedSettings,
             storedIds = settings.idleWidgetIds,
             pinnedFirst = settings.idleWidgetPinnedFirst,
+            weatherLocationSource = settings.weatherLocationSource,
+            stepPermissionGranted = stepPermissionGranted,
+            onReqStepPermission = { stepPermissionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) },
+            usageGranted = usageGranted,
+            calendarGranted = calendarGranted,
+            onReqCalendarPermission = { calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR) },
+            locationGranted = locationGranted,
+            onReqLocationPermission = { locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) },
             onChange = { ids -> scope.launch { repository.setIdleWidgetIds(ids) } },
             onOrder = { ids, pinned -> scope.launch { repository.setIdleWidgetOrder(ids, pinned) } },
             onDismiss = { showSelector = false }
@@ -363,6 +491,14 @@ fun IdleWidgetsSettingsSection(
 private fun WidgetSelectorDialog(
     storedIds: String,
     pinnedFirst: String,
+    weatherLocationSource: String,
+    stepPermissionGranted: Boolean,
+    onReqStepPermission: () -> Unit,
+    usageGranted: Boolean,
+    calendarGranted: Boolean,
+    onReqCalendarPermission: () -> Unit,
+    locationGranted: Boolean,
+    onReqLocationPermission: () -> Unit,
     onChange: (String) -> Unit,
     /** Saves the order together with the pinned widget (empty = none). */
     onOrder: (ids: String, pinned: String) -> Unit,
@@ -370,6 +506,7 @@ private fun WidgetSelectorDialog(
     onOpenWeather: () -> Unit = {},
     onOpenNetSpeed: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val selected = remember(storedIds) { IdleWidgets.parse(storedIds) }
     val pinned = remember(selected, pinnedFirst) { IdleWidgetKind.fromId(pinnedFirst)?.takeIf { it in selected } }
     val others = IdleWidgetKind.values().filter { it !in selected }
@@ -400,6 +537,35 @@ private fun WidgetSelectorDialog(
     }
 
     fun toggle(kind: IdleWidgetKind) {
+        val enabling = kind !in selected
+        if (enabling) {
+            when (kind) {
+                IdleWidgetKind.Steps -> {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && !stepPermissionGranted) {
+                        onReqStepPermission()
+                    }
+                }
+                IdleWidgetKind.ScreenTime -> {
+                    if (!usageGranted) {
+                        context.safeStartActivity(
+                            Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+                            "Cannot open Usage access settings on this device."
+                        )
+                    }
+                }
+                IdleWidgetKind.NextEvent -> {
+                    if (!calendarGranted) {
+                        onReqCalendarPermission()
+                    }
+                }
+                IdleWidgetKind.Weather, IdleWidgetKind.Aqi, IdleWidgetKind.Uv -> {
+                    if (!locationGranted && weatherLocationSource != WeatherConfig.SOURCE_MANUAL) {
+                        onReqLocationPermission()
+                    }
+                }
+                else -> Unit
+            }
+        }
         val next = IdleWidgets.toggle(storedIds, kind)
         if (kind == pinned && next != storedIds) onOrder(next, "") else onChange(next)
     }

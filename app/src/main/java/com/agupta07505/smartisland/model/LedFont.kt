@@ -26,7 +26,10 @@ sealed interface LedFace {
 }
 
 /** Dot icons the LED slots use instead of the Material glyphs: 7x7, weather icons 9x9 to fill the board's height. */
-enum class LedIcon { Clock, Sun, Moon, Cloud, Rain, Snow, Bolt, Battery, BatteryLow, BatteryFull, Alarm, ArrowUp, ArrowDown, Calendar, Wind }
+enum class LedIcon {
+    Clock, Sun, Moon, Cloud, Rain, Snow, Bolt, Battery, BatteryLow, BatteryFull, Alarm, ArrowUp, ArrowDown, Calendar, Wind,
+    Leaf, Walk, Uv, Hourglass, Bell, Dnd
+}
 
 /**
  * Built-in LED font: 5x7 dots per letter, plus 7x7 icons and 9x9 weather icons. Drawn by the app (no font file);
@@ -101,7 +104,13 @@ object LedFont {
         LedIcon.ArrowDown to listOf("0001000", "0001000", "0001000", "1001001", "0101010", "0011100", "0001000"),
         LedIcon.ArrowUp to listOf("0001000", "0011100", "0101010", "1001001", "0001000", "0001000", "0001000"),
         LedIcon.Calendar to listOf("0100010", "1111111", "1000001", "1010101", "1000001", "1010101", "1111111"),
-        LedIcon.Wind to listOf("0001110", "0010001", "0000001", "1111110", "0000000", "0111110", "0000001")
+        LedIcon.Wind to listOf("0001110", "0010001", "0000001", "1111110", "0000000", "0111110", "0000001"),
+        LedIcon.Leaf to listOf("0000110", "0001111", "0011111", "0111011", "1110110", "1101100", "1000000"),
+        LedIcon.Walk to listOf("0011000", "0011000", "0111100", "1011010", "0011000", "0100100", "1000010"),
+        LedIcon.Uv to listOf("0101010", "0011100", "1111111", "0111110", "1111111", "0011100", "0101010"),
+        LedIcon.Hourglass to listOf("1111111", "0111110", "0011100", "0001000", "0010100", "0111110", "1111111"),
+        LedIcon.Bell to listOf("0001000", "0011100", "0111110", "0111110", "1111111", "0000000", "0001000"),
+        LedIcon.Dnd to listOf("0011100", "0111110", "1111111", "1000001", "1111111", "0111110", "0011100")
     )
 
     /** [text] in the built-in 7-row dot font. Lower case is drawn as capitals; a missing character becomes a space. */

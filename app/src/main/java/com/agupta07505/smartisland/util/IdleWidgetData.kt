@@ -121,12 +121,20 @@ class IdleWidgetData internal constructor() {
     var weather by mutableStateOf<WeatherSnapshot?>(null)
         internal set
 
+    /** Steps walked today according to the hardware pedometer, -1 = unread or unavailable. */
+    var stepCount by mutableIntStateOf(-1)
+        internal set
+
     /** Unread messages and mail, in total and per app (see [NotificationCountTracker]). */
     var notificationSummary by mutableStateOf(NotificationSummary.Empty)
         internal set
 
     /** The Do Not Disturb mode that is on, or [ModeStatus.Off]. */
     var mode by mutableStateOf(ModeStatus.Off)
+        internal set
+
+    /** Device-wide foreground screen time today and most used app; empty snapshot if unread. */
+    var screenTime by mutableStateOf(ScreenTimeSnapshot())
         internal set
 
     companion object {
@@ -153,9 +161,47 @@ fun rememberIdleWidgetData(
     val wantsTime = active && (IdleWidgetKind.Clock in kinds || IdleWidgetKind.LiveClock in kinds || IdleWidgetKind.Date in kinds || wantsAlarm)
     val wantsSpeed = active && IdleWidgetKind.NetSpeed in kinds
     val wantsWind = IdleWidgetKind.Wind in kinds
-    val wantsWeather = active && allowNetwork && (IdleWidgetKind.Weather in kinds || wantsWind)
+    val wantsAqi = IdleWidgetKind.Aqi in kinds
+    val wantsUv = IdleWidgetKind.Uv in kinds
+    val wantsWeather = active && allowNetwork && (IdleWidgetKind.Weather in kinds || wantsWind || wantsAqi || wantsUv)
     val wantsNotifications = active && IdleWidgetKind.Notifications in kinds
     val wantsMode = active && IdleWidgetKind.Modes in kinds
+    val wantsSteps = active && IdleWidgetKind.Steps in kinds
+    val wantsScreenTime = active && IdleWidgetKind.ScreenTime in kinds
+
+    LaunchedEffect(wantsScreenTime) {
+        if (!wantsScreenTime) {
+            data.screenTime = ScreenTimeSnapshot()
+            return@LaunchedEffect
+        }
+        while (true) {
+            val snapshot = withContext(Dispatchers.IO) { ScreenTimeReader.readToday(context) }
+            data.screenTime = snapshot
+            delay(SCREEN_TIME_POLL_MS)
+        }
+    }
+
+    DisposableEffect(context, wantsSteps) {
+        if (!wantsSteps) {
+            data.stepCount = -1
+            return@DisposableEffect onDispose { }
+        }
+        data.stepCount = if (StepTracker.hasPermission(context)) StepTracker.getTodaySteps(context) else -1
+        val unregister = StepTracker.register(context) { steps ->
+            data.stepCount = steps
+        }
+        onDispose { unregister?.invoke() }
+    }
+    LaunchedEffect(wantsSteps) {
+        if (!wantsSteps) return@LaunchedEffect
+        while (true) {
+            delay(10_000L)
+            val steps = withContext(Dispatchers.IO) { StepTracker.getTodaySteps(context) }
+            if (steps >= 0 && steps != data.stepCount) {
+                data.stepCount = steps
+            }
+        }
+    }
 
     LaunchedEffect(wantsNotifications) {
         if (!wantsNotifications) {
@@ -225,7 +271,7 @@ fun rememberIdleWidgetData(
     }
 
     // The calendar is read once a minute (and the permission checked each time, so allowing it takes effect within a minute).
-    val wantsCalendar = active && IdleWidgetKind.Date in kinds
+    val wantsCalendar = active && (IdleWidgetKind.Date in kinds || IdleWidgetKind.NextEvent in kinds)
     LaunchedEffect(wantsCalendar) {
         if (!wantsCalendar) {
             data.nextEvent = null
@@ -316,7 +362,7 @@ fun rememberIdleWidgetData(
 
     // A refresh asked for in Settings bumps this, which restarts the loop below so the new reading shows at once.
     val refreshNonce by IdleWeather.refreshNonce.collectAsState()
-    LaunchedEffect(wantsWeather, wantsWind, weather, refreshNonce) {
+    LaunchedEffect(wantsWeather, wantsWind, wantsAqi, wantsUv, weather, refreshNonce) {
         if (!wantsWeather) return@LaunchedEffect
         // A reading fetched for another city or provider is not shown; the stored one only counts while it matches the choices.
         data.weather = IdleWeather.cachedFor(context, weather)
@@ -324,13 +370,19 @@ fun rememberIdleWidgetData(
             val latest = IdleWeather.cachedFor(context, weather)
             if (latest != null && latest.fetchedAtMs > (data.weather?.fetchedAtMs ?: 0L)) data.weather = latest
             val age = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
-            // A stored reading can lack what the choices need now (the wind, feels like, an island row): it is asked again once, not more
+            // A stored reading can lack what the choices need now (the wind, feels like, an island row, aqi, uv): it is asked again once, not more
             // than every retry period, and never in Manual (shouldFetch decides).
             val shown = data.weather
             val missingData = (wantsWind && (shown?.windKmh ?: -1f) < 0f) ||
+                (wantsAqi && (shown?.aqi ?: -1) < 0) ||
+                (wantsUv && (shown?.uvIndex ?: -1f) < 0f) ||
                 (shown != null && WeatherDisplay.missingData(weather.pillMode, weather.effectiveReadouts(), shown))
             if (WeatherRefresh.shouldFetch(weather.refreshMs, shown != null, age, missingData)) {
-                val fresh = IdleWeather.fetch(context, weather)
+                val extra = buildSet {
+                    if (wantsAqi) add(WeatherReadouts.AQI)
+                    if (wantsUv) add(WeatherReadouts.UV)
+                }
+                val fresh = IdleWeather.fetch(context, weather, extraReadouts = extra)
                 if (fresh != null) data.weather = fresh
             }
             val shownAge = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
@@ -345,6 +397,7 @@ fun rememberIdleWidgetData(
 private const val SPEED_SAMPLE_MS = 2000L
 
 private const val CALENDAR_POLL_MS = 60_000L
+private const val SCREEN_TIME_POLL_MS = 30_000L
 
 
 private const val USAGE_SAVE_EVERY = 15
@@ -433,7 +486,9 @@ object IdleWeather {
             feelsLikeC = p.getFloat("fl", Float.NaN),
             // Readings stored before these fields existed count as not detailed.
             detailed = p.getBoolean("det", false),
-            extras = WeatherExtras.fromJson(p.getString("ex", null))
+            extras = WeatherExtras.fromJson(p.getString("ex", null)),
+            uvIndex = p.getFloat("uv", -1f),
+            aqi = p.getInt("aqi", -1)
         )
     }
 
@@ -465,7 +520,11 @@ object IdleWeather {
     fun hasStoredPlace(context: Context): Boolean = storedGps(context, Long.MAX_VALUE) != null || storedIp(context, Long.MAX_VALUE) != null
 
     /** Stores and returns the reading; null when there is no place or the service did not answer. */
-    suspend fun fetch(context: Context, prefs: WeatherPrefs = WeatherPrefs()): WeatherSnapshot? = withContext(Dispatchers.IO) {
+    suspend fun fetch(
+        context: Context,
+        prefs: WeatherPrefs = WeatherPrefs(),
+        extraReadouts: Set<String> = emptySet()
+    ): WeatherSnapshot? = withContext(Dispatchers.IO) {
         runCatching {
             val place = resolvePlace(context, prefs)
             if (place == null) {
@@ -478,16 +537,21 @@ object IdleWeather {
                 return@runCatching null
             }
             val json = httpGet(url) ?: return@runCatching null
-            val readouts = prefs.effectiveReadouts()
+            val readouts = (prefs.effectiveReadouts() + extraReadouts).distinct()
             var snapshot = WeatherParser.parseForecast(json, readouts, System.currentTimeMillis()) ?: return@runCatching null
             // Air quality is a second request to Open-Meteo's own service. A failure only leaves that row out; the weather still counts.
             if (WeatherReadouts.AQI in readouts) {
                 val aqi = runCatching {
                     httpGet(WeatherConfig.airQualityUrl(place.first, place.second))?.let { WeatherParser.parseAqi(it) }
                 }.getOrNull()
-                val extras = snapshot.extras
-                if (aqi != null && extras != null) snapshot = snapshot.copy(extras = extras.copy(aqi = aqi))
+                val extras = snapshot.extras ?: WeatherExtras(asked = readouts.toSet())
+                if (aqi != null) snapshot = snapshot.copy(extras = extras.copy(aqi = aqi), aqi = aqi)
             }
+            val uvToSave = if (snapshot.uvIndex >= 0f) snapshot.uvIndex else (snapshot.extras?.uvIndex ?: -1f)
+            val aqiToSave = if (snapshot.aqi >= 0) snapshot.aqi else (snapshot.extras?.aqi ?: -1)
+            val updatedExtras = (snapshot.extras ?: WeatherExtras(asked = readouts.toSet())).copy(uvIndex = uvToSave, aqi = aqiToSave)
+            snapshot = snapshot.copy(extras = updatedExtras, uvIndex = uvToSave, aqi = aqiToSave)
+
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putFloat("t", snapshot.temperatureC)
                 .putInt("c", snapshot.weatherCode)
@@ -499,6 +563,8 @@ object IdleWeather {
                 .putBoolean("det", snapshot.detailed)
                 .putString("ex", snapshot.extras?.toJson())
                 .putString("sig", WeatherConfig.signature(prefs))
+                .putFloat("uv", snapshot.uvIndex)
+                .putInt("aqi", snapshot.aqi)
                 .apply()
             snapshot
         }.getOrElse {

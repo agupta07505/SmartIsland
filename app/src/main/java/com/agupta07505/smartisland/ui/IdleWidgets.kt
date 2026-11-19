@@ -70,6 +70,9 @@ import androidx.compose.material.icons.rounded.Battery5Bar
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.BatteryFull
+import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.DirectionsWalk
+import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Bedtime
@@ -86,6 +89,7 @@ import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.DataSaverOn
 import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.SettingsEthernet
 import androidx.compose.material.icons.rounded.SignalCellularAlt
@@ -234,7 +238,7 @@ internal fun IdleWidgetIslandContent(
         AnimatedContent(
             modifier = Modifier.weight(1f),
             targetState = frame.kind,
-            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(120)) },
+            transitionSpec = { fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(220, easing = FastOutSlowInEasing)) },
             contentAlignment = Alignment.Center,
             label = "widgetIslandBody"
         ) { kind ->
@@ -249,6 +253,11 @@ internal fun IdleWidgetIslandContent(
                 IdleWidgetKind.Notifications -> NotificationsIslandBody(shown)
                 IdleWidgetKind.Modes -> ModesIslandBody(shown)
                 IdleWidgetKind.LiveClock -> ClockIslandBody(shown)
+                IdleWidgetKind.Aqi -> AqiIslandBody(shown)
+                IdleWidgetKind.Steps -> StepsIslandBody(shown)
+                IdleWidgetKind.Uv -> UvIslandBody(shown)
+                IdleWidgetKind.ScreenTime -> ScreenTimeIslandBody(shown)
+                IdleWidgetKind.NextEvent -> EventIslandBody(shown)
                 IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> Unit
             }
         }
@@ -484,6 +493,196 @@ private fun WindIslandBody(frame: IdleWidgetFrame) {
                 color = SOFT_WHITE,
                 fontSize = 11.sp,
                 maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun AqiIslandBody(frame: IdleWidgetFrame) {
+    val aqi = frame.data.weather?.resolvedAqi ?: -1
+    val label = WeatherDisplay.aqiLabel(aqi)
+    val color = aqiColor(aqi)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Aqi, frame, size = 30.dp)
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (aqi < 0) "--" else "$aqi",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = label,
+                    color = color,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Text(
+                text = stringResource(R.string.idle_widget_aqi_island_sub),
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun StepsIslandBody(frame: IdleWidgetFrame) {
+    val steps = frame.data.stepCount
+    val distanceKm = if (steps > 0) String.format(Locale.US, "%.2f km", steps * 0.00076f) else "-- km"
+    val calories = if (steps > 0) "${Math.round(steps * 0.04f)} kcal" else "-- kcal"
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Steps, frame, size = 30.dp)
+        Column {
+            Text(
+                text = if (steps < 0) "-- steps" else String.format(Locale.US, "%,d steps", steps),
+                color = Color.White,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = "$distanceKm  \u00B7  $calories",
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun UvIslandBody(frame: IdleWidgetFrame) {
+    val uv = frame.data.weather?.resolvedUv ?: -1f
+    val label = WeatherDisplay.uvLabel(uv)
+    val color = uvColor(uv)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.Uv, frame, size = 30.dp)
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (uv < 0f) "UV --" else "UV ${Math.round(uv)}",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = label,
+                    color = color,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+            Text(
+                text = uvProtectionAdvice(uv),
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScreenTimeIslandBody(frame: IdleWidgetFrame) {
+    val snapshot = frame.data.screenTime
+    val totalText = IdleWidgets.formatScreenTime(snapshot.totalMs)
+    val subText = snapshot.topAppName?.let { app ->
+        stringResource(R.string.idle_widget_screentime_sub, app, IdleWidgets.formatScreenTime(snapshot.topAppMs))
+    } ?: stringResource(R.string.idle_widget_screentime_today)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.ScreenTime, frame, size = 30.dp)
+        Column {
+            Text(
+                text = totalText,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false
+            )
+            Text(
+                text = subText,
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventIslandBody(frame: IdleWidgetFrame) {
+    val event = frame.data.nextEvent
+    val context = LocalContext.current
+    if (event == null) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IdleWidgetIcon(IdleWidgetKind.NextEvent, frame, size = 30.dp)
+            Column {
+                Text(
+                    text = stringResource(R.string.idle_widget_no_events),
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.idle_widget_no_events_sub),
+                    color = SOFT_WHITE,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+        return
+    }
+    val is24 = android.text.format.DateFormat.is24HourFormat(context)
+    val locale = Locale.getDefault()
+    val timeFormat = remember(is24, locale) { SimpleDateFormat(if (is24) "HH:mm" else "h:mm a", locale) }
+    val weekdayName = remember(locale) { SimpleDateFormat("EEE", locale) }
+    val at = event.beginMs
+    val whenText = if (at <= frame.data.nowMs && event.endMs > frame.data.nowMs) {
+        "Happening now \u00B7 ends at " + timeFormat.format(Date(event.endMs))
+    } else {
+        (if (sameCalendarDay(at, frame.data.nowMs)) "" else weekdayName.format(Date(at)) + " ") +
+            timeFormat.format(Date(at)) + " \u00B7 in " + WidgetIslandContent.durationText(at - frame.data.nowMs)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IdleWidgetIcon(IdleWidgetKind.NextEvent, frame, size = 30.dp)
+        Column {
+            Text(
+                text = CalendarRules.shortTitle(event.title, 24),
+                color = Color.White,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = whenText,
+                color = SOFT_WHITE,
+                fontSize = 11.sp,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }
@@ -772,6 +971,36 @@ private val GREEN = Color(0xFF34C759)
 private val RED = Color(0xFFFF453A)
 private val SKY = Color(0xFF38BDF8)
 private val SOFT_WHITE = Color(0xFFE5E7EB)
+private val MINT = Color(0xFF34D399)
+private val PURPLE = Color(0xFFA855F7)
+private val MAROON = Color(0xFF881337)
+
+internal fun aqiColor(aqi: Int): Color = when {
+    aqi < 0 -> SOFT_WHITE
+    aqi <= 50 -> GREEN
+    aqi <= 100 -> AMBER
+    aqi <= 150 -> ORANGE
+    aqi <= 200 -> RED
+    aqi <= 300 -> PURPLE
+    else -> MAROON
+}
+
+internal fun uvColor(uv: Float): Color = when {
+    uv < 0f -> SOFT_WHITE
+    uv <= 2.5f -> GREEN
+    uv <= 5.5f -> AMBER
+    uv <= 7.5f -> ORANGE
+    uv <= 10.5f -> RED
+    else -> PURPLE
+}
+
+private fun uvProtectionAdvice(uv: Float): String = when (Math.round(uv)) {
+    in Int.MIN_VALUE..2 -> "Minimal protection needed"
+    in 3..5 -> "Wear SPF 30+ & sunglasses"
+    in 6..7 -> "Seek shade during midday"
+    in 8..10 -> "Extra protection needed"
+    else -> "Avoid midday sun"
+}
 
 /**
  * What the collapsed cutout draws for the idle widgets, or null when none is due (switched off, a card is on the
@@ -846,7 +1075,7 @@ internal fun rememberIdleWidgetFrame(
     }
     val appear = animateFloatAsState(
         targetValue = if (active && settled) 1f else 0f,
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
         label = "idleWidgetAppear"
     )
     // A swipe moves the rotation by hand; the automatic timer then starts its count again, so a widget never flips right after one.
@@ -965,7 +1194,8 @@ internal fun rememberIdleWidgetFrame(
 }
 
 private val NEEDS_CONTENT_KINDS = setOf(
-    IdleWidgetKind.Clock, IdleWidgetKind.DayMoments, IdleWidgetKind.Battery, IdleWidgetKind.Notifications, IdleWidgetKind.Modes
+    IdleWidgetKind.Clock, IdleWidgetKind.DayMoments, IdleWidgetKind.Battery, IdleWidgetKind.Notifications, IdleWidgetKind.Modes,
+    IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv, IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent
 )
 
 private fun isAvailable(
@@ -984,8 +1214,13 @@ private fun isAvailable(
     }
     IdleWidgetKind.Weather -> data.weather != null && weatherShown
     IdleWidgetKind.Wind -> (data.weather?.windKmh ?: -1f) >= 0f
+    IdleWidgetKind.Aqi -> (data.weather?.resolvedAqi ?: -1) >= 0
+    IdleWidgetKind.Uv -> (data.weather?.resolvedUv ?: -1f) >= 0f
+    IdleWidgetKind.Steps -> true
     IdleWidgetKind.Battery -> data.batteryPercent >= 0 && (data.charging || !batteryOnlyWhenCharging)
     IdleWidgetKind.NetSpeed -> netShown
+    IdleWidgetKind.ScreenTime -> true
+    IdleWidgetKind.NextEvent -> true
     else -> true
 }
 
@@ -1001,15 +1236,16 @@ internal fun IdleWidgetSlot(frame: IdleWidgetFrame?, right: Boolean) {
         targetState = frame.kind,
         transitionSpec = {
             if (frame.autoSwitch && frame.tickAnimates) {
-                // The automatic switch: the active glyph steps out to the right in three ticks while the next one steps in from the left.
-                // The right slot follows the left a little later, so the two read as one flip.
-                val ease = Easing { IdleSlots.tickProgress(it) }
+                // The automatic switch: fluid, organic slide and cross-fade without stepped jitter
                 val lag = if (right) IdleSlots.STAGGER_MS else 0
-                val travel = tween<IntOffset>(SWITCH_MS, delayMillis = lag, easing = ease)
-                (slideInHorizontally(travel) { -it * 2 } + fadeIn(tween(SWITCH_MS, delayMillis = lag, easing = ease))) togetherWith
-                    (slideOutHorizontally(travel) { it * 2 } + fadeOut(tween(SWITCH_MS, delayMillis = lag, easing = ease)))
+                val duration = 280
+                (slideInHorizontally(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)) { -it / 2 } +
+                    fadeIn(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing))) togetherWith
+                (slideOutHorizontally(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)) { it / 2 } +
+                    fadeOut(tween(duration, delayMillis = lag, easing = FastOutSlowInEasing)))
             } else {
-                fadeIn(tween(220)) togetherWith fadeOut(tween(160))
+                fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith
+                    fadeOut(tween(260, easing = FastOutSlowInEasing))
             }
         },
         label = "idleWidgetSlot"
@@ -1051,6 +1287,11 @@ private fun beatKey(kind: IdleWidgetKind, frame: IdleWidgetFrame): Any? {
             }
         }
         IdleWidgetKind.NextAlarm -> d.nextAlarmMs
+        IdleWidgetKind.Aqi -> d.weather?.resolvedAqi ?: -1
+        IdleWidgetKind.Steps -> d.stepCount
+        IdleWidgetKind.Uv -> d.weather?.resolvedUv ?: -1f
+        IdleWidgetKind.ScreenTime -> d.screenTime.totalMs / 60_000L
+        IdleWidgetKind.NextEvent -> d.nextEvent?.beginMs
         else -> null
     }
 }
@@ -1271,17 +1512,17 @@ private fun <T> VerticalTick(target: T, towardsDown: Boolean, lagMs: Int = 0, an
         transitionSpec = {
             if (!animate) {
                 // Battery Saver or "remove animations": no move, a plain cross-fade.
-                fadeIn(tween(220)) togetherWith fadeOut(tween(160))
+                fadeIn(tween(240, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(240, easing = FastOutSlowInEasing))
             } else {
-                // A clock's heavy tick: the glyph hangs back a little, slowly, then snaps through and settles; the fades wait for the snap.
+                // A clock's heavy tick: smooth snap and matching fade curves
                 val settled = Easing { IdleSlots.settledTickProgress(it, TICK_MS) }
                 val total = TICK_MS + IdleSlots.SETTLE_MS
                 val windUp = (TICK_MS * IdleSlots.HEAVY_WINDUP_SHARE).toInt()
                 val snap = TICK_MS - windUp
                 (slideInVertically(tween(total, delayMillis = lagMs, easing = settled)) { -dir * it * 3 / 4 } +
-                    fadeIn(tween(snap, delayMillis = windUp + lagMs))) togetherWith
+                    fadeIn(tween(snap, delayMillis = windUp + lagMs, easing = FastOutSlowInEasing))) togetherWith
                     (slideOutVertically(tween(total, delayMillis = lagMs, easing = settled)) { dir * it * 3 / 4 } +
-                        fadeOut(tween(snap * 2 / 3, delayMillis = windUp + lagMs)))
+                        fadeOut(tween(snap, delayMillis = windUp + lagMs, easing = FastOutSlowInEasing)))
             }
         },
         label = "idleSlotTick"
@@ -1327,7 +1568,7 @@ internal fun IdleWidgetCompact(frame: IdleWidgetFrame?) {
     AnimatedContent(
         modifier = Modifier.graphicsLayer { alpha = frame.appear.value },
         targetState = frame.kind,
-        transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+        transitionSpec = { fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(260, easing = FastOutSlowInEasing)) },
         label = "idleWidgetCompact"
     ) { kind ->
         Box(contentAlignment = Alignment.Center) {
@@ -1356,6 +1597,17 @@ internal fun IdleWidgetIcon(kind: IdleWidgetKind, frame: IdleWidgetFrame, size: 
             if (data.speedIsUpload) Icons.Rounded.ArrowUpward to ORANGE else Icons.Rounded.ArrowDownward to SKY
         IdleWidgetKind.Notifications -> Icons.Rounded.Notifications to SOFT_WHITE
         IdleWidgetKind.Modes -> modeFallbackIcon(data.mode.kind) to SOFT_WHITE
+        IdleWidgetKind.Aqi -> {
+            val aqi = data.weather?.resolvedAqi ?: -1
+            Icons.Rounded.Eco to aqiColor(aqi)
+        }
+        IdleWidgetKind.Steps -> Icons.Rounded.DirectionsWalk to MINT
+        IdleWidgetKind.Uv -> {
+            val uv = data.weather?.resolvedUv ?: -1f
+            Icons.Rounded.BrightnessHigh to uvColor(uv)
+        }
+        IdleWidgetKind.ScreenTime -> Icons.Rounded.HourglassTop to Color(0xFF818CF8)
+        IdleWidgetKind.NextEvent -> Icons.Rounded.Event to Color(0xFFF43F5E)
     }
     val snapshot = data.weather
     if (kind == IdleWidgetKind.Weather && snapshot != null) {
@@ -1609,10 +1861,45 @@ internal fun IdleWidgetValue(kind: IdleWidgetKind, frame: IdleWidgetFrame, compa
         IdleWidgetKind.Notifications -> text = NotificationCounts.badgeText(data.notificationSummary.total)
         // The small circle has no room for a name: the mode's own glyph is drawn there instead ([IdleWidgetCompact]).
         IdleWidgetKind.Modes -> text = ""
+        IdleWidgetKind.Aqi -> {
+            val aqi = data.weather?.resolvedAqi ?: -1
+            text = if (aqi < 0) "--" else aqi.toString()
+            color = aqiColor(aqi)
+        }
+        IdleWidgetKind.Steps -> {
+            text = if (data.stepCount < 0) "--" else IdleWidgets.formatSteps(data.stepCount)
+            color = MINT
+        }
+        IdleWidgetKind.Uv -> {
+            val uv = data.weather?.resolvedUv ?: -1f
+            text = if (uv < 0f) "--" else if (compact) Math.round(uv).toString() else "UV " + Math.round(uv)
+            color = uvColor(uv)
+        }
+        IdleWidgetKind.ScreenTime -> {
+            text = IdleWidgets.formatScreenTime(data.screenTime.totalMs, compact)
+            color = Color(0xFF818CF8)
+        }
+        IdleWidgetKind.NextEvent -> {
+            val event = data.nextEvent
+            val at = event?.beginMs ?: 0L
+            text = if (event == null) "--"
+            else if (at <= data.nowMs && event.endMs > data.nowMs) {
+                val remMins = (event.endMs - data.nowMs) / 60_000L
+                if (compact) "NOW" else "${remMins}m left"
+            } else if (compact) {
+                val totalMins = (at - data.nowMs) / 60_000L
+                if (totalMins < 60L) "${totalMins}m" else "${totalMins / 60L}h"
+            } else {
+                IdleWidgets.formatEventCountdown(at, data.nowMs)
+            }
+            color = Color(0xFFF43F5E)
+        }
     }
     if (monochrome) color = Color.White
     val size = if (!compact) (11f * frame.glyphScale).sp else when (kind) {
-        IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Battery -> 10.sp
+        IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Battery,
+        IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv,
+        IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent -> 10.sp
         else -> 8.sp
     }
     Text(

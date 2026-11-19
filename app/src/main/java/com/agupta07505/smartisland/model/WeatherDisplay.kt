@@ -139,6 +139,8 @@ object WeatherParser {
         val offset = root.optInt("utc_offset_seconds", 0)
         val humidity = if (current.has("relative_humidity_2m")) current.optInt("relative_humidity_2m", -1) else -1
         val extras = if (readouts.isEmpty()) null else buildExtras(root, readouts, offset, humidity, nowMs)
+        val currentUv = if (current.has("uv_index")) current.optDouble("uv_index", -1.0).toFloat() else -1f
+        val uvVal = if (currentUv >= 0f) currentUv else (extras?.uvIndex ?: -1f)
         return WeatherSnapshot(
             temperatureC = current.optDouble("temperature_2m", 0.0).toFloat(),
             weatherCode = current.optInt("weather_code", 3),
@@ -148,7 +150,9 @@ object WeatherParser {
             windDirectionDeg = if (current.has("wind_direction_10m")) current.optInt("wind_direction_10m", -1) else -1,
             feelsLikeC = if (current.has("apparent_temperature")) current.optDouble("apparent_temperature").toFloat() else Float.NaN,
             detailed = true,
-            extras = extras
+            extras = extras,
+            uvIndex = uvVal,
+            aqi = extras?.aqi ?: -1
         )
     }
 

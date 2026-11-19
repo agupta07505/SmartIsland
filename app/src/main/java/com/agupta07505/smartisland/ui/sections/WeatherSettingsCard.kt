@@ -312,7 +312,7 @@ private fun PermissionButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun ManualCity(chosen: String, repository: SmartIslandSettingsRepository) {
+internal fun ManualCity(chosen: String, repository: SmartIslandSettingsRepository) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<CityResult>>(emptyList()) }

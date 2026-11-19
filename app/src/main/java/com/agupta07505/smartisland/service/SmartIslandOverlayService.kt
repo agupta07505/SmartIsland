@@ -121,6 +121,7 @@ class SmartIslandOverlayService : AccessibilityService() {
     private var wiredDeviceMonitor: com.agupta07505.smartisland.util.WiredDeviceEventMonitor? = null
     private var transferSpeedMonitor: com.agupta07505.smartisland.util.TransferSpeedMonitor? = null
     private var faceUnlockWatcher: com.agupta07505.smartisland.util.FaceUnlockWatcher? = null
+    private var stepTrackerCleanup: (() -> Unit)? = null
 
     private val serviceScope = kotlinx.coroutines.CoroutineScope(
         SupervisorJob() +
@@ -838,6 +839,10 @@ class SmartIslandOverlayService : AccessibilityService() {
             }
         ).also { it.start() }
 
+        runCatchingLogged(TAG, "StepTracker registration failed") {
+            stepTrackerCleanup = com.agupta07505.smartisland.util.StepTracker.register(this) { }
+        }
+
         faceUnlockWatcher = com.agupta07505.smartisland.util.FaceUnlockWatcher(
             serviceScope,
             onUnlock = { type, _ ->
@@ -1143,6 +1148,8 @@ class SmartIslandOverlayService : AccessibilityService() {
         transferSpeedMonitor = null
         faceUnlockWatcher?.stop()
         faceUnlockWatcher = null
+        stepTrackerCleanup?.invoke()
+        stepTrackerCleanup = null
 
         removeCollapsedWindow()
         stopForegroundSafely()

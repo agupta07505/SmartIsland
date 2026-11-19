@@ -83,9 +83,9 @@ object WeatherConfig {
     const val OPEN_METEO_GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
     const val OPEN_METEO_AIR_QUALITY = "https://air-quality-api.open-meteo.com/v1/air-quality"
 
-    /** Fields asked for as the "current" reading. Feels like and humidity are cheap, so always asked. */
+    /** Fields asked for as the "current" reading. Feels like, humidity and UV are cheap, so always asked. */
     const val CURRENT_FIELDS =
-        "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,apparent_temperature,relative_humidity_2m"
+        "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,apparent_temperature,relative_humidity_2m,uv_index"
 
     const val MAX_CITY_LENGTH = 80
     const val MAX_URL_LENGTH = 300

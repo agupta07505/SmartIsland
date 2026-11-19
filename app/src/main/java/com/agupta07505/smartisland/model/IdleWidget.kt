@@ -34,7 +34,17 @@ enum class IdleWidgetKind(val id: String) {
     /** Unread messages and mail count on the left; the island lists the apps. Sits out while there are none. */
     Notifications("notifications"),
     /** Active Do Not Disturb / mode glyph on the left; the island names it. Sits out while no mode is on. */
-    Modes("modes");
+    Modes("modes"),
+    /** Current Air Quality Index (US AQI). Color-coded by EPA standard. */
+    Aqi("aqi"),
+    /** Live step count for today from hardware pedometer. */
+    Steps("steps"),
+    /** Current Solar Ultraviolet (UV) Index. */
+    Uv("uv"),
+    /** Daily screen-on time and top application. */
+    ScreenTime("screentime"),
+    /** Upcoming scheduled calendar event countdown within 24 hours. */
+    NextEvent("event");
 
     companion object {
         fun fromId(id: String): IdleWidgetKind? = values().firstOrNull { it.id == id }
@@ -149,6 +159,46 @@ object IdleWidgets {
             else -> "${Math.round(b / 1_000_000.0)}M"
         }
     }
+
+    /** Short pill step count text ("850", "4.2k", "12k"). */
+    fun formatSteps(steps: Int): String = when {
+        steps < 0 -> "--"
+        steps < 1_000 -> steps.toString()
+        steps < 10_000 -> String.format(java.util.Locale.US, "%.1fk", steps / 1000f)
+        else -> "${steps / 1000}k"
+    }
+
+    fun displayAqi(aqi: Int): String = if (aqi < 0) "--" else aqi.toString()
+
+    fun displayUv(uv: Float): String = if (uv < 0f) "--" else Math.round(uv).toString()
+
+    /** Short screen time text ("45m", "2h 15m"; compact: "45m", "2h"). */
+    fun formatScreenTime(ms: Long, compact: Boolean = false): String {
+        if (ms <= 0L) return "0m"
+        val totalMinutes = ms / 60_000L
+        val hours = totalMinutes / 60L
+        val mins = totalMinutes % 60L
+        if (compact) {
+            return if (hours == 0L) "${mins}m" else "${hours}h"
+        }
+        return when {
+            hours == 0L -> if (mins == 0L) "<1m" else "${mins}m"
+            mins == 0L -> "${hours}h"
+            else -> "${hours}h ${mins}m"
+        }
+    }
+
+    /** Event countdown text ("now", "in 25m", "in 2h", "in 2h 15m"). */
+    fun formatEventCountdown(beginMs: Long, nowMs: Long): String {
+        val diff = beginMs - nowMs
+        if (diff <= 0L) return "now"
+        val totalMins = diff / 60_000L
+        if (totalMins < 1L) return "<1m"
+        if (totalMins < 60L) return "in ${totalMins}m"
+        val hours = totalMins / 60L
+        val mins = totalMins % 60L
+        return if (mins == 0L) "in ${hours}h" else "in ${hours}h ${mins}m"
+    }
 }
 
 /** Weather lookup result: temperature in Celsius and the WMO weather code Open-Meteo reports. */
@@ -166,8 +216,18 @@ data class WeatherSnapshot(
     /** True when the lookup asked for the feels-like and humidity fields. */
     val detailed: Boolean = false,
     /** Extra readings behind the island rows; null = none asked for. */
-    val extras: WeatherExtras? = null
-)
+    val extras: WeatherExtras? = null,
+    /** Current Solar Ultraviolet (UV) Index; negative = not known. */
+    val uvIndex: Float = -1f,
+    /** Air quality index (US AQI); negative = not known. */
+    val aqi: Int = -1
+) {
+    val resolvedUv: Float
+        get() = if (uvIndex >= 0f) uvIndex else (extras?.uvIndex ?: -1f)
+
+    val resolvedAqi: Int
+        get() = if (aqi >= 0) aqi else (extras?.aqi ?: -1)
+}
 
 /** Weather code grouped to the few icons the pill can show. */
 enum class WeatherLook { Clear, PartlyCloudy, Cloudy, Fog, Rain, Snow, Storm }

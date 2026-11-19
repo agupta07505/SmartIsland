@@ -68,10 +68,12 @@ import java.util.Locale
 
 private const val LED_PITCH_DP = 1.3f
 
-/** Which widgets draw their slots on the LED board. The notification count and the mode glyph keep the smooth tick. */
+/** Which widgets draw their slots on the LED board. Supports all rotation idle widgets. */
 internal fun ledSlotSupported(kind: IdleWidgetKind, right: Boolean): Boolean = when (kind) {
     IdleWidgetKind.Date, IdleWidgetKind.Weather, IdleWidgetKind.Battery,
-    IdleWidgetKind.NextAlarm, IdleWidgetKind.NetSpeed, IdleWidgetKind.Clock, IdleWidgetKind.LiveClock, IdleWidgetKind.Wind -> true
+    IdleWidgetKind.NextAlarm, IdleWidgetKind.NetSpeed, IdleWidgetKind.Clock, IdleWidgetKind.LiveClock, IdleWidgetKind.Wind,
+    IdleWidgetKind.Aqi, IdleWidgetKind.Steps, IdleWidgetKind.Uv, IdleWidgetKind.ScreenTime, IdleWidgetKind.NextEvent,
+    IdleWidgetKind.Notifications, IdleWidgetKind.Modes -> true
     else -> false
 }
 
@@ -185,6 +187,54 @@ internal fun LedSlot(kind: IdleWidgetKind, frame: IdleWidgetFrame, right: Boolea
         IdleWidgetKind.LiveClock -> LedFace.Text((if (right) minuteFormat else hourFormat).format(Date(data.nowMs)))
         IdleWidgetKind.Clock ->
             if (right) LedFace.Text(timeFormat.format(Date(data.nowMs))) else LedFace.Icon(LedIcon.Clock)
+        IdleWidgetKind.Aqi -> {
+            val aqi = data.weather?.resolvedAqi ?: -1
+            if (right) LedFace.Text(if (aqi < 0) "--" else aqi.toString())
+            else LedFace.Icon(LedIcon.Leaf)
+        }
+        IdleWidgetKind.Steps -> {
+            val steps = data.stepCount
+            if (right) LedFace.Text(if (steps < 0) "--" else IdleWidgets.formatSteps(steps).uppercase())
+            else LedFace.Icon(LedIcon.Walk)
+        }
+        IdleWidgetKind.Uv -> {
+            val uv = data.weather?.resolvedUv ?: -1f
+            if (right) LedFace.Text(if (uv < 0f) "--" else "UV" + Math.round(uv))
+            else LedFace.Icon(LedIcon.Uv)
+        }
+        IdleWidgetKind.ScreenTime -> {
+            val totalMs = data.screenTime.totalMs
+            if (right) LedFace.Text(IdleWidgets.formatScreenTime(totalMs, compact = true).uppercase())
+            else LedFace.Icon(LedIcon.Hourglass)
+        }
+        IdleWidgetKind.NextEvent -> {
+            val event = data.nextEvent
+            val at = event?.beginMs ?: 0L
+            if (right) {
+                val text = if (event == null) "--"
+                else if (at <= data.nowMs && event.endMs > data.nowMs) "NOW"
+                else {
+                    val totalMins = (at - data.nowMs) / 60_000L
+                    when {
+                        totalMins <= 0L -> "NOW"
+                        totalMins < 60L -> "${totalMins}M"
+                        else -> "${totalMins / 60L}H"
+                    }
+                }
+                LedFace.Text(text)
+            } else {
+                LedFace.Icon(LedIcon.Calendar)
+            }
+        }
+        IdleWidgetKind.Notifications -> {
+            val total = data.notificationSummary.total
+            if (right) LedFace.Text(if (total <= 0) "0" else total.toString())
+            else LedFace.Icon(LedIcon.Bell)
+        }
+        IdleWidgetKind.Modes -> {
+            if (right) LedFace.Text(if (data.mode.active) "ON" else "OFF")
+            else LedFace.Icon(LedIcon.Dnd)
+        }
         else -> LedFace.Text("")
     }
     val towardsDown = when (kind) {
@@ -447,11 +497,13 @@ internal fun LedTickPreview(config: LedTickConfig, modifier: Modifier = Modifier
     val pairs = remember {
         listOf(
             LedFace.Icon(LedIcon.Clock) to LedFace.Text("12:45"),
-            LedFace.Icon(LedIcon.Clock) to LedFace.Text("12:46"),
             LedFace.Icon(LedIcon.Sun) to LedFace.Text("28\u00B0"),
-            LedFace.Icon(LedIcon.Sun) to LedFace.Text("29\u00B0"),
             LedFace.Icon(LedIcon.Battery) to LedFace.Text("78%"),
-            LedFace.Icon(LedIcon.Battery) to LedFace.Text("77%")
+            LedFace.Icon(LedIcon.Walk) to LedFace.Text("6.4K"),
+            LedFace.Icon(LedIcon.Hourglass) to LedFace.Text("2H"),
+            LedFace.Icon(LedIcon.Calendar) to LedFace.Text("25M"),
+            LedFace.Icon(LedIcon.Leaf) to LedFace.Text("42"),
+            LedFace.Icon(LedIcon.Uv) to LedFace.Text("UV3")
         )
     }
     var index by remember { mutableIntStateOf(0) }

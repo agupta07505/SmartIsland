@@ -33,16 +33,20 @@ object WidgetIslandContent {
         nowMs: Long,
         hasWeather: Boolean,
         notificationCount: Int = 0,
-        modeActive: Boolean = false
+        modeActive: Boolean = false,
+        hasNextEvent: Boolean = true,
+        hasScreenTime: Boolean = true
     ): Boolean = when (kind) {
         IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> false
-        IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock -> true
-        IdleWidgetKind.Weather, IdleWidgetKind.Wind -> hasWeather
+        IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock, IdleWidgetKind.Steps -> true
+        IdleWidgetKind.Weather, IdleWidgetKind.Wind, IdleWidgetKind.Aqi, IdleWidgetKind.Uv -> hasWeather
         // Not charging, the battery island says when it will run out; charging, how long to full.
         IdleWidgetKind.Battery -> true
         IdleWidgetKind.NextAlarm -> nextAlarmMs > nowMs
         IdleWidgetKind.Notifications -> notificationCount > 0
         IdleWidgetKind.Modes -> modeActive
+        IdleWidgetKind.ScreenTime -> hasScreenTime
+        IdleWidgetKind.NextEvent -> hasNextEvent
     }
 
     fun alarmInWindow(nextAlarmMs: Long, nowMs: Long): Boolean =
