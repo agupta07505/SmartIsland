@@ -5,4 +5,14 @@
   Licensed under the GNU GPL v3 License
   Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
 -->
-<full-backup-content />
+<!--
+  Android 6 to 11 (API 23-30): auto backup. Everything is backed up as before
+  except the notification-history database, which stays on this device. The
+  journal, WAL and SHM files are listed too because they can hold the same rows.
+-->
+<full-backup-content>
+    <exclude domain="database" path="smart_island_notification_history.db" />
+    <exclude domain="database" path="smart_island_notification_history.db-journal" />
+    <exclude domain="database" path="smart_island_notification_history.db-wal" />
+    <exclude domain="database" path="smart_island_notification_history.db-shm" />
+</full-backup-content>
