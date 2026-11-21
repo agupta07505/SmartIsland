@@ -552,6 +552,16 @@ fun NotificationsAndPrivacySection(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                 ToggleRowItem(
+                    searchKey = "np.keep_fg_notifications",
+                    title = stringResource(R.string.toggle_keep_foreground_app_notifications_title),
+                    subtitle = stringResource(R.string.toggle_keep_foreground_app_notifications_desc),
+                    icon = Icons.Rounded.VisibilityOff,
+                    checked = settings.keepForegroundAppNotifications,
+                    onCheckedChange = { scope.launch { repository.setKeepForegroundAppNotifications(it) } }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                ToggleRowItem(
                     searchKey = "np.hide_when_idle",
                     title = stringResource(R.string.toggle_auto_hide_idle_title),
                     subtitle = stringResource(R.string.toggle_auto_hide_idle_desc),
