@@ -322,7 +322,8 @@
     <string name="toggle_quick_actions_desc">在扩展名片中显示可操作按钮, 如回复、 Mark Read 和 dispission</string>
     <string name="toggle_mirror_only_title">只镜像( 从系统阴影隐藏)</string>
     <string name="toggle_mirror_only_desc">仅在 Smart Island 中显示通知并隐藏默认通知阴影</string>
-    <string name="toggle_auto_hide_idle_title">空闲时自动隐藏药丸</string>
+    <string name="toggle_keep_foreground_app_notifications_title">保留前台应用通知(系统通知栏)</string>
+    <string name="toggle_keep_foreground_app_notifications_desc">防止灵动岛将当前活动应用发出的通知从系统通知栏中移除</string>    <string name="toggle_auto_hide_idle_title">空闲时自动隐藏药丸</string>
     <string name="toggle_auto_hide_idle_desc">当没有主动提醒、音乐或动态事件时, 完全隐藏药丸</string>
     <string name="toggle_auto_hide_pill_title">不活动后自动隐藏药丸</string>
     <string name="toggle_auto_hide_pill_desc">在设定的时间后自动隐藏避孕药和圆圈, 即使通知是有效的 。 拍拍区域再次揭示.</string>

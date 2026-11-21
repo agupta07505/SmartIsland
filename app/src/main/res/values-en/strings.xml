@@ -355,7 +355,7 @@
     <string name="toggle_mirror_only_title">Mirror Only (Hide from System Shade)</string>
     <string name="toggle_mirror_only_desc">Show notification only in Smart Island and hide from default notification shade</string>
     <string name="toggle_keep_foreground_app_notifications_title">Keep Foreground App Notifications (System Shade)</string>
-    <string name="toggle_keep_foreground_app_notifications_desc">Smart Island does not remove the notifications from the active app</string>
+    <string name="toggle_keep_foreground_app_notifications_desc">Prevent Smart Island from removing the active app\'s notifications from the system shade</string>
     <string name="toggle_auto_hide_idle_title">Auto-Hide Pill When Idle</string>
     <string name="toggle_auto_hide_idle_desc">Hide the pill completely when there are no active alerts, music, or dynamic events</string>
     <string name="toggle_auto_hide_pill_title">Auto-Hide Pill After Inactivity</string>

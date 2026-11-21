@@ -323,7 +323,7 @@
     <string name="toggle_mirror_only_title">Espejo Sólo (Hide de la forma del sistema)</string>
     <string name="toggle_mirror_only_desc">Mostrar la notificación sólo en Smart Island y ocultar de la notificación predeterminada sombra</string>
     <string name="toggle_keep_foreground_app_notifications_title">Mantener las notificaciones de la aplicación activa (panel del sistema)</string>
-    <string name="toggle_keep_foreground_app_notifications_desc">Smart Island no elimina las notificaciones de la aplicación activa.</string>
+    <string name="toggle_keep_foreground_app_notifications_desc">Evita que Smart Island elimine las notificaciones de la aplicación activa del panel del sistema</string>
     <string name="toggle_auto_hide_idle_title">Almohadilla automática cuando cuelga</string>
     <string name="toggle_auto_hide_idle_desc">Ocultar la píldora completamente cuando no hay alertas activas, música o eventos dinámicos</string>
     <string name="toggle_auto_hide_pill_title">Pill Auto-Hide Después de la Inactividad</string>
