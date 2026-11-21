@@ -32,13 +32,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MergeAnimationTest {
-    // Pill 120 wide, bubble 36 wide, centres 110 apart: edge gap = 110 - 60 - 18 = 32.
+    // pill 120 wide, bubble 36 wide, centres 110 apart: edge gap = 110 - 60 - 18 = 32
     private val dist = 110f
     private val pill = 120f
     private val bubble = 36f
 
     @Test
-    fun travelStopsInsidePillSide_notAtCentre() {
+    fun travelStopsInsidePillSide() {
         val travel = mergeTravelDp(dist, pill, bubble)
         assertEquals(32f + 36f * 1.15f, travel, 0.001f)
         assertTrue("must not reach the pill centre", travel < dist)
@@ -46,7 +46,7 @@ class MergeAnimationTest {
 
     @Test
     fun bubbleEndsFullyInsideThePill() {
-        // Bubble centre ends (travel - gap - bubble/2) inside the pill edge; its far edge must also be inside.
+        // bubble centre ends (travel - gap - bubble/2) inside the pill edge; its far edge must also be inside
         val travel = mergeTravelDp(dist, pill, bubble)
         val centreInside = travel - 32f - bubble / 2f
         assertTrue(centreInside - bubble / 2f >= 0f)
@@ -65,28 +65,22 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun contactHappensBeforeTheEnd() {
-        val c = mergeContactFraction(dist, pill, bubble)
-        assertTrue(c > 0f && c < 1f)
+    fun mergeContactTiming() {
+        val contact = mergeContactFraction(dist, pill, bubble)
+        assertTrue(contact > 0f && contact < 1f)
+
+        val peak = mergeContactFraction(dist, pill, bubble)
+        assertEquals(0f, mergeStretch(0f, peak), 0.001f)
+        assertEquals(0f, mergeStretch(1f, peak), 0.001f)
+        assertTrue(mergeStretch(peak, peak) > mergeStretch(peak * 0.5f, peak))
+
+        val swell = mergeContactFraction(dist, pill, bubble)
+        assertEquals(0f, mergeSwell(swell * 0.5f, swell), 0.001f)
+        assertTrue(mergeSwell((swell + 1f) / 2f, swell) > 0.9f)
     }
 
     @Test
-    fun stretchPeaksAtContactAndIsZeroAtEnds() {
-        val c = mergeContactFraction(dist, pill, bubble)
-        assertEquals(0f, mergeStretch(0f, c), 0.001f)
-        assertEquals(0f, mergeStretch(1f, c), 0.001f)
-        assertTrue(mergeStretch(c, c) > mergeStretch(c * 0.5f, c))
-    }
-
-    @Test
-    fun swellOnlyAfterContact() {
-        val c = mergeContactFraction(dist, pill, bubble)
-        assertEquals(0f, mergeSwell(c * 0.5f, c), 0.001f)
-        assertTrue(mergeSwell((c + 1f) / 2f, c) > 0.9f)
-    }
-
-    @Test
-    fun bubbleStaysSolidUntilItIsInsideThePill() {
+    fun bubbleSolidUntilInsidePill() {
         assertEquals(1f, mergeBubbleAlpha(0.85f), 0.001f)
         assertEquals(0f, mergeBubbleAlpha(1f), 0.001f)
     }
@@ -105,16 +99,13 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun aCutoutAlreadyTouchingThePillIsNotStretchedAtRest() {
-        // contact 0: the round cutout beside a wide pill. It is not stretched at merge 0.
+    fun mergeStretchLimits() {
+        // contact 0: the round cutout beside a wide pill. It is not stretched at merge 0
         assertEquals(0f, mergeStretch(0f, 0f), 0.001f)
         assertEquals(0f, mergeStretch(1f, 0f), 0.001f)
         assertTrue(mergeStretch(0.2f, 0f) > mergeStretch(0.05f, 0f))
         assertTrue(mergeStretch(0.2f, 0f) > mergeStretch(0.8f, 0f))
-    }
 
-    @Test
-    fun stretchStaysInRangeForEveryContact() {
         for (c in listOf(0f, 0.1f, 0.5f, 0.99f, 1f)) {
             var m = 0f
             while (m <= 1f) {
@@ -131,15 +122,10 @@ class MergeAnimationTest {
     private val gap = 32f
     private val contact = mergeContactFraction(dist, pill, bubble)
 
-    @Test
-    fun gapIsTheEmptySpaceBetweenTheFacingEdges() {
+    @Test fun gapAndPushAtContact() {
         assertEquals(gap, mergeGapDp(dist, pill, bubble), 0.001f)
         assertEquals(gap, mergeGapDp(-dist, pill, bubble), 0.001f)
         assertEquals(0f, mergeGapDp(70f, pill, bubble), 0f)
-    }
-
-    @Test
-    fun pushIsZeroUntilContactAndOneWhenItIsOver() {
         assertEquals(0f, mergePush(0f, contact), 0f)
         assertEquals(0f, mergePush(contact, contact), 0f)
         assertEquals(1f, mergePush(1f, contact), 0.0001f)
@@ -147,7 +133,7 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun joinStartsOnlyAfterThePushAndEndsAtOne() {
+    fun joinStartsAfterPush() {
         assertEquals(0f, mergeJoin(contact, contact), 0f)
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(0f, mergeJoin(pushEnd, contact), 0.0001f)
@@ -164,8 +150,8 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun bubbleReachesThePillEdgeAtContactThenIsPressedIn() {
-        // Approach is a straight line to the touching position (half a bubble short of the pill's edge).
+    fun bubbleMergeTravel() {
+        // approach is a straight line to the touching position (half a bubble short of the pill's edge)
         assertEquals(0f, mergeBubbleOffsetDp(0f, contact, gap, bubble, pill), 0f)
         assertEquals(gap, mergeBubbleOffsetDp(contact, contact, gap, bubble, pill), 0.001f)
         assertEquals(
@@ -173,33 +159,31 @@ class MergeAnimationTest {
             mergeEdgeDistanceFromOffsetDp(dist, pill, mergeBubbleOffsetDp(contact, contact, gap, bubble, pill)),
             0.001f
         )
-        // End of push: pressed in by 0.7 of the depth (face in by the full depth, body 0.6 narrower).
+        // end of push: pressed in by 0.7 of the depth (face in by the full depth, body 0.6 narrower)
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(gap + 0.7f * MERGE_PUSH_DEPTH_DP, mergeBubbleOffsetDp(pushEnd, contact, gap, bubble, pill), 0.001f)
-    }
 
-    @Test
-    fun bubbleEndsInsideThePillAndNeverBeyondItsFarSide() {
-        val end = mergeBubbleOffsetDp(1f, contact, gap, bubble, pill)
-        assertTrue(mergeEdgeDistanceFromOffsetDp(dist, pill, end) < 0f)
-        assertEquals(gap + bubble / 2f + 14f, end, 0.001f)
-        // A pill narrower than 28 dp: the bubble's centre stops at the pill's middle.
+        val settledEnd = mergeBubbleOffsetDp(1f, contact, gap, bubble, pill)
+        assertTrue(mergeEdgeDistanceFromOffsetDp(dist, pill, settledEnd) < 0f)
+        assertEquals(gap + bubble / 2f + 14f, settledEnd, 0.001f)
+        // A pill narrower than 28 dp: the bubble's centre stops at the pill's middle
         val narrow = mergeBubbleOffsetDp(1f, 0.5f, 10f, 20f, 20f)
         assertEquals(10f + 10f + 10f, narrow, 0.001f)
-    }
 
-    @Test
-    fun offsetNeverGoesBackwards() {
         var last = -1f
         for (i in 0..200) {
             val v = mergeBubbleOffsetDp(i / 200f, contact, gap, bubble, pill)
             assertTrue("step $i: $v < $last", v >= last - 0.0001f)
             last = v
         }
+
+        assertEquals(0f, mergeBubbleOffsetDp(0f, 0f, 0f, bubble, pill), 0f)
+        assertTrue(mergePush(0.1f, 0f) > 0f)
+        assertEquals(0f, mergePush(0f, 0f), 0f)
     }
 
     @Test
-    fun bubbleIsPressedNarrowerAndTallerThenShrinksAway() {
+    fun bubblePressedThenShrinks() {
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(1f, mergeBubbleScaleX(0f, contact, bubble), 0f)
         assertEquals(1f, mergeBubbleScaleY(contact, contact), 0f)
@@ -210,7 +194,7 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun facesGoFlatInThePushAndRoundOffEarlyInTheJoin() {
+    fun facesFlatInPushRoundInJoin() {
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(0f, mergeFaceFlat(contact, contact), 0f)
         assertEquals(1f, mergeFaceFlat(pushEnd, contact), 0.0001f)
@@ -220,11 +204,11 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun pillIsPushedTallerThenSwellsAndSettles() {
+    fun pillPushedThenSettles() {
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(1f, mergePillScaleY(contact, contact, 34f), 0f)
         assertEquals(1.08f, mergePillScaleY(pushEnd, contact, 34f), 0.001f)
-        // Joining: it swells past the pushed height, then rings out to its normal size.
+        // joining: it swells past the pushed height, then rings out to its normal size
         assertTrue(mergePillScaleY(pushEnd + 0.03f, contact, 34f) > 1.08f)
         assertEquals(1f, mergePillScaleY(1f, contact, 34f), 0.01f)
         assertEquals(1f, mergePillScaleX(contact, contact, 120f), 0f)
@@ -232,18 +216,11 @@ class MergeAnimationTest {
     }
 
     @Test
-    fun bridgeIsOpenAtTheStartOfTheJoinAndClosedAfterwards() {
+    fun bridgeOpenAtJoinStart() {
         val pushEnd = contact + (1f - contact) * 0.37f
         assertEquals(0f, mergeNeckHeightFactor(pushEnd, contact), 0f)
         assertTrue(mergeNeckHeightFactor(pushEnd + 0.02f, contact) > 0.8f)
         assertEquals(0f, mergeNeckHeightFactor(1f, contact), 0.0001f)
         for (i in 0..100) assertTrue(mergeNeckHeightFactor(i / 100f, contact) in 0f..1f)
-    }
-
-    @Test
-    fun aCutoutAlreadyTouchingThePillStartsPushingAtOnce() {
-        assertEquals(0f, mergeBubbleOffsetDp(0f, 0f, 0f, bubble, pill), 0f)
-        assertTrue(mergePush(0.1f, 0f) > 0f)
-        assertEquals(0f, mergePush(0f, 0f), 0f)
     }
 }
