@@ -20,29 +20,27 @@ object TimerClock {
 
     fun targetFromShownSeconds(nowMs: Long, shownSec: Long): Long = nowMs + shownSec * 1000L + 999L
 
-    /** Remaining time a paused countdown chronometer had when posted; null if the printed text disagrees. */
+    /** Remaining time a paused countdown chronometer had when posted; null if the printed text disagrees or is unavailable. */
     fun frozenFromChronometer(baseElapsedMs: Long, postElapsedMs: Long, shownSec: Long?, applyDelayMs: Long): Long? {
+        if (shownSec == null) return null
         val corrected = baseElapsedMs - postElapsedMs
         if (corrected <= 0L || corrected > MAX_PLAUSIBLE_MS) return null
-        if (shownSec != null) {
-            val delay = applyDelayMs.coerceAtLeast(0L)
-            val lo = shownSec * 1000L + delay - 1000L
-            val hi = shownSec * 1000L + delay + 1999L
-            if (corrected !in lo..hi) return null
-        }
+        val delay = applyDelayMs.coerceAtLeast(0L)
+        val lo = shownSec * 1000L + delay - 1000L
+        val hi = shownSec * 1000L + delay + 1999L
+        if (corrected !in lo..hi) return null
         return corrected
     }
 
-    /** Elapsed time a paused stopwatch had when posted; null if the printed text disagrees. */
+    /** Elapsed time a paused stopwatch had when posted; null if the printed text disagrees or is unavailable. */
     fun elapsedFromChronometer(baseElapsedMs: Long, postElapsedMs: Long, shownSec: Long?, applyDelayMs: Long): Long? {
+        if (shownSec == null) return null
         val corrected = postElapsedMs - baseElapsedMs
         if (corrected < 0L || corrected > MAX_PLAUSIBLE_MS) return null
-        if (shownSec != null) {
-            val delay = applyDelayMs.coerceAtLeast(0L)
-            val lo = shownSec * 1000L - delay - 1000L
-            val hi = shownSec * 1000L - delay + 1999L
-            if (corrected !in lo..hi) return null
-        }
+        val delay = applyDelayMs.coerceAtLeast(0L)
+        val lo = shownSec * 1000L - delay - 1000L
+        val hi = shownSec * 1000L - delay + 1999L
+        if (corrected !in lo..hi) return null
         return corrected
     }
 

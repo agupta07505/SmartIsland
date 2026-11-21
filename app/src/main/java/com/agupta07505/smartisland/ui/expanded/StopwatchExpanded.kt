@@ -103,16 +103,21 @@ private fun StopwatchExpandedMiui(
     val startTime = notification?.timeMillis ?: remember { System.currentTimeMillis() }
 
     val frozenElapsedSeconds = notification?.stopwatchElapsedSeconds
+        ?: if (notification?.recordingPaused == true) {
+            notification.recordingFrozenMs?.let { it / 1000L }
+        } else null
     val chronometerBase = notification?.stopwatchChronometerBase
 
     val isNotificationPaused = remember(
         notification?.key,
+        notification?.recordingPaused,
         notification?.actionIntents,
         notification?.title,
         notification?.text,
         frozenElapsedSeconds
     ) {
         frozenElapsedSeconds != null ||
+            notification?.recordingPaused == true ||
             notification?.actionIntents?.any {
                 it.title.contains("resume", ignoreCase = true) ||
                     it.title.contains("start", ignoreCase = true)
@@ -126,18 +131,22 @@ private fun StopwatchExpandedMiui(
     var elapsedSeconds by remember(
         notification?.key,
         startTime,
+        isPaused,
         frozenElapsedSeconds,
         chronometerBase
     ) {
         mutableLongStateOf(
-            frozenElapsedSeconds
-                ?: chronometerBase?.let { base ->
+            if (isPaused) {
+                frozenElapsedSeconds ?: 0L
+            } else {
+                chronometerBase?.let { base ->
                     (
                         (android.os.SystemClock.elapsedRealtime() - base) / 1000L
                     ).coerceAtLeast(0L)
                 }
-                ?: ((System.currentTimeMillis() - startTime) / 1000L)
-                    .coerceAtLeast(0L)
+                    ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                        .coerceAtLeast(0L)
+            }
         )
     }
 
@@ -390,7 +399,7 @@ private fun StopwatchExpandedCurrent(
 
     // Optimistic freeze after tapping Pause, until the app posts its paused notification.
     var tappedPauseAtSec by remember(notification?.key, frozenMs) { mutableLongStateOf(-1L) }
-    val isPaused = frozenMs != null || tappedPauseAtSec >= 0L
+    val isPaused = frozenMs != null || notification?.recordingPaused == true || tappedPauseAtSec >= 0L
 
     val liveSeconds = rememberRecordingSeconds(notification)
     val elapsedSeconds = if (tappedPauseAtSec >= 0L) tappedPauseAtSec else liveSeconds

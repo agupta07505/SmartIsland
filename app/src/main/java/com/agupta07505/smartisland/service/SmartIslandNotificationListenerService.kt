@@ -1316,53 +1316,57 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
         val stopwatchChronometerBase: Long?
         val timerRemainingSeconds: Long?
 
-        if (isMiuiRom) {
-            val stopwatchIsPaused = mode == IslandMode.Stopwatch &&
-                com.agupta07505.smartisland.util.TimerStopwatchParser.isStopwatchPaused(notification)
+        val stopwatchIsPaused = mode == IslandMode.Stopwatch &&
+            (recordingState?.frozenMs != null ||
+                com.agupta07505.smartisland.util.TimerStopwatchParser.isStopwatchPaused(notification))
 
-            stopwatchElapsedSeconds = if (stopwatchIsPaused) {
-                val previousStopwatch = existingNotif?.takeIf { it.mode == IslandMode.Stopwatch }
-                val parsedElapsed = com.agupta07505.smartisland.util.TimerStopwatchParser
-                    .parseStopwatchElapsedSeconds(notification)
+        stopwatchElapsedSeconds = if (stopwatchIsPaused) {
+            val previousStopwatch = existingNotif?.takeIf { it.mode == IslandMode.Stopwatch }
+            val parsedElapsed = com.agupta07505.smartisland.util.TimerStopwatchParser
+                .parseStopwatchElapsedSeconds(notification)
 
-                parsedElapsed
-                    ?: previousStopwatch?.stopwatchElapsedSeconds
-                    ?: previousStopwatch?.let { previous ->
-                        ((System.currentTimeMillis() - previous.timeMillis) / 1000L).coerceAtLeast(0L)
-                    }
-            } else {
-                null
-            }
-
-            stopwatchChronometerBase = if (mode == IslandMode.Stopwatch && !stopwatchIsPaused) {
-                runCatching {
-                    notification.extras?.getLong("android.chronometerBase", 0L)
-                }.getOrNull()?.takeIf { it > 0L }
-            } else {
-                null
-            }
-
-            val nowMillis = System.currentTimeMillis()
-            val timerIsPaused = mode == IslandMode.Timer &&
-                com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification)
-
-            timerRemainingSeconds = if (timerIsPaused) {
-                val previousTimer = existingNotif?.takeIf { it.mode == IslandMode.Timer }
-
-                previousTimer?.timerRemainingSeconds
-                    ?: previousTimer?.let { old ->
-                        ((old.timeMillis - nowMillis + 999L) / 1000L).coerceAtLeast(0L)
-                    }
-                    ?: notification.`when`.takeIf { it > nowMillis }?.let { deadline ->
-                        ((deadline - nowMillis + 999L) / 1000L).coerceAtLeast(0L)
-                    }
-            } else {
-                null
-            }
+            parsedElapsed
+                ?: recordingState?.frozenMs?.let { it / 1000L }
+                ?: previousStopwatch?.stopwatchElapsedSeconds
+                ?: previousStopwatch?.recordingFrozenMs?.let { it / 1000L }
+                ?: lastClocks["${sbn.packageName}|${mode.name}"]?.frozenMs?.let { it / 1000L }
+                ?: previousStopwatch?.let { previous ->
+                    ((System.currentTimeMillis() - previous.timeMillis) / 1000L).coerceAtLeast(0L)
+                }
         } else {
-            stopwatchElapsedSeconds = null
-            stopwatchChronometerBase = null
-            timerRemainingSeconds = null
+            null
+        }
+
+        stopwatchChronometerBase = if (mode == IslandMode.Stopwatch && !stopwatchIsPaused) {
+            runCatching {
+                notification.extras?.getLong("android.chronometerBase", 0L)
+            }.getOrNull()?.takeIf { it > 0L }
+        } else {
+            null
+        }
+
+        val nowMillis = System.currentTimeMillis()
+        val timerIsPaused = mode == IslandMode.Timer &&
+            (timerPaused || com.agupta07505.smartisland.util.TimerStopwatchParser.isTimerPaused(notification))
+
+        timerRemainingSeconds = if (timerIsPaused) {
+            val previousTimer = existingNotif?.takeIf { it.mode == IslandMode.Timer }
+            val parsedRemaining = com.agupta07505.smartisland.util.TimerStopwatchParser
+                .parseTimerRemainingSeconds(notification)
+
+            parsedRemaining
+                ?: timerFrozenMs?.let { it / 1000L }
+                ?: previousTimer?.timerRemainingSeconds
+                ?: previousTimer?.recordingFrozenMs?.let { it / 1000L }
+                ?: lastTimerFrozen[sbn.packageName]?.let { it / 1000L }
+                ?: previousTimer?.let { old ->
+                    ((old.timeMillis - nowMillis) / 1000L).coerceAtLeast(0L)
+                }
+                ?: notification.`when`.takeIf { it > nowMillis }?.let { deadline ->
+                    ((deadline - nowMillis) / 1000L).coerceAtLeast(0L)
+                }
+        } else {
+            null
         }
 
         val voipLive = com.agupta07505.smartisland.util.VoipCallSignal.active
@@ -1383,10 +1387,20 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
             mode == IslandMode.IncomingCall && !isNowRinging && voipLive && existingNotif == null &&
                 com.agupta07505.smartisland.util.VoipCallSignal.sinceMillis > 0 ->
                 com.agupta07505.smartisland.util.VoipCallSignal.sinceMillis
-            mode == IslandMode.Timer && timerFrozenMs != null -> System.currentTimeMillis() + timerFrozenMs
+            mode == IslandMode.Timer && (timerFrozenMs != null || timerRemainingSeconds != null) -> {
+                val remMs = timerFrozenMs ?: (timerRemainingSeconds!! * 1000L)
+                System.currentTimeMillis() + remMs
+            }
             // The shade's own count-down chronometer is the exact time left.
             mode == IslandMode.Timer && timerViewRunningMs != null -> {
                 val target = System.currentTimeMillis() + timerViewRunningMs
+                lastTimerTargets[sbn.packageName] = target
+                target
+            }
+            // A running timer's exact deadline from notification.`when`
+            mode == IslandMode.Timer && !timerPaused &&
+                com.agupta07505.smartisland.util.TimerStopwatchParser.parseTimerDeadlineExact(notification) != null -> {
+                val target = notification.`when`
                 lastTimerTargets[sbn.packageName] = target
                 target
             }
@@ -1399,7 +1413,8 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                 target
             }
             mode == IslandMode.Timer -> {
-                if (isMiuiRom) {
+                val isOem = com.agupta07505.smartisland.util.TimerStopwatchParser.isOemClock(sbn.packageName)
+                if (isMiuiRom && isOem) {
                     val preciseDeadline = com.agupta07505.smartisland.util.TimerStopwatchParser
                         .parseTimerDeadlineMillis(notification)
                     if (preciseDeadline != null) {
