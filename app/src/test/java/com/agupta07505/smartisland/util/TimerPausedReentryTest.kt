@@ -12,6 +12,7 @@ import com.agupta07505.smartisland.model.IslandNotificationAction
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -109,14 +110,13 @@ class TimerPausedReentryTest {
         notification.flags = 0
         notification.`when` = 0L
 
-        // 3m 42s = 222s, NOT 5m = 300s!
+        // 03:42 from the text, not the 05:00 total in the title
         assertEquals(222L, TimerStopwatchParser.parseTimerRemainingSeconds(notification))
     }
 
     @Test
     fun pausedStopwatchKeepsPreviousFrozenValueWithoutWallClockDrift() {
         val previous = RecordingClock.State(startMillis = 100_000L, frozenMs = 15_000L)
-        // 30 seconds of wall clock elapsed since pause, but stopwatch is still paused
         val nowMs = 130_000L
         val next = RecordingClock.next(
             previous = previous,
@@ -124,10 +124,9 @@ class TimerPausedReentryTest {
             paused = true,
             finished = false,
             parsedMs = null,
-            chronometerBaseMs = 100_000L, // unadjusted base would have given 30_000L drift!
-            exactFrozenMs = null // TimerClock returned null because shownSec was null
+            chronometerBaseMs = 100_000L,
+            exactFrozenMs = null
         )
-        // It should preserve the 15_000L frozen state, NOT 30_000L!
         assertEquals(15_000L, next.frozenMs)
         assertEquals(15_000L, next.elapsedMs(nowMs))
     }
@@ -146,19 +145,36 @@ class TimerPausedReentryTest {
             recordingFrozenMs = 43_000L
         )
         assertEquals(43L, TimerStopwatchParser.parseTimerRemainingSeconds(pausedNotif))
+    }
 
-        val pausedStopwatch = com.agupta07505.smartisland.model.IslandNotification(
-            key = "key2",
+    @Test
+    fun frozenTimeRoundsLikeTheRestOfTheCard() {
+        fun paused(exact: Boolean) = com.agupta07505.smartisland.model.IslandNotification(
+            key = "key1",
             packageName = "com.google.android.deskclock",
             appName = "Clock",
-            title = "Stopwatch",
+            title = "Timer",
             text = "",
             timeMillis = 100000L,
             recordingPaused = true,
-            stopwatchElapsedSeconds = 17L,
-            recordingFrozenMs = 17_000L
+            recordingFrozenMs = 43_500L,
+            exactClock = exact
         )
-        assertEquals(17L, TimerStopwatchParser.parseTimerRemainingSeconds(pausedStopwatch))
+        assertEquals(43L, TimerStopwatchParser.parseTimerRemainingSeconds(paused(exact = true)))
+        assertEquals(44L, TimerStopwatchParser.parseTimerRemainingSeconds(paused(exact = false)))
+    }
+
+    @Test
+    fun pausedSecondsPrefersTheClocksOwnReading() {
+        assertEquals(54L, TimerFreeze.pausedSeconds(clockSec = 54L, hyperOs = false, frozenMs = 60_000L))
+        assertEquals(54L, TimerFreeze.pausedSeconds(clockSec = 54L, hyperOs = true, frozenMs = 60_000L))
+    }
+
+    @Test
+    fun pausedSecondsFallsBackToTheFrozenTimeOnlyOnHyperOs() {
+        assertEquals(60L, TimerFreeze.pausedSeconds(clockSec = null, hyperOs = true, frozenMs = 60_900L))
+        assertNull(TimerFreeze.pausedSeconds(clockSec = null, hyperOs = false, frozenMs = 60_900L))
+        assertNull(TimerFreeze.pausedSeconds(clockSec = null, hyperOs = true, frozenMs = null))
     }
 
     @Test
@@ -173,5 +189,34 @@ class TimerPausedReentryTest {
         notification.`when` = now + 55_700L // 55.7 seconds remaining
 
         assertEquals(55L, TimerStopwatchParser.parseTimerRemainingSeconds(notification))
+    }
+
+    @Test
+    fun sortKeyWordsDoNotLeakIntoTheNotificationText() {
+        val extras = mockk<android.os.Bundle>()
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_TITLE) } returns "Hello"
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_TEXT) } returns "World"
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT) } returns null
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT) } returns null
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_INFO_TEXT) } returns null
+        io.mockk.every { extras.getCharSequence(android.app.Notification.EXTRA_SUMMARY_TEXT) } returns null
+        io.mockk.every { extras.getCharSequenceArray(android.app.Notification.EXTRA_TEXT_LINES) } returns null
+
+        val notification = mockk<android.app.Notification>()
+        io.mockk.every { notification.sortKey } returns "alarm timer stopwatch"
+        notification.extras = extras
+        notification.tickerText = null
+
+        val text = TimerStopwatchParser.extractFullText(notification)
+        assertFalse(text.contains("alarm"))
+        assertFalse(text.contains("timer"))
+        assertFalse(text.contains("stopwatch"))
+    }
+
+    @Test
+    fun sortKeyWithoutAnHourglassGivesNoRemainingTime() {
+        assertEquals(null, TimerStopwatchParser.parseGoogleClockSortKeyRemaining("1 0|↺348|RUNNING"))
+        assertEquals(null, TimerStopwatchParser.parseGoogleClockSortKeyRemaining(null))
+        assertEquals(3_754L, TimerStopwatchParser.parseGoogleClockSortKeyRemaining("PAUSED|⏳1:02:34"))
     }
 }

@@ -36,4 +36,8 @@ object TimerFreeze {
         textRemainingMs != null && textRemainingMs > 0L -> textRemainingMs
         else -> 0L
     }
+
+    /** What a paused timer card names itself: the clock's own reading, else HyperOS's frozen time. Null leaves the frozen value. */
+    fun pausedSeconds(clockSec: Long?, hyperOs: Boolean, frozenMs: Long?): Long? =
+        clockSec ?: frozenMs?.takeIf { hyperOs }?.let { it / 1000L }
 }

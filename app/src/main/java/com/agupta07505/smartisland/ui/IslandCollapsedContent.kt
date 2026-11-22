@@ -954,7 +954,7 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
         } else if (isMiuiRom) {
             notification?.timerRemainingSeconds
                 ?: if (targetTime > System.currentTimeMillis()) {
-                    ((targetTime - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                    com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
                 } else {
                     0L
                 }
@@ -965,7 +965,7 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
             } else if (parsed != null && parsed > 0) {
                 parsed
             } else if (targetTime > System.currentTimeMillis()) {
-                ((targetTime - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
             } else {
                 0L
             }
@@ -997,7 +997,7 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
             while (true) {
                 val now = System.currentTimeMillis()
                 val rem = if (targetTime > now) {
-                    ((targetTime - now) / 1000L).coerceAtLeast(0L)
+                    com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - now)
                 } else {
                     0L
                 }

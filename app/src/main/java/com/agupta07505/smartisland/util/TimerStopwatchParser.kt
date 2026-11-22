@@ -121,11 +121,10 @@ object TimerStopwatchParser {
         val infoText = runCatching { extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString() }.getOrNull().orEmpty()
         val summaryText = runCatching { extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString() }.getOrNull().orEmpty()
         val ticker = runCatching { notification.tickerText?.toString() }.getOrNull().orEmpty()
-        val sortKey = runCatching { notification.sortKey }.getOrNull().orEmpty()
         val textLines = runCatching {
             extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.joinToString(" ") { it.toString() }
         }.getOrNull().orEmpty()
-        return "$title $text $subText $bigText $infoText $summaryText $ticker $sortKey $textLines".lowercase()
+        return "$title $text $subText $bigText $infoText $summaryText $ticker $textLines".lowercase()
     }
 
     fun extractActionLabels(notification: Notification): List<String> {
@@ -377,7 +376,7 @@ object TimerStopwatchParser {
     }
 
     fun isTimerPaused(notification: Notification): Boolean {
-        val sortKey = runCatching { notification.sortKey }.getOrNull()
+        val sortKey = sortKeyOf(notification)
         if (sortKey?.contains("PAUSED", ignoreCase = true) == true) return true
         val actionLabels = extractActionLabels(notification)
         val fullText = extractFullText(notification)
@@ -392,7 +391,7 @@ object TimerStopwatchParser {
     }
 
     fun isStopwatchPaused(notification: Notification): Boolean {
-        val sortKey = runCatching { notification.sortKey }.getOrNull()
+        val sortKey = sortKeyOf(notification)
         if (sortKey?.contains("PAUSED", ignoreCase = true) == true) return true
         val actionLabels = extractActionLabels(notification)
         val fullText = extractFullText(notification)
@@ -454,27 +453,23 @@ object TimerStopwatchParser {
         return notifWhen.takeIf { it > nowMs }
     }
 
-    fun parseGoogleClockSortKeyRemaining(sortKey: String?): Long? {
-        if (sortKey.isNullOrBlank()) return null
-        val match = Regex("""⏳(?:(?:(\d{1,2}):)?(\d{1,2}):)?(\d{1,2})""").find(sortKey) ?: return null
-        val hours = match.groupValues[1].toLongOrNull() ?: 0L
-        val minutes = match.groupValues[2].toLongOrNull() ?: 0L
-        val seconds = match.groupValues[3].toLongOrNull() ?: 0L
-        return hours * 3600L + minutes * 60L + seconds
+    private val SORT_KEY_REMAINING = Regex("""⏳(?:(?:(\d{1,2}):)?(\d{1,2}):)?(\d{1,2})""")
+    private val SORT_KEY_ELAPSED = Regex("""Δ(?:(?:(\d{1,2}):)?(\d{1,2}):)?(\d{1,2})""")
+
+    private fun sortKeyOf(notification: Notification): String? = runCatching { notification.sortKey }.getOrNull()
+
+    private fun sortKeySeconds(pattern: Regex, sortKey: String?): Long? {
+        val (hours, minutes, seconds) = pattern.find(sortKey.orEmpty())?.destructured ?: return null
+        return (hours.toLongOrNull() ?: 0L) * 3600L + (minutes.toLongOrNull() ?: 0L) * 60L + (seconds.toLongOrNull() ?: 0L)
     }
 
-    fun parseGoogleClockSortKeyElapsed(sortKey: String?): Long? {
-        if (sortKey.isNullOrBlank()) return null
-        val match = Regex("""Δ(?:(?:(\d{1,2}):)?(\d{1,2}):)?(\d{1,2})""").find(sortKey) ?: return null
-        val hours = match.groupValues[1].toLongOrNull() ?: 0L
-        val minutes = match.groupValues[2].toLongOrNull() ?: 0L
-        val seconds = match.groupValues[3].toLongOrNull() ?: 0L
-        return hours * 3600L + minutes * 60L + seconds
-    }
+    fun parseGoogleClockSortKeyRemaining(sortKey: String?): Long? = sortKeySeconds(SORT_KEY_REMAINING, sortKey)
+
+    fun parseGoogleClockSortKeyElapsed(sortKey: String?): Long? = sortKeySeconds(SORT_KEY_ELAPSED, sortKey)
 
     fun parseTimerRemainingSeconds(notification: Notification): Long? {
         val isPaused = isTimerPaused(notification)
-        val sortKey = runCatching { notification.sortKey }.getOrNull()
+        val sortKey = sortKeyOf(notification)
         if (isPaused) {
             parseGoogleClockSortKeyRemaining(sortKey)?.let { return it }
         }
@@ -543,13 +538,7 @@ object TimerStopwatchParser {
 
     fun parseTimerRemainingSeconds(notification: com.agupta07505.smartisland.model.IslandNotification): Long? {
         return notification.timerRemainingSeconds
-            ?: (if (notification.recordingPaused) notification.recordingFrozenMs?.let { (it + 500L) / 1000L } else null)
-            ?: parseRemainingFromFields(listOf(notification.title, notification.text))
-    }
-
-    fun parseStopwatchElapsedSeconds(notification: com.agupta07505.smartisland.model.IslandNotification): Long? {
-        return notification.stopwatchElapsedSeconds
-            ?: (if (notification.recordingPaused) notification.recordingFrozenMs?.let { it / 1000L } else null)
+            ?: (if (notification.recordingPaused) notification.recordingFrozenMs?.let { TimerClock.displaySeconds(it, notification.exactClock, 500L) } else null)
             ?: parseRemainingFromFields(listOf(notification.title, notification.text))
     }
 
@@ -579,7 +568,7 @@ object TimerStopwatchParser {
 
     fun parseStopwatchElapsedSeconds(notification: Notification): Long? {
         val isPaused = isStopwatchPaused(notification)
-        val sortKey = runCatching { notification.sortKey }.getOrNull()
+        val sortKey = sortKeyOf(notification)
         if (isPaused) {
             parseGoogleClockSortKeyElapsed(sortKey)?.let { return it }
         }

@@ -160,7 +160,7 @@ private fun TimerExpandedMiui(
             } else {
                 val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
                 if (t > System.currentTimeMillis()) {
-                    ((t - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                    TimerClock.secondsLeft(t - System.currentTimeMillis())
                 } else {
                     0L
                 }
@@ -205,7 +205,7 @@ private fun TimerExpandedMiui(
             while (true) {
                 val now = System.currentTimeMillis()
                 val rem = if (targetTime > now) {
-                    ((targetTime - now) / 1000L).coerceAtLeast(0L)
+                    TimerClock.secondsLeft(targetTime - now)
                 } else {
                     0L
                 }
@@ -354,7 +354,7 @@ private fun TimerExpandedMiui(
                             val newPaused = !isPaused
                             isPaused = newPaused
                             if (!newPaused) {
-                                targetTime = System.currentTimeMillis() + remainingSec * 1000L + 999L
+                                targetTime = TimerClock.targetFromShownSeconds(System.currentTimeMillis(), remainingSec)
                             }
 
                             triggerAction(
@@ -477,7 +477,7 @@ private fun TimerExpandedCurrent(
             } else {
                 val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
                 if (t > System.currentTimeMillis()) {
-                    ((t - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L)
+                    TimerClock.secondsLeft(t - System.currentTimeMillis())
                 } else {
                     0L
                 }
@@ -629,7 +629,7 @@ private fun TimerExpandedCurrent(
                                 val newPaused = !isPaused
                                 isPaused = newPaused
                                 if (!newPaused) {
-                                    targetTime = System.currentTimeMillis() + remainingSec * 1000L + 999L
+                                    targetTime = TimerClock.targetFromShownSeconds(System.currentTimeMillis(), remainingSec)
                                 }
                             }
                         },
