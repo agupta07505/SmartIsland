@@ -1209,8 +1209,8 @@
     <string name="label_suppress_overlay_warning">抑制系统浮层警告</string>
     <string name="gesture_001">关闭（已在上方关闭）</string>
     <string name="gesture_002">在图标上：打开快速启动应用（见下方的快速启动窗口）。在中间区域：%1$s。如果中间区域没有覆盖摄像头开孔，在胶囊上任意位置长按即可打开这些应用。横屏时，长按胶囊始终会打开这些应用。</string>
-    <string name="gesture_004">收起的岛区（胶囊）</string>
-    <string name="gesture_005">三个触控区域：左侧图标、摄像头位置上不含图标的中间区域，以及右侧的图标或数值。滑动会跟随手指移动。松手前往回拖即可取消。</string>
+    <string name="gesture_004">收起状态的灵动岛（胶囊）</string>
+    <string name="gesture_005">胶囊共有三个触控区域：左侧的图标、摄像头位置上方不含图标的中间区域，以及右侧的图标或数值。滑动会跟随手指移动。松手前往回拖动即可取消。</string>
     <string name="gesture_006">点按图标（左侧或右侧）</string>
     <string name="gesture_008">点按中间区域</string>
     <string name="gesture_009">竖屏且岛区上有卡片时：一次收起所有卡片（相当于跳过第一步的关闭操作）。如果胶囊上只有闲置小组件或没有内容：恢复因闲置超时而收起的卡片（如果有）。横屏时，胶囊不会覆盖摄像头，因此整个胶囊都会展开。</string>
@@ -1272,4 +1272,5 @@
     <string name="gesture_x08">按住片刻直到感到脉冲震动，然后上滑：%1$s。</string>
     <string name="gesture_x09">第 %1$d 步，共 %2$d 步</string>
     <string name="gesture_x10">完成</string>
+
 </resources>

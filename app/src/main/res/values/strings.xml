@@ -1274,4 +1274,5 @@
     <string name="gesture_x08">Hold for a moment until you feel a pulse, then swipe up: %1$s.</string>
     <string name="gesture_x09">Step %1$d of %2$d</string>
     <string name="gesture_x10">Done</string>
+
 </resources>

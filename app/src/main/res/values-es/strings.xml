@@ -1203,8 +1203,8 @@
     <string name="label_suppress_overlay_warning">Suprimir el aviso de superposición del sistema</string>
     <string name="gesture_001">Desactivado (se desactivó arriba)</string>
     <string name="gesture_002">En un icono: abre tus aplicaciones de inicio rápido (consulta la ventana de inicio rápido más abajo). En la banda central: %1$s. Si la banda central no coincide con el hueco de la cámara, mantén pulsado en cualquier punto de la cápsula para abrir las aplicaciones. En horizontal, la cápsula siempre las abre.</string>
-    <string name="gesture_004">Isla contraída (la cápsula)</string>
-    <string name="gesture_005">Tres zonas táctiles: el icono de la izquierda, la banda central sin icono sobre la posición de la cámara y el icono o valor de la derecha. Los deslizamientos siguen el movimiento de tu dedo. Vuelve atrás antes de soltar para cancelar.</string>
+    <string name="gesture_004">Isla plegada (la píldora)</string>
+    <string name="gesture_005">La píldora tiene tres zonas táctiles: el glifo de la izquierda, la banda central sin glifos sobre la cámara y el glifo o valor de la derecha. Los deslizamientos siguen tu dedo. Retrocede antes de soltar para cancelar.</string>
     <string name="gesture_006">Toca un icono (izquierdo o derecho)</string>
     <string name="gesture_008">Toca la banda central</string>
     <string name="gesture_009">Vertical, con tarjetas en la isla: aparta todas las tarjetas a la vez (el cierre con su primer paso omitido). Solo con un widget inactivo o sin nada en la cápsula: recupera las tarjetas que el tiempo de inactividad apartó, si hay alguna. Horizontal: la cápsula no está sobre la cámara, así que se expande por completo.</string>
@@ -1266,4 +1266,5 @@
     <string name="gesture_x08">Mantén pulsado un momento hasta notar la vibración y luego desliza hacia arriba: %1$s.</string>
     <string name="gesture_x09">Paso %1$d de %2$d</string>
     <string name="gesture_x10">Listo</string>
+
 </resources>

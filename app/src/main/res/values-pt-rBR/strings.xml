@@ -1203,8 +1203,8 @@
     <string name="label_suppress_overlay_warning">Suprimir o aviso de sobreposição do sistema</string>
     <string name="gesture_001">Desativado (desativado acima)</string>
     <string name="gesture_002">Em um ícone: abre seus aplicativos de início rápido (veja a janela de início rápido abaixo). Na faixa central: %1$s. Se a faixa central não cobrir o recorte da câmera, uma pressão longa em qualquer ponto da cápsula abre os aplicativos. No modo paisagem, a cápsula sempre os abre.</string>
-    <string name="gesture_004">Ilha recolhida (a cápsula)</string>
-    <string name="gesture_005">Três áreas de toque: o ícone à esquerda, a faixa central sem ícone sobre o recorte da câmera e o ícone ou valor à direita. Os deslizes acompanham o movimento do dedo. Puxe de volta antes de soltar para cancelar.</string>
+    <string name="gesture_004">Ilha recolhida (a pílula)</string>
+    <string name="gesture_005">A pílula tem três áreas de toque: o glifo à esquerda, a faixa central sem glifos sobre a câmera e o glifo ou valor à direita. Os deslizes seguem o dedo. Puxe de volta antes de soltar para cancelar.</string>
     <string name="gesture_006">Toque em um ícone (esquerdo ou direito)</string>
     <string name="gesture_008">Toque na faixa central</string>
     <string name="gesture_009">Retrato, com cartões na ilha: guarda todos os cartões de uma vez (o fechamento com a primeira etapa ignorada). Com apenas um widget ocioso ou nada na cápsula: traz de volta os cartões que o tempo limite de inatividade guardou, se houver algum. Paisagem: a cápsula não fica sobre a câmera, portanto ela inteira se expande.</string>
@@ -1266,4 +1266,5 @@
     <string name="gesture_x08">Segure por um instante até sentir a vibração e depois deslize para cima: %1$s.</string>
     <string name="gesture_x09">Etapa %1$d de %2$d</string>
     <string name="gesture_x10">Concluído</string>
+
 </resources>

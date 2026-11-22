@@ -1203,8 +1203,8 @@
     <string name="label_suppress_overlay_warning">システムのオーバーレイ警告を抑制</string>
     <string name="gesture_001">オフ（上でオフに設定済み）</string>
     <string name="gesture_002">アイコン上：クイック起動アプリを開きます（下の「クイック起動ウィンドウ」を参照）。中央エリア：%1$s。中央エリアがカメラ穴にかからない場合、ピル上の任意の場所を長押しするとアプリが開きます。横画面では、ピルを長押しすると常にアプリが開きます。</string>
-    <string name="gesture_004">折りたたまれた島（ピル）</string>
-    <string name="gesture_005">3つのタッチ領域：左側のアイコン、カメラ位置にかかるアイコンのない中央エリア、右側のアイコンまたは数値。スワイプは指の動きに追従します。指を戻してから離すとキャンセルできます。</string>
+    <string name="gesture_004">折りたたみアイランド（カプセル）</string>
+    <string name="gesture_005">ピルには3つのタッチ領域があります：左のグリフ、カメラ位置の上にあるグリフのない中央の帯、右のグリフまたは値。スワイプは指に追従します。離す前に戻すとキャンセルできます。</string>
     <string name="gesture_006">アイコンをタップ（左右どちらでも）</string>
     <string name="gesture_008">中央エリアをタップ</string>
     <string name="gesture_009">縦画面で島にカードがある場合：すべてのカードを一度に片づけます（最初の工程を省略した閉じる操作）。ピルにアイドルウィジェットだけがある場合、または何も表示されていない場合：アイドルタイムアウトで片づけたカードがあれば元に戻します。横画面ではピルがカメラにかからないため、ピル全体が展開します。</string>
@@ -1266,4 +1266,5 @@
     <string name="gesture_x08">振動を感じるまでしばらく長押ししてから上にスワイプ：%1$s。</string>
     <string name="gesture_x09">ステップ %1$d / %2$d</string>
     <string name="gesture_x10">完了</string>
+
 </resources>
