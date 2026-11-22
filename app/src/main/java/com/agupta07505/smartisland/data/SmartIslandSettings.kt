@@ -58,6 +58,7 @@ data class SmartIslandSettings(
     val lockScreenPrivacy: String = "AppIconOnly",
     val showNotificationActions: Boolean = true,
     val hideFromNotificationShade: Boolean = true,
+    val keepForegroundAppNotifications: Boolean = false,
     val liveActivitiesEnabled: Boolean = true,
     val navigationEnabled: Boolean = true,
     val disabledNotificationPackages: Set<String> = emptySet(),
@@ -462,6 +463,7 @@ data class SmartIslandSettings(
         settingsObj.put("lockScreenPrivacy", lockScreenPrivacy)
         settingsObj.put("showNotificationActions", showNotificationActions)
         settingsObj.put("hideFromNotificationShade", hideFromNotificationShade)
+        settingsObj.put("keepForegroundAppNotifications", keepForegroundAppNotifications)
         settingsObj.put("liveActivitiesEnabled", liveActivitiesEnabled)
         settingsObj.put("navigationEnabled", navigationEnabled)
 
@@ -909,6 +911,7 @@ data class SmartIslandSettings(
                 },
                 showNotificationActions = obj.optBoolean("showNotificationActions", defaults.showNotificationActions),
                 hideFromNotificationShade = obj.optBoolean("hideFromNotificationShade", defaults.hideFromNotificationShade),
+                keepForegroundAppNotifications = obj.optBoolean("keepForegroundAppNotifications", defaults.keepForegroundAppNotifications),
                 liveActivitiesEnabled = obj.optBoolean("liveActivitiesEnabled", defaults.liveActivitiesEnabled),
                 navigationEnabled = obj.optBoolean("navigationEnabled", defaults.navigationEnabled),
                 disabledNotificationPackages = safeStringSet("disabledNotificationPackages", defaults.disabledNotificationPackages),

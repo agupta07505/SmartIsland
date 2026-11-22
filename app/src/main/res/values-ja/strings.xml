@@ -322,6 +322,8 @@
     <string name="toggle_quick_actions_desc">アクション可能なボタンを表示 応答, マーク読み取り, 拡張カードで却下</string>
     <string name="toggle_mirror_only_title">ミラーのみ(システムシェードからの非表示)</string>
     <string name="toggle_mirror_only_desc">スマートアイランドでのみ通知を表示し、デフォルトの通知シェードから隠す</string>
+    <string name="toggle_keep_foreground_app_notifications_title">実行中のアプリからの通知を保持する(システムシェード)</string>
+    <string name="toggle_keep_foreground_app_notifications_desc">Smart Islandがアクティブなアプリの通知をシステムシェードから削除するのを防ぎます</string>
     <string name="toggle_auto_hide_idle_title">オートハイドの丸いときの丸薬</string>
     <string name="toggle_auto_hide_idle_desc">アクティブなアラート、音楽、または動的イベントがない場合、ピルを完全に隠す</string>
     <string name="toggle_auto_hide_pill_title">活動の後の自動隠された丸薬</string>

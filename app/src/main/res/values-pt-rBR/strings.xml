@@ -322,6 +322,8 @@
     <string name="toggle_quick_actions_desc">Mostrar os botões acionáveis como Responder, Marcar Ler e Desactivar na carta expandida</string>
     <string name="toggle_mirror_only_title">Espelho Apenas (Esconder da Sombra do Sistema)</string>
     <string name="toggle_mirror_only_desc">Mostrar a notificação apenas em Smart Island e esconder do tom de notificação padrão</string>
+    <string name="toggle_keep_foreground_app_notifications_title">Manter notificações de aplicativos em primeiro plano (na área de notificações do sistema)</string>
+    <string name="toggle_keep_foreground_app_notifications_desc">Impeça que o Smart Island remova as notificações do aplicativo ativo da área de notificações do sistema</string>
     <string name="toggle_auto_hide_idle_title">Esconder automaticamente o comprimido quando inactivo</string>
     <string name="toggle_auto_hide_idle_desc">Ocultar a pílula completamente quando não houver alertas ativos, música ou eventos dinâmicos</string>
     <string name="toggle_auto_hide_pill_title">Esconder automaticamente o comprimido após a inatividade</string>
