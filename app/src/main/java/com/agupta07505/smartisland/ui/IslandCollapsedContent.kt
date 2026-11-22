@@ -910,41 +910,62 @@ internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings
 @Composable
 internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
     val isMiuiRom = com.agupta07505.smartisland.util.OemDeviceRules.isMiuiOrHyperOs()
-    val isPaused = remember(notification?.key, notification?.actionIntents, notification?.text, notification?.title) {
-        val resumeKeywords = listOf("resume", "start", "play", "continue", "unpause", "reanudar", "reprendre", "weiter", "riprendi", "continuar", "शुरू", "继续", "再開", "возобновить")
-        val pausedKeywords = listOf("paused", "pause", "en pause", "pausado", "pausada", "angehalten", "sospeso", "sospesa", "रोक दिया गया", "已暂停", "一時停止中", "приостановлено")
-        val actions = notification?.actionIntents.orEmpty()
-        actions.any { act ->
-            val t = act.title.lowercase()
-            resumeKeywords.any { t.contains(it) }
-        } || pausedKeywords.any {
-            notification?.text?.contains(it, ignoreCase = true) == true ||
-            notification?.title?.contains(it, ignoreCase = true) == true
+    val isPaused = remember(
+        notification?.key,
+        notification?.recordingPaused,
+        notification?.actionIntents,
+        notification?.text,
+        notification?.title
+    ) {
+        notification?.recordingPaused == true ||
+        notification?.timerRemainingSeconds != null ||
+        run {
+            val resumeKeywords = listOf("resume", "start", "play", "continue", "unpause", "reanudar", "reprendre", "weiter", "riprendi", "continuar", "शुरू", "继续", "再開", "возобновить")
+            val pausedKeywords = listOf("paused", "pause", "en pause", "pausado", "pausada", "angehalten", "sospeso", "sospesa", "रोक दिया गया", "已暂停", "一時停止中", "приостановлено")
+            val actions = notification?.actionIntents.orEmpty()
+            actions.any { act ->
+                val t = act.title.lowercase()
+                resumeKeywords.any { t.contains(it) }
+            } || pausedKeywords.any {
+                notification?.text?.contains(it, ignoreCase = true) == true ||
+                notification?.title?.contains(it, ignoreCase = true) == true
+            }
         }
     }
 
     val targetTime = notification?.timeMillis ?: remember { System.currentTimeMillis() + 300000L }
     // Exact cards truncate to whole seconds like the shade.
-    val exact = !isMiuiRom && notification?.exactClock == true
+    val exact = (!isMiuiRom || notification?.packageName == "com.google.android.deskclock") && notification?.exactClock == true
+
+    // The paused remaining time the listener froze; the text of a paused timer can still show its full length.
+    val frozenSec = if (isPaused) {
+        notification?.timerRemainingSeconds
+            ?: notification?.recordingFrozenMs?.let {
+                com.agupta07505.smartisland.util.TimerClock.displaySeconds(it, exact, 500L)
+            }
+            ?: notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+    } else {
+        null
+    }
 
     var remainingSec by remember(notification?.key) {
-        val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
-        val rem = if (isMiuiRom) {
+        val rem = if (isPaused) {
+            frozenSec ?: notification?.timerRemainingSeconds ?: 0L
+        } else if (isMiuiRom) {
             notification?.timerRemainingSeconds
-                ?: if (parsed != null && parsed > 0L) {
-                    parsed
-                } else if (targetTime > System.currentTimeMillis()) {
-                    ((targetTime - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+                ?: if (targetTime > System.currentTimeMillis()) {
+                    com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
                 } else {
                     0L
                 }
         } else {
-            if (exact && !isPaused && targetTime > System.currentTimeMillis()) {
+            val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+            if (exact && targetTime > System.currentTimeMillis()) {
                 com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
             } else if (parsed != null && parsed > 0) {
                 parsed
             } else if (targetTime > System.currentTimeMillis()) {
-                ((targetTime - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+                com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - System.currentTimeMillis())
             } else {
                 0L
             }
@@ -952,75 +973,57 @@ internal fun TimerCountdown(notification: IslandNotification?, color: Color) {
         mutableLongStateOf(rem)
     }
 
-    // The paused remaining time the listener froze; the text of a paused timer can still show its full length.
-    val frozenSec = if (isPaused && notification?.recordingPaused == true) {
-        notification.recordingFrozenMs?.let {
-            com.agupta07505.smartisland.util.TimerClock.displaySeconds(it, exact, 500L)
-        }
-    } else {
-        null
-    }
-
-    LaunchedEffect(notification?.text, notification?.title, notification?.timerRemainingSeconds) {
+    LaunchedEffect(notification?.text, notification?.title, notification?.timerRemainingSeconds, isPaused, frozenSec) {
         if (isPaused && notification != null) {
-            if (isMiuiRom) {
-                val pausedRemaining = notification.timerRemainingSeconds
-                    ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
+            val pausedRemaining = frozenSec
+                ?: notification.timerRemainingSeconds
+                ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
 
-                if (pausedRemaining != null && pausedRemaining >= 0L) {
-                    remainingSec = pausedRemaining
-                }
-            } else {
-                if (frozenSec == null) {
-                    val parsed = TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-                    if (parsed != null && parsed > 0) {
-                        remainingSec = parsed
-                    }
-                }
+            if (pausedRemaining != null && pausedRemaining >= 0L) {
+                remainingSec = pausedRemaining
             }
         }
     }
 
-    LaunchedEffect(notification?.key, targetTime, isPaused, notification?.timerRemainingSeconds) {
-        if (isMiuiRom) {
-            if (isPaused) {
-                notification?.timerRemainingSeconds?.let {
-                    remainingSec = it
+    LaunchedEffect(notification?.key, targetTime, isPaused, notification?.timerRemainingSeconds, frozenSec) {
+        if (isPaused) {
+            val pausedRemaining = frozenSec
+                ?: notification?.timerRemainingSeconds
+                ?: notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+            if (pausedRemaining != null && pausedRemaining >= 0L) {
+                remainingSec = pausedRemaining
+            }
+        } else if (isMiuiRom) {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val rem = if (targetTime > now) {
+                    com.agupta07505.smartisland.util.TimerClock.secondsLeft(targetTime - now)
+                } else {
+                    0L
                 }
-            } else {
-                while (true) {
-                    val now = System.currentTimeMillis()
-                    val rem = if (targetTime > now) {
-                        ((targetTime - now + 999L) / 1000L).coerceAtLeast(0L)
-                    } else {
-                        0L
-                    }
-                    remainingSec = rem
-                    if (rem <= 0L) break
-                    kotlinx.coroutines.delay(100L)
-                }
+                remainingSec = rem
+                if (rem <= 0L) break
+                kotlinx.coroutines.delay(100L)
             }
         } else {
-            if (!isPaused) {
-                while (true) {
-                    val now = System.currentTimeMillis()
-                    val remMs = (targetTime - now).coerceAtLeast(0L)
-                    val rem = com.agupta07505.smartisland.util.TimerClock.displaySeconds(remMs, exact, 500L)
-                    remainingSec = rem
-                    if (exact) {
-                        if (remMs <= 0L) break
-                        // Wake just after the shown second changes.
-                        kotlinx.coroutines.delay(com.agupta07505.smartisland.util.TimerClock.msToNextTick(remMs))
-                    } else {
-                        if (rem <= 0L) break
-                        kotlinx.coroutines.delay(500L)
-                    }
+            while (true) {
+                val now = System.currentTimeMillis()
+                val remMs = (targetTime - now).coerceAtLeast(0L)
+                val rem = com.agupta07505.smartisland.util.TimerClock.displaySeconds(remMs, exact, 500L)
+                remainingSec = rem
+                if (exact) {
+                    if (remMs <= 0L) break
+                    // Wake just after the shown second changes.
+                    kotlinx.coroutines.delay(com.agupta07505.smartisland.util.TimerClock.msToNextTick(remMs))
+                } else {
+                    if (rem <= 0L) break
+                    kotlinx.coroutines.delay(500L)
                 }
             }
         }
     }
 
-    val shownSec = if (isMiuiRom) remainingSec else (frozenSec ?: remainingSec)
+    val shownSec = if (isPaused) (frozenSec ?: remainingSec) else remainingSec
     val text = remember(shownSec) {
         TimerStopwatchParser.formatTime(shownSec)
     }
@@ -1040,16 +1043,21 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
             ?: remember { System.currentTimeMillis() }
 
         val frozenElapsedSeconds = notification?.stopwatchElapsedSeconds
+            ?: if (notification?.recordingPaused == true) {
+                notification.recordingFrozenMs?.let { it / 1000L }
+            } else null
         val chronometerBase = notification?.stopwatchChronometerBase
 
         val isPaused = remember(
             notification?.key,
+            notification?.recordingPaused,
             notification?.actionIntents,
             notification?.title,
             notification?.text,
             frozenElapsedSeconds
         ) {
             frozenElapsedSeconds != null ||
+                notification?.recordingPaused == true ||
                 notification?.actionIntents?.any {
                     it.title.contains("resume", ignoreCase = true) ||
                         it.title.contains("start", ignoreCase = true)
@@ -1061,18 +1069,22 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
         var elapsedSeconds by remember(
             notification?.key,
             startTime,
+            isPaused,
             frozenElapsedSeconds,
             chronometerBase
         ) {
             mutableStateOf(
-                frozenElapsedSeconds
-                    ?: chronometerBase?.let { base ->
+                if (isPaused) {
+                    frozenElapsedSeconds ?: 0L
+                } else {
+                    chronometerBase?.let { base ->
                         (
                             (android.os.SystemClock.elapsedRealtime() - base) / 1000L
                         ).coerceAtLeast(0L)
                     }
-                    ?: ((System.currentTimeMillis() - startTime) / 1000L)
-                        .coerceAtLeast(0L)
+                        ?: ((System.currentTimeMillis() - startTime) / 1000L)
+                            .coerceAtLeast(0L)
+                }
             )
         }
 
@@ -1083,9 +1095,9 @@ internal fun StopwatchTimer(notification: IslandNotification?, color: Color) {
             frozenElapsedSeconds,
             chronometerBase
         ) {
-            if (frozenElapsedSeconds != null) {
-                elapsedSeconds = frozenElapsedSeconds
-            } else if (!isPaused) {
+            if (isPaused) {
+                frozenElapsedSeconds?.let { elapsedSeconds = it }
+            } else {
                 while (true) {
                     val clockElapsed = chronometerBase?.let { base ->
                         (

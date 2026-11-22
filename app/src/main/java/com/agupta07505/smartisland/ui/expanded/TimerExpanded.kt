@@ -113,14 +113,24 @@ private fun TimerExpandedMiui(
         listOf("stop", "reset", "cancel", "delete", "dismiss", "clear", "annuler", "abbrechen", "eliminar", "borrar")
     }
 
-    val isNotificationPaused = remember(notification?.key, notification?.actionIntents, notification?.text, notification?.title) {
-        val actions = notification?.actionIntents.orEmpty()
-        actions.any { act ->
-            val t = act.title.lowercase()
-            resumeKeywords.any { t.contains(it) }
-        } || pausedKeywords.any {
-            notification?.text?.contains(it, ignoreCase = true) == true ||
-            notification?.title?.contains(it, ignoreCase = true) == true
+    val isNotificationPaused = remember(
+        notification?.key,
+        notification?.recordingPaused,
+        notification?.actionIntents,
+        notification?.text,
+        notification?.title
+    ) {
+        notification?.recordingPaused == true ||
+        notification?.timerRemainingSeconds != null ||
+        run {
+            val actions = notification?.actionIntents.orEmpty()
+            actions.any { act ->
+                val t = act.title.lowercase()
+                resumeKeywords.any { t.contains(it) }
+            } || pausedKeywords.any {
+                notification?.text?.contains(it, ignoreCase = true) == true ||
+                notification?.title?.contains(it, ignoreCase = true) == true
+            }
         }
     }
 
@@ -132,16 +142,28 @@ private fun TimerExpandedMiui(
         mutableLongStateOf(notification?.timeMillis ?: (System.currentTimeMillis() + 300000L))
     }
 
+    val frozenSec = if (isPaused) {
+        notification?.timerRemainingSeconds
+            ?: notification?.recordingFrozenMs?.let {
+                TimerClock.displaySeconds(it, false, 500L)
+            }
+            ?: notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+    } else null
+
     var remainingSec by remember(notification?.key) {
-        val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
-        val rem = if (parsed != null && parsed > 0) {
-            parsed
+        val rem = if (isPaused) {
+            frozenSec ?: notification?.timerRemainingSeconds ?: 0L
         } else {
-            val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
-            if (t > System.currentTimeMillis()) {
-                ((t - System.currentTimeMillis() + 999L) / 1000L).coerceAtLeast(0L)
+            val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+            if (parsed != null && parsed > 0) {
+                parsed
             } else {
-                0L
+                val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
+                if (t > System.currentTimeMillis()) {
+                    TimerClock.secondsLeft(t - System.currentTimeMillis())
+                } else {
+                    0L
+                }
             }
         }
         mutableLongStateOf(rem)
@@ -150,10 +172,13 @@ private fun TimerExpandedMiui(
     LaunchedEffect(
         notification?.text,
         notification?.title,
-        notification?.timerRemainingSeconds
+        notification?.timerRemainingSeconds,
+        isPaused,
+        frozenSec
     ) {
         if (isPaused && notification != null) {
-            val pausedRemaining = notification.timerRemainingSeconds
+            val pausedRemaining = frozenSec
+                ?: notification.timerRemainingSeconds
                 ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
 
             if (pausedRemaining != null && pausedRemaining >= 0L) {
@@ -166,17 +191,21 @@ private fun TimerExpandedMiui(
         notification?.key,
         targetTime,
         isPaused,
-        notification?.timerRemainingSeconds
+        notification?.timerRemainingSeconds,
+        frozenSec
     ) {
         if (isPaused) {
-            notification?.timerRemainingSeconds?.let {
-                remainingSec = it
+            val pausedRemaining = frozenSec
+                ?: notification?.timerRemainingSeconds
+                ?: notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+            if (pausedRemaining != null && pausedRemaining >= 0L) {
+                remainingSec = pausedRemaining
             }
         } else {
             while (true) {
                 val now = System.currentTimeMillis()
                 val rem = if (targetTime > now) {
-                    ((targetTime - now + 999L) / 1000L).coerceAtLeast(0L)
+                    TimerClock.secondsLeft(targetTime - now)
                 } else {
                     0L
                 }
@@ -187,8 +216,9 @@ private fun TimerExpandedMiui(
         }
     }
 
-    val displayTime = remember(remainingSec) {
-        TimerStopwatchParser.formatTime(remainingSec)
+    val shownSec = if (isPaused) (frozenSec ?: remainingSec) else remainingSec
+    val displayTime = remember(shownSec) {
+        TimerStopwatchParser.formatTime(shownSec)
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "timerPulse")
@@ -321,6 +351,12 @@ private fun TimerExpandedMiui(
                                 "Sending Clock action: ${action.title}"
                             )
 
+                            val newPaused = !isPaused
+                            isPaused = newPaused
+                            if (!newPaused) {
+                                targetTime = TimerClock.targetFromShownSeconds(System.currentTimeMillis(), remainingSec)
+                            }
+
                             triggerAction(
                                 context,
                                 currentNotification.packageName,
@@ -390,7 +426,16 @@ private fun TimerExpandedCurrent(
     }
 
     // The notification is the source of truth: a "Resume" button or "paused" wording means paused.
-    val isNotificationPaused = remember(notification?.key, notification?.actionIntents, notification?.text, notification?.title) {
+    val isNotificationPaused = remember(
+        notification?.key,
+        notification?.recordingPaused,
+        notification?.timerRemainingSeconds,
+        notification?.actionIntents,
+        notification?.text,
+        notification?.title
+    ) {
+        notification?.recordingPaused == true ||
+        notification?.timerRemainingSeconds != null ||
         notification.offersResume() || pausedKeywords.any {
             notification?.text?.contains(it, ignoreCase = true) == true ||
             notification?.title?.contains(it, ignoreCase = true) == true
@@ -409,41 +454,45 @@ private fun TimerExpandedCurrent(
     // Exact cards truncate to whole seconds like the shade.
     val exact = notification?.exactClock == true
 
+    // The paused remaining time the listener froze; the text of a paused timer can still show its full length.
+    val frozenSec = if (isPaused) {
+        notification?.timerRemainingSeconds
+            ?: notification?.recordingFrozenMs?.let { TimerClock.displaySeconds(it, exact, 500L) }
+            ?: notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+    } else {
+        null
+    }
+
     var remainingSec by remember(notification?.key) {
-        val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
-        val startTarget = notification?.timeMillis ?: 0L
-        val rem = if (exact && !isPaused && startTarget > System.currentTimeMillis()) {
-            // The deadline beats the rounded text, which can be a second off.
-            TimerClock.secondsLeft(startTarget - System.currentTimeMillis())
-        } else if (parsed != null && parsed > 0) {
-            parsed
+        val rem = if (isPaused) {
+            frozenSec ?: notification?.timerRemainingSeconds ?: 0L
         } else {
-            val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
-            if (t > System.currentTimeMillis()) {
-                ((t - System.currentTimeMillis() + 500L) / 1000L).coerceAtLeast(0L)
+            val parsed = notification?.let { TimerStopwatchParser.parseTimerRemainingSeconds(it) }
+            val startTarget = notification?.timeMillis ?: 0L
+            if (exact && startTarget > System.currentTimeMillis()) {
+                // The deadline beats the rounded text, which can be a second off.
+                TimerClock.secondsLeft(startTarget - System.currentTimeMillis())
+            } else if (parsed != null && parsed > 0) {
+                parsed
             } else {
-                0L
+                val t = notification?.timeMillis ?: (System.currentTimeMillis() + 300000L)
+                if (t > System.currentTimeMillis()) {
+                    TimerClock.secondsLeft(t - System.currentTimeMillis())
+                } else {
+                    0L
+                }
             }
         }
         mutableLongStateOf(rem)
     }
 
-    // The paused remaining time the listener froze; the text of a paused timer can still show its full length.
-    val frozenSec = if (isPaused && notification?.recordingPaused == true) {
-        notification.recordingFrozenMs?.let { TimerClock.displaySeconds(it, exact, 500L) }
-    } else {
-        null
-    }
-
-    LaunchedEffect(notification?.text, notification?.title, frozenSec) {
+    LaunchedEffect(notification?.text, notification?.title, isPaused, frozenSec) {
         if (isPaused && notification != null) {
-            if (frozenSec != null) {
-                remainingSec = frozenSec
-            } else {
-                val parsed = TimerStopwatchParser.parseTimerRemainingSeconds(notification)
-                if (parsed != null && parsed > 0) {
-                    remainingSec = parsed
-                }
+            val pausedRemaining = frozenSec
+                ?: notification.timerRemainingSeconds
+                ?: TimerStopwatchParser.parseTimerRemainingSeconds(notification)
+            if (pausedRemaining != null && pausedRemaining >= 0L) {
+                remainingSec = pausedRemaining
             }
         }
     }
@@ -579,7 +628,9 @@ private fun TimerExpandedCurrent(
                             if (notification.fireAction(context, toggleAction)) {
                                 val newPaused = !isPaused
                                 isPaused = newPaused
-                                targetTime = System.currentTimeMillis() + remainingSec * 1000L
+                                if (!newPaused) {
+                                    targetTime = TimerClock.targetFromShownSeconds(System.currentTimeMillis(), remainingSec)
+                                }
                             }
                         },
                     contentAlignment = Alignment.Center
