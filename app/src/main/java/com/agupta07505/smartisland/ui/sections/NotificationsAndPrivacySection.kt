@@ -1108,7 +1108,7 @@ fun NotificationsAndPrivacySection(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Active",
+                                text = stringResource(R.string.a11y_active),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -1132,7 +1132,7 @@ fun NotificationsAndPrivacySection(
                                 color = if (excludedCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Excluded",
+                                text = stringResource(R.string.label_excluded),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (excludedCount > 0) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1156,7 +1156,7 @@ fun NotificationsAndPrivacySection(
                                 color = if (mutedCount > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Muted",
+                                text = stringResource(R.string.label_muted),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (mutedCount > 0) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1257,7 +1257,7 @@ fun NotificationsAndPrivacySection(
 
                                 Icon(
                                     imageVector = Icons.Rounded.Tune,
-                                    contentDescription = "Configure",
+                                    contentDescription = stringResource(R.string.a11y_configure),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -1266,7 +1266,7 @@ fun NotificationsAndPrivacySection(
 
                         if (customizedApps.size > 4) {
                             Text(
-                                text = "+${customizedApps.size - 4} more customized apps",
+                                text = stringResource(R.string.desc_more_customized_apps, customizedApps.size - 4),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
@@ -1381,7 +1381,7 @@ fun NotificationsAndPrivacySection(
                             trailingIcon = {
                                 if (query.isNotEmpty()) {
                                     IconButton(onClick = { query = "" }) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.a11y_clear_search), modifier = Modifier.size(18.dp))
                                     }
                                 }
                             },
@@ -1587,7 +1587,7 @@ fun NotificationsAndPrivacySection(
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Tune,
-                                                    contentDescription = "Options",
+                                                    contentDescription = stringResource(R.string.a11y_options),
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                     modifier = Modifier.size(18.dp)
                                                 )
@@ -1601,7 +1601,7 @@ fun NotificationsAndPrivacySection(
                 },
                 confirmButton = {
                     TextButton(onClick = { showAppManagerDialog = false }) {
-                        Text("Done", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.action_done), fontWeight = FontWeight.Bold)
                     }
                 }
             )

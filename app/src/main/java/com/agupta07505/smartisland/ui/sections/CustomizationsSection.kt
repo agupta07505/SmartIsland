@@ -577,7 +577,7 @@ internal fun ColorPresetRow(
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Rounded.Check,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.a11y_selected),
                         tint = Color.White,
                         modifier = Modifier.size(12.dp)
                     )
@@ -610,7 +610,7 @@ internal fun ColorPresetRow(
             if (isCustom) {
                 Icon(
                     imageVector = Icons.Rounded.Check,
-                    contentDescription = "Custom",
+                    contentDescription = stringResource(R.string.a11y_custom),
                     tint = if (Color(selectedColor).red * 0.299 + Color(selectedColor).green * 0.587 + Color(selectedColor).blue * 0.114 > 0.5) Color.Black else Color.White,
                     modifier = Modifier.size(12.dp)
                 )

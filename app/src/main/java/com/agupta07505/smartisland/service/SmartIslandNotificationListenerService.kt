@@ -314,7 +314,7 @@ class SmartIslandNotificationListenerService : NotificationListenerService() {
                             key = VOIP_CARD_KEY,
                             packageName = packageName,
                             appName = "Voice call",
-                            title = "Call in progress",
+                            title = getString(R.string.label_call_in_progress),
                             text = "",
                             timeMillis = com.agupta07505.smartisland.util.VoipCallSignal.sinceMillis
                                 .takeIf { it > 0 } ?: System.currentTimeMillis(),

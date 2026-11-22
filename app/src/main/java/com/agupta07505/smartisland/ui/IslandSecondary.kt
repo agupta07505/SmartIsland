@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -373,7 +374,7 @@ internal fun SecondaryBubbleContent(
             ) {
                 Icon(
                     Icons.Rounded.FlashlightOn,
-                    contentDescription = "Flashlight",
+                    contentDescription = stringResource(R.string.a11y_flashlight),
                     tint = Color(0xFFFACC15),
                     modifier = Modifier.size(12.dp)
                 )

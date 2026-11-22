@@ -477,7 +477,7 @@ fun PermissionsSection(
                         }
                         Column {
                             Text(
-                                text = "Suppress System Overlay Warning",
+                                text = stringResource(R.string.label_suppress_overlay_warning),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -490,7 +490,7 @@ fun PermissionsSection(
                                         .padding(horizontal = 8.dp, vertical = 2.dp)
                                 ) {
                                     Text(
-                                        text = "Configured",
+                                        text = stringResource(R.string.label_configured),
                                         color = Color(0xFF0F9F6E),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold
@@ -519,7 +519,7 @@ fun PermissionsSection(
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "Opens Android system notification channels to hide the persistent \"Smart Island is displaying over other apps\" banner.",
+                    text = stringResource(R.string.desc_suppress_overlay_warning),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
@@ -566,7 +566,7 @@ fun PermissionsSection(
                         }
                         Column {
                             Text(
-                                text = "OEM Autostart & Kill Protection",
+                                text = stringResource(R.string.desc_oem_autostart_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -617,13 +617,13 @@ fun PermissionsSection(
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                         ) {
-                            Text("Fix Kills", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.desc_oem_fix_kills), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    text = "On Xiaomi/HyperOS, Samsung OneUI, OPPO ColorOS, and Vivo OriginOS, enable Autostart to prevent custom OEM task killers from terminating Smart Island.",
+                    text = stringResource(R.string.desc_oem_autostart),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp

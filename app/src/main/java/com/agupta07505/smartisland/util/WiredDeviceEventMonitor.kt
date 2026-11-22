@@ -128,7 +128,7 @@ class WiredDeviceEventMonitor(
         post(
             key = KEY_USB,
             appName = "USB",
-            title = "Computer",
+            title = context.getString(R.string.label_computer),
             plugged = connected,
             category = if (connected) "usb_connected" else "usb_disconnected",
             event = event,

@@ -366,7 +366,7 @@ fun GesturesSection(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = "Swipe actions on the collapsed pill are disabled. Tapping still expands the pill.",
+                                text = stringResource(R.string.desc_swipe_disabled),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )

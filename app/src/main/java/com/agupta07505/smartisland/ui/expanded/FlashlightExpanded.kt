@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.FlashlightOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -73,7 +74,7 @@ fun FlashlightExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.FlashlightOn,
-                    contentDescription = "Flashlight Active",
+                    contentDescription = stringResource(R.string.a11y_flashlight_active),
                     tint = torchColor,
                     modifier = Modifier.size(24.dp)
                 )
@@ -96,7 +97,7 @@ fun FlashlightExpanded(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "Torch Active",
+                        text = stringResource(R.string.label_torch_active),
                         color = torchColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold
@@ -117,7 +118,7 @@ fun FlashlightExpanded(
             )
         ) {
             Text(
-                text = "Turn Off",
+                text = stringResource(R.string.label_turn_off),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )

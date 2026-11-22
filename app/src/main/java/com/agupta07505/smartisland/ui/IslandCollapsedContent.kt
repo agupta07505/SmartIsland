@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.util.HotspotUtil
 import com.agupta07505.smartisland.util.TimerStopwatchParser
 import com.agupta07505.smartisland.ui.components.BatteryCutoutBadge
@@ -184,7 +185,7 @@ fun IslandCollapsedContent(
                     ) {
                         Icon(
                             com.agupta07505.smartisland.ui.expanded.connectivityLeadingIcon(notification?.category),
-                            contentDescription = "Connection",
+                            contentDescription = stringResource(R.string.a11y_connection),
                             tint = connectionAccent,
                             modifier = Modifier.size(14.dp)
                         )
@@ -200,7 +201,7 @@ fun IslandCollapsedContent(
                     ) {
                         Icon(
                             Icons.Rounded.FlashlightOn,
-                            contentDescription = "Flashlight",
+                            contentDescription = stringResource(R.string.a11y_flashlight),
                             tint = Color(settings.flashlightColor),
                             modifier = Modifier.size(14.dp)
                         )
@@ -333,7 +334,7 @@ internal fun HotspotCollapsedGlyph(notification: IslandNotification?, settings: 
     ) {
         Icon(
             imageVector = Icons.Rounded.WifiTethering,
-            contentDescription = "Hotspot",
+            contentDescription = stringResource(R.string.a11y_hotspot),
             tint = hotspotColor,
             modifier = Modifier.size(15.dp)
         )
@@ -607,14 +608,14 @@ internal fun NavigationCollapsedGlyph(notification: IslandNotification?, setting
     if (turnDirection == com.agupta07505.smartisland.util.TurnDirection.DESTINATION) {
         Icon(
             imageVector = Icons.Rounded.LocationOn,
-            contentDescription = "Destination",
+            contentDescription = stringResource(R.string.a11y_destination),
             tint = navColor,
             modifier = Modifier.size(18.dp)
         )
     } else {
         Icon(
             imageVector = Icons.Rounded.Navigation,
-            contentDescription = "Turn direction",
+            contentDescription = stringResource(R.string.a11y_turn_direction),
             tint = navColor,
             modifier = Modifier
                 .size(18.dp)
@@ -861,7 +862,7 @@ internal fun TimerCollapsedGlyph(notification: IslandNotification?, settings: Sm
     ) {
         Icon(
             imageVector = Icons.Rounded.HourglassBottom,
-            contentDescription = "Timer",
+            contentDescription = stringResource(R.string.a11y_timer),
             tint = timerColor,
             modifier = Modifier
                 .size(13.dp)
@@ -898,7 +899,7 @@ internal fun StopwatchCollapsedGlyph(notification: IslandNotification?, settings
     ) {
         Icon(
             imageVector = Icons.Rounded.AvTimer,
-            contentDescription = "Stopwatch",
+            contentDescription = stringResource(R.string.a11y_stopwatch),
             tint = stopwatchColor,
             modifier = Modifier
                 .size(14.dp)
@@ -1161,7 +1162,7 @@ fun BluetoothCollapsedRight(
     } else if (!settings.showBluetoothBattery || batteryLevel == null) {
         Image(
             painter = painterResource(id = com.agupta07505.smartisland.R.drawable.ic_bluetooth_device),
-            contentDescription = "Bluetooth Device",
+            contentDescription = stringResource(R.string.a11y_bluetooth_device),
             modifier = Modifier
                 .size(20.dp)
                 .clip(CircleShape)
@@ -1201,7 +1202,7 @@ fun BluetoothCollapsedRight(
                     }
                     Icon(
                         imageVector = batteryIcon,
-                        contentDescription = "Battery",
+                        contentDescription = stringResource(R.string.a11y_battery),
                         tint = batteryColor,
                         modifier = Modifier.size(13.dp)
                     )
@@ -1222,7 +1223,7 @@ fun BluetoothCollapsedRight(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Headphones,
-                        contentDescription = "Earbuds",
+                        contentDescription = stringResource(R.string.a11y_earbuds),
                         tint = Color(settings.bluetoothColor),
                         modifier = Modifier.size(13.dp)
                     )

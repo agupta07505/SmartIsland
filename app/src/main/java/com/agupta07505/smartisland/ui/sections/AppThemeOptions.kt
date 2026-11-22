@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -94,7 +95,7 @@ fun AppThemeOptions(
     val usingDynamic = settings.materialYou && dynamicAvailable
     Column {
         ThemeToggleRow(
-            title = "Vibrant colors",
+            title = stringResource(R.string.label_vibrant_colors),
             subtitle = "Translucent glass panels with a lit rim over a soft colour backdrop. Off gives the flat Material look.",
             checked = settings.liquidGlassTheme,
             onChange = onLiquidGlassChange
@@ -102,7 +103,7 @@ fun AppThemeOptions(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         if (dynamicAvailable) {
             ThemeToggleRow(
-                title = "Material You colours",
+                title = stringResource(R.string.label_material_you_colours),
                 subtitle = "Take the colours from your wallpaper instead of the accent colour below.",
                 checked = settings.materialYou,
                 onChange = onMaterialYouChange
@@ -118,7 +119,7 @@ fun AppThemeOptions(
         ) {
             Column {
                 Text(
-                    text = "Accent colour",
+                    text = stringResource(R.string.label_accent_colour),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -191,7 +192,7 @@ private fun CustomHueSlider(accent: Long, enabled: Boolean, onAccentChange: (Lon
     var hue by remember(accent) { mutableFloatStateOf(hueOf(accent)) }
     val rainbow = remember { (0..12).map { Color.hsv(it * 30f, 0.80f, 0.95f) } }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text("Custom hue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.label_custom_hue), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(modifier = Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier

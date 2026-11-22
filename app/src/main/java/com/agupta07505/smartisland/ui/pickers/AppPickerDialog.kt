@@ -97,7 +97,7 @@ internal fun rememberAppIcon(packageName: String): ImageBitmap? {
     return iconBitmap
 }
 
-/** The "Select Pinned Apps" dialog. */
+/** The app picker dialog. */
 @Composable
 fun AppPickerDialog(
     settings: SmartIslandSettings,
@@ -135,7 +135,7 @@ fun AppPickerDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Select Pinned Apps",
+                    text = stringResource(R.string.desc_select_pinned_apps),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -169,7 +169,7 @@ fun AppPickerDialog(
                     trailingIcon = {
                         if (query.isNotEmpty()) {
                             IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.a11y_clear_search), modifier = Modifier.size(18.dp))
                             }
                         }
                     },
@@ -288,7 +288,7 @@ fun AppPickerDialog(
             TextButton(
                 onClick = onDismiss
             ) {
-                Text("Done", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.action_done), fontWeight = FontWeight.Bold)
             }
         }
     )

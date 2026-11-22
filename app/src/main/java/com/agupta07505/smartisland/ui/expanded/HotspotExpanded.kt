@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -98,7 +99,7 @@ fun HotspotExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.WifiTethering,
-                    contentDescription = "Hotspot",
+                    contentDescription = stringResource(R.string.a11y_hotspot),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -106,7 +107,7 @@ fun HotspotExpanded(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Mobile Hotspot",
+                    text = stringResource(R.string.label_mobile_hotspot),
                     color = LocalIslandPalette.current.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -145,7 +146,7 @@ fun HotspotExpanded(
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = "Active",
+                            text = stringResource(R.string.a11y_active),
                             color = accentColor,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -179,12 +180,12 @@ fun HotspotExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Devices,
-                        contentDescription = "Devices",
+                        contentDescription = stringResource(R.string.a11y_devices),
                         tint = accentColor,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Connected Devices",
+                        text = stringResource(R.string.label_connected_devices),
                         color = LocalIslandPalette.current.text,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium

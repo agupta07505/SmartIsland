@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableLongStateOf
@@ -221,7 +222,7 @@ private fun StopwatchExpandedMiui(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.AvTimer,
-                    contentDescription = "Stopwatch",
+                    contentDescription = stringResource(R.string.a11y_stopwatch),
                     tint = stopwatchColor,
                     modifier = Modifier
                         .size(22.dp)
@@ -292,7 +293,7 @@ private fun StopwatchExpandedMiui(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Flag,
-                    contentDescription = "Lap",
+                    contentDescription = stringResource(R.string.a11y_lap),
                     tint = Color(0xFFE4E4E7),
                     modifier = Modifier.size(16.dp)
                 )
@@ -364,7 +365,7 @@ private fun StopwatchExpandedMiui(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Refresh,
-                    contentDescription = "Reset",
+                    contentDescription = stringResource(R.string.a11y_reset),
                     tint = Color(0xFFE4E4E7),
                     modifier = Modifier.size(16.dp)
                 )

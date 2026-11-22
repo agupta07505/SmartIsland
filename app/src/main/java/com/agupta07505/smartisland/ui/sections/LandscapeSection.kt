@@ -129,7 +129,7 @@ fun LandscapeSection(
         }
 
         CollapsibleCard(
-            title = "Idle cutout",
+            title = stringResource(R.string.section_idle_cutout),
             stateKey = "land_idle",
             summary = "The small circle shown when nothing is on the island",
             initiallyExpanded = false
@@ -145,7 +145,7 @@ fun LandscapeSection(
                 selected = settings.landscapeCirclePosition,
                 onSelect = { scope.launch { repository.setLandscapeCirclePosition(it) } }
             )
-            HintText("Camera sits on the camera cutout, or the top corner on the camera's side if none is reported.")
+            HintText(stringResource(R.string.desc_camera_cutout_position))
 
             GroupDivider()
             GroupLabel("Size and look")
@@ -202,12 +202,12 @@ fun LandscapeSection(
                     circleY = (landscapeHeightDp / 2f - circleSize / 2f)
                         .coerceIn(SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
                     scope.launch { repository.setLandscapeCircleYOffset(circleY) }
-                }) { Text("Centre on the side edge") }
+                }) { Text(stringResource(R.string.desc_centre_on_side_edge)) }
             }
         }
 
         CollapsibleCard(
-            title = "Cutout with content",
+            title = stringResource(R.string.section_cutout_with_content),
             stateKey = "land_content",
             summary = "The bar shown while a notification or event is on the island",
             initiallyExpanded = false
@@ -225,7 +225,7 @@ fun LandscapeSection(
                 } ?: SmartIslandSettings.LANDSCAPE_POSITION_MIDDLE,
                 onSelect = { scope.launch { repository.setLandscapePillPosition(it) } }
             )
-            HintText("In a corner the opened card moves up near the screen edge; in the middle it drops just below the bar.")
+            HintText(stringResource(R.string.desc_landscape_corner))
 
             GroupDivider()
             GroupLabel("Size")
@@ -246,13 +246,13 @@ fun LandscapeSection(
 
             GroupDivider()
             GroupLabel("Size with a card")
-            HintText("The pill that only carries the idle widgets has the width above. With a card on it, it can stretch wider and shrinks back when the card is put away.")
+            HintText(stringResource(R.string.desc_landscape_pill_width))
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Same size as idle cutout", modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.section_same_size_as_idle), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                 Switch(
                     checked = settings.contentPillSameAsIdleLandscape,
                     onCheckedChange = { scope.launch { repository.setContentPillSameAsIdle(true, it) } }
@@ -312,7 +312,7 @@ fun LandscapeSection(
         }
 
         CollapsibleCard(
-            title = "Exempt apps",
+            title = stringResource(R.string.section_exempt_apps),
             stateKey = "land_exempt_apps",
             summary = "Apps that switch the island totally off in landscape",
             initiallyExpanded = false

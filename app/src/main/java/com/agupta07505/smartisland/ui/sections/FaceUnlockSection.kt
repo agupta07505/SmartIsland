@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -85,7 +86,7 @@ fun FaceUnlockSection(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = "Face ID unlock",
+                text = stringResource(R.string.label_face_id_unlock),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -107,23 +108,21 @@ fun FaceUnlockSection(
                 FilterChip(
                     selected = mode == FaceUnlockMode.FaceOnly,
                     onClick = { scope.launch { repository.setFaceUnlockMode(FaceUnlockMode.FaceOnly.id) } },
-                    label = { Text("Face unlock only") }
+                    label = { Text(stringResource(R.string.label_face_unlock_only)) }
                 )
                 FilterChip(
                     selected = mode == FaceUnlockMode.Any,
                     onClick = { scope.launch { repository.setFaceUnlockMode(FaceUnlockMode.Any.id) } },
-                    label = { Text("Any unlock") }
+                    label = { Text(stringResource(R.string.label_any_unlock)) }
                 )
             }
             Text(
-                text = "Capture face unlock log",
+                text = stringResource(R.string.desc_face_unlock_capture),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "1. Tap Start. 2. Lock the phone, wake it and unlock with your face (and once with a finger or PIN). " +
-                    "To record an app unlock instead, open a locked app and unlock it with your face. " +
-                    "3. Come back and tap Stop, then save the file and send it in.",
+                text = stringResource(R.string.desc_face_unlock_steps),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -151,7 +150,7 @@ fun FaceUnlockSection(
                                 }
                             }
                         }
-                    ) { Text("Start") }
+                    ) { Text(stringResource(R.string.action_start)) }
                 } else {
                     Button(
                         enabled = !busy,
@@ -196,12 +195,12 @@ fun FaceUnlockSection(
                                     "Unlocks: $unlockSummary."
                             }
                         }
-                    ) { Text("Stop") }
+                    ) { Text(stringResource(R.string.action_stop)) }
                 }
                 OutlinedButton(
                     enabled = captureText != null && !capturing,
                     onClick = { saveLauncher.launch("smartisland_face_unlock_capture.txt") }
-                ) { Text("Save capture") }
+                ) { Text(stringResource(R.string.action_save_capture)) }
             }
             status?.let {
                 Text(
@@ -220,17 +219,17 @@ internal fun FaceStyleChips(selected: String, onSelect: (String) -> Unit) {
         FilterChip(
             selected = selected == "square_tick",
             onClick = { onSelect("square_tick") },
-            label = { Text("Expanded") }
+            label = { Text(stringResource(R.string.label_expanded)) }
         )
         FilterChip(
             selected = selected != "cutout" && selected != "square_tick",
             onClick = { onSelect("square") },
-            label = { Text("Mix") }
+            label = { Text(stringResource(R.string.label_mix)) }
         )
         FilterChip(
             selected = selected == "cutout",
             onClick = { onSelect("cutout") },
-            label = { Text("Cutout") }
+            label = { Text(stringResource(R.string.label_cutout)) }
         )
     }
 }

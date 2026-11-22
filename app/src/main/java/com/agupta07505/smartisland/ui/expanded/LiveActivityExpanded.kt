@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -224,9 +225,9 @@ fun LiveActivityExpanded(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Initial", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
-                Text("Traveled ${(progressRatio * 100).toInt()}%", color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("Destination", color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
+                Text(stringResource(R.string.label_initial), color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
+                Text(stringResource(R.string.label_traveled_percent, (progressRatio * 100).toInt()), color = brandColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.a11y_destination), color = LocalIslandPalette.current.textMuted, fontSize = 10.sp)
             }
         }
 
@@ -281,7 +282,7 @@ fun LiveActivityExpanded(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.KeyboardArrowDown,
-                    contentDescription = "Open App",
+                    contentDescription = stringResource(R.string.a11y_open_app),
                     tint = LocalIslandPalette.current.text,
                     modifier = Modifier.size(16.dp)
                 )

@@ -660,7 +660,7 @@ private fun StudioTopHeader(
             if (appIcon != null) {
                 Image(
                     bitmap = appIcon,
-                    contentDescription = "Smart Island Logo",
+                    contentDescription = stringResource(R.string.a11y_smart_island_logo),
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(12.dp))
@@ -1279,7 +1279,7 @@ private fun DetailScreenHost(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.a11y_back),
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -1597,7 +1597,7 @@ private fun WelcomeDialog(
                 }
 
                 TextButton(onClick = onTakeTour, modifier = Modifier.fillMaxWidth()) {
-                    Text("Take a quick tour of the gestures", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.desc_guesture_guide_tour), fontWeight = FontWeight.SemiBold)
                 }
             }
         }

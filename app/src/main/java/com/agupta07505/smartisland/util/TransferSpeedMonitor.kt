@@ -203,7 +203,7 @@ class TransferSpeedMonitor(
                 packageName = "com.android.systemui",
                 appName = "Network",
                 title = if (upload) "Uploading" else "Downloading",
-                text = "Network activity",
+                text = context.getString(R.string.label_network_activity),
                 timeMillis = cardStartedAt,
                 category = "progress",
                 mode = IslandMode.DownloadUpload,

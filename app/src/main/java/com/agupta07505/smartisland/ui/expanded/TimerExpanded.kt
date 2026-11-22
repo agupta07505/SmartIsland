@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HourglassBottom
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -223,7 +224,7 @@ private fun TimerExpandedMiui(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.HourglassBottom,
-                    contentDescription = "Timer",
+                    contentDescription = stringResource(R.string.a11y_timer),
                     tint = timerColor,
                     modifier = Modifier
                         .size(22.dp)
@@ -365,7 +366,7 @@ private fun TimerExpandedMiui(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Stop,
-                    contentDescription = "Stop",
+                    contentDescription = stringResource(R.string.action_stop),
                     tint = Color(0xFFEF4444),
                     modifier = Modifier.size(18.dp)
                 )

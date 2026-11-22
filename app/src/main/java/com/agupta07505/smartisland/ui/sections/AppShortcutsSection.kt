@@ -275,7 +275,7 @@ fun AppShortcutsSection(
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Grant Usage Access Permission", fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.desc_grant_usage_access), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -303,7 +303,7 @@ fun AppShortcutsSection(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Up to 8 slots on your island pill. Drag one app onto another in the island to make a folder of up to 4.",
+                            text = stringResource(R.string.desc_pinned_slots),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -355,13 +355,13 @@ fun AppShortcutsSection(
                                 )
                             }
                             Text(
-                                text = "No Apps Pinned Yet",
+                                text = stringResource(R.string.desc_no_apps_pinned),
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Tap here to select apps to pin to your island launcher.",
+                                text = stringResource(R.string.desc_tap_to_pin_apps),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

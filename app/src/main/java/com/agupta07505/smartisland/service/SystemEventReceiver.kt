@@ -245,7 +245,7 @@ class SystemEventReceiver(
                 key = "system_battery",
                 packageName = "com.android.systemui",
                 appName = "System",
-                title = "Unplugged",
+                title = getString(R.string.label_unplugged),
                 text = "$pct%",
                 category = "battery_plugged_out",
                 mode = IslandMode.Battery,
@@ -282,7 +282,7 @@ class SystemEventReceiver(
         }
 
         if (isPowerSave) {
-            val title = "Battery Saver ON"
+            val title = getString(R.string.label_battery_saver_on)
             // A short warning: announced once per state, not again for every percent that follows.
             if (!autoExpand && title == lastBatteryTitle) return
             lastBatteryPct = batteryPct
@@ -303,7 +303,7 @@ class SystemEventReceiver(
                 autoExpand = mayExpand(IslandEvent.BATTERY_SAVER, autoExpand)
             )
         } else if (isLowBattery) {
-            val title = "Low Battery"
+            val title = getString(R.string.label_low_battery)
             // A short warning: announced once per state, not again for every percent that follows.
             if (!autoExpand && title == lastBatteryTitle) return
             lastBatteryPct = batteryPct

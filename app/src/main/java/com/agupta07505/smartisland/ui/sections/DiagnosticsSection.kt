@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -96,13 +97,12 @@ fun DiagnosticsSection(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Record diagnostic log",
+                            text = stringResource(R.string.desc_privacy_shield_hint),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Turn this on, then reproduce the missed WhatsApp or VoIP call. " +
-                                "The log keeps going after the app is restarted or killed.",
+                            text = stringResource(R.string.desc_missed_call),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,14 +133,12 @@ fun DiagnosticsSection(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Export or clear",
+                    text = stringResource(R.string.desc_export_or_clear),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "The report holds device details, permission status, your settings, the recorded " +
-                        "events and the app's logcat. It can contain notification titles from the apps being " +
-                        "logged, so check it before sharing.",
+                    text = stringResource(R.string.desc_diagnostics_report),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -148,11 +146,11 @@ fun DiagnosticsSection(
                     Button(onClick = {
                         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
                         exportLauncher.launch("smartisland_log_$stamp.txt")
-                    }) { Text("Export log") }
+                    }) { Text(stringResource(R.string.action_export_log)) }
                     OutlinedButton(onClick = {
                         AppLogRecorder.clear(context)
                         entryCount = AppLogRecorder.getLogCount()
-                    }) { Text("Clear") }
+                    }) { Text(stringResource(R.string.action_clear_log)) }
                 }
             }
         }

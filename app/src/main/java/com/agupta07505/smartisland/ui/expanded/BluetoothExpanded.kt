@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -116,7 +117,7 @@ fun BluetoothExpanded(
             ) {
                 Icon(
                     imageVector = connectivityLeadingIcon(notification?.category),
-                    contentDescription = "Connection",
+                    contentDescription = stringResource(R.string.a11y_connection),
                     tint = accent,
                     modifier = Modifier.size(24.dp)
                 )
@@ -261,7 +262,7 @@ fun BluetoothExpanded(
                         ) {
                             Icon(
                                 imageVector = batteryIcon,
-                                contentDescription = "Battery Level",
+                                contentDescription = stringResource(R.string.a11y_battery_level),
                                 tint = batteryColor,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -284,7 +285,7 @@ fun BluetoothExpanded(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Headphones,
-                            contentDescription = "Earbuds",
+                            contentDescription = stringResource(R.string.a11y_earbuds),
                             tint = Color(settings.bluetoothColor),
                             modifier = Modifier.size(24.dp)
                         )
@@ -294,7 +295,7 @@ fun BluetoothExpanded(
         } else {
             Image(
                 painter = painterResource(id = R.drawable.ic_bluetooth_device),
-                contentDescription = "Bluetooth Device Image",
+                contentDescription = stringResource(R.string.a11y_bluetooth_device_image),
                 modifier = Modifier
                     .size(46.dp)
                     .clip(RoundedCornerShape(12.dp))

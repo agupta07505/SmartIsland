@@ -158,7 +158,7 @@ class ConnectivityEventMonitor(
                     packageName = "com.android.systemui",
                     appName = "Wi-Fi",
                     title = lostSsid ?: "Wi-Fi",
-                    text = "Disconnected",
+                    text = context.getString(R.string.label_disconnected),
                     category = "wifi_disconnected",
                     mode = IslandMode.Bluetooth,
                     timeMillis = System.currentTimeMillis()
@@ -177,7 +177,7 @@ class ConnectivityEventMonitor(
                 packageName = "com.android.systemui",
                 appName = "Wi-Fi",
                 title = ssid ?: "Wi-Fi",
-                text = if (ssid != null) "Connected" else "Wi-Fi connected",
+                text = if (ssid != null) context.getString(R.string.label_connected) else "Wi-Fi connected",
                 category = "wifi",
                 mode = IslandMode.Bluetooth,
                 timeMillis = System.currentTimeMillis()
@@ -274,8 +274,8 @@ class ConnectivityEventMonitor(
                     key = KEY_VPN_OFF,
                     packageName = "com.android.systemui",
                     appName = "VPN",
-                    title = "VPN disconnected",
-                    text = "Traffic is not protected",
+                    title = context.getString(R.string.label_vpn_disconnected),
+                    text = context.getString(R.string.label_traffic_not_protected),
                     category = "vpn_disconnected",
                     mode = IslandMode.Bluetooth,
                     timeMillis = System.currentTimeMillis()

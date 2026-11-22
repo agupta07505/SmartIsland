@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,7 +78,7 @@ fun ExemptAppsCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         if (exempt.isEmpty()) {
-            Text("No app selected.", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.desc_no_app_selected), style = MaterialTheme.typography.bodyMedium)
         } else {
             exempt.sortedBy { (labels[it] ?: it).lowercase() }.forEach { pkg ->
                 Row(
@@ -94,7 +95,7 @@ fun ExemptAppsCard(
                             )
                         }
                     }
-                    TextButton(onClick = { scope.launch { repository.setIslandExemptApp(landscape, pkg, false) } }) { Text("Remove") }
+                    TextButton(onClick = { scope.launch { repository.setIslandExemptApp(landscape, pkg, false) } }) { Text(stringResource(R.string.action_remove)) }
                 }
                 if (!landscape) {
                     val isStatic = pkg in staticApps
@@ -102,18 +103,18 @@ fun ExemptAppsCard(
                         FilterChip(
                             selected = !isStatic,
                             onClick = { scope.launch { repository.setIslandExemptStatic(pkg, false) } },
-                            label = { Text("Island off") }
+                            label = { Text(stringResource(R.string.desc_island_off)) }
                         )
                         FilterChip(
                             selected = isStatic,
                             onClick = { scope.launch { repository.setIslandExemptStatic(pkg, true) } },
-                            label = { Text("Static island") }
+                            label = { Text(stringResource(R.string.desc_static_island)) }
                         )
                     }
                 }
             }
         }
-        OutlinedButton(onClick = { picking = true }) { Text("Select apps") }
+        OutlinedButton(onClick = { picking = true }) { Text(stringResource(R.string.action_select_apps)) }
     }
 
     if (picking) {
@@ -131,7 +132,7 @@ fun ExemptAppsCard(
                         value = query,
                         onValueChange = { query = it },
                         singleLine = true,
-                        placeholder = { Text("Search apps") },
+                        placeholder = { Text(stringResource(R.string.action_search_apps)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     LazyColumn(modifier = Modifier.heightIn(max = 360.dp).padding(top = 8.dp)) {
@@ -154,7 +155,7 @@ fun ExemptAppsCard(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { picking = false }) { Text("Done", fontWeight = FontWeight.Bold) } }
+            confirmButton = { TextButton(onClick = { picking = false }) { Text(stringResource(R.string.action_done), fontWeight = FontWeight.Bold) } }
         )
     }
 }

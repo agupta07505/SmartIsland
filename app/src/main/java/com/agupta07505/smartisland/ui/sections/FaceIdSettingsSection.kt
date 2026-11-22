@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
@@ -43,7 +44,7 @@ fun FaceIdSettingsSection(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
-                text = "Lock screen animation style",
+                text = stringResource(R.string.label_lock_screen_animation_style),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -58,7 +59,7 @@ fun FaceIdSettingsSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Fingerprint animation",
+                    text = stringResource(R.string.label_fingerprint_animation),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -68,8 +69,7 @@ fun FaceIdSettingsSection(
                 )
             }
             Text(
-                text = "Plays the fingerprint scan when the phone or an app lock prompt is unlocked with a finger. " +
-                    "Off: a fingerprint unlock ends the face scan without it.",
+                text = stringResource(R.string.desc_fingerprint_animation),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -80,7 +80,7 @@ fun FaceIdSettingsSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "App Face ID",
+                    text = stringResource(R.string.label_app_face_id),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -97,7 +97,7 @@ fun FaceIdSettingsSection(
             )
             if (settings.appFaceIdEnabled) {
                 Text(
-                    text = "App animation style",
+                    text = stringResource(R.string.label_app_animation_style),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )

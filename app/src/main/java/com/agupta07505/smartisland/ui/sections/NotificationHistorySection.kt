@@ -521,7 +521,7 @@ fun NotificationHistorySection(
                                 ) {
                                     Icon(
                                         Icons.Rounded.FilterList,
-                                        contentDescription = "Retention filter",
+                                        contentDescription = stringResource(R.string.a11y_retention_filter),
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -560,7 +560,7 @@ fun NotificationHistorySection(
                                                 {
                                                     Icon(
                                                         Icons.Rounded.Check,
-                                                        contentDescription = "Selected",
+                                                        contentDescription = stringResource(R.string.a11y_selected),
                                                         tint = MaterialTheme.colorScheme.primary,
                                                         modifier = Modifier.size(16.dp)
                                                     )
@@ -593,7 +593,7 @@ fun NotificationHistorySection(
                             trailingIcon = {
                                 if (searchQuery.isNotEmpty()) {
                                     IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.a11y_clear_search), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             },
@@ -692,7 +692,7 @@ fun NotificationHistorySection(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = "Filter: $activeAppName",
+                                        text = stringResource(R.string.desc_filter_active_app, activeAppName),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -701,7 +701,7 @@ fun NotificationHistorySection(
                                         onClick = { selectedFilterPackage = null },
                                         modifier = Modifier.size(20.dp)
                                     ) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "Clear app filter", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.a11y_clear_app_filter), tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(14.dp))
                                     }
                                 }
                             }
@@ -960,7 +960,7 @@ private fun NotificationHistoryItemCard(
                 ) {
                     Icon(
                         Icons.Rounded.Delete,
-                        contentDescription = "Delete entry",
+                        contentDescription = stringResource(R.string.a11y_delete_entry),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
@@ -1043,7 +1043,7 @@ private fun NotificationHistoryItemCard(
                 ) {
                     Icon(Icons.AutoMirrored.Rounded.Launch, contentDescription = null, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Open App", fontSize = 11.sp)
+                    Text(stringResource(R.string.a11y_open_app), fontSize = 11.sp)
                 }
 
                 OutlinedButton(
@@ -1053,7 +1053,7 @@ private fun NotificationHistoryItemCard(
                             if (entry.text.isNotBlank()) append(entry.text)
                         }
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        val clip = ClipData.newPlainText("SmartIsland Notification", fullText)
+                        val clip = ClipData.newPlainText(stringResource(R.string.desc_clip_notification), fullText)
                         clipboard?.setPrimaryClip(clip)
                         Toast.makeText(context, "Notification text copied", Toast.LENGTH_SHORT).show()
                     },
@@ -1063,7 +1063,7 @@ private fun NotificationHistoryItemCard(
                 ) {
                     Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Copy", fontSize = 11.sp)
+                    Text(stringResource(R.string.action_copy), fontSize = 11.sp)
                 }
             }
         }
@@ -1110,12 +1110,12 @@ private fun AppFilterDialog(
                         )
                     }
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.a11y_close), modifier = Modifier.size(18.dp))
                     }
                 }
 
                 Text(
-                    text = "Select an app to view its notifications, or choose All Apps to see all logs together.",
+                    text = stringResource(R.string.desc_history_view_apps),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1300,7 +1300,7 @@ private fun DeleteByAppDialog(
                     ) {
                         Icon(Icons.Rounded.Apps, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Text(
-                            text = "Delete by App",
+                            text = stringResource(R.string.desc_delete_by_app),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -1311,7 +1311,7 @@ private fun DeleteByAppDialog(
                 }
 
                 Text(
-                    text = "Select an app to filter or delete all recorded notification logs for that app.",
+                    text = stringResource(R.string.desc_history_filter_by_app),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1383,7 +1383,7 @@ private fun DeleteByAppDialog(
                                 ) {
                                     Icon(
                                         Icons.Rounded.Delete,
-                                        contentDescription = "Delete all from ${app.appName}",
+                                        contentDescription = stringResource(R.string.a11y_delete_all_from_app, app.appName),
                                         tint = MaterialTheme.colorScheme.error,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -1436,7 +1436,7 @@ private fun NotificationDetailDialog(
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
-                        text = "Message Inspection Details",
+                        text = stringResource(R.string.desc_message_inspection),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -1492,7 +1492,7 @@ private fun NotificationDetailDialog(
                         ) {
                             Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Delete Log")
+                            Text(stringResource(R.string.action_delete_log))
                         }
 
                         Button(
@@ -1510,7 +1510,7 @@ private fun NotificationDetailDialog(
                     ) {
                         Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Delete All from ${entry.appName}", fontSize = 12.sp)
+                        Text(stringResource(R.string.desc_delete_all_from_entry, entry.appName), fontSize = 12.sp)
                     }
                 }
             }

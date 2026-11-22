@@ -46,6 +46,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -482,7 +483,7 @@ fun NotificationExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
-                        contentDescription = "Send Reply",
+                        contentDescription = stringResource(R.string.a11y_send_reply),
                         tint = if (replyText.isNotBlank()) Color.White else LocalIslandPalette.current.textTertiary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -502,7 +503,7 @@ fun NotificationExpanded(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Close,
-                        contentDescription = "Cancel",
+                        contentDescription = stringResource(R.string.a11y_cancel),
                         tint = LocalIslandPalette.current.textTertiary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -647,7 +648,7 @@ internal fun ExpandedMediaViewer(
         ) {
             Icon(
                 imageVector = Icons.Rounded.KeyboardArrowUp,
-                contentDescription = "Close picture",
+                contentDescription = stringResource(R.string.a11y_close_picture),
                 tint = Color.White,
                 modifier = Modifier.size(22.dp)
             )

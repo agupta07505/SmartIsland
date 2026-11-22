@@ -98,8 +98,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                         key = "system_flashlight",
                         packageName = "com.android.systemui",
                         appName = "Flashlight",
-                        title = "Flashlight ON",
-                        text = "Tap to turn off",
+                        title = getString(R.string.label_flashlight_on),
+                        text = getString(R.string.label_tap_to_turn_off),
                         mode = com.agupta07505.smartisland.model.IslandMode.Flashlight,
                         timeMillis = System.currentTimeMillis(),
                         actionIntents = listOf(
@@ -2218,8 +2218,8 @@ class SmartIslandOverlayService : AccessibilityService() {
                 PendingIntent.FLAG_UPDATE_CURRENT
         )
         return NotificationCompat.Builder(this, OVERLAY_CHANNEL_ID)
-            .setContentTitle("Smart Island is active")
-            .setContentText("Tap to open Smart Island")
+            .setContentTitle(getString(R.string.desc_notification_active))
+            .setContentText(getString(R.string.desc_notification_tap_to_open))
             .setSmallIcon(R.drawable.ic_stat_smart_island)
             .setContentIntent(contentIntent)
             .setOngoing(true)

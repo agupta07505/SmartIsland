@@ -127,7 +127,7 @@ fun AboutSection(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Version $currentVersion",
+                        text = stringResource(R.string.desc_version_label, currentVersion),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -203,20 +203,20 @@ fun AboutSection(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Security,
-                        contentDescription = "Privacy Shield",
+                        contentDescription = stringResource(R.string.a11y_privacy_shield),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "100% On-Device & Zero Telemetry",
+                        text = stringResource(R.string.desc_privacy_policy_summary),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Smart Island does not collect, store, or transmit any user data, identifiers, or notification details. All operations and settings remain strictly on your device. Network queries are unauthenticated, read-only requests for GitHub repository updates.",
+                        text = stringResource(R.string.desc_privacy_policy_detail),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp

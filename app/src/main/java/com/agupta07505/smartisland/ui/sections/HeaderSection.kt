@@ -69,7 +69,7 @@ fun HeaderSection() {
             if (appIcon != null) {
                 Image(
                     bitmap = appIcon,
-                    contentDescription = "App Logo",
+                    contentDescription = stringResource(R.string.a11y_app_logo),
                     modifier = Modifier
                         .size(64.dp)
                         .clip(RoundedCornerShape(16.dp))
