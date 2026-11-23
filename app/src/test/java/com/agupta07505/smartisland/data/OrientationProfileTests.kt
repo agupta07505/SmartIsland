@@ -7,10 +7,159 @@
 
 package com.agupta07505.smartisland.data
 
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.agupta07505.smartisland.model.FoldPosture
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+
+class FoldProfilesTest {
+    private val width = floatPreferencesKey("width")
+    private val height = floatPreferencesKey("height")
+    private val landscapeWidth = floatPreferencesKey("landscape_width")
+    private val theme = stringPreferencesKey("theme_mode")
+    private val cameraX = floatPreferencesKey("camera_cutout_x")
+    private val cameraStyle = stringPreferencesKey("camera_cutout_style")
+    private val foldedLandscape = FoldPosture.FoldedLandscape
+    private val events = stringSetPreferencesKey("disabled_events")
+    private val unfoldedPortrait = FoldPosture.UnfoldedPortrait
+    private val foldedPortrait = FoldPosture.FoldedPortrait
+    private val unfoldedLandscape = FoldPosture.UnfoldedLandscape
+
+    private fun stored() = mutablePreferencesOf(width to 112f, height to 34f, landscapeWidth to 90f, theme to "dark")
+
+    @Test fun anUneditedModeReadsTheNormalValues() {
+        val v = FoldProfiles.view(stored(), unfoldedPortrait)
+        assertEquals(112f, v[width])
+        assertEquals(34f, v[height])
+        assertEquals("dark", v[theme])
+    }
+
+    @Test fun orientationKeyOwnership() {
+        assertTrue("width" in FoldProfiles.scopedKeys(unfoldedPortrait))
+        assertFalse("landscape_width" in FoldProfiles.scopedKeys(unfoldedPortrait))
+        assertTrue("landscape_width" in FoldProfiles.scopedKeys(unfoldedLandscape))
+        assertFalse("width" in FoldProfiles.scopedKeys(unfoldedLandscape))
+        assertTrue(FoldProfiles.PortraitKeys.intersect(FoldProfiles.LandscapeKeys).isEmpty())
+    }
+
+    @Test fun anEditStaysInsideItsMode() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[width] = 150f }
+
+        assertEquals(150f, FoldProfiles.view(raw, unfoldedPortrait)[width])
+        // the normal value and the other modes are untouched
+        assertEquals(112f, raw[width])
+        assertEquals(112f, FoldProfiles.view(raw, foldedPortrait)[width])
+        assertTrue(FoldProfiles.hasOwnValues(raw, unfoldedPortrait))
+        assertFalse(FoldProfiles.hasOwnValues(raw, foldedPortrait))
+    }
+
+    @Test fun firstModeEditFreezesDefaults() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[width] = 150f }
+        // the normal height changes afterwards
+        raw[height] = 60f
+        assertEquals(34f, FoldProfiles.view(raw, unfoldedPortrait)[height])
+        // a mode nobody edited still follows
+        assertEquals(60f, FoldProfiles.view(raw, foldedPortrait)[height])
+    }
+
+    @Test fun sharedKeysUseNormalSettings() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[theme] = "light" }
+        assertEquals("light", raw[theme])
+        assertEquals("light", FoldProfiles.view(raw, foldedPortrait)[theme])
+    }
+
+    @Test fun landscapeSparesPortraitKeys() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, unfoldedLandscape) { it[landscapeWidth] = 130f; it[width] = 99f }
+        val v = FoldProfiles.view(raw, unfoldedLandscape)
+        assertEquals(130f, v[landscapeWidth])
+        // `width` is a portrait key: a landscape mode writes it to the normal settings
+        assertEquals(99f, raw[width])
+        assertEquals(90f, FoldProfiles.view(raw, unfoldedPortrait)[landscapeWidth])
+    }
+
+    @Test fun modeValueRemoval() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, unfoldedPortrait) { it.remove(height) }
+        assertNull(FoldProfiles.view(raw, unfoldedPortrait)[height])
+        assertEquals(34f, raw[height])
+    }
+
+    @Test fun setsAreStoredPerMode() = runTest {
+        val raw = mutablePreferencesOf(events to setOf("call"))
+        FoldProfiles.edit(raw, foldedPortrait) { it[events] = setOf("call", "timer") }
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[events] = emptySet() }
+        assertEquals(setOf("call", "timer"), FoldProfiles.view(raw, foldedPortrait)[events])
+        assertEquals(emptySet<String>(), FoldProfiles.view(raw, unfoldedPortrait)[events])
+        assertEquals(setOf("call"), raw[events])
+    }
+
+    @Test fun theViewNeverCarriesAnotherModesKeys() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, foldedPortrait) { it[width] = 140f }
+        val v = FoldProfiles.view(raw, unfoldedPortrait)
+        assertTrue(v.asMap().keys.none { FoldProfiles.isProfileName(it.name) })
+    }
+
+    @Test fun clearAllDropsEveryModesOwnValues() = runTest {
+        val raw = stored()
+        FoldProfiles.edit(raw, foldedPortrait) { it[width] = 140f }
+        FoldProfiles.edit(raw, unfoldedLandscape) { it[landscapeWidth] = 130f }
+        FoldProfiles.clearAll(raw)
+        assertTrue(raw.asMap().keys.none { FoldProfiles.isProfileName(it.name) })
+        assertEquals(112f, raw[width])
+        assertEquals(112f, FoldProfiles.view(raw, foldedPortrait)[width])
+    }
+
+    @Test fun cameraPerPortraitModeWithStyle() {
+        FoldProfiles.CameraKeys.forEach { assertTrue(it in FoldProfiles.PortraitKeys) }
+        assertTrue(FoldProfiles.CameraKeys.none { it in FoldProfiles.LandscapeKeys })
+    }
+
+    @Test fun landscapeReadsPortraitCamera() = runTest {
+        val raw = stored()
+        raw[cameraX] = 0f
+        raw[cameraStyle] = "auto"
+        FoldProfiles.edit(raw, foldedPortrait) { it[cameraX] = 30f; it[cameraStyle] = "left" }
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[cameraX] = -12f; it[cameraStyle] = "right" }
+
+        val folded = FoldProfiles.view(raw, foldedLandscape)
+        assertEquals(30f, folded[cameraX])
+        assertEquals("left", folded[cameraStyle])
+        val unfolded = FoldProfiles.view(raw, unfoldedLandscape)
+        assertEquals(-12f, unfolded[cameraX])
+        assertEquals("right", unfolded[cameraStyle])
+    }
+
+    @Test fun uneditedLandscapeCamera() = runTest {
+        val raw = stored()
+        raw[cameraX] = 8f
+        FoldProfiles.edit(raw, unfoldedPortrait) { it[cameraX] = -12f }
+        assertEquals(8f, FoldProfiles.view(raw, foldedLandscape)[cameraX])
+    }
+
+    @Test fun landscapeCameraEditToPortrait() = runTest {
+        val raw = stored()
+        raw[cameraX] = 8f
+        FoldProfiles.edit(raw, foldedLandscape) { it[cameraX] = 21f }
+
+        assertEquals(21f, FoldProfiles.view(raw, foldedPortrait)[cameraX])
+        assertEquals(21f, FoldProfiles.view(raw, foldedLandscape)[cameraX])
+        assertEquals(8f, raw[cameraX])
+        assertEquals(8f, FoldProfiles.view(raw, unfoldedPortrait)[cameraX])
+        assertTrue(FoldProfiles.hasOwnValues(raw, foldedPortrait))
+    }
+}
 
 class OrientationProfileTest {
     private val base = SmartIslandSettings(
@@ -21,12 +170,9 @@ class OrientationProfileTest {
     )
 
     @Test
-    fun portraitIsReturnedUnchanged() {
+    fun orientationOverrides() {
         assertEquals(base, base.forOrientation(OrientationState(isLandscape = false)))
-    }
 
-    @Test
-    fun landscapeUsesItsOwnEventSwitchesAndDropsNotchMode() {
         val out = base.forOrientation(OrientationState(isLandscape = true, screenWidthDp = 800f))
         assertEquals(setOf("call"), out.disabledEvents)
         assertFalse(out.enableNotchMode)
@@ -49,7 +195,50 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun cameraModeKeepsTheNotchHeightFarDownTheEdge() {
+    fun cameraFollowsBelowOldLimit() {
+        val s = base.copy(landscapeCircleSize = 26f)
+        val out = s.forOrientation(
+            OrientationState(
+                isLandscape = true, screenWidthDp = 1000f, screenHeightDp = 461f,
+                camera = LandscapeCamera(xOffsetDp = -480f, centerYDp = 415f)
+            )
+        )
+        assertEquals(402f, out.yOffset, 0.01f)
+    }
+
+    @Test
+    fun verticalOffsetMovesLowCamera() {
+        val state = OrientationState(
+            isLandscape = true, screenWidthDp = 1000f, screenHeightDp = 461f,
+            camera = LandscapeCamera(xOffsetDp = -480f, centerYDp = 415f)
+        )
+        val s = base.copy(landscapeCircleSize = 26f)
+        assertEquals(412f, s.copy(landscapeCircleYAdjust = 10f).forOrientation(state).yOffset, 0.01f)
+        assertEquals(362f, s.copy(landscapeCircleYAdjust = -40f).forOrientation(state).yOffset, 0.01f)
+    }
+
+    @Test
+    fun noCutoutCircleStartsMidEdge() {
+        val state = OrientationState(isLandscape = true, screenWidthDp = 1000f, screenHeightDp = 461f)
+        val s = base.copy(landscapeCircleSize = 26f)
+        assertEquals(461f / 2f - 13f, s.forOrientation(state).yOffset, 0.01f)
+        assertEquals(461f / 2f - 13f + 40f, s.copy(landscapeCircleYAdjust = 40f).forOrientation(state).yOffset, 0.01f)
+    }
+
+    @Test
+    fun cameraStaysInScreenHeight() {
+        val s = base.copy(landscapeCircleSize = 26f)
+        val out = s.forOrientation(
+            OrientationState(
+                isLandscape = true, screenWidthDp = 1000f, screenHeightDp = 461f,
+                camera = LandscapeCamera(xOffsetDp = -480f, centerYDp = 600f)
+            )
+        )
+        assertEquals(435f, out.yOffset, 0.01f)
+    }
+
+    @Test
+    fun cameraKeepsNotchHeightLow() {
         val s = base.copy(landscapeCircleSize = 26f)
         val out = s.forOrientation(
             OrientationState(
@@ -63,7 +252,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun fineTuneMovesTheIdlePillFromWhereverItSits() {
+    fun fineTuneMovesIdlePill() {
         val s = base.copy(
             landscapeCircleSize = 26f,
             landscapeCircleXAdjust = 5f,
@@ -77,7 +266,7 @@ class OrientationProfileTest {
         )
         assertEquals(-345f, out.xOffset, 0.01f)
         assertEquals(77f, out.yOffset, 0.01f)
-        // Never above the top edge.
+        // never above the top edge
         val high = s.copy(landscapeCircleYAdjust = -200f).forOrientation(
             OrientationState(isLandscape = true, screenWidthDp = 800f, camera = LandscapeCamera(-350f, 20f))
         )
@@ -85,7 +274,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun forcedRightPlacesCircleOnRightEdgeWithInset() {
+    fun forcedRightCircleInset() {
         val s = base.copy(
             landscapeCirclePosition = SmartIslandSettings.LANDSCAPE_POSITION_RIGHT,
             landscapeCircleSize = 20f,
@@ -98,7 +287,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun forcedLeftMirrorsAndTopMiddleIsCentred() {
+    fun forcedLeftMirrorsTopCentred() {
         val left = base.copy(
             landscapeCirclePosition = SmartIslandSettings.LANDSCAPE_POSITION_LEFT,
             landscapeCircleSize = 20f, landscapeCircleEdgeInset = 10f
@@ -118,7 +307,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun landscapeSettingsSurviveJsonRoundTrip() {
+    fun landscapeJsonRoundTrip() {
         val s = base.copy(
             landscapeCirclePosition = SmartIslandSettings.LANDSCAPE_POSITION_MIDDLE,
             landscapeCircleSize = 30f,
@@ -141,7 +330,7 @@ class OrientationProfileTest {
     )
 
     @Test
-    fun contentPillUsesTheLandscapeSizeOffsetsAndRadius() {
+    fun contentPillUsesLandscapeSize() {
         val s = portrait.copy(
             landscapeWidth = 150f, landscapeHeight = 40f,
             landscapeXOffset = -120f, landscapeYOffset = 30f,
@@ -158,7 +347,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun contentPillDefaultsToTopMiddleAndPicksTheCompanionSideFromItsPosition() {
+    fun contentPillDefaults() {
         val centred = portrait.copy(circlePosition = SmartIslandSettings.CIRCLE_POSITION_LEFT)
             .forOrientation(landscapeState, hasContent = true)
         assertEquals(0f, centred.xOffset, 0.01f)
@@ -173,31 +362,30 @@ class OrientationProfileTest {
     @Test
     fun portraitNeverBecomesALandscapePill() {
         val state = OrientationState(isLandscape = false)
-        // Portrait only ever stretches the pill's width for content (the content pill width setting); nothing else moves.
         val out = portrait.forOrientation(state, hasContent = true)
         assertEquals(portrait.withContentPillWidth(state.screenWidthDp), out)
         assertEquals(portrait, out.copy(width = portrait.width))
-        // With the content pill set to match the idle one, portrait is returned untouched.
+        // with the content pill set to match the idle one, portrait is returned untouched
         val same = portrait.copy(contentPillSameAsIdle = true)
         assertEquals(same, same.forOrientation(state, hasContent = true))
     }
 
     @Test
-    fun companionCutoutIsAsBigAsTheShortSide() {
+    fun companionCutoutShortSide() {
         val bar = portrait.forOrientation(landscapeState, hasContent = true)
         assertEquals(34f, collapsedCompanionSizeDp(bar), 0.01f)
         assertEquals(34f, collapsedCompanionSizeDp(portrait), 0.01f)
     }
 
     @Test
-    fun contentPillCanSitInTheLeftCornerRightCornerOrOnTheCamera() {
+    fun contentPillAnchors() {
         val state = OrientationState(
             isLandscape = true,
             screenWidthDp = 800f,
             camera = LandscapeCamera(xOffsetDp = -300f, centerYDp = 20f)
         )
         val s = portrait.copy(landscapeWidth = 100f, landscapeCircleEdgeInset = 16f)
-        // 400 - 16 inset - 50 half width = 334 from the centre.
+        // 400 - 16 inset - 50 half width = 334 from the centre
         val left = s.copy(landscapePillPosition = SmartIslandSettings.LANDSCAPE_POSITION_LEFT)
             .forOrientation(state, hasContent = true)
         assertEquals(-334f, left.xOffset, 0.01f)
@@ -211,7 +399,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun contentPillHorizontalOffsetIsAddedOnTopOfThePosition() {
+    fun contentPillHorizontalOffset() {
         val state = OrientationState(isLandscape = true, screenWidthDp = 800f)
         val out = portrait.copy(
             landscapePillPosition = SmartIslandSettings.LANDSCAPE_POSITION_MIDDLE,
@@ -221,8 +409,8 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun centreTopCameraSitsMidHeightOnTheSideEdgeWhenNoCutoutIsReported() {
-        // Landscape phone 800 x 360 dp, camera on the left (rotation says left), no cutout reported.
+    fun centreTopCameraMidHeight() {
+        // landscape phone 800 x 360 dp, camera on the left (rotation says left)
         val state = OrientationState(
             isLandscape = true, screenWidthDp = 800f, screenHeightDp = 360f,
             rotationSide = SmartIslandSettings.LANDSCAPE_POSITION_LEFT
@@ -232,10 +420,10 @@ class OrientationProfileTest {
         assertEquals(167f, idle.yOffset, 0.01f) // 360 / 2 - 26 / 2
     }
 
-    // Reverse landscape (display rotation 270): the authored profile is mirrored
+    // reverse landscape (display rotation 270): the authored profile is mirrored
 
     @Test
-    fun reverseLandscapeMirrorsAForcedLeftIdlePill() {
+    fun reverseMirrorsForcedLeftIdle() {
         val s = portrait.copy(
             landscapeCirclePosition = SmartIslandSettings.LANDSCAPE_POSITION_LEFT,
             landscapeCircleSize = 26f, landscapeCircleEdgeInset = 10f, landscapeCircleXAdjust = 5f
@@ -248,7 +436,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun reverseLandscapeKeepsTheRealCameraButMirrorsFineTuning() {
+    fun reverseLandscapeCamera() {
         val s = portrait.copy(landscapeCircleSize = 26f, landscapeCircleXAdjust = 6f)
         val reverse = s.forOrientation(
             OrientationState(
@@ -261,7 +449,7 @@ class OrientationProfileTest {
     }
 
     @Test
-    fun reverseLandscapeMirrorsTheContentPill() {
+    fun reverseMirrorsContentPill() {
         val s = portrait.copy(
             landscapePillPosition = SmartIslandSettings.LANDSCAPE_POSITION_LEFT,
             landscapeWidth = 150f, landscapeXOffset = 10f
