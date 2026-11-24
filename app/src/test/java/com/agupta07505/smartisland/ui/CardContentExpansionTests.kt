@@ -7,26 +7,33 @@
 
 package com.agupta07505.smartisland.ui
 
+import com.agupta07505.smartisland.ui.expanded.MediaExpansion
 import com.agupta07505.smartisland.ui.expanded.expandableNotificationText
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+class MediaExpansionTest {
+    @Test
+    fun changeReportsKeyAndIndex() {
+        var seen: Pair<String?, Int>? = null
+        val expansion = MediaExpansion(null, 0) { key, index -> seen = key to index }
+        expansion.onChange("card", 2)
+        assertEquals("card" to 2, seen)
+        expansion.onChange(null, 0)
+        assertEquals(null to 0, seen)
+    }
+}
+
 class NotificationTextExpansionTest {
 
     @Test
-    fun longerBodyReplacesShortTextWhenExpanded() {
+    fun expandedTextUsesTheLongerAvailableBody() {
         assertEquals("the whole message", expandableNotificationText("the whole", "the whole message"))
-    }
-
-    @Test
-    fun noBodyOrSameBodyKeepsShortText() {
         assertEquals("hello", expandableNotificationText("hello", ""))
         assertEquals("hello", expandableNotificationText("hello", "   "))
         assertEquals("hello", expandableNotificationText("hello", "hello"))
-    }
-
-    @Test
-    fun shorterBodyIsIgnored() {
         assertEquals("a long preview line", expandableNotificationText("a long preview line", "short"))
     }
+
+
 }

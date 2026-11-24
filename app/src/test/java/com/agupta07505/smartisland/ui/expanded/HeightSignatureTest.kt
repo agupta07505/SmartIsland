@@ -21,17 +21,14 @@ class HeightSignatureTest {
     )
 
     @Test
-    fun aTickingLiveCardKeepsItsSignature() {
+    fun liveCardHeightSignature() {
         for (mode in listOf(
             IslandMode.Timer, IslandMode.Stopwatch, IslandMode.ScreenRecording, IslandMode.AudioRecording,
             IslandMode.IncomingCall, IslandMode.Navigation, IslandMode.DownloadUpload
         )) {
             assertEquals(mode.name, notificationHeightSignature(card(mode, "00:01")), notificationHeightSignature(card(mode, "00:02")))
         }
-    }
 
-    @Test
-    fun anOrdinaryCardStillChangesItsSignatureWithItsText() {
         assertNotEquals(
             notificationHeightSignature(card(IslandMode.Notification, "short")),
             notificationHeightSignature(card(IslandMode.Notification, "a much longer message that wraps"))
