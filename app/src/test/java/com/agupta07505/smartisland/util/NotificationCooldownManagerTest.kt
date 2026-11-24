@@ -43,7 +43,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testDisabledCooldownNeverThrottles() {
+    fun disabledCooldownNeverThrottles() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = false,
             notificationCooldownThreshold = 3,
@@ -64,7 +64,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testCooldownTriggersAfterThresholdAndThrottlesSubsequent() {
+    fun cooldownTriggersThenThrottles() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 3,
@@ -77,29 +77,29 @@ class NotificationCooldownManagerTest {
 
         val baseTime = 10_000L
 
-        // Alert 1 (t = 10s)
+        // alert 1 (t = 10s)
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn1, settings, IslandMode.Notification, baseTime))
-        // Alert 2 (t = 12s)
+        // alert 2 (t = 12s)
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn2, settings, IslandMode.Notification, baseTime + 2000L))
-        // Alert 3 (t = 14s) -> hits threshold 3 in window! Allowed through, but activates cooldown
+        // alert 3 (t = 14s) -> hits threshold 3 in window! Allowed through, but activates cooldown
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn3, settings, IslandMode.Notification, baseTime + 4000L))
 
-        // App should now be in cooldown!
+        // app should now be in cooldown!
         assertTrue(NotificationCooldownManager.isPackageInCooldown("com.example.chat", baseTime + 5000L))
         assertEquals(119, NotificationCooldownManager.getRemainingCooldownSeconds("com.example.chat", baseTime + 5000L))
 
-        // Alert 4 (t = 15s) -> within cooldown, must be throttled!
+        // alert 4 (t = 15s) -> within cooldown, must be throttled!
         val throttled4 = NotificationCooldownManager.shouldThrottle(sbn4, settings, IslandMode.Notification, baseTime + 5000L)
         assertTrue("Subsequent alert during cooldown must be throttled", throttled4)
 
-        // Buffered notification should be sbn4
+        // buffered notification should be sbn4
         val buffered = NotificationCooldownManager.pollBufferedNotification("com.example.chat")
         assertNotNull(buffered)
         assertEquals("key4", buffered?.key)
     }
 
     @Test
-    fun testExcludedAppsNeverThrottled() {
+    fun excludedAppsNeverThrottled() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 2,
@@ -121,7 +121,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testExemptModesNeverThrottled() {
+    fun exemptModesNeverThrottled() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 2,
@@ -154,7 +154,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testTransferRelatedNotificationsAreNeverHeldBack() {
+    fun transferNotificationsNotHeld() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 2,
@@ -172,7 +172,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testCooldownExemptTransferRules() {
+    fun cooldownExemptTransferRules() {
         assertTrue(TransferClassifier.isCooldownExemptTransfer("com.android.providers.downloads", "anything"))
         assertTrue(TransferClassifier.isCooldownExemptTransfer("com.google.android.apps.docs", "anything"))
         assertTrue(TransferClassifier.isCooldownExemptTransfer("com.android.chrome", "file.zip download complete."))
@@ -181,7 +181,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun testDownloadProgressDoesNotStartACooldownThatHoldsTheFinishedNotification() {
+    fun downloadProgressStartsNoCooldown() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 3,
@@ -195,13 +195,13 @@ class NotificationCooldownManagerTest {
             )
             assertFalse("download progress must never be throttled", throttled)
         }
-        // ...so the "download finished" notification right after them shows at once.
+        // ...so the "download finished" notification right after them shows at once
         assertFalse(NotificationCooldownManager.isPackageInCooldown(sbn.packageName, 22_000L))
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn, settings, IslandMode.Notification, 22_000L))
     }
 
     @Test
-    fun testCooldownExpirationAllowsNotificationsAgain() {
+    fun expiryAllowsNotificationsAgain() {
         val settings = SmartIslandSettings(
             enableNotificationCooldown = true,
             notificationCooldownThreshold = 2,
@@ -210,18 +210,18 @@ class NotificationCooldownManagerTest {
         val sbn = createMockSbn("com.example.noisy")
         val startTime = 10_000L
 
-        // Trigger cooldown with 2 rapid alerts
+        // trigger cooldown with 2 rapid alerts
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn, settings, IslandMode.Notification, startTime))
         assertFalse(NotificationCooldownManager.shouldThrottle(sbn, settings, IslandMode.Notification, startTime + 1000L))
 
-        // In cooldown at t = startTime + 10s
+        // in cooldown at t = startTime + 10s
         assertTrue(NotificationCooldownManager.isPackageInCooldown("com.example.noisy", startTime + 10_000L))
 
-        // After cooldown expires at t = startTime + 65s (duration is 60s)
+        // after cooldown expires at t = startTime + 65s (duration is 60s)
         val afterCooldown = startTime + 65_000L
         assertFalse(NotificationCooldownManager.isPackageInCooldown("com.example.noisy", afterCooldown))
 
-        // New notification after cooldown passes through normally
+        // new notification after cooldown passes through normally
         val nextSbn = createMockSbn("com.example.noisy", "new_key")
         val throttledAfter = NotificationCooldownManager.shouldThrottle(nextSbn, settings, IslandMode.Notification, afterCooldown)
         assertFalse("Notification after cooldown expiration should not be throttled", throttledAfter)
@@ -235,32 +235,32 @@ class NotificationCooldownManagerTest {
     )
 
     @Test
-    fun systemEventNotSwitchedInNeverThrottles() {
+    fun unswitchedSystemEventNeverThrottled() {
         val settings = systemSettings("wifi")
         repeat(10) { assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, it * 1000L)) }
     }
 
     @Test
-    fun systemEventNeverThrottlesWhileTheCooldownIsOff() {
+    fun systemEventNoThrottleCooldownOff() {
         val settings = systemSettings("wifi", enabled = false)
         repeat(10) { assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("wifi", settings, it * 1000L)) }
     }
 
     @Test
-    fun systemEventIsHeldBackAfterTheTriggerCountAndReleasedAfterTheQuietPeriod() {
+    fun heldEventReleasedAfterQuiet() {
         val settings = systemSettings("battery_plugged_in")
-        // The third announcement inside 30 s trips the cooldown; it still shows, the next ones are held back.
+        // the third announcement inside 30 s trips the cooldown; it still shows, the next ones are held back
         assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 1_000L))
         assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 2_000L))
         assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 3_000L))
         assertTrue(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 4_000L))
         assertTrue(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 100_000L))
-        // Two minutes after the trip the event may pop again.
+        // 2 minutes after the trip the event may pop again
         assertFalse(NotificationCooldownManager.shouldThrottleSystemEvent("battery_plugged_in", settings, 123_001L))
     }
 
     @Test
-    fun systemEventsCoolDownIndependentlyOfEachOtherAndOfApps() {
+    fun independentEventCooldowns() {
         val settings = systemSettings("wifi", "vpn")
         repeat(3) { NotificationCooldownManager.shouldThrottleSystemEvent("wifi", settings, 1_000L + it) }
         assertTrue(NotificationCooldownManager.shouldThrottleSystemEvent("wifi", settings, 2_000L))
@@ -269,7 +269,7 @@ class NotificationCooldownManagerTest {
     }
 
     @Test
-    fun everySystemEventOfTheListIsAnIslandEventThatCanBeSwitchedIn() {
+    fun configurableSystemEvents() {
         val ids = NotificationCooldownManager.SYSTEM_EVENTS.map { it.id }
         assertEquals(ids.size, ids.toSet().size)
         assertTrue("battery_plugged_in" in ids && "wifi" in ids && "bluetooth" in ids)
