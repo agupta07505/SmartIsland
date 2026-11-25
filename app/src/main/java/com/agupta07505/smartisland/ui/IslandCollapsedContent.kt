@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui
 
 import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.util.HotspotUtil
 import com.agupta07505.smartisland.util.TimerStopwatchParser
 import com.agupta07505.smartisland.ui.components.BatteryCutoutBadge

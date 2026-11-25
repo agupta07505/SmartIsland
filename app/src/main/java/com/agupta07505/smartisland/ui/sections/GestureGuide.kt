@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.ui.res.stringResource
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -79,7 +80,7 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
     val longPress = SwipeAction.fromId(settings.longPressAction, SwipeAction.TogglePill)
     val longPressTitle = getSwipeActionTitle(longPress)
     val longPressText = if (settings.enableAppShortcuts) {
-        stringResource(R.string.gesture_002, longPressTitle)
+        stringResource(R.string.gesture_x01, longPressTitle)
     } else {
         stringResource(R.string.gesture_x02, longPressTitle)
     }
@@ -88,26 +89,115 @@ private fun gestureGroups(settings: SmartIslandSettings): List<GestureGroup> {
             title = stringResource(R.string.gesture_004),
             note = stringResource(R.string.gesture_005),
             lines = listOf(
-                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_006)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_006), stringResource(R.string.gesture_007)),
                 GestureLine(
                     Icons.Rounded.TouchApp, stringResource(R.string.gesture_008),
                     stringResource(R.string.gesture_009)
                 ),
                 GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_010), actionText(settings.pillSwipeLeftAction, SwipeAction.PreviousNotification, pill)),
                 GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_011), actionText(settings.pillSwipeRightAction, SwipeAction.NextNotification, pill)),
-                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_075)),
-                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_077)),
-                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_097)),
-                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_099)),
-                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_101)),
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_012), actionText(settings.pillSwipeUpAction, SwipeAction.DismissCurrent, pill)),
+                GestureLine(Icons.Rounded.ArrowDownward, stringResource(R.string.gesture_013), stringResource(R.string.gesture_014)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_015), longPressText),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_016),
+            note = stringResource(R.string.gesture_x03),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_018), stringResource(R.string.gesture_019)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_020), stringResource(R.string.gesture_x12, longPressTitle)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_021), stringResource(R.string.gesture_022, longPressTitle)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_023),
+            note = stringResource(R.string.gesture_024),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_025), stringResource(R.string.gesture_026)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_027), stringResource(R.string.gesture_028)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_029), stringResource(R.string.gesture_030)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_031), stringResource(R.string.gesture_032)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_033),
+            note = stringResource(R.string.gesture_x04),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_tap), stringResource(R.string.gesture_035)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_015), stringResource(R.string.gesture_x13, longPressTitle)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_037),
+            note = stringResource(R.string.gesture_038),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_039), stringResource(R.string.gesture_040)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_008), stringResource(R.string.gesture_042)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_043), stringResource(R.string.gesture_044)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_045), stringResource(R.string.gesture_046)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_047),
+            note = stringResource(R.string.gesture_048),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_049), stringResource(R.string.gesture_050)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_051),
+            note = stringResource(R.string.gesture_052),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_053), stringResource(R.string.gesture_054)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_055), stringResource(R.string.gesture_x14, longPressTitle)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_057), stringResource(R.string.gesture_058)),
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_012), actionText(settings.swipeUpAction, SwipeAction.DismissCurrent, card) + stringResource(R.string.gesture_060)),
+                GestureLine(Icons.Rounded.DeleteSweep, stringResource(R.string.gesture_061), actionText(settings.swipeHoldUpAction, SwipeAction.DismissAll, card) + stringResource(R.string.gesture_062)),
+                GestureLine(Icons.Rounded.ArrowDownward, stringResource(R.string.gesture_013), stringResource(R.string.gesture_064)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_010), actionText(settings.swipeLeftAction, SwipeAction.None, card)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_011), actionText(settings.swipeRightAction, SwipeAction.None, card)),
+                GestureLine(Icons.Rounded.ArrowDownward, stringResource(R.string.gesture_067), stringResource(R.string.gesture_068)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_069),
+            note = stringResource(R.string.gesture_x06),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_071), stringResource(R.string.gesture_072)),
+                GestureLine(Icons.Rounded.ArrowDownward, stringResource(R.string.gesture_013), stringResource(R.string.gesture_074)),
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_012), stringResource(R.string.gesture_076)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_077), stringResource(R.string.gesture_078)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_079), stringResource(R.string.gesture_080)),
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_081), stringResource(R.string.gesture_082)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_083),
+            note = stringResource(R.string.gesture_084),
+            lines = listOf(
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_085), stringResource(R.string.gesture_086)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_087), stringResource(R.string.gesture_088)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_089), stringResource(R.string.gesture_090)),
+            )
+        ),
+        GestureGroup(
+            title = stringResource(R.string.gesture_091),
+            note = stringResource(R.string.gesture_092),
+            lines = listOf(
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_093), stringResource(R.string.gesture_094)),
+                GestureLine(Icons.Rounded.Swipe, stringResource(R.string.gesture_077), stringResource(R.string.gesture_096)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_097), stringResource(R.string.gesture_098)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_099), stringResource(R.string.gesture_100)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_101), stringResource(R.string.gesture_102)),
             )
         ),
         GestureGroup(
             title = stringResource(R.string.gesture_103),
             note = null,
             lines = listOf(
-                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_104)),
-                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_106)),
+                GestureLine(Icons.Rounded.TouchApp, stringResource(R.string.gesture_104), stringResource(R.string.gesture_105)),
+                GestureLine(Icons.Rounded.ArrowUpward, stringResource(R.string.gesture_106), stringResource(R.string.gesture_x15)),
             )
         ),
     )
@@ -219,7 +309,7 @@ private fun tourSteps(settings: SmartIslandSettings): List<TourStep> {
                 } else {
                     stringResource(R.string.gesture_130)
                 },
-                stringResource(R.string.gesture_128),
+                stringResource(R.string.gesture_x16),
                 stringResource(R.string.gesture_132)
             ),
             stringResource(R.string.gesture_133)
@@ -284,7 +374,7 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    if (!last) TextButton(onClick = onFinish) { Text("Skip") }
+                    if (!last) TextButton(onClick = onFinish) { Text(stringResource(R.string.gesture_skip)) }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     steps.indices.forEach { i ->
@@ -335,11 +425,11 @@ fun NewUserTour(settings: SmartIslandSettings, onFinish: () -> Unit) {
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (index > 0) {
-                        TextButton(onClick = { index -= 1 }) { Text("Back") }
+                        TextButton(onClick = { index -= 1 }) { Text(stringResource(R.string.a11y_back)) }
                     }
                     Spacer(Modifier.weight(1f))
                     Button(onClick = { if (last) onFinish() else index += 1 }, shape = RoundedCornerShape(14.dp)) {
-                        Text(if (last) stringResource(R.string.gesture_x10), fontWeight = FontWeight.Bold)
+                        Text(if (last) stringResource(R.string.gesture_x10) else stringResource(R.string.gesture_x11), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -374,7 +464,7 @@ fun NewUserTourCard(onStart: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text("Start", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.action_start), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
     }
 }
