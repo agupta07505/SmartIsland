@@ -1159,7 +1159,7 @@
     <string name="desc_oem_autostart">Xiaomi/HyperOS、Samsung OneUI、OPPO ColorOS、Vivo OriginOSでは、自動起動をオンにして、各メーカーのタスクマネージャーが Smart Island を終了するのを防いでください。</string>
     <string name="desc_suppress_overlay_warning">Android のシステム通知チャネルを開いて、「Smart Island は他のアプリの上に表示されています」という常駐バナーを非表示にします。</string>
     <string name="desc_swipe_disabled">折りたたみカプセルでのスワイプ操作は無効です。タップでは引き続き展開します。</string>
-    <string name="desc_privacy_policy_summary">100% オンデバイス、テレメトリなし</string>
+    <string name="desc_privacy_policy_summary">100%% オンデバイス、テレメトリなし</string>
     <string name="desc_privacy_policy_detail">Smart Island はユーザーデータ、識別子、通知の詳細を収集、保存、送信しません。すべての操作と設定は厳密に端末内に留まります。ネットワーク通信は GitHub リポジトリ更新のための未認証の読み取り専用リクエストです。</string>
     <string name="desc_privacy_shield_hint">診断ログを記録</string>
     <string name="desc_diagnostics_report">レポートにはデバイス情報、権限の状態、設定、記録されたイベント、アプリの logcat が含まれます。記録中のアプリの通知タイトルが含まれる場合があるため、共有前に確認してください。</string>

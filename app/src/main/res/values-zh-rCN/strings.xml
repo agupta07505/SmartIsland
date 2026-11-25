@@ -1165,7 +1165,7 @@
     <string name="desc_oem_autostart">在小米 / HyperOS、三星 OneUI、OPPO ColorOS 和 vivo OriginOS 上，请开启自启动，防止厂商的任务管理器终止 Smart Island。</string>
     <string name="desc_suppress_overlay_warning">打开 Android 系统通知渠道，隐藏常驻的“Smart Island 正在显示在其他应用之上”提示。</string>
     <string name="desc_swipe_disabled">收起的胶囊上的滑动操作已禁用。轻触仍可展开胶囊。</string>
-    <string name="desc_privacy_policy_summary">100% 本机处理，零遥测</string>
+    <string name="desc_privacy_policy_summary">100%% 本机处理，零遥测</string>
     <string name="desc_privacy_policy_detail">Smart Island 不收集、不存储、不传输任何用户数据、标识符或通知详情。所有操作与设置均严格保留在本机。网络请求仅为获取 GitHub 仓库更新的未认证只读请求。</string>
     <string name="desc_privacy_shield_hint">记录诊断日志</string>
     <string name="desc_diagnostics_report">报告包含设备信息、权限状态、你的设置、已记录的事件以及应用的 logcat。其中可能包含正在记录的应用的通知标题，共享前请先检查。</string>

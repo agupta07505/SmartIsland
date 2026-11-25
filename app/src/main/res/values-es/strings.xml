@@ -1159,7 +1159,7 @@
     <string name="desc_oem_autostart">En Xiaomi/HyperOS, Samsung OneUI, OPPO ColorOS y Vivo OriginOS, activa el inicio automático para evitar que los gestores de tareas del fabricante terminen Smart Island.</string>
     <string name="desc_suppress_overlay_warning">Abre los canales de notificación del sistema para ocultar el aviso persistente de "Smart Island se muestra sobre otras apps".</string>
     <string name="desc_swipe_disabled">Las acciones de deslizamiento en la píldora plegada están desactivadas. Tocar sigue expandiendo la píldora.</string>
-    <string name="desc_privacy_policy_summary">100% en el dispositivo y sin telemetría</string>
+    <string name="desc_privacy_policy_summary">100%% en el dispositivo y sin telemetría</string>
     <string name="desc_privacy_policy_detail">Smart Island no recopila, almacena ni transmite datos de usuario, identificadores ni detalles de notificaciones. Todas las operaciones y ajustes permanecen estrictamente en tu dispositivo. Las consultas de red son solicitudes de solo lectura no autenticadas para obtener actualizaciones del repositorio de GitHub.</string>
     <string name="desc_privacy_shield_hint">Registrar log de diagnóstico</string>
     <string name="desc_diagnostics_report">El informe contiene detalles del dispositivo, el estado de los permisos, tus ajustes, los eventos registrados y el logcat de la app. Puede incluir títulos de notificaciones de las apps registradas, así que revísalo antes de compartirlo.</string>

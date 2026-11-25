@@ -704,7 +704,7 @@
     <string name="desc_oem_autostart">On Xiaomi/HyperOS, Samsung OneUI, OPPO ColorOS, and Vivo OriginOS, enable Autostart to prevent custom OEM task killers from terminating Smart Island.</string>
     <string name="desc_suppress_overlay_warning">Opens Android system notification channels to hide the persistent "Smart Island is displaying over other apps" banner.</string>
     <string name="desc_swipe_disabled">Swipe actions on the collapsed pill are disabled. Tapping still expands the pill.</string>
-    <string name="desc_privacy_policy_summary">100% On-Device &amp; Zero Telemetry</string>
+    <string name="desc_privacy_policy_summary">100%% On-Device &amp; Zero Telemetry</string>
     <string name="desc_privacy_policy_detail">Smart Island does not collect, store, or transmit any user data, identifiers, or notification details. All operations and settings remain strictly on your device. Network queries are unauthenticated, read-only requests for GitHub repository updates.</string>
     <string name="desc_privacy_shield_hint">Record diagnostic log</string>
     <string name="desc_diagnostics_report">The report holds device details, permission status, your settings, the recorded events and the app\'s logcat. It can contain notification titles from the apps being logged, so check it before sharing.</string>
