@@ -692,7 +692,7 @@ fun NotificationHistorySection(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
-                                        text = stringResource(R.string.desc_filter_active_app, activeAppName),
+                                        text = stringResource(R.string.desc_filter_active_app, activeAppName ?: ""),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1053,7 +1053,7 @@ private fun NotificationHistoryItemCard(
                             if (entry.text.isNotBlank()) append(entry.text)
                         }
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        val clip = ClipData.newPlainText(stringResource(R.string.desc_clip_notification), fullText)
+                        val clip = ClipData.newPlainText(context.getString(R.string.desc_clip_notification), fullText)
                         clipboard?.setPrimaryClip(clip)
                         Toast.makeText(context, "Notification text copied", Toast.LENGTH_SHORT).show()
                     },
