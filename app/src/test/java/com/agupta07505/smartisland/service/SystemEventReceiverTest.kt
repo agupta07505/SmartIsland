@@ -30,6 +30,7 @@ class SystemEventReceiverTest {
         val pm = mockk<PowerManager>(relaxed = true)
         every { pm.isPowerSaveMode } returns false
         every { context.getSystemService(Context.POWER_SERVICE) } returns pm
+        every { context.getString(any()) } returns "Unplugged"
 
         val intent = mockk<Intent>()
         every { intent.action } returns Intent.ACTION_POWER_DISCONNECTED
@@ -115,6 +116,7 @@ class SystemEventReceiverTest {
         val receiver = SystemEventReceiver(repo)
         
         val context = mockk<Context>()
+        every { context.getString(any()) } returns "Low Battery"
         val pm = mockk<PowerManager>(relaxed = true)
         every { pm.isPowerSaveMode } returns false
         every { context.getSystemService(Context.POWER_SERVICE) } returns pm
