@@ -33,11 +33,35 @@ android {
         targetSdk = 36
         versionCode = 9
         versionName = "7.6.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // The app ships five languages; libraries bring dozens more strings files that nobody can pick.
+    // Add a language here when a values-<code> folder is added.
+    androidResources {
+        localeFilters += listOf("en", "es", "ja", "pt-rBR", "zh-rCN")
+    }
+
+    // No dependency list inside the APK
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.version",
+                "DebugProbesKt.bin",
+                "kotlin-tooling-metadata.json"
+            )
+        }
     }
 
     signingConfigs {
@@ -104,6 +128,7 @@ android {
     testOptions {
         unitTests {
             isReturnDefaultValues = true
+            isIncludeAndroidResources = true
         }
     }
 
@@ -158,6 +183,8 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.10")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation("app.cash.turbine:turbine:1.1.0")
     testImplementation("org.json:json:20240303")

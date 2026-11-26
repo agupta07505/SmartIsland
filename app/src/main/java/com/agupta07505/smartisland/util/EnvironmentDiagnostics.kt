@@ -16,17 +16,16 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import com.agupta07505.smartisland.service.SmartIslandOverlayService
 
 /**
- * One-line snapshot of the system state that decides whether the island can see a notification or a call: listener
- * and overlay access, battery restrictions, Do Not Disturb, audio mode, WhatsApp install.
+ * One-line snapshot of what lets the island see a notification or call: listener and overlay access, battery
+ * restrictions, DND, audio mode, WhatsApp install
  */
 object EnvironmentDiagnostics {
     private val WHATSAPP_PACKAGES = listOf("com.whatsapp", "com.whatsapp.w4b")
 
     fun snapshot(context: Context): String {
-        fun <T> safe(block: () -> T): String = runCatching { block().toString() }.getOrDefault("?")
+        fun <T> safe(block: () -> T): String = quietly("?") { block().toString() }
 
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
@@ -36,9 +35,10 @@ object EnvironmentDiagnostics {
 
         return buildString {
             append("listenerEnabled=").append(safe { isListenerEnabled(context) })
-            append(" accessibilityEnabled=").append(safe { isAccessibilityEnabled(context) })
+            append(" accessibilityEnabled=").append(safe { context.isOverlayAccessibilityServiceEnabled() })
             append(" overlayPermission=").append(safe { Settings.canDrawOverlays(context) })
-            append(" batteryOptimizationIgnored=").append(safe { power?.isIgnoringBatteryOptimizations(context.packageName) })
+            append(" batteryOptimizationIgnored=")
+                .append(safe { power?.isIgnoringBatteryOptimizations(context.packageName) })
             append(" powerSaveMode=").append(safe { power?.isPowerSaveMode })
             append(" deviceIdle=").append(safe { power?.isDeviceIdleMode })
             append(" screenInteractive=").append(safe { power?.isInteractive })
@@ -77,11 +77,11 @@ object EnvironmentDiagnostics {
 
     private fun whatsappStatus(context: Context): String {
         val found = WHATSAPP_PACKAGES.mapNotNull { pkg ->
-            runCatching {
+            quietly {
                 @Suppress("DEPRECATION")
                 val info = context.packageManager.getPackageInfo(pkg, 0)
                 "$pkg ${info.versionName}"
-            }.getOrNull()
+            }
         }
         return if (found.isEmpty()) "not-installed-or-not-visible" else found.joinToString("; ")
     }
@@ -91,12 +91,5 @@ object EnvironmentDiagnostics {
         return enabled?.split(":")?.any {
             ComponentName.unflattenFromString(it)?.packageName == context.packageName
         } == true
-    }
-
-    private fun isAccessibilityEnabled(context: Context): Boolean {
-        val expected = ComponentName(context, SmartIslandOverlayService::class.java)
-        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?: return false
-        return enabled.split(":").any { ComponentName.unflattenFromString(it) == expected }
     }
 }

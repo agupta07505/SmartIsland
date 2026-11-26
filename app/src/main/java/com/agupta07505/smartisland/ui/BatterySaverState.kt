@@ -19,8 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.agupta07505.smartisland.util.runCatchingLogged
 
-/** Whether Battery Saver is on right now. */
 @Composable
 internal fun rememberBatterySaverOn(track: Boolean): State<Boolean> {
     val context = LocalContext.current
@@ -43,7 +43,7 @@ internal fun rememberBatterySaverOn(track: Boolean): State<Boolean> {
             IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+        onDispose { runCatchingLogged("BatterySaverState", "Could not unregister the battery saver receiver") { context.unregisterReceiver(receiver) } }
     }
     return state
 }

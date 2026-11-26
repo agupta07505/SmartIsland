@@ -7,15 +7,16 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
-import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,15 +25,23 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -41,12 +50,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.agupta07505.smartisland.data.SmartIslandCommand
 import com.agupta07505.smartisland.data.SmartIslandSettings
-import com.agupta07505.smartisland.di.SmartIslandRepositories
+import com.agupta07505.smartisland.model.ActionRole
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.model.IslandNotificationAction
+import com.agupta07505.smartisland.model.TransferState
+import com.agupta07505.smartisland.model.classifyAction
 import com.agupta07505.smartisland.ui.bounceClick
-import com.agupta07505.smartisland.util.formatNotificationTime
+import com.agupta07505.smartisland.ui.IslandText as Text
 
 @Composable
 fun DownloadExpanded(
@@ -56,21 +67,18 @@ fun DownloadExpanded(
     onCollapse: () -> Unit,
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
-    val context = LocalContext.current
     val kind = notification.transferKind
     val isUpload = kind.pointsUp
 
     val state = notification.transferState
     val baseAccent = Color(settings.transferColor)
-    // Paused/waiting turn amber and failed turns red so a stuck transfer reads at a glance.
     val accentColor = when (state) {
-        com.agupta07505.smartisland.model.TransferState.FAILED -> LocalIslandPalette.current.danger
-        com.agupta07505.smartisland.model.TransferState.PAUSED,
-        com.agupta07505.smartisland.model.TransferState.WAITING -> LocalIslandPalette.current.warning
+        TransferState.FAILED -> LocalIslandPalette.current.danger
+        TransferState.PAUSED,
+        TransferState.WAITING -> LocalIslandPalette.current.warning
         else -> baseAccent
     }
     val badgeLabel = state.badge ?: kind.badge
-    val containerBadgeBg = accentColor.copy(alpha = 0.2f)
 
     val progressFraction = remember(notification.progress, notification.progressMax) {
         if (notification.progressMax > 0) {
@@ -80,15 +88,7 @@ fun DownloadExpanded(
         }
     }
 
-    val pctText = remember(notification.progress, notification.progressMax) {
-        if (notification.progressMax > 0) {
-            "${(progressFraction * 100).toInt()}%"
-        } else {
-            ""
-        }
-    }
-
-    // Strip the duplicate percentage from the subtitle so it shows once, on the right.
+    // Strip the duplicate percentage from the subtitle so it shows once, on the right
     val cleanSubtitle = remember(notification.text, kind) {
         notification.text
             .replace(Regex("""\s*[•·-]?\s*\d+%\s*"""), "")
@@ -96,6 +96,20 @@ fun DownloadExpanded(
             .trim()
             .ifBlank { "${kind.badge}..." }
     }
+
+    val palette = LocalIslandPalette.current
+    val numberColor = if (state == TransferState.ACTIVE ||
+        state == TransferState.COMPLETE
+    ) palette.text else accentColor
+    val pctNumber = if (notification.progressMax > 0) "${(progressFraction * 100).toInt()}" else "--"
+    val fileName = notification.title.takeIf { it.isNotBlank() && !it.equals(kind.fallbackTitle, ignoreCase = true) }
+    val detailLine = listOfNotNull(
+        cleanSubtitle.takeIf { it.isNotBlank() && !it.equals("${kind.badge}...", ignoreCase = true) },
+        notification.transferDetail.takeIf { it.isNotBlank() },
+        "Estimated from network speed".takeIf { notification.isEstimatedTransfer }
+    ).joinToString(" \u00B7 ")
+    // Up to 2 of the app's own buttons
+    val buttons = notification.actionIntents.filter { it.pendingIntent != null }.take(2)
 
     Column(
         modifier = Modifier
@@ -108,218 +122,201 @@ fun DownloadExpanded(
                     onCollapse()
                 }
             }
-            .padding(start = 18.dp, top = 20.dp, end = 18.dp, bottom = bottomPadding),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(start = 14.dp, top = 16.dp, end = 16.dp, bottom = bottomPadding)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val largeIcon = notification.largeIcon
-            val icon = notification.icon
-            val mainIcon = largeIcon ?: icon
-            if (mainIcon != null) {
-                val clipShape = if (largeIcon != null) CircleShape else RoundedCornerShape(8.dp)
-                Box(modifier = Modifier.size(42.dp)) {
-                    Image(
-                        bitmap = mainIcon.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(clipShape)
-                    )
-                    if (largeIcon != null && icon != null) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .align(Alignment.BottomEnd)
-                                .background(LocalIslandPalette.current.surface, CircleShape)
-                                .padding(1.5.dp)
-                        ) {
-                            Image(
-                                bitmap = icon.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(accentColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = notification.appName.firstOrNull()?.uppercase() ?: "D",
-                        color = LocalIslandPalette.current.text,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            DownloadAppColumn(notification = notification, accentColor = accentColor)
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = notification.title.ifBlank { kind.fallbackTitle },
-                    color = LocalIslandPalette.current.text,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 17.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = cleanSubtitle,
-                    color = LocalIslandPalette.current.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontSize = 13.sp,
-                    lineHeight = 16.sp
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(containerBadgeBg)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        CustomBadgeTransferIcon(
-                            isUpload = isUpload,
-                            color = accentColor,
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Text(
-                            text = badgeLabel,
-                            color = accentColor,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Text(
-                    text = formatNotificationTime(notification.timeMillis),
-                    color = LocalIslandPalette.current.textTertiary,
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            if (notification.progressMax > 0) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(LocalIslandPalette.current.tint(0.2f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(progressFraction)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(accentColor)
-                    )
-                }
-            } else if (state == com.agupta07505.smartisland.model.TransferState.ACTIVE) {
-                // No known progress: a moving bar instead of a made-up 45% fill.
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = accentColor,
-                    trackColor = LocalIslandPalette.current.tint(0.2f)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(accentColor.copy(alpha = 0.35f))
-                )
-            }
-
-            if (pctText.isNotEmpty()) {
-                Text(
-                    text = pctText,
-                    color = accentColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // Speed / ETA read from the notification, or the measured speed of an estimated card
-        val detailLine = listOfNotNull(
-            notification.transferDetail.takeIf { it.isNotBlank() },
-            "Estimated from network speed".takeIf { notification.isEstimatedTransfer }
-        ).joinToString(" · ")
-        if (detailLine.isNotBlank()) {
-            Text(
-                text = detailLine,
-                color = LocalIslandPalette.current.textTertiary,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            DownloadReadout(
+                notification = notification,
+                isUpload = isUpload,
+                accentColor = accentColor,
+                badgeLabel = badgeLabel,
+                pctNumber = pctNumber,
+                numberColor = numberColor,
+                fileName = fileName,
+                detailLine = detailLine
             )
+
+            if (buttons.isNotEmpty()) {
+                DownloadButtons(notification = notification, buttons = buttons)
+            }
         }
 
-        if (notification.actionIntents.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+        DownloadProgressBar(
+            notification = notification,
+            state = state,
+            progressFraction = progressFraction,
+            numberColor = numberColor,
+            accentColor = accentColor
+        )
+    }
+}
+
+@Composable
+private fun DownloadAppColumn(notification: IslandNotification, accentColor: Color) {
+    val palette = LocalIslandPalette.current
+    Column(
+        modifier = Modifier.width(64.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val mainIcon = notification.largeIcon ?: notification.icon
+        if (mainIcon != null) {
+            Image(
+                bitmap = mainIcon.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(13.dp))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(accentColor),
+                contentAlignment = Alignment.Center
             ) {
-                notification.actionIntents.forEach { action ->
-                    Box(
-                        modifier = Modifier
-                            .height(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(LocalIslandPalette.current.chipFill)
-                            .bounceClick {
-                                if (action.pendingIntent != null) {
-                                    triggerAction(context, notification.packageName, action.pendingIntent, action.title, notification.contentIntent)
-                                } else {
-                                    Toast.makeText(context, "Clicked: ${action.title}", Toast.LENGTH_SHORT).show()
-                                }
-                                val repo = SmartIslandRepositories.notificationRepository(context)
-                                repo.removeNotification(notification.key)
-                                repo.sendCommand(SmartIslandCommand.CancelNotification(notification.key))
-                                onCollapse()
-                            }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = action.title,
-                            color = Color(0xFF1F2937),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                Text(
+                    text = notification.appName.firstOrNull()?.uppercase() ?: "D",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
             }
+        }
+        Text(
+            text = notification.appName,
+            color = palette.textTertiary,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun RowScope.DownloadReadout(
+    notification: IslandNotification,
+    isUpload: Boolean,
+    accentColor: Color,
+    badgeLabel: String,
+    pctNumber: String,
+    numberColor: Color,
+    fileName: String?,
+    detailLine: String
+) {
+    val palette = LocalIslandPalette.current
+    Column(modifier = Modifier.weight(1f)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            CustomBadgeTransferIcon(isUpload = isUpload, color = accentColor, modifier = Modifier.size(12.dp))
+            Text(text = badgeLabel, color = palette.textTertiary, fontSize = 13.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = pctNumber,
+                color = numberColor,
+                fontSize = 48.sp,
+                lineHeight = 52.sp,
+                letterSpacing = (-1.5).sp,
+                maxLines = 1,
+                softWrap = false
+            )
+            if (notification.progressMax > 0) {
+                Text(
+                    text = "%",
+                    color = numberColor,
+                    fontSize = 24.sp,
+                    lineHeight = 24.sp,
+                    modifier = Modifier.padding(start = 2.dp, bottom = 8.dp),
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+        if (fileName != null) {
+            Text(text = fileName, color = palette.text, fontSize = 14.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+        }
+        // the speed / time left line comes and goes while a transfer runs
+        Text(text = detailLine.ifBlank { "\u00A0" }, color = palette.textMuted, fontSize = 12.sp, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun DownloadButtons(notification: IslandNotification, buttons: List<IslandNotificationAction>) {
+    val context = LocalContext.current
+    val palette = LocalIslandPalette.current
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        buttons.forEach { action ->
+            val glyph = when (classifyAction(action.title)) {
+                ActionRole.Pause -> Icons.Rounded.Pause
+                ActionRole.Resume -> Icons.Rounded.PlayArrow
+                ActionRole.Stop, ActionRole.Reset -> Icons.Rounded.Close
+                else -> Icons.Rounded.MoreHoriz
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .border(1.5.dp, palette.tint(0.4f), CircleShape)
+                    .clip(CircleShape)
+                    .bounceClick { notification.fireAction(context, action) },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = glyph, contentDescription = action.title, tint = palette.text,
+                    modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadProgressBar(
+    notification: IslandNotification,
+    state: TransferState,
+    progressFraction: Float,
+    numberColor: Color,
+    accentColor: Color
+) {
+    val palette = LocalIslandPalette.current
+    Box(modifier = Modifier.padding(top = 14.dp).fillMaxWidth()) {
+        if (notification.progressMax > 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(palette.tint(0.2f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progressFraction)
+                        .height(3.dp)
+                        .background(numberColor)
+                )
+            }
+        } else if (state == TransferState.ACTIVE) {
+            // No known progress: a moving bar instead of a made-up fill
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
+                color = numberColor,
+                trackColor = palette.tint(0.2f)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(accentColor.copy(alpha = 0.35f))
+            )
         }
     }
 }
@@ -330,7 +327,7 @@ private fun CustomBadgeTransferIcon(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.Canvas(modifier = modifier) {
+    Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
         val cx = w / 2f
@@ -346,14 +343,14 @@ private fun CustomBadgeTransferIcon(
 
         drawLine(
             color = color,
-            start = androidx.compose.ui.geometry.Offset(cx, tailY),
-            end = androidx.compose.ui.geometry.Offset(cx, tipY),
+            start = Offset(cx, tailY),
+            end = Offset(cx, tipY),
             strokeWidth = strokeWidth,
             cap = StrokeCap.Round
         )
 
         val wingY = if (isUpload) tipY + arrowHeadHeight else tipY - arrowHeadHeight
-        val path = androidx.compose.ui.graphics.Path().apply {
+        val path = Path().apply {
             moveTo(cx - arrowHeadWidth, wingY)
             lineTo(cx, tipY)
             lineTo(cx + arrowHeadWidth, wingY)
@@ -361,7 +358,7 @@ private fun CustomBadgeTransferIcon(
         drawPath(
             path = path,
             color = color,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
     }
 }

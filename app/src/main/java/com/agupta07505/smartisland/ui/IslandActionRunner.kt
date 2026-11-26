@@ -7,37 +7,38 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.size
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.SwipeAction
 import com.agupta07505.smartisland.util.HapticStrength
 
 /**
- * Runs a swipe / long-press action with the island's current callbacks. One place for the action logic, instead of a
- * copy in every gesture branch; see [executeSwipeAction] for what each action does.
+ * Runs a swipe / long-press action with the island's current callbacks, 1 place for the action logic instead of a
+ * copy per gesture branch, see [executeSwipeAction]
  */
 internal class IslandActionRunner(
-    private val context: android.content.Context,
-    private val cb: IslandCallbacks
+    private val context: Context,
+    private val wiring: IslandWiring
 ) {
     fun run(action: SwipeAction, notification: IslandNotification?) {
         executeSwipeAction(
             action = action,
             currentNotification = notification,
             context = context,
-            hapticStrength = HapticStrength.fromId(cb.currentSettings.hapticStrength),
-            onDismiss = cb.currentOnDismiss,
-            onDismissAll = cb.currentOnDismissAll,
-            onToggle = cb.currentOnToggle,
-            onOpenNotification = cb.currentOnOpenNotification,
-            onOpenFloatingWindow = cb.currentOnOpenFloatingWindow,
-            onOpenNotificationShade = cb.currentOnOpenNotificationShade,
-            onPageSelected = cb.currentOnPageSelected,
-            notificationsSize = cb.currentNotifications.size,
-            currentIndex = cb.currentSelectedIndex,
-            onSwitchEvent = cb.currentOnSwitchEvent,
-            onSwitchNotification = cb.currentOnSwitchNotification,
-            onSwitchSibling = cb.currentOnSwitchSibling
+            hapticStrength = HapticStrength.fromId(wiring.view.settings.hapticStrength),
+            onDismiss = wiring.actions.card.dismiss,
+            onDismissAll = wiring.actions.card.dismissAll,
+            onToggle = wiring.actions.expand.toggle,
+            onOpenNotification = wiring.actions.card.open,
+            onOpenFloatingWindow = wiring.actions.system.openFloatingWindow,
+            onOpenNotificationShade = wiring.actions.system.openNotificationShade,
+            onPageSelected = wiring.actions.card.selectPage,
+            notificationsSize = wiring.view.notifications.size,
+            currentIndex = wiring.view.selectedIndex,
+            onSwitchEvent = wiring.actions.card.switchEvent,
+            onSwitchNotification = wiring.actions.card.switchNotification,
+            onSwitchSibling = wiring.actions.sibling.switchSibling
         )
     }
 
@@ -56,7 +57,7 @@ internal class IslandActionRunner(
             onPageSelected = {},
             notificationsSize = 0,
             currentIndex = 0,
-            onTogglePillHidden = cb.currentOnTogglePillHidden
+            onTogglePillHidden = wiring.actions.idle.togglePillHidden
         )
     }
 }

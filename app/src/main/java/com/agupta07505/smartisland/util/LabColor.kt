@@ -14,7 +14,6 @@ import kotlin.math.hypot
 import kotlin.math.pow
 import kotlin.math.sin
 
-/** CIELAB / LCh maths for the media card's colours. */
 object LabColor {
     private const val XN = 0.95047
     private const val YN = 1.0
@@ -36,7 +35,7 @@ object LabColor {
         return doubleArrayOf(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
     }
 
-    /** sRGB (0..1 channels, [r, g, b]) of the LCh colour with lightness [l], chroma [c] and hue [hueDeg]. */
+    /** sRGB (0..1, [r, g, b]) of the LCh colour with lightness [l], chroma [c] and hue [hueDeg]. */
     fun lchToSrgb(l: Double, c: Double, hueDeg: Double): FloatArray {
         var lo = 0.0
         var hi = c.coerceAtLeast(0.0)

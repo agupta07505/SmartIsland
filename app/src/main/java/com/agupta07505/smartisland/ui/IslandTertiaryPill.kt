@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,71 +23,104 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.CameraSide
+import com.agupta07505.smartisland.model.SwapTouchGuard
+import com.agupta07505.smartisland.model.TapSwap
 
 @Composable
 internal fun TertiaryPill(
     settings: SmartIslandSettings,
     layout: IslandLayout,
     secondary: IslandSecondary,
-    switchScaleAnim: androidx.compose.animation.core.Animatable<Float, androidx.compose.animation.core.AnimationVector1D>,
+    switchScaleAnim: Animatable<Float, AnimationVector1D>,
     cornerLockY: () -> Dp,
     screenCenter: Dp,
     onPageSelected: (Int) -> Unit,
-    cb: IslandCallbacks
+    wiring: IslandWiring,
+    ui: IslandInteractionState
 ) {
-    if (!settings.enableNotchMode && secondary.tertiaryShown && secondary.tertiaryNotification != null) {
+    if (secondary.shown.tertiary.value && secondary.cards.tertiaryNotification != null) {
+        val sideCamera = layout.cameraSide != CameraSide.Centre && layout.sideZone != null
+        val pillShape = if (settings.enableNotchMode) {
+            RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = settings.cornerRadius.dp,
+                bottomStart = settings.cornerRadius.dp)
+        } else RoundedCornerShape(settings.cornerRadius.dp)
+        val cutoutBounds = remember { arrayOfNulls<Rect>(1) }
+        val downTap = remember { SwapTouchGuard() }
         Box(
             modifier = Modifier
                 .absoluteOffset {
                     IntOffset(
-                        (secondary.expandedCompactX - screenCenter + layout.miniPillWidth / 2f).roundToPx(),
+                        (secondary.offsets.expandedCompactX - screenCenter + layout.miniPillWidth / 2f).roundToPx(),
                         cornerLockY().roundToPx()
                     )
                 }
                 .width(layout.miniPillWidth)
                 .height(layout.circleSize)
                 .graphicsLayer {
-                    alpha = secondary.tertiaryAlpha
-                    scaleX = secondary.tertiaryScale * switchScaleAnim.value
-                    scaleY = secondary.tertiaryScale * switchScaleAnim.value
+                    alpha = secondary.anims.tertiaryAlpha.value * ui.cutoutSwapAlpha(TapSwap.CUTOUT_PILL_SPOT)
+                    scaleX = secondary.anims.tertiaryScale.value * switchScaleAnim.value
+                    scaleY = secondary.anims.tertiaryScale.value * switchScaleAnim.value
                 }
                 .then(
                     if (settings.enableShadow && settings.shadowElevation > 0f) {
                         Modifier.shadow(
                             elevation = (settings.shadowElevation * 0.85f).dp,
-                            shape = RoundedCornerShape(settings.cornerRadius.dp),
+                            shape = pillShape,
                             clip = false,
                             ambientColor = Color.Black,
                             spotColor = Color.Black
                         )
                     } else Modifier
                 )
-                .clip(RoundedCornerShape(settings.cornerRadius.dp))
+                .onGloballyPositioned { coords ->
+                    if (!ui.tapSwapActive) cutoutBounds[0] = coords.boundsInWindow()
+                }
+                .clip(pillShape)
                 .background(layout.pillBackgroundColor.copy(alpha = settings.opacity))
+                .cutoutTapOnDown(
+                    guard = downTap,
+                    enabled = { wiring.view.expanded && !ui.tapSwapActive && secondary.cards.tertiaryIndex >= 0 }
+                ) {
+                    if (turnAroundOnCutoutTap(ui, wiring, secondary.cards.tertiaryIndex, onPageSelected)) return@cutoutTapOnDown
+                    ui.markCutout(TapSwap.CUTOUT_PILL_SPOT) { cutoutBounds[0] }
+                    onPageSelected(secondary.cards.tertiaryIndex)
+                }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    if (secondary.tertiaryIndex >= 0) {
-                        onPageSelected(secondary.tertiaryIndex)
+                    if (downTap.claimClick()) return@clickable
+                    if (turnAroundOnCutoutTap(ui, wiring, secondary.cards.tertiaryIndex, onPageSelected)) return@clickable
+                    if (secondary.cards.tertiaryIndex >= 0) {
+                        ui.markCutout(TapSwap.CUTOUT_PILL_SPOT) { cutoutBounds[0] }
+                        onPageSelected(secondary.cards.tertiaryIndex)
                     }
-                    if (!cb.currentExpanded) {
-                        cb.currentOnToggle()
+                    if (!wiring.view.expanded) {
+                        wiring.actions.expand.toggle()
                     }
                 },
             contentAlignment = Alignment.Center
         ) {
             IslandCollapsedContent(
-                mode = secondary.tertiaryNotification.mode,
-                notification = secondary.tertiaryNotification,
+                mode = secondary.cards.tertiaryNotification.mode,
+                notification = secondary.cards.tertiaryNotification,
                 collapsedAlpha = 1f,
-                settings = settings
+                settings = settings,
+                pillWidthDp = if (sideCamera) settings.width else 0f,
+                cameraGapDp = if (sideCamera) layout.cameraGapDp else 0f,
+                cameraCentreInPillDp = if (sideCamera) layout.cameraCentreInPillDp else null,
+                cameraSide = layout.cameraSide,
+                sidePlan = if (sideCamera) layout.sideZone?.plan else null
             )
         }
     }

@@ -9,13 +9,12 @@ package com.agupta07505.smartisland.util
 
 import android.accessibilityservice.AccessibilityService
 import android.app.ActivityManager
-import android.content.Context
+import android.app.NotificationManager
 import android.bluetooth.BluetoothManager
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.res.Resources
-import android.os.PowerManager
-import android.provider.MediaStore
-import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.net.Uri
@@ -24,6 +23,8 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.MediaStore
 import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.widget.Toast
@@ -35,7 +36,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-/** The few things a utility needs from the overlay service. */
+private const val TAG = "UtilityActions"
+
 object UtilityBridge {
     @Volatile var collapse: (() -> Unit)? = null
     @Volatile var globalAction: ((Int) -> Boolean)? = null
@@ -43,10 +45,14 @@ object UtilityBridge {
     /** Opens the package in a floating window; returns whether it was started. */
     @Volatile var openFloating: ((String) -> Boolean)? = null
 
-    /** Opens a system page (an intent) in a floating window; false when the floating window is off or the phone refuses it. */
+    /** Opens a system page (an intent) in a floating window. */
     @Volatile var openIntentFloating: ((Intent) -> Boolean)? = null
 
+    /** The flashlight tile switched the torch: the island follows at the tap, not when the camera confirms. */
+    @Volatile var torchToggled: ((Boolean) -> Unit)? = null
+
     fun clear() {
+        torchToggled = null
         collapse = null
         globalAction = null
         openFloating = null
@@ -54,37 +60,12 @@ object UtilityBridge {
     }
 }
 
-/** What happens when a utility tile is tapped. Everything here works from the overlay service's context. */
 object UtilityActions {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val main = Handler(Looper.getMainLooper())
 
-    /** Runs [block] off the main thread, outliving the island's own composition (which ends when the island collapses). */
     fun launch(block: suspend () -> Unit) {
         scope.launch { block() }
-    }
-
-    const val EXTRA_OPEN_SECTION = "open_section"
-    const val SECTION_APP_SHORTCUTS = "app_shortcuts"
-
-    /**
-     * Opens the app on the App Shortcuts configuration (where the pinned apps and the Utilities layout are edited).
-     */
-    fun openShortcutSettings(context: Context) {
-        val intent = Intent(context.applicationContext, com.agupta07505.smartisland.MainActivity::class.java)
-            .putExtra(EXTRA_OPEN_SECTION, SECTION_APP_SHORTCUTS)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        runCatching { context.startActivity(intent) }
-    }
-
-    /**
-     * Opens one of the island's pickers ([PickerRequest.APPS], [PickerRequest.UTILITY]) in its own small window,
-     * without bringing the app up.
-     */
-    fun openPicker(context: Context, picker: String) {
-        val kind = com.agupta07505.smartisland.ui.pickers.PickerKinds.forRequest(picker) ?: return
-        runCatching { context.startActivity(com.agupta07505.smartisland.ui.pickers.PickerActivity.intentFor(context, kind)) }
-            .onFailure { openShortcutSettings(context) }
     }
 
     private const val SCREENSHOT_DELAY_MS = 450L
@@ -95,7 +76,6 @@ object UtilityActions {
     @Volatile var recording: Boolean = false
         private set
 
-    /** Runs [type]. [calculatorPackage] is the remembered calculator app (blank until chosen). */
     fun run(context: Context, type: UtilityType, calculatorPackage: String = "") {
         val app = context.applicationContext
         when (type) {
@@ -107,12 +87,13 @@ object UtilityActions {
             UtilityType.Screenshot -> screenshot(app)
             UtilityType.LockScreen -> lockScreen(app)
             UtilityType.ScreenRecorder -> toggleScreenRecord(app)
-            // The Utilities page asks for a length first (see startTimer); a bare run() has no length, so it does nothing.
+            // The Utilities page asks for a length first (see startTimer)
             UtilityType.Timer -> Unit
             UtilityType.Stopwatch -> toggleStopwatch(app)
-            UtilityType.Calculator -> if (calculatorPackage.isNotBlank()) launchApp(app, calculatorPackage, floating = true)
+            UtilityType.Calculator -> if (calculatorPackage.isNotBlank()) launchApp(app, calculatorPackage,
+                floating = true)
             UtilityType.VoiceRecorder -> startFirst(app, listOf(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)))
-            // The one utility that always opens full screen, never in a floating window.
+            // The one utility that always opens full screen, never in a floating window
             UtilityType.Camera -> startFull(app, Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
             UtilityType.Bluetooth -> toggleBluetooth(app)
             UtilityType.AirplaneMode -> toggleAirplane(app)
@@ -129,9 +110,10 @@ object UtilityActions {
         return started
     }
 
-    fun bluetoothEnabled(context: Context): Boolean = runCatching {
-        (context.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter?.isEnabled == true
-    }.getOrDefault(false)
+    fun bluetoothEnabled(context: Context): Boolean = quietly(false) {
+        (context.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager)
+            .adapter?.isEnabled == true
+    }
 
     private fun toggleBluetooth(context: Context) {
         if (shizukuUsable(context, ShizukuMethodCheck.Method.Shell)) {
@@ -143,7 +125,7 @@ object UtilityActions {
     }
 
     fun airplaneModeEnabled(context: Context): Boolean =
-        runCatching { Settings.Global.getInt(context.applicationContext.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1 }.getOrDefault(false)
+        Settings.Global.getInt(context.applicationContext.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
     private fun toggleAirplane(context: Context) {
         if (shizukuUsable(context, ShizukuMethodCheck.Method.Shell)) {
@@ -160,20 +142,22 @@ object UtilityActions {
     }
 
     fun autoRotateEnabled(context: Context): Boolean =
-        runCatching { Settings.System.getInt(context.applicationContext.contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1 }.getOrDefault(false)
+        Settings.System.getInt(context.applicationContext.contentResolver, Settings.System.ACCELEROMETER_ROTATION,
+            0) == 1
 
     private fun toggleAutoRotate(context: Context) {
         val app = context.applicationContext
         if (!ensureCanWriteSettings(app)) return
-        runCatching {
-            Settings.System.putInt(app.contentResolver, Settings.System.ACCELEROMETER_ROTATION, if (autoRotateEnabled(app)) 0 else 1)
+        runCatchingLogged(TAG, "Could not change auto rotate") {
+            Settings.System.putInt(app.contentResolver, Settings.System.ACCELEROMETER_ROTATION,
+                if (autoRotateEnabled(app)) 0 else 1)
         }
     }
 
-    /** The system's night mode (not this app's own theme). */
+    /** System's night mode (not this app's own theme). */
     fun darkModeEnabled(context: Context): Boolean =
-        (Resources.getSystem().configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        (Resources.getSystem().configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
 
     private fun toggleDarkMode(context: Context) {
         if (shizukuUsable(context, ShizukuMethodCheck.Method.Shell)) {
@@ -184,25 +168,32 @@ object UtilityActions {
     }
 
     fun batterySaverEnabled(context: Context): Boolean =
-        runCatching { (context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager).isPowerSaveMode }.getOrDefault(false)
+        (context.applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager).isPowerSaveMode
 
     private fun toggleBatterySaver(context: Context) {
         if (shizukuUsable(context, ShizukuMethodCheck.Method.Shell)) {
-            shell("settings put global low_power ${if (batterySaverEnabled(context)) 0 else 1}")
+            val on = if (batterySaverEnabled(context)) 0 else 1
+            shell(
+                "cmd power set-mode $on 2>&1; " +
+                    "settings put global low_power_sticky $on 2>&1; " +
+                    "settings put global low_power $on 2>&1"
+            )
         } else {
             startFirst(context, listOf(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS)))
         }
     }
 
-    fun autoBrightnessEnabled(context: Context): Boolean = runCatching {
-        Settings.System.getInt(context.applicationContext.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE) ==
-            Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
-    }.getOrDefault(false)
+    fun autoBrightnessEnabled(context: Context): Boolean =
+        Settings.System.getInt(
+            context.applicationContext.contentResolver,
+            Settings.System.SCREEN_BRIGHTNESS_MODE,
+            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+        ) == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
 
     fun toggleAutoBrightness(context: Context) {
         val app = context.applicationContext
         if (!ensureCanWriteSettings(app)) return
-        runCatching {
+        runCatchingLogged(TAG, "Could not change auto brightness") {
             Settings.System.putInt(
                 app.contentResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
                 if (autoBrightnessEnabled(app)) Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL else Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
@@ -210,21 +201,18 @@ object UtilityActions {
         }
     }
 
-    /** The ringer: [AudioManager.RINGER_MODE_NORMAL], [AudioManager.RINGER_MODE_VIBRATE] or [AudioManager.RINGER_MODE_SILENT]. */
-    fun ringerMode(context: Context): Int = runCatching {
+    fun ringerMode(context: Context): Int =
         (context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).ringerMode
-    }.getOrDefault(AudioManager.RINGER_MODE_NORMAL)
 
-    fun dndAccessGranted(context: Context): Boolean = runCatching {
-        (context.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
+    fun dndAccessGranted(context: Context): Boolean =
+        (context.applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .isNotificationPolicyAccessGranted
-    }.getOrDefault(false)
 
     /** Cycles the ringer: ring, then vibrate, then silent, then ring again. */
     fun toggleRinger(context: Context) {
         val app = context.applicationContext
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-        runCatching {
+        runCatchingLogged(TAG, "Could not change the ringer mode") {
             when (am.ringerMode) {
                 AudioManager.RINGER_MODE_NORMAL -> am.ringerMode = AudioManager.RINGER_MODE_VIBRATE
                 AudioManager.RINGER_MODE_VIBRATE -> {
@@ -245,18 +233,19 @@ object UtilityActions {
         }
     }
 
-    /** Calculator apps on the device: the system default first, then any launcher app named like a calculator. */
     fun calculatorApps(context: Context): List<LaunchableApp> {
         val pm = context.packageManager
         val found = LinkedHashMap<String, LaunchableApp>()
-        runCatching {
+        runCatchingLogged(TAG, "Could not list the calculator apps") {
             val selector = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
             pm.queryIntentActivities(selector, 0).forEach { info ->
-                found.putIfAbsent(info.activityInfo.packageName, LaunchableApp(info.activityInfo.packageName, info.loadLabel(pm).toString()))
+                found.putIfAbsent(info.activityInfo.packageName,
+                    LaunchableApp(info.activityInfo.packageName, info.loadLabel(pm).toString()))
             }
         }
-        runCatching {
-            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0).forEach { info ->
+        runCatchingLogged(TAG, "Could not list the launcher apps") {
+            pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
+                .forEach { info ->
                 val pkg = info.activityInfo.packageName
                 val label = info.loadLabel(pm).toString()
                 if (pkg != context.packageName && (pkg.contains("calc", true) || label.contains("calc", true))) {
@@ -270,7 +259,6 @@ object UtilityActions {
     fun isInstalled(context: Context, packageName: String): Boolean =
         packageName.isNotBlank() && context.packageManager.getLaunchIntentForPackage(packageName) != null
 
-    /** Opens [packageName], in the floating window when [floating] and the floating-window setting allows it. */
     fun launchApp(context: Context, packageName: String, floating: Boolean) {
         if (floating && UtilityBridge.openFloating?.invoke(packageName) == true) return
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
@@ -278,15 +266,17 @@ object UtilityActions {
             toast(context, R.string.utility_app_missing)
             return
         }
-        runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        runCatchingLogged(TAG, "Could not launch the app") {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
         UtilityBridge.collapse?.invoke()
     }
 
-    /** Starts following the torch so [torchOn] is right before the first tap. Safe to call repeatedly. */
+    /** Starts following the torch so [torchOn] is right before the first tap. */
     fun watchTorch(context: Context) {
         if (torchCallbackRegistered) return
         val cm = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
-        runCatching {
+        runCatchingLogged(TAG, "Could not follow the torch") {
             cm.registerTorchCallback(object : CameraManager.TorchCallback() {
                 override fun onTorchModeChanged(cameraId: String, enabled: Boolean) { torchOn = enabled }
             }, main)
@@ -297,11 +287,14 @@ object UtilityActions {
     private fun toggleTorch(context: Context) {
         watchTorch(context)
         val cm = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager ?: return
-        runCatching {
-            val id = cm.cameraIdList.firstOrNull {
-                cm.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-            } ?: run { toast(context, R.string.utility_no_flash); return }
-            cm.setTorchMode(id, !torchOn)
+        runCatchingLogged(TAG, "Could not toggle the torch") {
+            // The cached torch camera: scanning every camera's characteristics on each tap is slow
+            val id = TorchCapabilities.detect(context)?.cameraId
+                ?: run { toast(context, R.string.utility_no_flash); return }
+            val target = !torchOn
+            cm.setTorchMode(id, target)
+            torchOn = target
+            UtilityBridge.torchToggled?.invoke(target)
         }
     }
 
@@ -315,45 +308,45 @@ object UtilityActions {
     }
 
     fun wifiEnabled(context: Context): Boolean =
-        runCatching { (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager).isWifiEnabled }.getOrDefault(false)
+        (context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager).isWifiEnabled
 
     @Suppress("DEPRECATION")
     private fun toggleWifi(context: Context) {
         val wm = context.getSystemService(Context.WIFI_SERVICE) as? WifiManager ?: return
         val enable = !wm.isWifiEnabled
         when {
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> runCatching { wm.isWifiEnabled = enable }
-            shizukuUsable(context, ShizukuMethodCheck.Method.WifiData) -> shell(if (enable) "svc wifi enable" else "svc wifi disable")
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.Q -> runCatchingLogged(TAG, "Could not toggle Wi-Fi") { wm.isWifiEnabled = enable }
+            shizukuUsable(context, ShizukuMethodCheck.Method.WifiData) ->
+                shell(if (enable) "svc wifi enable" else "svc wifi disable")
             else -> openPanel(context, Settings.Panel.ACTION_WIFI, Settings.ACTION_WIFI_SETTINGS)
         }
     }
 
-    /** Whether mobile data is on. */
     fun mobileDataEnabled(context: Context): Boolean {
         val app = context.applicationContext
-        val subId = runCatching { SubscriptionManager.getDefaultDataSubscriptionId() }
-            .getOrDefault(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+        val subId = SubscriptionManager.getDefaultDataSubscriptionId()
         if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            val perSim = runCatching { Settings.Global.getInt(app.contentResolver, "mobile_data$subId") }.getOrNull()
-            if (perSim != null) return perSim == 1
+            val perSim = Settings.Global.getInt(app.contentResolver, "mobile_data$subId", -1)
+            if (perSim != -1) return perSim == 1
         }
-        return runCatching { Settings.Global.getInt(app.contentResolver, "mobile_data", 1) == 1 }.getOrDefault(true)
+        return Settings.Global.getInt(app.contentResolver, "mobile_data", 1) == 1
     }
 
     private fun toggleMobileData(context: Context) {
         if (shizukuUsable(context, ShizukuMethodCheck.Method.WifiData)) {
             val verb = if (mobileDataEnabled(context)) "disable" else "enable"
-            // `svc data` is tried first; the telephony service's own command is the fallback on ROMs where it does nothing.
             shell("svc data $verb || cmd phone data $verb")
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             openPanel(context, Settings.Panel.ACTION_INTERNET_CONNECTIVITY, Settings.ACTION_DATA_ROAMING_SETTINGS)
         } else {
-            startFirst(context, listOf(Intent(Settings.ACTION_DATA_ROAMING_SETTINGS), Intent(Settings.ACTION_WIRELESS_SETTINGS)))
+            startFirst(context, listOf(Intent(Settings.ACTION_DATA_ROAMING_SETTINGS),
+                Intent(Settings.ACTION_WIRELESS_SETTINGS)))
         }
     }
 
     private fun openPanel(context: Context, panelAction: String, fallbackAction: String) {
-        val shown = runCatching { context.startActivity(Intent(panelAction).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        val shown = runCatching { context.startActivity(Intent(panelAction).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            .isSuccess
         if (shown) {
             UtilityBridge.collapse?.invoke()
             return
@@ -365,12 +358,13 @@ object UtilityActions {
         scope.launch {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
             val pm = context.packageManager
-            val home = runCatching {
-                pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0).map { it.activityInfo.packageName }.toSet()
-            }.getOrDefault(emptySet())
+            val home = quietly(emptySet()) {
+                pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+                    .map { it.activityInfo.packageName }.toSet()
+            }
             var stopped = 0
             if (am != null) {
-                runCatching {
+                runCatchingLogged(TAG, "Could not stop background apps") {
                     pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
                         .map { it.activityInfo.packageName }
                         .distinct()
@@ -378,8 +372,11 @@ object UtilityActions {
                         .forEach { pkg -> am.killBackgroundProcesses(pkg); stopped++ }
                 }
             }
-            runCatching { context.cacheDir.listFiles()?.forEach { it.deleteRecursively() } }
-            if (shizukuUsable(context, ShizukuMethodCheck.Method.TrimCache)) ShizukuManager.runShellForOutput("pm trim-caches 999G")
+            runCatchingLogged(TAG, "Could not clear the app cache") {
+                context.cacheDir.listFiles()?.forEach { it.deleteRecursively() }
+            }
+            if (shizukuUsable(context,
+                ShizukuMethodCheck.Method.TrimCache)) ShizukuManager.runShellForOutput("pm trim-caches 999G")
             main.post { toast(context, R.string.utility_cache_cleared) }
         }
         UtilityBridge.collapse?.invoke()
@@ -418,7 +415,6 @@ object UtilityActions {
             shell("pkill -2 screenrecord")
         } else {
             recording = true
-            // The folder comes from the system, not a typed-in "/sdcard" path (which lint rejects).
             val movies = Environment.getExternalStorageDirectory().path + "/Movies"
             shell(
                 "mkdir -p $movies && nohup screenrecord --time-limit 180 " +
@@ -433,18 +429,14 @@ object UtilityActions {
         if (shizukuReady() && ShizukuMethodCheck.works(context, ShizukuMethodCheck.Method.Hotspot)) {
             scope.launch { HotspotUtil.toggleWithShizuku(context) }
         } else {
-            HotspotUtil.openHotspotSettings(context, floating = true)
+            HotspotUtil.toggleWithoutShell(context)
         }
         UtilityBridge.collapse?.invoke()
     }
 
-    /** Lengths offered by the Timer tile, in minutes. */
     val TIMER_CHOICES_MINUTES: List<Int> = listOf(1, 5, 10, 15, 30)
 
-    /**
-     * Starts the island's own countdown of [seconds]; no clock app is involved. The island closes so the cutout shows
-     * the countdown.
-     */
+    /** Starts the island's own countdown of [seconds]; no clock app is involved. */
     fun startTimer(context: Context, seconds: Int) {
         InAppTimer.start(context, seconds.coerceIn(1, 24 * 60 * 60))
         UtilityBridge.collapse?.invoke()
@@ -491,8 +483,9 @@ object UtilityActions {
 
     /** Screen brightness as 0..1 (the stored 0..255 value). */
     fun brightnessFraction(context: Context): Float {
-        val raw = runCatching { Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) }
-            .getOrDefault(BRIGHTNESS_MAX / 2)
+        val raw = quietly(BRIGHTNESS_MAX / 2) {
+            Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+        }
         return (raw.coerceIn(0, BRIGHTNESS_MAX)) / BRIGHTNESS_MAX.toFloat()
     }
 
@@ -501,12 +494,14 @@ object UtilityActions {
         val app = context.applicationContext
         if (!ensureCanWriteSettings(app)) return
         val value = (fraction.coerceIn(0f, 1f) * BRIGHTNESS_MAX).toInt().coerceIn(BRIGHTNESS_MIN, BRIGHTNESS_MAX)
-        runCatching {
+        runCatchingLogged(TAG, "Could not set the brightness") {
             val resolver = app.contentResolver
-            if (Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL) !=
+            if (Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
+                Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL) !=
                 Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
             ) {
-                Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
+                Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL)
             }
             if (Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, -1) != value) {
                 Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS, value)
@@ -514,20 +509,21 @@ object UtilityActions {
         }
     }
 
-    /** Media volume as 0..1. */
-    fun volumeFraction(context: Context): Float = runCatching {
+    /** Media volume as 0..1 */
+    fun volumeFraction(context: Context): Float = quietly(0f) {
         val am = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         am.getStreamVolume(AudioManager.STREAM_MUSIC) / max.toFloat()
-    }.getOrDefault(0f)
+    }
 
     /** Sets the media volume from a 0..1 [fraction], without the system's volume panel. */
     fun setVolume(context: Context, fraction: Float) {
-        runCatching {
+        runCatchingLogged(TAG, "Could not set the volume") {
             val am = context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val level = Math.round(fraction.coerceIn(0f, 1f) * max).coerceIn(0, max)
-            if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != level) am.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0)
+            if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != level) am.setStreamVolume(AudioManager.STREAM_MUSIC,
+                level, 0)
         }
     }
 }

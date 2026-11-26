@@ -18,16 +18,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Plays the paths that stutter the first time they run: the home screen, the Demo tab, sample cards
- * opened and cleared in portrait, then the landscape lab (rotate, expand a card with siblings, open
- * and close the picker). Run with a phone or emulator connected:
- *
- *     ./gradlew :app:generateBaselineProfile
- *
- * The phone must be unlocked and the screen on. The test grants the overlay, accessibility and
- * notification-listener access itself (adb shell commands), so the island shows during the run.
- */
+/** Generates a baseline profile for the main screen, demo flows and landscape lab. */
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
 
@@ -40,13 +31,19 @@ class BaselineProfileGenerator {
     @Test
     fun generate() = rule.collect(
         packageName = PACKAGE,
+        // Two passes at most, one unchanged pass is enough. On the 2-core CI emulator the first pass
+        // takes 13 to 20 minutes and each later one about 7. Runs with 6 and with 10 passes both
+        // hit the step limit (the 10 pass run lost its runner after 54 minutes), and the boot and
+        // build before the test already use 11 to 16 minutes of the step.
+        maxIterations = 2,
+        stableIterations = 1,
         includeInStartupProfile = true
     ) {
         grantAccess()
         pressHome()
         startActivityAndWait()
 
-        // Portrait: sample cards opened and cleared.
+        // portrait: sample cards opened and cleared
         openTab("Demo")
         repeat(4) { showNextSample() }
         device.waitForIdle()
@@ -54,7 +51,7 @@ class BaselineProfileGenerator {
         device.findObject(By.textStartsWith("Clear all demo cards"))?.click()
         device.waitForIdle()
 
-        // Landscape: the lab plays rotation, idle and pill layouts, with the sibling picker.
+        // landscape: the lab plays rotation, idle and pill layouts, with the sibling picker
         try {
             device.setOrientationLandscape()
             device.waitForIdle()
@@ -66,7 +63,7 @@ class BaselineProfileGenerator {
             device.waitForIdle()
         }
 
-        // Settings screens are the other first-open cost on the app side.
+        // Settings screens are the other first-open cost on the app side
         openTab("Settings")
         device.waitForIdle()
     }
@@ -76,7 +73,7 @@ class BaselineProfileGenerator {
         device.waitForIdle()
     }
 
-    /** Taps the first "Show" button on the Demo tab, scrolling down one screen for the next one. */
+    /** Taps the first "Show" button on the Demo tab, scrolling down one screen for the next one */
     private fun showNextSample() {
         val show = device.findObject(By.text("Show"))
         if (show != null) {

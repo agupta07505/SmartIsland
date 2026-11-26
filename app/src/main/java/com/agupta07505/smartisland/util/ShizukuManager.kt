@@ -7,36 +7,72 @@
 
 package com.agupta07505.smartisland.util
 
+import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
-import com.agupta07505.smartisland.service.SmartIslandNotificationListenerService
-import com.agupta07505.smartisland.service.SmartIslandOverlayService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.thread
+
+private const val TAG = "ShizukuManager"
 
 object ShizukuManager {
 
     private val KNOWN_PACKAGES = listOf("moe.shizuku.privileged.api")
 
-    /** The package that declares Shizuku's API permission, or null. Any app declaring it counts (official app, fork or renamed build). */
-    fun findPackageName(context: Context): String? = runCatching {
-        context.packageManager.getPermissionInfo(ShizukuProvider.PERMISSION, 0).packageName
-    }.getOrNull()
+    private val newProcessMethod by lazy {
+        Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java
+        ).apply { isAccessible = true }
+    }
+
+    private fun startShellProcess(command: String): Process =
+        newProcessMethod.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
+
+    private data class ProcessOutput(
+        val stdout: String,
+        val stderr: String,
+        val exitCode: Int
+    )
+
+    private fun Process.captureOutput(): ProcessOutput {
+        val stdout = CompletableFuture.supplyAsync {
+            inputStream.bufferedReader().use { it.readText() }
+        }
+        val stderr = CompletableFuture.supplyAsync {
+            errorStream.bufferedReader().use { it.readText() }
+        }
+        val exitCode = waitFor()
+        return ProcessOutput(stdout.get(), stderr.get(), exitCode)
+    }
+
+    private fun Process.drainErrorStream() {
+        thread(name = "Shizuku-stderr", isDaemon = true) {
+            errorStream.use { stream ->
+                val buffer = ByteArray(4 * 1024)
+                while (stream.read(buffer) >= 0) Unit
+            }
+        }
+    }
 
     /**
-     * Checks if Shizuku is installed. Tried in order, the first hit wins:
-     * 1. the app that declares Shizuku's API permission (any fork or renamed build);
-     * 2. a known package name (the official app);
-     * 3. a live Shizuku service, which can only exist if something provides it (this also covers Sui and phones where package
-     *    visibility hides the app from this one).
-     * Crash proof against Throwable (including unit test stubs).
+     * Package that declares Shizuku's API permission, or null. Any app declaring it counts (official app, fork or
+     * renamed build)
      */
+    fun findPackageName(context: Context): String? = quietly {
+        context.packageManager.getPermissionInfo(ShizukuProvider.PERMISSION, 0).packageName
+    }
+
     fun isInstalled(context: Context): Boolean {
         if (findPackageName(context) != null) return true
         val byName = KNOWN_PACKAGES.any { name ->
@@ -73,7 +109,7 @@ object ShizukuManager {
         try {
             Shizuku.requestPermission(requestCode)
         } catch (t: Throwable) {
-            android.util.Log.e("ShizukuManager", "Failed to request Shizuku permission", t)
+            AppLogRecorder.e(TAG, "Shizuku permission request failed", t)
         }
     }
 
@@ -83,94 +119,87 @@ object ShizukuManager {
         }
         return runCatching {
             val fullScript = commands.joinToString("; ")
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
+            val process = startShellProcess(fullScript)
+            val result = process.captureOutput()
 
-            val process = newProcessMethod.invoke(null, arrayOf("sh", "-c", fullScript), null, null) as Process
-
-            val output = BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
-            val error = BufferedReader(InputStreamReader(process.errorStream)).use { it.readText() }
-            val exitCode = process.waitFor()
-
-            if (exitCode == 0 || output.isNotBlank() || error.isBlank()) {
+            if (result.exitCode == 0) {
                 "Permissions auto-granted successfully via Shizuku."
             } else {
-                throw RuntimeException("Shizuku command error (exit $exitCode): $error $output")
+                throw RuntimeException(
+                    "Shizuku command failed (exit ${result.exitCode}): ${result.stderr} ${result.stdout}".trim()
+                )
             }
         }
     }
 
     /**
-     * Runs one shell command through Shizuku and returns its stdout. For read-only dumps such as `dumpsys`; fails
-     * when Shizuku is not running or not permitted.
+     * Runs one shell command through Shizuku and returns its stdout. For read-only dumps such as `dumpsys`, fails when
+     * Shizuku is not running or not permitted
      */
     suspend fun runShellForOutput(command: String): Result<String> = withContext(Dispatchers.IO) {
         if (!hasPermission()) {
             return@withContext Result.failure(IllegalStateException("Shizuku permission not granted or service binder offline."))
         }
         runCatching {
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-            val process = newProcessMethod.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
-            val output = BufferedReader(InputStreamReader(process.inputStream)).use { it.readText() }
-            process.waitFor()
-            output
+            val result = startShellProcess(command).captureOutput()
+            if (result.exitCode != 0) {
+                throw RuntimeException(
+                    "Shizuku command failed (exit ${result.exitCode}): ${result.stderr}".trim()
+                )
+            }
+            result.stdout
         }
     }
 
     /**
-     * Starts one shell command through Shizuku and returns the running process, so its output can be read line by
-     * line while it keeps running (a `logcat` follow).
+     * Starts one shell command through Shizuku and returns the running process, so output can be read line by line
+     * while it runs (a `logcat` follow)
      */
     fun openShellStream(command: String): Process? {
         if (!hasPermission()) return null
-        return runCatching {
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-            newProcessMethod.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
-        }.getOrNull()
+        return quietly {
+            startShellProcess(command).also { it.drainErrorStream() }
+        }
     }
 
     /**
-     * Runs one shell command through Shizuku and returns its raw stdout bytes (at most [maxBytes], else null).
-     * Blocking. Used to read a picture file the app itself may not open.
+     * Blocking. Runs 1 shell command through Shizuku and returns its raw stdout bytes (at most [maxBytes], else
+     * null). Reads a picture file the app itself may not open
      */
     fun runShellForBytes(command: String, maxBytes: Int): ByteArray? {
         if (!hasPermission()) return null
-        return runCatching {
-            val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java
-            ).apply { isAccessible = true }
-            val process = newProcessMethod.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
-            val out = java.io.ByteArrayOutputStream()
+        return quietly {
+            require(maxBytes >= 0) { "maxBytes must not be negative" }
+            val process = startShellProcess(command)
+            val stderrDrain = CompletableFuture.runAsync {
+                process.errorStream.use { it.copyTo(ByteArrayOutputStream()) }
+            }
+            val out = ByteArrayOutputStream()
             var tooBig = false
             process.inputStream.use { input ->
                 val buffer = ByteArray(16 * 1024)
                 while (true) {
                     val read = input.read(buffer)
                     if (read < 0) break
+                    if (out.size().toLong() + read > maxBytes.toLong()) {
+                        tooBig = true
+                        break
+                    }
                     out.write(buffer, 0, read)
-                    if (out.size() > maxBytes) { tooBig = true; break }
                 }
             }
-            if (tooBig) process.destroy() else process.waitFor()
+            if (tooBig) {
+                process.destroy()
+                process.inputStream.close()
+                process.waitFor()
+                stderrDrain.get()
+            } else {
+                val exitCode = process.waitFor()
+                stderrDrain.get()
+                if (exitCode != 0) throw RuntimeException("Shizuku command failed (exit $exitCode).")
+            }
             if (tooBig) null else out.toByteArray()
-        }.getOrNull()
+        }
     }
 
     internal fun mergeColonSeparated(currentList: String, newEntry: String): String {
@@ -182,40 +211,39 @@ object ShizukuManager {
     }
 
     internal fun getMergedAccessibilityServices(context: Context, serviceComponent: String): String {
-        val current = runCatching {
+        val current = quietly {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        }.getOrNull().orEmpty()
+        }.orEmpty()
         return mergeColonSeparated(current, serviceComponent)
     }
 
     internal fun getMergedNotificationListeners(context: Context, listenerComponent: String): String {
-        val current = runCatching {
+        val current = quietly {
             Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-        }.getOrNull().orEmpty()
+        }.orEmpty()
         return mergeColonSeparated(current, listenerComponent)
     }
 
-    /** How much the 1-tap setup grants: only what the island needs to work, or that plus every optional permission. */
+    /** How much the 1-tap setup grants: only what the island needs, or that plus every optional permission. */
     enum class SetupScope { Necessary, All }
 
     private const val SETUP_PREFS = "shizuku_setup"
     private const val SETUP_SCOPE_KEY = "scope"
 
-    fun savedScope(context: Context): SetupScope? = runCatching {
+    fun savedScope(context: Context): SetupScope? = quietly {
         val name = context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE).getString(SETUP_SCOPE_KEY, null)
         SetupScope.entries.firstOrNull { it.name == name }
-    }.getOrNull()
+    }
 
     private fun saveScope(context: Context, scope: SetupScope) {
-        runCatching {
-            context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE).edit().putString(SETUP_SCOPE_KEY, scope.name).apply()
+        try {
+            context.getSharedPreferences(SETUP_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(SETUP_SCOPE_KEY, scope.name).apply()
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "Could not save the setup scope", e)
         }
     }
 
-    /**
-     * The shell commands of one setup. Necessary: everything the island needs to work, and the steps that take many
-     * screens by hand.
-     */
     internal fun setupCommands(
         scope: SetupScope,
         pkg: String,
@@ -225,10 +253,10 @@ object ShizukuManager {
         mergedNotificationListeners: String
     ): List<String> {
         val necessary = listOf(
-            // Accessibility and notification access cannot be switched on while this is still restricted.
+            // Accessibility and notification access cannot be switched on while this is still restricted
             "appops set $pkg ACCESS_RESTRICTED_SETTINGS allow",
             "appops set $pkg SYSTEM_ALERT_WINDOW allow",
-            // Modify system settings (the brightness slider on the Utilities page).
+            // Modify system settings (the brightness slider on the Utilities page)
             "appops set $pkg WRITE_SETTINGS allow",
             "appops set $pkg BIND_ACCESSIBILITY_SERVICE allow",
             "appops set $pkg POST_NOTIFICATION allow",
@@ -245,14 +273,7 @@ object ShizukuManager {
         return if (scope == SetupScope.All) necessary + optionalCommands(pkg) else necessary
     }
 
-    /**
-     * Permissions only some features use, granted by the "all permissions" setup and never by the necessary one:
-     * - Usage access (recent apps in the App Shortcuts)
-     * - Do Not Disturb access (the silent ringer, the mode idle widget)
-     * - Location, fine and coarse (the weather widget, the Wi-Fi network name)
-     * A ROM that lacks one of them just prints an error; the commands are joined with ";" so the rest still run.
-     * The VPN consent is a system dialog that cannot be granted from here.
-     */
+    /** Permissions for optional features, separate from the required setup. */
     internal fun optionalCommands(pkg: String): List<String> = listOf(
         "appops set $pkg GET_USAGE_STATS allow",
         "cmd notification allow_dnd $pkg",
@@ -262,32 +283,47 @@ object ShizukuManager {
 
     /**
      * Repairs a stale or crashed AccessibilityService binding by switching Accessibility off and on, keeping every
-     * other enabled service.
+     * other enabled service
      */
     suspend fun repairAccessibility(context: Context): Result<String> =
         withContext(Dispatchers.IO) {
             val pkg = context.packageName
             val accessibilityClass =
-                "$pkg/${SmartIslandOverlayService::class.java.name}"
+                "$pkg/${AppComponents.OVERLAY_SERVICE}"
 
             val shortAccessibilityClass =
-                ComponentName(
-                    context,
-                    SmartIslandOverlayService::class.java
-                ).flattenToShortString()
+                ComponentName(context.packageName, AppComponents.OVERLAY_SERVICE).flattenToShortString()
 
             val commands = listOf(
                 "current=\$(settings get secure enabled_accessibility_services)",
 
                 "settings put secure accessibility_enabled 0",
 
-                // Remove Smart Island in either representation, keeping every other enabled service.
-                "new=''; IFS=':'; for s in \$current; do if [ -n \"\$s\" ] && [ \"\$s\" != \"$accessibilityClass\" ] && [ \"\$s\" != \"$shortAccessibilityClass\" ]; then if [ -n \"\$new\" ]; then new=\"\$new:\$s\"; else new=\"\$s\"; fi; fi; done; if [ -n \"\$new\" ] && [ \"\$new\" != \"null\" ]; then settings put secure enabled_accessibility_services \"\$new\"; else settings delete secure enabled_accessibility_services; fi",
+                // remove Smart Island in either representation, keeping every other enabled service
+                "new=''; " +
+                    "IFS=':'; " +
+                    "for s in \$current; " +
+                    "do if [ -n \"\$s\" ] && [ \"\$s\" != \"$accessibilityClass\" ] && [ \"\$s\" != \"$shortAccessibilityClass\" ]; " +
+                    "then if [ -n \"\$new\" ]; " +
+                    "then new=\"\$new:\$s\"; " +
+                    "else new=\"\$s\"; " +
+                    "fi; " +
+                    "fi; " +
+                    "done; " +
+                    "if [ -n \"\$new\" ] && [ \"\$new\" != \"null\" ]; " +
+                    "then settings put secure enabled_accessibility_services \"\$new\"; " +
+                    "else settings delete secure enabled_accessibility_services; " +
+                    "fi",
 
-                // Give Android/HyperOS time to process the disable.
+                // Give Android/HyperOS time to process the disable
                 "sleep 2",
 
-                "current=\$(settings get secure enabled_accessibility_services); if [ -n \"\$current\" ] && [ \"\$current\" != \"null\" ]; then current=\"\$current:$shortAccessibilityClass\"; else current=\"$shortAccessibilityClass\"; fi; settings put secure enabled_accessibility_services \"\$current\"",
+                "current=\$(settings get secure enabled_accessibility_services); " +
+                    "if [ -n \"\$current\" ] && [ \"\$current\" != \"null\" ]; " +
+                    "then current=\"\$current:$shortAccessibilityClass\"; " +
+                    "else current=\"$shortAccessibilityClass\"; " +
+                    "fi; " +
+                    "settings put secure enabled_accessibility_services \"\$current\"",
 
                 "settings put secure accessibility_enabled 1"
             )
@@ -299,13 +335,14 @@ object ShizukuManager {
 
     suspend fun autoGrantAllPermissions(context: Context): Result<String> = grant(context, SetupScope.All)
 
-    /** Applies again the scope the user chose last (the necessary one when none was chosen yet). */
-    suspend fun reapplySavedSetup(context: Context): Result<String> = grant(context, savedScope(context) ?: SetupScope.Necessary)
+    /** Applies the scope the user chose last again (the necessary one when none yet). */
+    suspend fun reapplySavedSetup(context: Context): Result<String> =
+            grant(context, savedScope(context) ?: SetupScope.Necessary)
 
     private suspend fun grant(context: Context, scope: SetupScope): Result<String> = withContext(Dispatchers.IO) {
         val pkg = context.packageName
-        val accessibilityClass = "$pkg/${SmartIslandOverlayService::class.java.name}"
-        val notificationClass = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
+        val accessibilityClass = "$pkg/${AppComponents.OVERLAY_SERVICE}"
+        val notificationClass = "$pkg/${AppComponents.LISTENER_SERVICE}"
         val commands = setupCommands(
             scope = scope,
             pkg = pkg,
@@ -319,57 +356,49 @@ object ShizukuManager {
 
     /**
      * Runtime permissions of the necessary setup: nearby devices (Bluetooth connect, for the Bluetooth cards) and
-     * notifications.
+     * notifications
      */
     internal fun runtimePermissionCommands(pkg: String): List<String> = listOf(
         "pm grant $pkg android.permission.BLUETOOTH_CONNECT",
         "pm grant $pkg android.permission.POST_NOTIFICATIONS"
     )
 
-    /** Permissions the necessary setup never grants; only the "all permissions" setup does (see [optionalCommands]). */
+    /** Permissions the necessary setup never grants, only the "all permissions" setup does (see [optionalCommands]). */
     internal val OPTIONAL_PERMISSIONS = setOf(
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION"
     )
 
-    /**
-     * Shell commands that let this app read notifications Android marked as sensitive. Without them the system hands
-     * the listener "Sensitive notification content hidden" instead of the title and text.
-     */
     internal fun sensitiveNotificationCommands(pkg: String): List<String> = listOf(
         "pm grant $pkg android.permission.RECEIVE_SENSITIVE_NOTIFICATIONS",
         "appops set $pkg RECEIVE_SENSITIVE_NOTIFICATIONS allow"
     )
 
     /**
-     * True when this app may read notifications Android marked as sensitive: either the permission or the app op of
-     * the same name is granted (the two commands of [sensitiveNotificationCommands] set one each; a ROM may honour
-     * only one of them).
+     * True when this app may read notifications Android marked as sensitive: the permission or the app op of the same
+     * name is granted ([sensitiveNotificationCommands] sets one each, a ROM may honour only one)
      */
     fun isSensitiveNotificationAccessAllowed(context: Context): Boolean {
         val byPermission = context.checkSelfPermission("android.permission.RECEIVE_SENSITIVE_NOTIFICATIONS") ==
             PackageManager.PERMISSION_GRANTED
         if (byPermission) return true
-        // The string form of the check needs Android 10; an unknown operation name throws, which is simply "not allowed" here.
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return false
-        return runCatching {
-            val ops = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+        // The string form of the check needs Android 10, an unknown operation name throws, which here just means "not
+        // allowed"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return quietly(false) {
+            val ops = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
             ops.unsafeCheckOpNoThrow(
                 "android:receive_sensitive_notifications",
                 android.os.Process.myUid(),
                 context.packageName
-            ) == android.app.AppOpsManager.MODE_ALLOWED
-        }.getOrDefault(false)
-    }
-
-    suspend fun grantSensitiveNotificationAccess(context: Context): Result<String> = withContext(Dispatchers.IO) {
-        runShizukuCommands(sensitiveNotificationCommands(context.packageName))
+            ) == AppOpsManager.MODE_ALLOWED
+        }
     }
 
     /**
-     * Shell script that force-stops this app and starts it again. It runs inside Shizuku's shell, not in this
-     * process, so it keeps going after the force-stop kills the app.
+     * Shell script that force-stops this app and starts it again. It runs inside Shizuku's shell, not this process, so
+     * it keeps going after the force-stop kills the app
      */
     internal fun restartCommands(
         pkg: String,
@@ -391,8 +420,8 @@ object ShizukuManager {
     }
 
     /**
-     * Grants the sensitive-notification access, then force-stops and relaunches the app so the notification listener
-     * picks the new access up without the user restarting anything by hand.
+     * Grants the sensitive-notification access, then force-stops and relaunches so the listener picks it up without the
+     * user restarting by hand
      */
     suspend fun grantSensitiveNotificationAccessAndRestart(
         context: Context,
@@ -402,17 +431,17 @@ object ShizukuManager {
         val granted = runShizukuCommands(sensitiveNotificationCommands(pkg))
         if (granted.isFailure) return@withContext granted
 
-        val accessibilityComponent = "$pkg/${SmartIslandOverlayService::class.java.name}"
-        val notificationComponent = "$pkg/${SmartIslandNotificationListenerService::class.java.name}"
-        val enabledAccessibility = runCatching {
+        val accessibilityComponent = "$pkg/${AppComponents.OVERLAY_SERVICE}"
+        val notificationComponent = "$pkg/${AppComponents.LISTENER_SERVICE}"
+        val enabledAccessibility = quietly {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        }.getOrNull().orEmpty()
-        val enabledListeners = runCatching {
+        }.orEmpty()
+        val enabledListeners = quietly {
             Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
-        }.getOrNull().orEmpty()
+        }.orEmpty()
         val script = restartCommands(
             pkg = pkg,
-            launcherActivity = com.agupta07505.smartisland.MainActivity::class.java.name,
+            launcherActivity = AppComponents.MAIN_ACTIVITY,
             accessibilityComponent = accessibilityComponent,
             notificationComponent = notificationComponent,
             accessibilityWasEnabled = enabledAccessibility.split(':').contains(accessibilityComponent),
@@ -423,7 +452,6 @@ object ShizukuManager {
         runShizukuCommands(script)
     }
 
-    /** Grants OEM Autostart and disables background kill and app standby restrictions. */
     suspend fun grantOemAutostartAndKillProtection(context: Context): Result<String> = withContext(Dispatchers.IO) {
         val pkg = context.packageName
         val commands = listOf(

@@ -8,8 +8,8 @@
 package com.agupta07505.smartisland.ui.expanded
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,8 +27,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.dp
 
 /**
- * The VPN card's picture: a tilted wireframe globe in the accent colour, in the same 46 dp tinted box the Bluetooth
- * card uses for its earbuds. Drawn as lines in a 20-unit-radius space.
+ * Tilted wireframe globe in the accent colour, in the same 46 dp box the Bluetooth card uses for earbuds
+ * Lines in a 20-unit-radius space
  */
 @Composable
 internal fun VpnGlobeBox(accent: Color, modifier: Modifier = Modifier, slashed: Boolean = false) {
@@ -60,7 +60,7 @@ internal fun VpnGlobeBox(accent: Color, modifier: Modifier = Modifier, slashed: 
                     lineTo(c.x, c.y + GLOBE_RADIUS * unit)
                 }
                 drawPath(axis, accent, style = stroke)
-                // Latitudes: half-width, height above (-) or below (+) the middle; each bows downwards by 8 units at its control point.
+                // Half-width and height above (-) or below (+) the middle, each bows down 8 units at its control point
                 for ((halfWidth, y) in LATITUDES) {
                     val lat = Path().apply {
                         moveTo(c.x - halfWidth * unit, c.y + y * unit)
@@ -69,7 +69,7 @@ internal fun VpnGlobeBox(accent: Color, modifier: Modifier = Modifier, slashed: 
                     drawPath(lat, accent, style = stroke)
                 }
             }
-            // Disconnected: a slash from the top left to the bottom right, with a thin dark gap either side so it reads over the lines.
+            // Slash with a thin dark gap either side so it reads over the lines
             if (slashed) {
                 val from = Offset(c.x - 0.78f * GLOBE_RADIUS * unit, c.y - 0.78f * GLOBE_RADIUS * unit)
                 val to = Offset(c.x + 0.78f * GLOBE_RADIUS * unit, c.y + 0.78f * GLOBE_RADIUS * unit)

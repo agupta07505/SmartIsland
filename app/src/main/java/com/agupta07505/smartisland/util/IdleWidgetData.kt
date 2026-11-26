@@ -20,11 +20,13 @@ import android.location.LocationManager
 import android.net.TrafficStats
 import android.os.BatteryManager
 import android.os.Build
+import android.os.PowerManager
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -33,30 +35,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.agupta07505.smartisland.model.CityResult
+import com.agupta07505.smartisland.model.DailyUsage
 import com.agupta07505.smartisland.model.IdleWidgetKind
 import com.agupta07505.smartisland.model.ModeStatus
+import com.agupta07505.smartisland.model.NetConnection
+import com.agupta07505.smartisland.model.NetUsage
 import com.agupta07505.smartisland.model.NotificationCounts
 import com.agupta07505.smartisland.model.NotificationSummary
-import com.agupta07505.smartisland.model.CityResult
 import com.agupta07505.smartisland.model.WeatherConfig
-import com.agupta07505.smartisland.model.WeatherPrefs
-import com.agupta07505.smartisland.model.WeatherRefresh
 import com.agupta07505.smartisland.model.WeatherDisplay
 import com.agupta07505.smartisland.model.WeatherExtras
 import com.agupta07505.smartisland.model.WeatherParser
+import com.agupta07505.smartisland.model.WeatherPrefs
 import com.agupta07505.smartisland.model.WeatherReadouts
+import com.agupta07505.smartisland.model.WeatherRefresh
 import com.agupta07505.smartisland.model.WeatherSnapshot
-import java.net.HttpURLConnection
-import java.net.URL
-import java.util.Locale
+import com.agupta07505.smartisland.model.WidgetIslandContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Calendar
+import java.util.Locale
 
-/** The live values the idle widgets show, as Compose state. Filled by [rememberIdleWidgetData]. */
 class IdleWidgetData internal constructor() {
     /** Wall clock, refreshed every minute (and when the time or zone changes). */
     var nowMs by mutableLongStateOf(System.currentTimeMillis())
@@ -68,7 +74,7 @@ class IdleWidgetData internal constructor() {
     var charging by mutableStateOf(false)
         internal set
 
-    /** Battery voltage in mV, 0 = unknown. For the widget island. */
+    /** Battery voltage in mV, 0 = unknown. */
     var batteryVoltageMv by mutableIntStateOf(0)
         internal set
 
@@ -80,11 +86,10 @@ class IdleWidgetData internal constructor() {
     var chargeTimeRemainingMs by mutableLongStateOf(-1L)
         internal set
 
-    /** The battery's current reading as the device reports it, Long.MIN_VALUE = unsupported. */
     var batteryCurrentRaw by mutableLongStateOf(Long.MIN_VALUE)
         internal set
 
-    /** When the battery is expected to run out (epoch ms) while it is not charging, 0 = no forecast. */
+    /** When the battery is expected to run out (epoch ms) while it is not charging. */
     var batteryEmptyAtMs by mutableLongStateOf(0L)
         internal set
 
@@ -98,13 +103,13 @@ class IdleWidgetData internal constructor() {
     var speedIsUpload by mutableStateOf(false)
         internal set
 
-    /** What the device is connected to (read with the speed), and today's traffic counted per connection, for the net speed island. */
-    var connection by mutableStateOf(com.agupta07505.smartisland.model.NetConnection.None)
+    /** What the device is connected to (read with the speed). */
+    var connection by mutableStateOf(NetConnection.None)
         internal set
-    var usageToday by mutableStateOf(com.agupta07505.smartisland.model.DailyUsage())
+    var usageToday by mutableStateOf(DailyUsage())
         internal set
 
-    /** The next calendar event within 24 hours, for the date widget; null without the permission or without an event. */
+    /** Next calendar event within 24 hours, for the date widget. */
     var nextEvent by mutableStateOf<com.agupta07505.smartisland.model.NextEvent?>(null)
         internal set
 
@@ -112,7 +117,7 @@ class IdleWidgetData internal constructor() {
     var dataSaver by mutableStateOf(false)
         internal set
 
-    /** The two directions on their own (bytes per second), for the widget island. */
+    /** 2 directions on their own (bytes per second), for the widget island. */
     var downBytesPerSecond by mutableLongStateOf(0L)
         internal set
     var upBytesPerSecond by mutableLongStateOf(0L)
@@ -125,7 +130,7 @@ class IdleWidgetData internal constructor() {
     var notificationSummary by mutableStateOf(NotificationSummary.Empty)
         internal set
 
-    /** The Do Not Disturb mode that is on, or [ModeStatus.Off]. */
+    /** Do Not Disturb mode that is on, or [ModeStatus.Off]. */
     var mode by mutableStateOf(ModeStatus.Off)
         internal set
 
@@ -134,29 +139,38 @@ class IdleWidgetData internal constructor() {
     }
 }
 
-/**
- * Starts what the [kinds] need and stops it again when [active] turns false (a card is on the island, the screen is
- * off, the widgets are switched off). Weather refreshes only with [allowNetwork].
- */
 @Composable
 fun rememberIdleWidgetData(
     kinds: List<IdleWidgetKind>,
     active: Boolean,
     allowNetwork: Boolean,
-    /** Where the weather's place comes from, how often it is asked and which service answers (Settings > Idle widgets > Weather). */
+    /** Where the weather's place comes from */
     weather: WeatherPrefs = WeatherPrefs()
 ): IdleWidgetData {
     val context = LocalContext.current.applicationContext
     val data = remember { IdleWidgetData() }
     val wantsBattery = active && IdleWidgetKind.Battery in kinds
     val wantsAlarm = active && IdleWidgetKind.NextAlarm in kinds
-    val wantsTime = active && (IdleWidgetKind.Clock in kinds || IdleWidgetKind.LiveClock in kinds || IdleWidgetKind.Date in kinds || wantsAlarm)
+    val wantsTime = active && (IdleWidgetKind.Clock in kinds || IdleWidgetKind.LiveClock in kinds
+        || IdleWidgetKind.Date in kinds || wantsAlarm)
     val wantsSpeed = active && IdleWidgetKind.NetSpeed in kinds
     val wantsWind = IdleWidgetKind.Wind in kinds
     val wantsWeather = active && allowNetwork && (IdleWidgetKind.Weather in kinds || wantsWind)
     val wantsNotifications = active && IdleWidgetKind.Notifications in kinds
     val wantsMode = active && IdleWidgetKind.Modes in kinds
 
+    NotificationSummaryEffect(data, wantsNotifications)
+    ModeEffects(context, data, wantsMode)
+    ClockBatteryAlarmEffect(context, data, wantsTime, wantsBattery, wantsAlarm)
+    CalendarEffect(context, data, wantsCalendar = active && IdleWidgetKind.Date in kinds)
+    NetSpeedEffect(context, data, wantsSpeed)
+    WeatherEffect(context, data, wantsWeather, wantsWind, weather)
+    return data
+}
+
+@Composable
+@NonRestartableComposable
+private fun NotificationSummaryEffect(data: IdleWidgetData, wantsNotifications: Boolean) {
     LaunchedEffect(wantsNotifications) {
         if (!wantsNotifications) {
             data.notificationSummary = NotificationSummary.Empty
@@ -164,9 +178,12 @@ fun rememberIdleWidgetData(
         }
         NotificationCountTracker.entries.collect { data.notificationSummary = NotificationCounts.summarize(it) }
     }
+}
 
-    // Do Not Disturb: the system announces filter and policy changes; a mode switching to another one keeps the
-    // filter, so a slow check backs the broadcasts up.
+@Composable
+@NonRestartableComposable
+private fun ModeEffects(context: Context, data: IdleWidgetData, wantsMode: Boolean) {
+    // Do Not Disturb: the system announces filter and policy changes
     DisposableEffect(context, wantsMode) {
         if (!wantsMode) {
             data.mode = ModeStatus.Off
@@ -183,7 +200,7 @@ fun rememberIdleWidgetData(
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         data.mode = DndModeReader.read(context)
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+        onDispose { runCatchingLogged("IdleWidgetData", "Could not unregister the mode receiver") { context.unregisterReceiver(receiver) } }
     }
     LaunchedEffect(wantsMode) {
         if (!wantsMode) return@LaunchedEffect
@@ -193,7 +210,17 @@ fun rememberIdleWidgetData(
             if (now != data.mode) data.mode = now
         }
     }
+}
 
+@Composable
+@NonRestartableComposable
+private fun ClockBatteryAlarmEffect(
+    context: Context,
+    data: IdleWidgetData,
+    wantsTime: Boolean,
+    wantsBattery: Boolean,
+    wantsAlarm: Boolean
+) {
     DisposableEffect(context, wantsTime, wantsBattery, wantsAlarm) {
         if (!wantsTime && !wantsBattery && !wantsAlarm) return@DisposableEffect onDispose { }
         val receiver = object : BroadcastReceiver() {
@@ -215,17 +242,20 @@ fun rememberIdleWidgetData(
             if (wantsBattery) addAction(Intent.ACTION_BATTERY_CHANGED)
             if (wantsAlarm) addAction(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
         }
-        // Whatever the clock showed while the widgets were off is stale.
+        // Whatever the clock showed while the widgets were off is stale
         data.nowMs = System.currentTimeMillis()
         if (wantsAlarm) data.nextAlarmMs = nextAlarmMs(context)
-        // A sticky broadcast (the battery one) answers the registration itself, so the level is right at once.
+        // a sticky broadcast (the battery one) answers the registration itself
         val sticky = ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        if (wantsBattery && sticky != null && sticky.action == Intent.ACTION_BATTERY_CHANGED) readBattery(context, data, sticky)
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+        if (wantsBattery && sticky != null && sticky.action == Intent.ACTION_BATTERY_CHANGED) readBattery(context, data,
+            sticky)
+        onDispose { runCatchingLogged("IdleWidgetData", "Could not unregister the battery receiver") { context.unregisterReceiver(receiver) } }
     }
+}
 
-    // The calendar is read once a minute (and the permission checked each time, so allowing it takes effect within a minute).
-    val wantsCalendar = active && IdleWidgetKind.Date in kinds
+@Composable
+@NonRestartableComposable
+private fun CalendarEffect(context: Context, data: IdleWidgetData, wantsCalendar: Boolean) {
     LaunchedEffect(wantsCalendar) {
         if (!wantsCalendar) {
             data.nextEvent = null
@@ -237,120 +267,145 @@ fun rememberIdleWidgetData(
             delay(CALENDAR_POLL_MS)
         }
     }
+}
 
+@Composable
+@NonRestartableComposable
+private fun NetSpeedEffect(context: Context, data: IdleWidgetData, wantsSpeed: Boolean) {
     LaunchedEffect(wantsSpeed) {
         if (!wantsSpeed) {
             data.speedBytesPerSecond = 0L
             data.downBytesPerSecond = 0L
             data.upBytesPerSecond = 0L
-            data.connection = com.agupta07505.smartisland.model.NetConnection.None
+            data.connection = NetConnection.None
             data.dataSaver = false
             return@LaunchedEffect
         }
-        val store = NetUsageStore(context)
-        fun todayKey(): Int = java.util.Calendar.getInstance().let {
-            com.agupta07505.smartisland.model.NetUsage.dayKey(it.get(java.util.Calendar.YEAR), it.get(java.util.Calendar.MONTH), it.get(java.util.Calendar.DAY_OF_MONTH))
-        }
-        fun mobileTotal(): Long {
-            val r = TrafficStats.getMobileRxBytes()
-            val t = TrafficStats.getMobileTxBytes()
-            return if (r == TrafficStats.UNSUPPORTED.toLong() || t == TrafficStats.UNSUPPORTED.toLong()) -1L else r + t
-        }
-        var usage = com.agupta07505.smartisland.model.NetUsage.rolled(store.load(), todayKey())
-        data.usageToday = usage
-        data.connection = NetConnectionReader.read(context)
-        data.dataSaver = DataSaverReader.isOn(context)
-        var lastRx = TrafficStats.getTotalRxBytes()
-        var lastTx = TrafficStats.getTotalTxBytes()
-        var lastMobile = mobileTotal()
-        var lastAt = SystemClock.elapsedRealtime()
-        var unsaved = 0
-        try {
-            while (true) {
-                delay(SPEED_SAMPLE_MS)
-                val rx = TrafficStats.getTotalRxBytes()
-                val tx = TrafficStats.getTotalTxBytes()
-                val mobile = mobileTotal()
-                val at = SystemClock.elapsedRealtime()
-                val seconds = (at - lastAt).coerceAtLeast(1L) / 1000.0
-                val connection = NetConnectionReader.read(context)
-                if (connection != data.connection) data.connection = connection
-                val saver = DataSaverReader.isOn(context)
-                if (saver != data.dataSaver) data.dataSaver = saver
-                if (rx == TrafficStats.UNSUPPORTED.toLong() || tx == TrafficStats.UNSUPPORTED.toLong()) {
-                    data.speedBytesPerSecond = 0L
-                    data.downBytesPerSecond = 0L
-                    data.upBytesPerSecond = 0L
-                } else {
-                    val down = ((rx - lastRx).coerceAtLeast(0L) / seconds).toLong()
-                    val up = ((tx - lastTx).coerceAtLeast(0L) / seconds).toLong()
-                    data.speedIsUpload = up > down
-                    data.downBytesPerSecond = down
-                    data.upBytesPerSecond = up
-                    data.speedBytesPerSecond = maxOf(down, up)
-                    // The daily counter: what the device moved since the last sample, split between mobile data and the rest (Wi-Fi).
-                    val total = (rx - lastRx).coerceAtLeast(0L) + (tx - lastTx).coerceAtLeast(0L)
-                    val mobileDelta = if (mobile >= 0L && lastMobile >= 0L) mobile - lastMobile else 0L
-                    val (wifiDelta, mobileShare) = com.agupta07505.smartisland.model.NetUsage.split(total, mobileDelta)
-                    val next = com.agupta07505.smartisland.model.NetUsage.add(usage, todayKey(), wifiDelta, mobileShare)
-                    if (next != usage) {
-                        usage = next
-                        data.usageToday = usage
-                        unsaved++
-                    }
-                    // Written every half minute (and when this stops), so a restart loses at most that.
-                    if (unsaved >= USAGE_SAVE_EVERY) {
-                        store.save(usage)
-                        unsaved = 0
-                    }
-                }
-                lastRx = rx
-                lastTx = tx
-                lastMobile = mobile
-                lastAt = at
-            }
-        } finally {
-            if (unsaved > 0) store.save(usage)
-        }
+        sampleNetSpeed(context, data)
     }
+}
 
-    // A refresh asked for in Settings bumps this, which restarts the loop below so the new reading shows at once.
+private fun todayDayKey(): Int = Calendar.getInstance().let {
+    NetUsage.dayKey(it.get(Calendar.YEAR), it.get(Calendar.MONTH), it.get(Calendar.DAY_OF_MONTH))
+}
+
+private fun mobileTrafficTotal(): Long {
+    val r = TrafficStats.getMobileRxBytes()
+    val t = TrafficStats.getMobileTxBytes()
+    return if (r == TrafficStats.UNSUPPORTED.toLong() || t == TrafficStats.UNSUPPORTED.toLong()) -1L else r + t
+}
+
+/** Samples traffic every [SPEED_SAMPLE_MS] until cancelled, the daily counter is saved when this stops. */
+private suspend fun sampleNetSpeed(context: Context, data: IdleWidgetData) {
+    val store = NetUsageStore(context)
+    var usage = NetUsage.rolled(store.load(), todayDayKey())
+    data.usageToday = usage
+    data.connection = NetConnectionReader.read(context)
+    data.dataSaver = DataSaverReader.isOn(context)
+    var lastRx = TrafficStats.getTotalRxBytes()
+    var lastTx = TrafficStats.getTotalTxBytes()
+    var lastMobile = mobileTrafficTotal()
+    var lastAt = SystemClock.elapsedRealtime()
+    var unsaved = 0
+    try {
+        while (true) {
+            delay(SPEED_SAMPLE_MS)
+            val rx = TrafficStats.getTotalRxBytes()
+            val tx = TrafficStats.getTotalTxBytes()
+            val mobile = mobileTrafficTotal()
+            val at = SystemClock.elapsedRealtime()
+            val seconds = (at - lastAt).coerceAtLeast(1L) / 1000.0
+            val connection = NetConnectionReader.read(context)
+            if (connection != data.connection) data.connection = connection
+            val saver = DataSaverReader.isOn(context)
+            if (saver != data.dataSaver) data.dataSaver = saver
+            if (rx == TrafficStats.UNSUPPORTED.toLong() || tx == TrafficStats.UNSUPPORTED.toLong()) {
+                data.speedBytesPerSecond = 0L
+                data.downBytesPerSecond = 0L
+                data.upBytesPerSecond = 0L
+            } else {
+                val down = ((rx - lastRx).coerceAtLeast(0L) / seconds).toLong()
+                val up = ((tx - lastTx).coerceAtLeast(0L) / seconds).toLong()
+                data.speedIsUpload = up > down
+                data.downBytesPerSecond = down
+                data.upBytesPerSecond = up
+                data.speedBytesPerSecond = maxOf(down, up)
+                val total = (rx - lastRx).coerceAtLeast(0L) + (tx - lastTx).coerceAtLeast(0L)
+                val mobileDelta = if (mobile >= 0L && lastMobile >= 0L) mobile - lastMobile else 0L
+                val (wifiDelta, mobileShare) = NetUsage.split(total, mobileDelta)
+                val next = NetUsage.add(usage, todayDayKey(), wifiDelta, mobileShare)
+                if (next != usage) {
+                    usage = next
+                    data.usageToday = usage
+                    unsaved++
+                }
+                // Written every half minute (and when this stops)
+                if (unsaved >= USAGE_SAVE_EVERY) {
+                    store.save(usage)
+                    unsaved = 0
+                }
+            }
+            lastRx = rx
+            lastTx = tx
+            lastMobile = mobile
+            lastAt = at
+        }
+    } finally {
+        if (unsaved > 0) store.save(usage)
+    }
+}
+
+@Composable
+@NonRestartableComposable
+private fun WeatherEffect(
+    context: Context,
+    data: IdleWidgetData,
+    wantsWeather: Boolean,
+    wantsWind: Boolean,
+    weather: WeatherPrefs
+) {
     val refreshNonce by IdleWeather.refreshNonce.collectAsState()
     LaunchedEffect(wantsWeather, wantsWind, weather, refreshNonce) {
         if (!wantsWeather) return@LaunchedEffect
-        // A reading fetched for another city or provider is not shown; the stored one only counts while it matches the choices.
-        data.weather = IdleWeather.cachedFor(context, weather)
-        while (true) {
-            val latest = IdleWeather.cachedFor(context, weather)
-            if (latest != null && latest.fetchedAtMs > (data.weather?.fetchedAtMs ?: 0L)) data.weather = latest
-            val age = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
-            // A stored reading can lack what the choices need now (the wind, feels like, an island row): it is asked again once, not more
-            // than every retry period, and never in Manual (shouldFetch decides).
-            val shown = data.weather
-            val missingData = (wantsWind && (shown?.windKmh ?: -1f) < 0f) ||
-                (shown != null && WeatherDisplay.missingData(weather.pillMode, weather.effectiveReadouts(), shown))
-            if (WeatherRefresh.shouldFetch(weather.refreshMs, shown != null, age, missingData)) {
-                val fresh = IdleWeather.fetch(context, weather)
-                if (fresh != null) data.weather = fresh
-            }
-            val shownAge = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
-            // A failed lookup is retried in a few minutes; a good one waits for the next refresh (Manual just looks
-            // at the stored reading now and then).
-            delay(WeatherRefresh.waitMs(weather.refreshMs, data.weather != null, shownAge))
-        }
+        keepWeatherFresh(context, data, wantsWind, weather)
     }
-    return data
+}
+
+/** Shows the cached reading, refetches when due or when it lacks what the choices need. Runs until cancelled. */
+private suspend fun keepWeatherFresh(
+    context: Context,
+    data: IdleWidgetData,
+    wantsWind: Boolean,
+    weather: WeatherPrefs
+) {
+    // a reading fetched for another city or provider is not shown
+    data.weather = IdleWeather.cachedFor(context, weather)
+    while (true) {
+        val latest = IdleWeather.cachedFor(context, weather)
+        if (latest != null && latest.fetchedAtMs > (data.weather?.fetchedAtMs ?: 0L)) data.weather = latest
+        val age = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
+        // a stored reading can lack what the choices need now
+        val shown = data.weather
+        val missingData = (wantsWind && (shown?.windKmh ?: -1f) < 0f) ||
+            (shown != null && WeatherDisplay.missingData(weather.pillMode, weather.effectiveReadouts(), shown))
+        if (WeatherRefresh.shouldFetch(weather.refreshMs, shown != null, age, missingData)) {
+            val fresh = IdleWeather.fetch(context, weather)
+            if (fresh != null) data.weather = fresh
+        }
+        val shownAge = System.currentTimeMillis() - (data.weather?.fetchedAtMs ?: 0L)
+        // a failed lookup is retried in a few minutes
+        delay(WeatherRefresh.waitMs(weather.refreshMs, data.weather != null, shownAge))
+    }
 }
 
 private const val SPEED_SAMPLE_MS = 2000L
 
 private const val CALENDAR_POLL_MS = 60_000L
 
-
 private const val USAGE_SAVE_EVERY = 15
 private const val MODE_POLL_MS = 5000L
 
-private fun readBattery(context: Context, data: IdleWidgetData, intent: Intent) {
+internal fun readBattery(context: Context, data: IdleWidgetData, intent: Intent) {
     val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
     val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
     if (level >= 0 && scale > 0) data.batteryPercent = (level * 100 / scale).coerceIn(0, 100)
@@ -362,56 +417,43 @@ private fun readBattery(context: Context, data: IdleWidgetData, intent: Intent) 
     } else {
         IdleWidgetData.NO_TEMPERATURE
     }
-    // The current feeds the power readout (charging) and the run-out forecast (not charging).
     val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
     data.batteryCurrentRaw = if (manager == null) Long.MIN_VALUE else {
-        runCatching { manager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) }.getOrDefault(Long.MIN_VALUE)
+        manager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
     }
     if (data.charging) {
         data.chargeTimeRemainingMs = if (manager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            runCatching { manager.computeChargeTimeRemaining() }.getOrDefault(-1L)
+            manager.computeChargeTimeRemaining()
         } else {
             -1L
         }
         data.batteryEmptyAtMs = 0L
     } else {
         data.chargeTimeRemainingMs = -1L
-        // When the battery runs out: the system's own prediction (Android 13 and up) when it has one, else charge
-        // left over the present draw.
         var remainingMs = -1L
         if (Build.VERSION.SDK_INT >= 33) {
-            val power = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-            remainingMs = runCatching { power?.batteryDischargePrediction?.toMillis() ?: -1L }.getOrDefault(-1L)
+            val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            remainingMs = power?.batteryDischargePrediction?.toMillis() ?: -1L
         }
         if (remainingMs <= 0L && manager != null) {
-            val counterUah = runCatching { manager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) }.getOrDefault(0L)
-            remainingMs = com.agupta07505.smartisland.model.WidgetIslandContent.dischargeRemainingMs(counterUah, data.batteryCurrentRaw)
+            val counterUah = manager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)
+            remainingMs = WidgetIslandContent.dischargeRemainingMs(counterUah, data.batteryCurrentRaw)
         }
         data.batteryEmptyAtMs = if (remainingMs > 0L) System.currentTimeMillis() + remainingMs else 0L
     }
 }
 
 private fun nextAlarmMs(context: Context): Long =
-    runCatching { (context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager)?.nextAlarmClock?.triggerTime }
-        .getOrNull() ?: 0L
+    quietly { (context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager)?.nextAlarmClock?.triggerTime } ?: 0L
 
-/**
- * Weather for the weather widget: Open-Meteo by default (no key, no account), or a compatible service the person set
- * up.
- */
 object IdleWeather {
-    /** The refresh time of the default choice; the real period is [WeatherPrefs.refreshMs]. */
-    const val REFRESH_MS = WeatherConfig.DEFAULT_REFRESH_MINUTES * 60 * 1000L
     const val RETRY_MS = WeatherRefresh.RETRY_MS
     private const val TAG = "IdleWeather"
     private const val PREFS = "idle_widget_weather"
     private const val GPS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000L
     private const val IP_MAX_AGE_MS = 6 * 60 * 60 * 1000L
 
-    /**
-     * Bumped when a reading was fetched on request (Settings > Refresh now), so whoever shows the weather looks at
-     * the stored one again.
-     */
+    /** Bumped when a reading was fetched on request (Settings > Refresh now). */
     val refreshNonce = MutableStateFlow(0)
 
     fun notifyRefreshed() = refreshNonce.update { it + 1 }
@@ -419,7 +461,7 @@ object IdleWeather {
     fun hasLocationPermission(context: Context): Boolean =
         context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    /** The stored reading, whatever it was fetched for. Prefer [cachedFor]. */
+    /** Stored reading, whatever it was fetched for. */
     fun cached(context: Context): WeatherSnapshot? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!p.contains("at")) return null
@@ -431,13 +473,12 @@ object IdleWeather {
             windKmh = p.getFloat("w", -1f),
             windDirectionDeg = p.getInt("wd", -1),
             feelsLikeC = p.getFloat("fl", Float.NaN),
-            // Readings stored before these fields existed count as not detailed.
+            // Readings stored before these fields existed count as not detailed
             detailed = p.getBoolean("det", false),
             extras = WeatherExtras.fromJson(p.getString("ex", null))
         )
     }
 
-    /** The stored reading, only while it was fetched for the same place choice and provider as [prefs]; null otherwise. */
     fun cachedFor(context: Context, prefs: WeatherPrefs): WeatherSnapshot? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val stored = p.getString("sig", null) ?: WeatherConfig.LEGACY_SIGNATURE
@@ -445,15 +486,15 @@ object IdleWeather {
         return cached(context)
     }
 
-    /** Keeps the last known coarse location (rounded). True when a place was stored. Call it while the app is in front. */
+    /** Keeps the last known coarse location (rounded). */
     @SuppressLint("MissingPermission")
     fun captureLocation(context: Context): Boolean {
         if (!hasLocationPermission(context)) return false
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return false
-        val best = runCatching {
-            lm.getProviders(true).mapNotNull { provider -> runCatching { lm.getLastKnownLocation(provider) }.getOrNull() }
+        val best = quietly {
+            lm.getProviders(true).mapNotNull { provider -> quietly { lm.getLastKnownLocation(provider) } }
                 .maxByOrNull { it.time }
-        }.getOrNull() ?: return false
+        } ?: return false
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putFloat("gps_lat", round1(best.latitude))
             .putFloat("gps_lon", round1(best.longitude))
@@ -462,29 +503,31 @@ object IdleWeather {
         return true
     }
 
-    fun hasStoredPlace(context: Context): Boolean = storedGps(context, Long.MAX_VALUE) != null || storedIp(context, Long.MAX_VALUE) != null
+    fun hasStoredPlace(context: Context): Boolean = storedGps(context, Long.MAX_VALUE) != null
+            || storedIp(context, Long.MAX_VALUE) != null
 
-    /** Stores and returns the reading; null when there is no place or the service did not answer. */
-    suspend fun fetch(context: Context, prefs: WeatherPrefs = WeatherPrefs()): WeatherSnapshot? = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun fetch(context: Context, prefs: WeatherPrefs = WeatherPrefs()): WeatherSnapshot? =
+            withContext(Dispatchers.IO) {
+        runSuspendCatching {
             val place = resolvePlace(context, prefs)
             if (place == null) {
                 AppLogRecorder.w(TAG, "No place for the weather (source ${prefs.source})")
-                return@runCatching null
+                return@runSuspendCatching null
             }
             val url = WeatherConfig.forecastUrl(prefs, place.first, place.second)
             if (url == null) {
                 AppLogRecorder.w(TAG, "The custom weather provider has no valid https address")
-                return@runCatching null
+                return@runSuspendCatching null
             }
-            val json = httpGet(url) ?: return@runCatching null
+            val json = httpGet(url) ?: return@runSuspendCatching null
             val readouts = prefs.effectiveReadouts()
-            var snapshot = WeatherParser.parseForecast(json, readouts, System.currentTimeMillis()) ?: return@runCatching null
-            // Air quality is a second request to Open-Meteo's own service. A failure only leaves that row out; the weather still counts.
+            var snapshot = WeatherParser.parseForecast(json, readouts, System.currentTimeMillis())
+                ?: return@runSuspendCatching null
+            // Air quality is a second request to Open-Meteo's own service
             if (WeatherReadouts.AQI in readouts) {
-                val aqi = runCatching {
+                val aqi = quietly {
                     httpGet(WeatherConfig.airQualityUrl(place.first, place.second))?.let { WeatherParser.parseAqi(it) }
-                }.getOrNull()
+                }
                 val extras = snapshot.extras
                 if (aqi != null && extras != null) snapshot = snapshot.copy(extras = extras.copy(aqi = aqi))
             }
@@ -507,13 +550,10 @@ object IdleWeather {
         }
     }
 
-    /**
-     * City search for the manual source (Open-Meteo's geocoding service, no key). Empty when the text is too short,
-     * offline or nothing matches.
-     */
+    /** City search for the manual source (Open-Meteo's geocoding service, no key). */
     suspend fun searchCities(query: String): List<CityResult> = withContext(Dispatchers.IO) {
         val url = WeatherConfig.geocodingUrl(query, Locale.getDefault().language) ?: return@withContext emptyList()
-        runCatching { httpGet(url)?.let { WeatherConfig.parseCities(it) } ?: emptyList() }.getOrElse {
+        runSuspendCatching { httpGet(url)?.let { WeatherConfig.parseCities(it) } ?: emptyList() }.getOrElse {
             AppLogRecorder.w(TAG, "City search failed", it)
             emptyList()
         }
@@ -522,7 +562,7 @@ object IdleWeather {
     private fun resolvePlace(context: Context, prefs: WeatherPrefs): Pair<Float, Float>? = when (prefs.source) {
         WeatherConfig.SOURCE_MANUAL ->
             if (WeatherConfig.hasManualPlace(prefs)) prefs.manualLat to prefs.manualLon else null
-        // No location reading and no internet place lookup: only what an earlier reading left behind.
+        // No location reading and no internet place lookup
         WeatherConfig.SOURCE_LAST_KNOWN -> storedGps(context, Long.MAX_VALUE) ?: storedIp(context, Long.MAX_VALUE)
         else -> {
             captureLocation(context)

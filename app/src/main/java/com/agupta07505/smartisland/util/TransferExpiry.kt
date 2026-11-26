@@ -10,14 +10,7 @@ package com.agupta07505.smartisland.util
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 
-/**
- * Stuck download cards. The island cancels an app's download notification from the shade as soon as it takes it over,
- * so when the app later cancels it, Android sends no callback and the card stays. A transfer card the app has not
- * posted again for [expiryMinutes] is dropped (setting; 0 = never).
- *
- * Only real app notifications count: estimated cards (made by the island from network speed) have their own life
- * cycle, demo cards have no notification, and a card without a post time is never touched.
- */
+/** Expires download cards when the source app's notification disappears without a callback. */
 object TransferExpiry {
     fun keysToExpire(
         cards: List<IslandNotification>,

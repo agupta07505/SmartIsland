@@ -7,7 +7,10 @@
 
 package com.agupta07505.smartisland.util
 
-enum class AnimationSpeed(val id: String, val stiffnessScale: Float, val durationScale: Float) {
+import com.agupta07505.smartisland.model.StableId
+import com.agupta07505.smartisland.model.enumById
+
+enum class AnimationSpeed(override val id: String, val stiffnessScale: Float, val durationScale: Float) : StableId {
     RELAXED("relaxed", 0.6f, 1.45f),
     NORMAL("normal", 1f, 1f),
     SNAPPY("snappy", 1.7f, 0.65f);
@@ -16,13 +19,16 @@ enum class AnimationSpeed(val id: String, val stiffnessScale: Float, val duratio
 
     fun userDurationMs(baseMs: Int): Int = (baseMs * durationScale).toInt().coerceAtLeast(1)
 
-    /** The user's choice, then the part of the system animation scale that Compose does not apply itself. */
-    fun stiffness(base: Float): Float = SystemAnimScale.scaledStiffness(userStiffness(base), SystemAnimScale.extraScale())
+    /** User's choice plus the part of the system animation scale Compose skips. */
+    fun stiffness(base: Float): Float = SystemAnimScale.scaledStiffness(userStiffness(base),
+            SystemAnimScale.extraScale())
 
-    fun durationMs(baseMs: Int): Int = SystemAnimScale.scaledDurationMs(userDurationMs(baseMs), SystemAnimScale.extraScale())
+    fun durationMs(baseMs: Int): Int = SystemAnimScale.scaledDurationMs(userDurationMs(baseMs),
+            SystemAnimScale.extraScale())
 
-    /** For a value that already includes the user's choice; adds only the system part (see [SystemAnimScale.extraScale]). */
-    fun systemStiffness(userStiffness: Float): Float = SystemAnimScale.scaledStiffness(userStiffness, SystemAnimScale.extraScale())
+    /** Adds only the system part, [userStiffness] already has the user's choice. */
+    fun systemStiffness(userStiffness: Float): Float = SystemAnimScale.scaledStiffness(userStiffness,
+            SystemAnimScale.extraScale())
 
     fun systemDurationMs(userMs: Int): Int = SystemAnimScale.scaledDurationMs(userMs, SystemAnimScale.extraScale())
 
@@ -33,6 +39,6 @@ enum class AnimationSpeed(val id: String, val stiffnessScale: Float, val duratio
 
         val VALID_IDS: Set<String> = entries.map { it.id }.toSet()
 
-        fun fromId(id: String?): AnimationSpeed = entries.firstOrNull { it.id == id } ?: NORMAL
+        fun fromId(id: String?): AnimationSpeed = enumById(id, NORMAL)
     }
 }

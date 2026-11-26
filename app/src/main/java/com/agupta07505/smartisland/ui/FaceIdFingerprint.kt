@@ -20,10 +20,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Face to fingerprint. */
 internal const val FP_MORPH_IN_MS = 120
 
-/** The scan line going up, then coming back down. */
 internal const val FP_SCAN_MS = 900
 internal const val FP_SWEEP_UP_MS = FP_SCAN_MS / 2
 internal const val FP_SWEEP_DOWN_MS = FP_SCAN_MS / 2
@@ -32,14 +30,10 @@ internal const val FP_TO_TICK_MS = FACE_TO_TICK_MS
 
 internal const val FP_HOLD_MS = TICK_BEAT_MS
 
-/** Share of the tick morph over which the fingerprint fades into the tick shape. */
 internal const val FP_TICK_FADE = 0.35f
-
-internal const val FP_TOTAL_MS = FP_MORPH_IN_MS + FP_SCAN_MS + FP_TO_TICK_MS + FP_HOLD_MS
 
 internal const val FPD_FADE_IN_MS = 100
 
-/** Scan position meaning "no scan line". */
 internal const val FP_NO_SCAN = -1f
 
 private const val FP_CENTRE_DROP = 2f

@@ -7,16 +7,8 @@
 
 package com.agupta07505.smartisland.data
 
-/**
- * The pinned quick-launch apps: an ordered list of ENTRIES, each one slot of the island grid (at most [MAX]), either a
- * package name or a folder of two to [MAX_FOLDER] apps.
- *
- * A folder is one string in the same list, `folder:pkgA,pkgB,pkgC`, so storage, backup and ordering stay a plain list of
- * strings. An app is never pinned twice, and a folder never holds fewer than two apps (it dissolves into the remaining
- * app). Everything that touches the list goes through here so these rules live in one place.
- */
 object PinnedApps {
-    /** Slots in the grid. A folder takes one slot, whatever it holds. */
+    /** Slots in the grid. A folder takes 1 slot, whatever it holds. */
     const val MAX = 8
     const val MAX_FOLDER = 4
     private const val MAX_PACKAGE_NAME_LENGTH = 255
@@ -43,9 +35,8 @@ object PinnedApps {
     }
 
     /**
-     * Cleans a list of entries: drops blank, over-long and repeated packages (the first one wins, across folders
-     * too), trims folders to [MAX_FOLDER] apps, dissolves a folder left with one app, and caps the list at [MAX]
-     * entries.
+     * Drops blank, over-long and repeated packages (first wins, across folders too), trims folders to [MAX_FOLDER],
+     * dissolves a one-app folder, caps at [MAX]
      */
     fun normalize(entries: Iterable<String>): List<String> {
         val seen = HashSet<String>()
@@ -53,7 +44,8 @@ object PinnedApps {
         for (raw in entries) {
             if (result.size >= MAX) break
             val apps = members(raw.trim())
-                .filter { it.isNotEmpty() && it.length <= MAX_PACKAGE_NAME_LENGTH && it.none(Char::isWhitespace) && it !in seen }
+                .filter { it.isNotEmpty() && it.length <= MAX_PACKAGE_NAME_LENGTH && it.none(Char::isWhitespace)
+                    && it !in seen }
                 .distinct()
                 .let { if (isFolder(raw.trim())) it.take(MAX_FOLDER) else it.take(1) }
             val entry = entryFor(apps) ?: continue
@@ -68,7 +60,6 @@ object PinnedApps {
     fun decode(raw: String?): List<String> =
         if (raw.isNullOrEmpty()) emptyList() else normalize(raw.split(SEPARATOR))
 
-    /** Reads the saved order. */
     fun restore(ordered: String?, legacySet: Set<String>?): List<String> =
         if (ordered != null) decode(ordered) else normalize(legacySet.orEmpty())
 
@@ -102,7 +93,7 @@ object PinnedApps {
     fun pin(entries: List<String>, packageName: String): List<String> =
         if (packageName in flatPackages(entries) || entries.size >= MAX) entries else normalize(entries + packageName)
 
-    /** Unpins an app wherever it is; a folder left with one app becomes that app. */
+    /** Unpins an app wherever it is; a folder left with 1 app becomes that app. */
     fun unpin(entries: List<String>, packageName: String): List<String> =
         entries.mapNotNull { entry ->
             if (packageName in members(entry)) entryFor(members(entry) - packageName) else entry
@@ -112,26 +103,16 @@ object PinnedApps {
         entry != target && !isFolder(entry) && entry in entries && target in entries &&
             (!isFolder(target) || members(target).size < MAX_FOLDER)
 
-    /**
-     * Drops the loose app [entry] onto [target]: onto another app they become a folder in the target's place, onto a
-     * folder with room the app joins it.
-     */
+    /** Onto another app they become a folder in the target's place, onto a folder with room the app joins it. */
     fun joinFolder(entries: List<String>, entry: String, target: String): List<String> {
         if (!canJoin(entries, entry, target)) return entries
         val folder = entryFor(members(target) + entry) ?: return entries
         return entries.filter { it != entry }.map { if (it == target) folder else it }
     }
 
-    /**
-     * Whether dragging an app out of a folder cannot keep it pinned: the app needs a slot of its own, and when all
-     * [MAX] slots are taken there is none.
-     */
+    /** Needs a slot of its own, none when all [MAX] are taken. */
     fun dragOutUnpins(entries: List<String>): Boolean = entries.size >= MAX
 
-    /**
-     * Drags [packageName] out of [folder]. It gets a slot of its own right after the folder, or, when no slot is
-     * free, is unpinned. The folder keeps the others, or becomes the single app that is left.
-     */
     fun dragOut(entries: List<String>, folder: String, packageName: String): List<String> {
         val at = entries.indexOf(folder)
         if (at < 0 || !isFolder(folder) || packageName !in members(folder)) return entries

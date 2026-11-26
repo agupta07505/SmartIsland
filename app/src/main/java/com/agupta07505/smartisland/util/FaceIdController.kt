@@ -27,7 +27,7 @@ object FaceIdController {
         val fingerprint: Boolean = false,
         val direct: Boolean = false,
         val style: Style = Style.Square,
-        /** False while the card waits for the system's real scan start; blinking only begins once true. */
+        /** False until the system's real scan start, blinking begins once true. */
         val anchored: Boolean = true
     ) {
         val active: Boolean get() = phase != Phase.Idle
@@ -51,13 +51,14 @@ object FaceIdController {
     fun startForApp(style: Style = Style.Square, anchored: Boolean = true) =
         start(accepted = false, waitMs = APP_WAIT_MS, style = style, anchored = anchored)
 
-    /** The system's real scan has begun: the blink clock starts now. */
+    /** System's real scan has begun: the blink clock starts now. */
     fun anchor() {
         _state.update { if (it.active && !it.anchored) it.copy(anchored = true) else it }
     }
 
     fun startFingerprint(style: Style = Style.Square) {
-        _state.update { State(Phase.Scanning, it.session + 1, false, REAL_WAIT_MS, fingerprint = true, direct = true, style = style) }
+        _state.update { State(Phase.Scanning, it.session + 1, false, REAL_WAIT_MS, fingerprint = true, direct = true,
+            style = style) }
     }
 
     fun styleOf(id: String): Style = when (id) {
@@ -85,19 +86,21 @@ object FaceIdController {
     }
 
     fun fingerprint() {
-        _state.update { if (it.active && !it.accepted && !it.cancelled && !it.fingerprint) it.copy(fingerprint = true) else it }
+        _state.update { if (it.active && !it.accepted && !it.cancelled
+            && !it.fingerprint) it.copy(fingerprint = true) else it }
     }
 
     fun stop() {
-        _state.update { it.copy(phase = Phase.Idle, accepted = false, cancelled = false, rejected = false, fingerprint = false, direct = false) }
+        _state.update { it.copy(phase = Phase.Idle, accepted = false, cancelled = false, rejected = false,
+            fingerprint = false, direct = false) }
     }
 
     fun finish(session: Int) {
         _state.update {
-            if (it.session == session) it.copy(phase = Phase.Idle, accepted = false, cancelled = false, rejected = false, fingerprint = false, direct = false) else it
+            if (it.session == session) it.copy(phase = Phase.Idle, accepted = false, cancelled = false,
+                rejected = false, fingerprint = false, direct = false) else it
         }
     }
-
 
     const val DEMO_WAIT_MS = 2320
 

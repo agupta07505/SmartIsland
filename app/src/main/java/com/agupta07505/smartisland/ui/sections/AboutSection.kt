@@ -11,10 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -24,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,26 +33,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BugReport
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.Commit
 import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ForkRight
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.People
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Security
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -65,33 +51,47 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
 import com.agupta07505.smartisland.BuildConfig
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.ui.SettingsCard
+import com.agupta07505.smartisland.ui.SettingsDescription
+import com.agupta07505.smartisland.ui.SettingsGroupTitle
 import com.agupta07505.smartisland.ui.components.ClickableRowItem
+import com.agupta07505.smartisland.ui.glass.Card
 import com.agupta07505.smartisland.util.GitHubApiService
-import com.agupta07505.smartisland.util.GitHubCommit
-import com.agupta07505.smartisland.util.GitHubContributor
-import com.agupta07505.smartisland.util.GitHubRelease
 import com.agupta07505.smartisland.util.GitHubRepoStats
 import com.agupta07505.smartisland.util.runCatchingLogged
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
+private const val TAG = "AboutSection"
+
+private fun viewIntent(url: String) = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+
+private fun launchOrToast(context: Context, intent: Intent, failureLog: String, failureToast: String) {
+    runCatchingLogged(TAG, failureLog) {
+        context.startActivity(intent)
+    } ?: context.showToast(failureToast)
+}
+
+private fun openLink(context: Context, url: String, failureLog: String) =
+    launchOrToast(context, viewIntent(url), failureLog, "Cannot open link")
+
 @Composable
 fun AboutSection(
     settings: SmartIslandSettings = SmartIslandSettings.Default,
@@ -111,281 +111,227 @@ fun AboutSection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column {
-                    Text(
-                        text = "Smart Island",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Version $currentVersion",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+        AboutRepoCard(context = context, currentVersion = currentVersion, repoStats = repoStats)
+        PrivacyShieldCard()
+        AboutLinksCard(context = context, currentVersion = currentVersion)
+        AboutFontsCard()
+        DeveloperContactCard(context = context)
+    }
+}
 
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RepoBadge(
-                        icon = Icons.Rounded.Star,
-                        label = "Stars",
-                        value = repoStats?.stars?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.ForkRight,
-                        label = "Forks",
-                        value = repoStats?.forks?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/fork"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.BugReport,
-                        label = "Issues",
-                        value = repoStats?.openIssues?.toString() ?: "—",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/issues"))
-                            context.startActivity(intent)
-                        }
-                    )
-                    RepoBadge(
-                        icon = Icons.Rounded.Description,
-                        label = "License",
-                        value = repoStats?.licenseName ?: "GPL-3.0",
-                        tint = MaterialTheme.colorScheme.primary,
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/LICENSE"))
-                            context.startActivity(intent)
-                        }
-                    )
-                }
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AboutRepoCard(
+    context: Context,
+    currentVersion: String,
+    repoStats: GitHubRepoStats?
+) {
+    SettingsCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column {
+                SettingsGroupTitle("Smart Island")
+                SettingsDescription("Version $currentVersion")
             }
-        }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Security,
-                        contentDescription = "Privacy Shield",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "100% On-Device & Zero Telemetry",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Smart Island does not collect, store, or transmit any user data, identifiers, or notification details. All operations and settings remain strictly on your device. Network queries are unauthenticated, read-only requests for GitHub repository updates.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.about_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                RepoBadge(
+                    icon = Icons.Rounded.Star,
+                    label = "Stars",
+                    value = repoStats?.stars?.toString() ?: "—",
+                    tint = MaterialTheme.colorScheme.primary,
+                    onClick = { context.startActivity(viewIntent("https://github.com/agupta07505/SmartIsland")) }
                 )
-
-                ClickableRowItem(
-                    label = stringResource(R.string.version_title),
-                    value = currentVersion,
-                    icon = Icons.Rounded.Info,
-                    onClick = {}
+                RepoBadge(
+                    icon = Icons.Rounded.ForkRight,
+                    label = "Forks",
+                    value = repoStats?.forks?.toString() ?: "—",
+                    tint = MaterialTheme.colorScheme.primary,
+                    onClick = { context.startActivity(viewIntent("https://github.com/agupta07505/SmartIsland/fork")) }
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-
-                ClickableRowItem(
-                    label = stringResource(R.string.privacy_policy_title),
-                    subtitle = stringResource(R.string.privacy_policy_desc),
-                    icon = Icons.Rounded.Lock,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/PRIVACY.md"))
-                        runCatchingLogged("AboutSection", "Failed to open Privacy Policy") {
-                            context.startActivity(intent)
-                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                    }
+                RepoBadge(
+                    icon = Icons.Rounded.BugReport,
+                    label = "Issues",
+                    value = repoStats?.openIssues?.toString() ?: "—",
+                    tint = MaterialTheme.colorScheme.primary,
+                    onClick = { context.startActivity(viewIntent("https://github.com/agupta07505/SmartIsland/issues")) }
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-
-                ClickableRowItem(
-                    label = stringResource(R.string.terms_of_use_title),
-                    subtitle = stringResource(R.string.license_title),
+                RepoBadge(
                     icon = Icons.Rounded.Description,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland/blob/main/TERMS.md"))
-                        runCatchingLogged("AboutSection", "Failed to open Terms of Use") {
-                            context.startActivity(intent)
-                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                    }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-
-                ClickableRowItem(
-                    label = stringResource(R.string.repo_insights_title),
-                    subtitle = stringResource(R.string.star_on_github),
-                    icon = Icons.Rounded.Code,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505/SmartIsland"))
-                        runCatchingLogged("AboutSection", "Failed to open Open Source link") {
-                            context.startActivity(intent)
-                        } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                    }
+                    label = "License",
+                    value = repoStats?.licenseName ?: "GPL-3.0",
+                    tint = MaterialTheme.colorScheme.primary,
+                    onClick = { context.startActivity(viewIntent("https://github.com/agupta07505/SmartIsland/blob/main/LICENSE")) }
                 )
             }
         }
+    }
+}
 
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+@Composable
+private fun PrivacyShieldCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Security,
+                    contentDescription = "Privacy Shield",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.about_fonts_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "100% On-Device & Zero Telemetry",
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = stringResource(R.string.about_fonts_body),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Smart Island does not collect, store, or transmit any user data, identifiers, or notification details. All operations and settings remain strictly on your device. Network queries are unauthenticated, read-only requests for GitHub repository updates.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
                 )
             }
         }
+    }
+}
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.developer_contact_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
+@Composable
+private fun AboutLinksCard(
+    context: Context,
+    currentVersion: String
+) {
+    SettingsCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.about_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            ClickableRowItem(
+                label = stringResource(R.string.version_title),
+                value = currentVersion,
+                icon = Icons.Rounded.Info,
+                onClick = {}
+            )
+            SettingsDivider(alpha = 0.25f)
+
+            ClickableRowItem(
+                label = stringResource(R.string.privacy_policy_title),
+                subtitle = stringResource(R.string.privacy_policy_desc),
+                icon = Icons.Rounded.Lock,
+                onClick = { openLink(context, "https://github.com/agupta07505/SmartIsland/blob/main/PRIVACY.md", "Failed to open Privacy Policy") }
+            )
+            SettingsDivider(alpha = 0.25f)
+
+            ClickableRowItem(
+                label = stringResource(R.string.terms_of_use_title),
+                subtitle = stringResource(R.string.license_title),
+                icon = Icons.Rounded.Description,
+                onClick = { openLink(context, "https://github.com/agupta07505/SmartIsland/blob/main/TERMS.md", "Failed to open Terms of Use") }
+            )
+            SettingsDivider(alpha = 0.25f)
+
+            ClickableRowItem(
+                label = stringResource(R.string.repo_insights_title),
+                subtitle = stringResource(R.string.star_on_github),
+                icon = Icons.Rounded.Code,
+                onClick = { openLink(context, "https://github.com/agupta07505/SmartIsland", "Failed to open Open Source link") }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AboutFontsCard() {
+    SettingsCard {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SettingsGroupTitle(stringResource(R.string.about_fonts_title))
+            Text(
+                text = stringResource(R.string.about_fonts_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeveloperContactCard(context: Context) {
+    SettingsCard {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.developer_contact_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ContactButton(
+                    icon = { GithubIcon(tint = MaterialTheme.colorScheme.onSurface) },
+                    label = "GitHub",
+                    onClick = { openLink(context, "https://github.com/agupta07505", "Failed to open GitHub profile") },
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ContactButton(
-                        icon = { GithubIcon(tint = MaterialTheme.colorScheme.onSurface) },
-                        label = "GitHub",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/agupta07505"))
-                            runCatchingLogged("AboutSection", "Failed to open GitHub profile") {
-                                context.startActivity(intent)
-                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContactButton(
-                        icon = { LinkedinIcon() },
-                        label = "LinkedIn",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://linkedin.com/in/agupta07505"))
-                            runCatchingLogged("AboutSection", "Failed to open LinkedIn profile") {
-                                context.startActivity(intent)
-                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ContactButton(
-                        icon = { InstagramIcon() },
-                        label = "Instagram",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://instagram.com/agupta07505"))
-                            runCatchingLogged("AboutSection", "Failed to open Instagram profile") {
-                                context.startActivity(intent)
-                            } ?: Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContactButton(
-                        icon = { EmailIcon(tint = Color(0xFFEA4335)) },
-                        label = "Email",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:agupta07505@gmail.com")
-                                putExtra(Intent.EXTRA_SUBJECT, "Smart Island App Feedback")
-                            }
-                            runCatchingLogged("AboutSection", "Failed to send email") {
-                                context.startActivity(intent)
-                            } ?: Toast.makeText(context, "Cannot open email app", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                ContactButton(
+                    icon = { LinkedinIcon() },
+                    label = "LinkedIn",
+                    onClick = { openLink(context, "https://linkedin.com/in/agupta07505", "Failed to open LinkedIn profile") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ContactButton(
+                    icon = { InstagramIcon() },
+                    label = "Instagram",
+                    onClick = { openLink(context, "https://instagram.com/agupta07505", "Failed to open Instagram profile") },
+                    modifier = Modifier.weight(1f)
+                )
+                ContactButton(
+                    icon = { EmailIcon(tint = Color(0xFFEA4335)) },
+                    label = "Email",
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:agupta07505@gmail.com")
+                            putExtra(Intent.EXTRA_SUBJECT, "Smart Island App Feedback")
+                        }
+                        launchOrToast(context, intent, "Failed to send email", "Cannot open email app")
+                    },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -393,7 +339,7 @@ fun AboutSection(
 
 @Composable
 private fun RepoBadge(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     value: String,
     tint: Color,
@@ -411,8 +357,9 @@ private fun RepoBadge(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
-            Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = value, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            HintText(label)
+            Text(text = value, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -428,7 +375,7 @@ private fun ContactButton(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -450,31 +397,47 @@ private fun GithubIcon(tint: Color = Color.Black) {
     Canvas(modifier = Modifier.size(18.dp)) {
         val scaleX = size.width / 24f
         val scaleY = size.height / 24f
-        val path = androidx.compose.ui.graphics.Path().apply {
+        val path = Path().apply {
             moveTo(12f * scaleX, 2f * scaleY)
             cubicTo(6.477f * scaleX, 2f * scaleY, 2f * scaleX, 6.477f * scaleX, 2f * scaleX, 12f * scaleY)
             cubicTo(2f * scaleX, 16.42f * scaleY, 4.865f * scaleX, 20.166f * scaleY, 8.839f * scaleX, 21.489f * scaleY)
-            cubicTo(9.339f * scaleX, 21.581f * scaleY, 9.521f * scaleX, 21.272f * scaleY, 9.521f * scaleX, 21.007f * scaleY)
-            cubicTo(9.521f * scaleX, 20.77f * scaleY, 9.513f * scaleX, 20.141f * scaleY, 9.508f * scaleX, 19.307f * scaleY)
-            cubicTo(6.726f * scaleX, 19.91f * scaleY, 6.139f * scaleX, 17.97f * scaleY, 6.139f * scaleX, 17.97f * scaleY)
-            cubicTo(5.685f * scaleX, 16.814f * scaleY, 5.029f * scaleX, 16.506f * scaleY, 5.029f * scaleX, 16.506f * scaleY)
-            cubicTo(4.121f * scaleX, 15.886f * scaleY, 5.098f * scaleX, 15.898f * scaleY, 5.098f * scaleX, 15.898f * scaleY)
-            cubicTo(6.101f * scaleX, 15.968f * scaleY, 6.629f * scaleX, 16.928f * scaleY, 6.629f * scaleX, 16.928f * scaleY)
-            cubicTo(7.521f * scaleX, 18.457f * scaleY, 8.97f * scaleX, 18.015f * scaleY, 9.539f * scaleX, 17.759f * scaleY)
-            cubicTo(9.631f * scaleX, 17.113f * scaleY, 9.889f * scaleX, 16.673f * scaleY, 10.175f * scaleX, 16.423f * scaleY)
+            cubicTo(9.339f * scaleX, 21.581f * scaleY, 9.521f * scaleX, 21.272f * scaleY, 9.521f * scaleX,
+                21.007f * scaleY)
+            cubicTo(9.521f * scaleX, 20.77f * scaleY, 9.513f * scaleX, 20.141f * scaleY, 9.508f * scaleX,
+                19.307f * scaleY)
+            cubicTo(6.726f * scaleX, 19.91f * scaleY, 6.139f * scaleX, 17.97f * scaleY, 6.139f * scaleX,
+                17.97f * scaleY)
+            cubicTo(5.685f * scaleX, 16.814f * scaleY, 5.029f * scaleX, 16.506f * scaleY, 5.029f * scaleX,
+                16.506f * scaleY)
+            cubicTo(4.121f * scaleX, 15.886f * scaleY, 5.098f * scaleX, 15.898f * scaleY, 5.098f * scaleX,
+                15.898f * scaleY)
+            cubicTo(6.101f * scaleX, 15.968f * scaleY, 6.629f * scaleX, 16.928f * scaleY, 6.629f * scaleX,
+                16.928f * scaleY)
+            cubicTo(7.521f * scaleX, 18.457f * scaleY, 8.97f * scaleX, 18.015f * scaleY, 9.539f * scaleX,
+                17.759f * scaleY)
+            cubicTo(9.631f * scaleX, 17.113f * scaleY, 9.889f * scaleX, 16.673f * scaleY, 10.175f * scaleX,
+                16.423f * scaleY)
             cubicTo(7.955f * scaleX, 16.17f * scaleY, 5.62f * scaleX, 15.313f * scaleY, 5.62f * scaleX, 11.48f * scaleY)
             cubicTo(5.62f * scaleX, 10.389f * scaleY, 6.01f * scaleX, 9.496f * scaleY, 6.649f * scaleX, 8.797f * scaleY)
             cubicTo(6.546f * scaleX, 8.544f * scaleY, 6.203f * scaleX, 7.527f * scaleY, 6.747f * scaleX, 6.15f * scaleY)
             cubicTo(6.747f * scaleX, 6.15f * scaleY, 7.587f * scaleX, 5.881f * scaleY, 9.497f * scaleX, 7.175f * scaleY)
             cubicTo(10.295f * scaleX, 6.953f * scaleY, 11.15f * scaleX, 6.842f * scaleY, 12f * scaleX, 6.838f * scaleY)
-            cubicTo(12.85f * scaleX, 6.842f * scaleY, 13.705f * scaleX, 6.953f * scaleY, 14.503f * scaleX, 7.175f * scaleY)
-            cubicTo(16.413f * scaleX, 5.881f * scaleY, 17.253f * scaleX, 6.15f * scaleY, 17.253f * scaleX, 6.15f * scaleY)
-            cubicTo(17.797f * scaleX, 7.527f * scaleY, 17.454f * scaleX, 8.544f * scaleY, 17.351f * scaleX, 8.797f * scaleY)
-            cubicTo(17.99f * scaleX, 9.496f * scaleY, 18.38f * scaleX, 10.389f * scaleY, 18.38f * scaleX, 11.48f * scaleY)
-            cubicTo(18.38f * scaleX, 15.323f * scaleY, 16.041f * scaleX, 16.168f * scaleY, 13.813f * scaleX, 16.415f * scaleY)
-            cubicTo(14.172f * scaleX, 16.724f * scaleY, 14.491f * scaleX, 17.334f * scaleY, 14.491f * scaleX, 18.267f * scaleY)
-            cubicTo(14.491f * scaleX, 19.603f * scaleY, 14.479f * scaleX, 20.682f * scaleY, 14.479f * scaleX, 21.01f * scaleY)
-            cubicTo(14.479f * scaleX, 21.277f * scaleY, 14.659f * scaleX, 21.589f * scaleY, 15.167f * scaleX, 21.489f * scaleY)
+            cubicTo(12.85f * scaleX, 6.842f * scaleY, 13.705f * scaleX, 6.953f * scaleY, 14.503f * scaleX,
+                7.175f * scaleY)
+            cubicTo(16.413f * scaleX, 5.881f * scaleY, 17.253f * scaleX, 6.15f * scaleY, 17.253f * scaleX,
+                6.15f * scaleY)
+            cubicTo(17.797f * scaleX, 7.527f * scaleY, 17.454f * scaleX, 8.544f * scaleY, 17.351f * scaleX,
+                8.797f * scaleY)
+            cubicTo(17.99f * scaleX, 9.496f * scaleY, 18.38f * scaleX, 10.389f * scaleY, 18.38f * scaleX,
+                11.48f * scaleY)
+            cubicTo(18.38f * scaleX, 15.323f * scaleY, 16.041f * scaleX, 16.168f * scaleY, 13.813f * scaleX,
+                16.415f * scaleY)
+            cubicTo(14.172f * scaleX, 16.724f * scaleY, 14.491f * scaleX, 17.334f * scaleY, 14.491f * scaleX,
+                18.267f * scaleY)
+            cubicTo(14.491f * scaleX, 19.603f * scaleY, 14.479f * scaleX, 20.682f * scaleY, 14.479f * scaleX,
+                21.01f * scaleY)
+            cubicTo(14.479f * scaleX, 21.277f * scaleY, 14.659f * scaleX, 21.589f * scaleY, 15.167f * scaleX,
+                21.489f * scaleY)
             cubicTo(19.141f * scaleX, 20.16f * scaleY, 22f * scaleX, 12f * scaleY, 22f * scaleX, 12f * scaleY)
             cubicTo(22f * scaleX, 6.477f * scaleY, 17.523f * scaleX, 2f * scaleY, 12f * scaleX, 2f * scaleY)
             close()
@@ -508,13 +471,13 @@ private fun InstagramIcon() {
         val h = size.height
         drawRoundRect(
             color = Color(0xFFE1306C),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx()),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
+            style = Stroke(width = 1.5.dp.toPx()),
+            cornerRadius = CornerRadius(5.dp.toPx())
         )
         drawCircle(
             color = Color(0xFFE1306C),
             radius = 4f.dp.toPx(),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f.dp.toPx())
+            style = Stroke(width = 1.2f.dp.toPx())
         )
         drawCircle(
             color = Color(0xFFE1306C),
@@ -529,7 +492,7 @@ private fun EmailIcon(tint: Color = Color.Black) {
     Canvas(modifier = Modifier.size(18.dp)) {
         val w = size.width
         val h = size.height
-        val path = androidx.compose.ui.graphics.Path().apply {
+        val path = Path().apply {
             moveTo(2.dp.toPx(), 4.dp.toPx())
             lineTo(w - 2.dp.toPx(), 4.dp.toPx())
             lineTo(w - 2.dp.toPx(), h - 4.dp.toPx())
@@ -539,9 +502,9 @@ private fun EmailIcon(tint: Color = Color.Black) {
         drawPath(
             path = path,
             color = tint,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx())
+            style = Stroke(width = 1.5.dp.toPx())
         )
-        val foldPath = androidx.compose.ui.graphics.Path().apply {
+        val foldPath = Path().apply {
             moveTo(2.dp.toPx(), 5.dp.toPx())
             lineTo(w / 2f, h / 2f)
             lineTo(w - 2.dp.toPx(), 5.dp.toPx())
@@ -549,14 +512,14 @@ private fun EmailIcon(tint: Color = Color.Black) {
         drawPath(
             path = foldPath,
             color = tint,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f.dp.toPx())
+            style = Stroke(width = 1.2f.dp.toPx())
         )
     }
 }
 
 private fun getAppVersion(context: Context): String {
-    return runCatchingLogged("AboutSection", "Failed to get app version") {
-        val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+    return runCatchingLogged(TAG, "Failed to get app version") {
+        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
         } else {
             @Suppress("DEPRECATION")

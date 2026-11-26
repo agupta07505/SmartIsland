@@ -22,7 +22,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,10 +42,11 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.FontMix
 import com.agupta07505.smartisland.model.FontSlot
 import com.agupta07505.smartisland.ui.IslandFontOptions
+import com.agupta07505.smartisland.ui.glass.Switch
 import com.agupta07505.smartisland.ui.islandFontFamily
 import com.agupta07505.smartisland.util.CustomFonts
 
-/** Mix fonts (model/FontMix.kt): a switch plus three font slots, Light, Regular and Medium. */
+/** Switch plus 3 font slots, Light, Regular and Medium (model/FontMix.kt). */
 @Composable
 internal fun IslandFontMixSection(
     settings: SmartIslandSettings,
@@ -56,7 +56,8 @@ internal fun IslandFontMixSection(
     var editing by remember { mutableStateOf<FontSlot?>(null) }
 
     fun update(enabled: Boolean = settings.fontMixEnabled, slot: FontSlot? = null, id: String = "") {
-        fun idFor(s: FontSlot) = if (s == slot) id else FontMix.idOf(s, settings.fontMixLight, settings.fontMixRegular, settings.fontMixMedium)
+        fun idFor(s: FontSlot) = if (s == slot) id else FontMix.idOf(s, settings.fontMixLight, settings.fontMixRegular,
+                settings.fontMixMedium)
         onChange(enabled, idFor(FontSlot.Light), idFor(FontSlot.Regular), idFor(FontSlot.Medium))
     }
 
@@ -114,7 +115,7 @@ internal fun IslandFontMixSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        // The sample is drawn with the slot's own font at the weight the island asks for it.
+                        // Sample is drawn with the slot's own font at the weight the island asks for it
                         Text(
                             text = fontName(id),
                             fontFamily = family,

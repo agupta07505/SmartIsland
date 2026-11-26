@@ -8,14 +8,14 @@
 package com.agupta07505.smartisland.model
 
 /**
- * Do Not Disturb / mode idle widget: the pill's left slot shows the active mode's glyph, the island its glyph and
- * name. Pure rules; reading the system is util/DndModeReader.kt.
+ * Do Not Disturb / mode idle widget: the left slot shows the active mode's glyph, the island its glyph and name. Pure
+ * rules, reading the system is util/DndModeReader.kt
  */
 enum class ModeKind { Dnd, TotalSilence, AlarmsOnly, Bedtime, Driving, Theater, Gaming, Work, Schedule, Custom }
 
 /**
- * Active mode: [name] is the system's own (else [DndModes.defaultName]); [iconRes] / [iconPackage] point at its icon,
- * else the widget falls back to a glyph per [kind].
+ * Active mode: [name] is the system's own (else [DndModes.defaultName]), [iconRes] / [iconPackage] point at its icon,
+ * else the widget falls back to a glyph per [kind]
  */
 data class ModeStatus(
     val active: Boolean,
@@ -33,16 +33,13 @@ data class ModeStatus(
 }
 
 object DndModes {
-    /** Platform values of NotificationManager.INTERRUPTION_FILTER_*. */
-    const val FILTER_UNKNOWN = 0
-    const val FILTER_ALL = 1
     const val FILTER_PRIORITY = 2
     const val FILTER_NONE = 3
     const val FILTER_ALARMS = 4
 
-    fun filterActive(filter: Int): Boolean = filter == FILTER_PRIORITY || filter == FILTER_NONE || filter == FILTER_ALARMS
+    fun filterActive(filter: Int): Boolean = filter == FILTER_PRIORITY || filter == FILTER_NONE
+            || filter == FILTER_ALARMS
 
-    /** Plain Do Not Disturb as [filter] describes it, for phones that cannot tell which mode is on. */
     fun fromFilter(filter: Int): ModeStatus = when (filter) {
         FILTER_PRIORITY -> ModeStatus(true, ModeKind.Dnd, defaultName(ModeKind.Dnd), filter = filter)
         FILTER_NONE -> ModeStatus(true, ModeKind.TotalSilence, defaultName(ModeKind.TotalSilence), filter = filter)
@@ -65,7 +62,7 @@ object DndModes {
 
     /**
      * Mode kind from its name, for phones without mode types (before Android 14) and maker-specific names ("Sleep",
-     * "Drive", "Game mode", ...). Unknown is [ModeKind.Custom].
+     * "Drive", "Game mode" ...). Unknown is [ModeKind.Custom]
      */
     fun kindFromName(name: String): ModeKind {
         val n = name.lowercase()
@@ -81,7 +78,6 @@ object DndModes {
         }
     }
 
-    /** Most specific mode wins: driving, then bedtime, then the rest; schedule and custom last. */
     fun rank(kind: ModeKind): Int = when (kind) {
         ModeKind.Driving -> 0
         ModeKind.Bedtime -> 1
@@ -97,7 +93,8 @@ object DndModes {
 
     fun pick(active: List<ModeStatus>): ModeStatus? = active.minByOrNull { rank(it.kind) }
 
-    fun withName(kind: ModeKind, name: String?): String = name?.trim().takeUnless { it.isNullOrEmpty() } ?: defaultName(kind)
+    fun withName(kind: ModeKind, name: String?): String = name?.trim().takeUnless { it.isNullOrEmpty() }
+            ?: defaultName(kind)
 
     fun detail(status: ModeStatus): String = when {
         status.fromRule -> "Mode is on"

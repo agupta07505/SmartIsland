@@ -11,7 +11,7 @@ import com.agupta07505.smartisland.model.CountEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/** Notifications for the count idle widget, kept by the notification listener service and read by the widget. */
+/** Notifications for the count idle widget, kept by the listener service and read by the widget. */
 object NotificationCountTracker {
     private val state = MutableStateFlow<List<CountEntry>>(emptyList())
     val entries: StateFlow<List<CountEntry>> = state

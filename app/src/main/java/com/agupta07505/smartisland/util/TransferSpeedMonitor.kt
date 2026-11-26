@@ -15,18 +15,19 @@ import android.net.TrafficStats
 import android.os.PowerManager
 import android.os.SystemClock
 import com.agupta07505.smartisland.data.INotificationRepository
+import com.agupta07505.smartisland.model.FallbackTitles
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.TransferKind
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
- * Pure state machine behind the network-speed fallback: it turns a stream of "bytes per second" samples into IDLE /
- * DOWNLOAD / UPLOAD with hysteresis, so a short burst never flashes a card and a brief stall never drops one.
+ * Pure state machine behind the network-speed fallback: turns "bytes per second" samples into IDLE / DOWNLOAD / UPLOAD
+ * with hysteresis, so a short burst never flashes a card and a brief stall never drops one
  */
 class SpeedTracker(
     private val startBytesPerSec: Long = START_BPS,
@@ -62,7 +63,7 @@ class SpeedTracker(
             if (nowMs - lastBusy >= stopAfterMs) {
                 phase = Phase.IDLE
             } else if (candidate != Phase.IDLE && candidate != phase && nowMs - candidateSince >= startAfterMs) {
-                // The traffic flipped direction (a download finished and an upload took over).
+                // The traffic flipped direction (a download finished and an upload took over)
                 phase = candidate
                 lastBusy = nowMs
             }
@@ -100,8 +101,8 @@ class SpeedTracker(
 }
 
 /**
- * Last-resort download/upload detection for transfers that show no usable notification (the app's notification
- * channel is blocked, or the app shows none).
+ * Last-resort download/upload detection for transfers with no usable notification (the app's channel is blocked, or it
+ * shows none)
  */
 class TransferSpeedMonitor(
     private val context: Context,
@@ -144,7 +145,7 @@ class TransferSpeedMonitor(
             val rx = TrafficStats.getTotalRxBytes()
             val tx = TrafficStats.getTotalTxBytes()
             val elapsed = now - lastAt
-            // Counters can restart (interface changes), so a negative step counts as zero.
+            // Counters can restart (interface changes), so a negative step counts as 0
             val deltaRx = (rx - lastRx).coerceAtLeast(0L)
             val deltaTx = (tx - lastTx).coerceAtLeast(0L)
             lastRx = rx
@@ -181,7 +182,7 @@ class TransferSpeedMonitor(
 
     private fun isVpnActive(): Boolean {
         val cm = connectivityManager ?: return false
-        val caps = runCatching { cm.getNetworkCapabilities(cm.activeNetwork) }.getOrNull() ?: return false
+        val caps = quietly { cm.getNetworkCapabilities(cm.activeNetwork) } ?: return false
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
     }
 
@@ -202,7 +203,7 @@ class TransferSpeedMonitor(
                 key = key,
                 packageName = "com.android.systemui",
                 appName = "Network",
-                title = if (upload) "Uploading" else "Downloading",
+                title = if (upload) FallbackTitles.UPLOADING else FallbackTitles.DOWNLOADING,
                 text = "Network activity",
                 timeMillis = cardStartedAt,
                 category = "progress",

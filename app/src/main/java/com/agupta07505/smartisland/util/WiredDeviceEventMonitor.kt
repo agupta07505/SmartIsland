@@ -23,17 +23,19 @@ import android.os.Looper
 import android.os.SystemClock
 import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.FallbackTitles
 import com.agupta07505.smartisland.model.IslandEvent
 import com.agupta07505.smartisland.model.IslandMode
 import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.model.IslandTimings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Posts a brief island card when a USB device (an OTG drive, keyboard, accessory, ...) or a pair of wired headphones
- * (3.5 mm or USB-C) is plugged in or unplugged.
+ * Posts a brief card when a USB device (an OTG drive, keyboard, accessory ...) or wired headphones (3.5 mm or USB-C)
+ * are plugged in or unplugged
  */
 class WiredDeviceEventMonitor(
     private val context: Context,
@@ -69,7 +71,7 @@ class WiredDeviceEventMonitor(
             addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
             addAction(ACTION_USB_STATE)
         }
-        runCatchingLogged(TAG, "register USB receiver failed") {
+        try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
             } else {
@@ -77,32 +79,33 @@ class WiredDeviceEventMonitor(
                 context.registerReceiver(receiver, filter)
             }
             usbReceiver = receiver
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "register USB receiver failed", e)
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val callback = object : AudioDeviceCallback() {
-                override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
-                    addedDevices.filter(::isWiredOutput).forEach { handleHeadphones(it, plugged = true) }
-                }
+        val callback = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+                addedDevices.filter(::isWiredOutput).forEach { handleHeadphones(it, plugged = true) }
+            }
 
-                override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
-                    removedDevices.filter(::isWiredOutput).forEach { handleHeadphones(it, plugged = false) }
-                }
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+                removedDevices.filter(::isWiredOutput).forEach { handleHeadphones(it, plugged = false) }
             }
-            audioCallback = callback
-            runCatchingLogged(TAG, "register audio device callback failed") {
-                audioManager?.registerAudioDeviceCallback(callback, handler)
-            }
+        }
+        audioCallback = callback
+        try {
+            audioManager?.registerAudioDeviceCallback(callback, handler)
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "register audio device callback failed", e)
         }
     }
 
     fun stop() {
-        usbReceiver?.let { r -> runCatchingLogged(TAG, "unregister USB receiver failed") { context.unregisterReceiver(r) } }
+        usbReceiver?.let { r ->
+            runCatchingLogged(TAG, "unregister USB receiver failed") { context.unregisterReceiver(r) } }
         usbReceiver = null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            audioCallback?.let { cb ->
-                runCatchingLogged(TAG, "unregister audio device callback failed") { audioManager?.unregisterAudioDeviceCallback(cb) }
-            }
+        audioCallback?.let { cb ->
+            runCatchingLogged(TAG, "unregister audio device callback failed") { audioManager?.unregisterAudioDeviceCallback(cb) }
         }
         audioCallback = null
         usbJob?.cancel()
@@ -128,7 +131,7 @@ class WiredDeviceEventMonitor(
         post(
             key = KEY_USB,
             appName = "USB",
-            title = "Computer",
+            title = FallbackTitles.USB_HOST,
             plugged = connected,
             category = if (connected) "usb_connected" else "usb_disconnected",
             event = event,
@@ -154,12 +157,12 @@ class WiredDeviceEventMonitor(
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
         } else null
-        // A USB sound device is the headphones card's job.
+        // A USB sound device is the headphones card's job
         if (device != null && isAudioDevice(device)) return
         if (isStartupReplay()) return
         val event = if (attached) IslandEvent.USB_CONNECTED else IslandEvent.USB_DISCONNECTED
         if (!settingsProvider().isEventEnabled(event.id)) return
-        val name = runCatching { device?.productName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "USB device"
+        val name = device?.productName?.takeIf { it.isNotBlank() } ?: FallbackTitles.USB_DEVICE
         post(
             key = KEY_USB,
             appName = "USB",
@@ -180,7 +183,7 @@ class WiredDeviceEventMonitor(
         if (isStartupReplay()) return
         val event = if (plugged) IslandEvent.HEADPHONES_CONNECTED else IslandEvent.HEADPHONES_DISCONNECTED
         if (!settingsProvider().isEventEnabled(event.id)) return
-        val name = device.productName?.toString()?.takeIf { it.isNotBlank() && !isGenericName(it) } ?: "Wired Headphone"
+        val name = device.productName?.toString()?.takeIf { it.isNotBlank() && !isGenericName(it) } ?: FallbackTitles.WIRED_HEADPHONE
         post(
             key = KEY_HEADPHONES,
             appName = "Headphone",
@@ -207,7 +210,7 @@ class WiredDeviceEventMonitor(
         current?.cancel()
         repository.removeNotification(key)
         return scope.launch {
-            repository.postNotification(
+            repository.postSystemEvent(
                 IslandNotification(
                     key = key,
                     packageName = "com.android.systemui",
@@ -218,7 +221,8 @@ class WiredDeviceEventMonitor(
                     mode = IslandMode.Bluetooth,
                     timeMillis = System.currentTimeMillis()
                 ),
-                autoExpand = !NotificationCooldownManager.shouldThrottleSystemEvent(event.id, settingsProvider())
+                event.id,
+                settingsProvider()
             )
             delay(if (plugged) IslandTimings.CONNECTIVITY_CARD_MS else IslandTimings.DISCONNECT_CARD_MS)
             repository.removeNotification(key)
@@ -230,7 +234,7 @@ class WiredDeviceEventMonitor(
         const val KEY_USB = "system_usb"
         const val ACTION_USB_STATE = "android.hardware.usb.action.USB_STATE"
         const val KEY_HEADPHONES = "system_headphones"
-        /** The audio callback reports everything already plugged in when it registers; that is not news. */
+        /** The initial audio callback is a snapshot, i.e. it includes devices already plugged in. */
         const val STARTUP_GRACE_MS = 2_000L
 
         val WIRED_TYPES = setOf(

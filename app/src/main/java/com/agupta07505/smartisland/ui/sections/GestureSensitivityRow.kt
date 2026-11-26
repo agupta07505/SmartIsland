@@ -30,11 +30,11 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.model.GestureSensitivity
 import com.agupta07505.smartisland.ui.search.searchAnchor
-import com.agupta07505.smartisland.util.GestureSensitivity
 import kotlinx.coroutines.launch
 
-/** Low / Normal / High selector for how easily swipes fire. Sits at the top of the Gestures screen. */
+/** Low / Normal / High, top of the Gestures screen. */
 @Composable
 fun GestureSensitivityRow(
     settings: SmartIslandSettings,

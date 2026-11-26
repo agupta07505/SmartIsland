@@ -7,144 +7,38 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.rememberSaveable
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
-import androidx.collection.LruCache
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Launch
-import androidx.compose.material.icons.rounded.AllInbox
-import androidx.compose.material.icons.rounded.Apps
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DeleteSweep
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import com.agupta07505.smartisland.ui.glass.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import com.agupta07505.smartisland.ui.glass.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.core.graphics.drawable.toBitmap
-import androidx.compose.ui.res.stringResource
-import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.INotificationHistoryRepository
 import com.agupta07505.smartisland.data.NotificationHistoryEntry
+import com.agupta07505.smartisland.data.NotificationHistoryRepository
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.di.SmartIslandRepositories
-import com.agupta07505.smartisland.util.runCatchingLogged
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-
-private object AppIconMemoryCache {
-    private val cache = LruCache<String, ImageBitmap>(120)
-    fun get(packageName: String): ImageBitmap? = cache.get(packageName)
-    fun put(packageName: String, bitmap: ImageBitmap) {
-        cache.put(packageName, bitmap)
-    }
-}
-
-@Composable
-private fun rememberAppIcon(packageName: String): ImageBitmap? {
-    val context = LocalContext.current
-    var iconBitmap by remember(packageName) { mutableStateOf(AppIconMemoryCache.get(packageName)) }
-
-    LaunchedEffect(packageName) {
-        if (iconBitmap == null) {
-            val loaded = withContext(Dispatchers.IO) {
-                runCatchingLogged("IconCache", "Failed loading icon for $packageName") {
-                    val drawable = context.packageManager.getApplicationIcon(packageName)
-                    val bmp = drawable.toBitmap(width = 72, height = 72)
-                    bmp.asImageBitmap()
-                }
-            }
-            if (loaded != null) {
-                AppIconMemoryCache.put(packageName, loaded)
-                iconBitmap = loaded
-            }
-        }
-    }
-    return iconBitmap
-}
 
 data class AppNotificationSummary(
     val packageName: String,
@@ -162,7 +56,6 @@ private val AppSummarySaver: Saver<AppNotificationSummary?, Any> = listSaver(
     }
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NotificationHistorySection(
     settings: SmartIslandSettings = SmartIslandSettings.Default,
@@ -175,1366 +68,201 @@ fun NotificationHistorySection(
         historyRepository ?: runCatching {
             SmartIslandRepositories.historyRepository(context)
         }.getOrElse {
-            com.agupta07505.smartisland.data.NotificationHistoryRepository(context)
+            NotificationHistoryRepository(context)
         }
     }
 
     val historyEntries by resolvedHistoryRepo.history.collectAsState(initial = emptyList())
-    // Dialog and filter state is saved, so rotating the phone keeps an open dialog open.
+    // Dialog and filter state is saved so rotating the phone keeps an open dialog open
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var selectedFilterPackage by rememberSaveable { mutableStateOf<String?>(null) }
-    var showClearAllConfirm by rememberSaveable { mutableStateOf(false) }
-    var showAppFilterDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeleteByAppDialog by rememberSaveable { mutableStateOf(false) }
-    var packageToDeleteConfirm by rememberSaveable(stateSaver = AppSummarySaver) {
+    val selectedFilterPackageState = rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedFilterPackage by selectedFilterPackageState
+    val showClearAllConfirmState = rememberSaveable { mutableStateOf(false) }
+    var showClearAllConfirm by showClearAllConfirmState
+    val showAppFilterDialogState = rememberSaveable { mutableStateOf(false) }
+    var showAppFilterDialog by showAppFilterDialogState
+    val showDeleteByAppDialogState = rememberSaveable { mutableStateOf(false) }
+    var showDeleteByAppDialog by showDeleteByAppDialogState
+    val packageToDeleteConfirmState = rememberSaveable(stateSaver = AppSummarySaver) {
         mutableStateOf<AppNotificationSummary?>(null)
     }
-    // Only the id is saved; the entry is looked up again in the live history list.
-    var selectedEntryIdForDetails by rememberSaveable { mutableStateOf<Long?>(null) }
+    // Only the id is saved; the entry is looked up again in the live history list
+    val selectedEntryIdForDetailsState = rememberSaveable { mutableStateOf<Long?>(null) }
+    var selectedEntryIdForDetails by selectedEntryIdForDetailsState
     val selectedEntryForDetails = selectedEntryIdForDetails?.let { id -> historyEntries.firstOrNull { it.id == id } }
     var retentionMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
-    val appSummaries = remember(historyEntries) {
-        historyEntries
-            .groupBy { it.packageName }
-            .map { (pkg, entries) ->
-                AppNotificationSummary(
-                    packageName = pkg,
-                    appName = entries.firstOrNull()?.appName ?: pkg,
-                    count = entries.size
-                )
-            }
-            .sortedByDescending { it.count }
-    }
+    val appSummaries = remember(historyEntries) { summarizeByApp(historyEntries) }
 
     val filteredEntries = remember(historyEntries, searchQuery, selectedFilterPackage) {
-        var list = historyEntries
-        if (!selectedFilterPackage.isNullOrBlank()) {
-            list = list.filter { it.packageName == selectedFilterPackage }
-        }
-        if (searchQuery.isNotBlank()) {
-            val q = searchQuery.trim().lowercase(Locale.getDefault())
-            list = list.filter {
-                it.appName.lowercase(Locale.getDefault()).contains(q) ||
-                    it.title.lowercase(Locale.getDefault()).contains(q) ||
-                    it.text.lowercase(Locale.getDefault()).contains(q) ||
-                    it.packageName.lowercase(Locale.getDefault()).contains(q)
-            }
-        }
-        list
+        filterEntries(historyEntries, selectedFilterPackage, searchQuery)
     }
 
     val groupedByDay = remember(filteredEntries) {
         groupEntriesByDay(filteredEntries)
     }
 
-    if (showClearAllConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearAllConfirm = false },
-            title = { Text(stringResource(R.string.confirm_clear_history_title)) },
-            text = { Text(stringResource(R.string.confirm_clear_history_msg, historyEntries.size)) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            resolvedHistoryRepo.clearAll()
-                            selectedFilterPackage = null
-                        }
-                        showClearAllConfirm = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.btn_clear_history))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearAllConfirm = false }) {
-                    Text(stringResource(R.string.btn_cancel))
-                }
-            }
-        )
-    }
-
-    packageToDeleteConfirm?.let { targetApp ->
-        AlertDialog(
-            onDismissRequest = { packageToDeleteConfirm = null },
-            title = { Text(stringResource(R.string.confirm_delete_app_history_title, targetApp.appName)) },
-            text = { Text(stringResource(R.string.confirm_delete_app_history_msg, targetApp.count, targetApp.appName)) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val deleted = resolvedHistoryRepo.deleteByPackage(targetApp.packageName)
-                            if (selectedFilterPackage == targetApp.packageName) {
-                                selectedFilterPackage = null
-                            }
-                            Toast.makeText(context, "Deleted $deleted notifications from ${targetApp.appName}", Toast.LENGTH_SHORT).show()
-                        }
-                        packageToDeleteConfirm = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(R.string.btn_delete_app_history))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { packageToDeleteConfirm = null }) {
-                    Text(stringResource(R.string.btn_cancel))
-                }
-            }
-        )
-    }
-
-    if (showAppFilterDialog) {
-        AppFilterDialog(
-            appSummaries = appSummaries,
-            totalCount = historyEntries.size,
-            selectedPackage = selectedFilterPackage,
-            onDismiss = { showAppFilterDialog = false },
-            onSelectFilter = { pkg ->
-                selectedFilterPackage = pkg
-                showAppFilterDialog = false
-            }
-        )
-    }
-
-    if (showDeleteByAppDialog) {
-        DeleteByAppDialog(
-            appSummaries = appSummaries,
-            onDismiss = { showDeleteByAppDialog = false },
-            onSelectFilter = { pkg ->
-                selectedFilterPackage = pkg
-                showDeleteByAppDialog = false
-            },
-            onDeleteApp = { summary ->
-                packageToDeleteConfirm = summary
-            }
-        )
-    }
-
-    selectedEntryForDetails?.let { entry ->
-        NotificationDetailDialog(
-            entry = entry,
-            onDismiss = { selectedEntryIdForDetails = null },
-            onDelete = {
-                scope.launch {
-                    resolvedHistoryRepo.deleteEntry(entry.id)
-                    selectedEntryIdForDetails = null
-                }
-            },
-            onDeleteAllFromApp = {
-                packageToDeleteConfirm = AppNotificationSummary(
-                    packageName = entry.packageName,
-                    appName = entry.appName,
-                    count = historyEntries.count { it.packageName == entry.packageName }
-                )
-                selectedEntryIdForDetails = null
-            }
-        )
-    }
+    HistoryDialogs(
+        historyEntries = historyEntries,
+        appSummaries = appSummaries,
+        selectedEntryForDetails = selectedEntryForDetails,
+        resolvedHistoryRepo = resolvedHistoryRepo,
+        scope = scope,
+        context = context,
+        showClearAllConfirmState = showClearAllConfirmState,
+        packageToDeleteConfirmState = packageToDeleteConfirmState,
+        showAppFilterDialogState = showAppFilterDialogState,
+        showDeleteByAppDialogState = showDeleteByAppDialogState,
+        selectedFilterPackageState = selectedFilterPackageState,
+        selectedEntryIdForDetailsState = selectedEntryIdForDetailsState
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 28.dp)
     ) {
-        item(key = "header_master_toggle") {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Rounded.History,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            Column {
-                                 Text(
-                                     text = stringResource(R.string.history_title),
-                                     style = MaterialTheme.typography.titleMedium,
-                                     fontWeight = FontWeight.Bold,
-                                     color = MaterialTheme.colorScheme.onSurface
-                                 )
-                                 Text(
-                                     text = if (settings.enableNotificationHistory) "Logging active • On-device private" else "Disabled",
-                                     style = MaterialTheme.typography.bodySmall,
-                                     color = if (settings.enableNotificationHistory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                 )
-                            }
-                        }
+        historyItems(
+            settings = settings,
+            repository = repository,
+            scope = scope,
+            resolvedHistoryRepo = resolvedHistoryRepo,
+            retentionMenuExpanded = retentionMenuExpanded,
+            onRetentionMenuExpandedChange = { retentionMenuExpanded = it },
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
+            appSummaries = appSummaries,
+            selectedFilterPackage = selectedFilterPackage,
+            onSelectPackage = { selectedFilterPackage = it },
+            historyEntries = historyEntries,
+            filteredEntries = filteredEntries,
+            groupedByDay = groupedByDay,
+            onOpenAppFilter = { showAppFilterDialog = true },
+            onOpenDeleteByApp = { showDeleteByAppDialog = true },
+            onClearAll = { showClearAllConfirm = true },
+            onOpenDetails = { selectedEntryIdForDetails = it }
+        )
+    }
+}
 
-                        if (repository != null) {
-                            Switch(
-                                checked = settings.enableNotificationHistory,
-                                onCheckedChange = { isChecked ->
-                                    scope.launch {
-                                        repository.setEnableNotificationHistory(isChecked)
-                                    }
-                                }
-                            )
+private fun LazyListScope.historyItems(
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository?,
+    scope: CoroutineScope,
+    resolvedHistoryRepo: INotificationHistoryRepository,
+    retentionMenuExpanded: Boolean,
+    onRetentionMenuExpandedChange: (Boolean) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    appSummaries: List<AppNotificationSummary>,
+    selectedFilterPackage: String?,
+    onSelectPackage: (String?) -> Unit,
+    historyEntries: List<NotificationHistoryEntry>,
+    filteredEntries: List<NotificationHistoryEntry>,
+    groupedByDay: Map<String, List<NotificationHistoryEntry>>,
+    onOpenAppFilter: () -> Unit,
+    onOpenDeleteByApp: () -> Unit,
+    onClearAll: () -> Unit,
+    onOpenDetails: (Long) -> Unit
+) {
+    item(key = "header_master_toggle") {
+        HistoryMasterCard(
+            enabled = settings.enableNotificationHistory,
+            repository = repository,
+            scope = scope
+        )
+    }
+
+    if (!settings.enableNotificationHistory) {
+        item(key = "header_disabled_banner") {
+            HistoryDisabledCard(repository = repository, scope = scope)
+        }
+    } else {
+        item(key = "header_controls") {
+            HistoryControlsCard(
+                retentionHours = settings.notificationHistoryRetentionHours,
+                retentionMenuExpanded = retentionMenuExpanded,
+                onRetentionMenuExpandedChange = onRetentionMenuExpandedChange,
+                onRetentionSelected = { hours ->
+                    if (repository != null) {
+                        scope.launch {
+                            repository.setNotificationHistoryRetentionHours(hours)
+                            resolvedHistoryRepo.cleanupOldEntries(hours)
                         }
                     }
-
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.Security,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.history_desc),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
+                },
+                searchQuery = searchQuery,
+                onSearchQueryChange = onSearchQueryChange,
+                appSummaries = appSummaries,
+                selectedPackage = selectedFilterPackage,
+                onSelectPackage = onSelectPackage,
+                totalCount = historyEntries.size,
+                filteredCount = filteredEntries.size,
+                onOpenAppFilter = onOpenAppFilter,
+                onOpenDeleteByApp = onOpenDeleteByApp,
+                onClearAll = onClearAll
+            )
         }
 
-        if (!settings.enableNotificationHistory) {
-            item(key = "header_disabled_banner") {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            Icons.Rounded.AllInbox,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.toggle_enable_history_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = stringResource(R.string.toggle_enable_history_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 18.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                        if (repository != null) {
-                            Button(
-                                onClick = { scope.launch { repository.setEnableNotificationHistory(true) } },
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text(stringResource(R.string.toggle_enable_history_title))
-                            }
-                        }
-                    }
-                }
+        if (groupedByDay.isEmpty()) {
+            item(key = "empty_history_placeholder") {
+                EmptyHistoryCard()
             }
         } else {
-            item(key = "header_controls") {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Schedule,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = stringResource(R.string.retention_title),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-
-                            Box {
-                                val retentionResMap = mapOf(
-                                    24 to R.string.retention_24h,
-                                    72 to R.string.retention_72h,
-                                    168 to R.string.retention_7d,
-                                    720 to R.string.retention_30d,
-                                    -1 to R.string.retention_forever
-                                )
-
-                                OutlinedButton(
-                                    onClick = { retentionMenuExpanded = true },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.FilterList,
-                                        contentDescription = "Retention filter",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        text = when (settings.notificationHistoryRetentionHours) {
-                                            24 -> "24 Hours"
-                                            72 -> "3 Days"
-                                            168 -> "7 Days"
-                                            720 -> "30 Days"
-                                            -1 -> "Forever"
-                                            else -> "3 Days"
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Spacer(Modifier.width(2.dp))
-                                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
-                                }
-
-                                DropdownMenu(
-                                    expanded = retentionMenuExpanded,
-                                    onDismissRequest = { retentionMenuExpanded = false }
-                                ) {
-                                    retentionResMap.forEach { (hours, resId) ->
-                                        val isSelected = settings.notificationHistoryRetentionHours == hours
-                                        DropdownMenuItem(
-                                            text = {
-                                                Text(
-                                                    text = stringResource(resId),
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                                )
-                                            },
-                                            trailingIcon = if (isSelected) {
-                                                {
-                                                    Icon(
-                                                        Icons.Rounded.Check,
-                                                        contentDescription = "Selected",
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
-                                                }
-                                            } else null,
-                                            onClick = {
-                                                retentionMenuExpanded = false
-                                                if (repository != null) {
-                                                    scope.launch {
-                                                        repository.setNotificationHistoryRetentionHours(hours)
-                                                        resolvedHistoryRepo.cleanupOldEntries(hours)
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
-
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text(stringResource(R.string.search_history_placeholder), fontSize = 13.sp) },
-                            leadingIcon = {
-                                Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(Icons.Rounded.Clear, contentDescription = "Clear search", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        if (appSummaries.isNotEmpty()) {
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                item(key = "filter_chip_all") {
-                                    val isAllSelected = selectedFilterPackage == null
-                                    FilterChip(
-                                        selected = isAllSelected,
-                                        onClick = { selectedFilterPackage = null },
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Rounded.AllInbox,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        },
-                                        label = {
-                                            Text(
-                                                text = stringResource(R.string.filter_all_apps) + " (${historyEntries.size})",
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
-
-                                items(appSummaries, key = { it.packageName }) { app ->
-                                    val isSelected = selectedFilterPackage == app.packageName
-                                    val appIcon = rememberAppIcon(app.packageName)
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            selectedFilterPackage = if (isSelected) null else app.packageName
-                                        },
-                                        leadingIcon = {
-                                            if (appIcon != null) {
-                                                Image(
-                                                    bitmap = appIcon,
-                                                    contentDescription = app.appName,
-                                                    modifier = Modifier
-                                                        .size(16.dp)
-                                                        .clip(CircleShape)
-                                                )
-                                            } else {
-                                                Icon(
-                                                    Icons.Rounded.Apps,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        },
-                                        label = {
-                                            Text(
-                                                text = "${app.appName} (${app.count})",
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                            )
-                                        },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        if (!selectedFilterPackage.isNullOrBlank()) {
-                            val activeAppName = appSummaries.find { it.packageName == selectedFilterPackage }?.appName ?: selectedFilterPackage
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Filter: $activeAppName",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                    IconButton(
-                                        onClick = { selectedFilterPackage = null },
-                                        modifier = Modifier.size(20.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "Clear app filter", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(14.dp))
-                                    }
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = if (selectedFilterPackage != null) {
-                                    val activeName = appSummaries.find { it.packageName == selectedFilterPackage }?.appName ?: selectedFilterPackage
-                                    "$activeName: ${filteredEntries.size} logs"
-                                } else {
-                                    "${filteredEntries.size} saved"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (appSummaries.isNotEmpty()) {
-                                    OutlinedButton(
-                                        onClick = { showAppFilterDialog = true },
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.FilterList, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(
-                                            text = if (selectedFilterPackage != null) {
-                                                appSummaries.find { it.packageName == selectedFilterPackage }?.appName ?: stringResource(R.string.filter_by_app)
-                                            } else {
-                                                stringResource(R.string.filter_by_app)
-                                            },
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    OutlinedButton(
-                                        onClick = { showDeleteByAppDialog = true },
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(stringResource(R.string.btn_delete_app_history), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-                                }
-
-                                if (historyEntries.isNotEmpty()) {
-                                    TextButton(
-                                        onClick = { showClearAllConfirm = true },
-                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text(stringResource(R.string.btn_clear_history), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (groupedByDay.isEmpty()) {
-                item(key = "empty_history_placeholder") {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Rounded.History,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.empty_history_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = stringResource(R.string.empty_history_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            } else {
-                groupedByDay.forEach { (dateHeader, entriesForDay) ->
-                    item(key = "date_header_$dateHeader") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 4.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                            ) {
-                                Text(
-                                    text = dateHeader,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = "${entriesForDay.size}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    items(
-                        items = entriesForDay,
-                        key = { it.id }
-                    ) { entry ->
-                        NotificationHistoryItemCard(
-                            entry = entry,
-                            onCardClick = { selectedEntryIdForDetails = entry.id },
-                            onDelete = {
-                                scope.launch { resolvedHistoryRepo.deleteEntry(entry.id) }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun NotificationHistoryItemCard(
-    entry: NotificationHistoryEntry,
-    onCardClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val context = LocalContext.current
-    var isExpanded by remember { mutableStateOf(false) }
-    val appIcon = rememberAppIcon(entry.packageName)
-
-    val timeFormatted = remember(entry.postTimeMillis) {
-        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
-        sdf.format(Date(entry.postTimeMillis))
-    }
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onCardClick)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (appIcon != null) {
-                    Image(
-                        bitmap = appIcon,
-                        contentDescription = entry.appName,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = entry.appName.firstOrNull()?.uppercase() ?: "A",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
+            groupedByDay.forEach { (dateHeader, entriesForDay) ->
+                item(key = "date_header_$dateHeader") {
+                    HistoryDayHeader(dateHeader = dateHeader, count = entriesForDay.size)
                 }
 
-                Text(
-                    text = entry.appName,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-
-                if (entry.mode.isNotBlank() && entry.mode != "Notification") {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                    ) {
-                        Text(
-                            text = entry.mode,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                Text(
-                    text = timeFormatted,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Delete,
-                        contentDescription = "Delete entry",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
+                items(
+                    items = entriesForDay,
+                    key = { it.id }
+                ) { entry ->
+                    NotificationHistoryItemCard(
+                        entry = entry,
+                        onCardClick = { onOpenDetails(entry.id) },
+                        onDelete = {
+                            scope.launch { resolvedHistoryRepo.deleteEntry(entry.id) }
+                        }
                     )
                 }
             }
-
-            if (entry.title.isNotBlank()) {
-                Text(
-                    text = entry.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            if (entry.text.isNotBlank()) {
-                Text(
-                    text = entry.text,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-            }
-
-            if (entry.text.length > 120 || entry.title.length > 80) {
-                Text(
-                    text = if (isExpanded) "Show less" else "Show more",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { isExpanded = !isExpanded }
-                )
-            }
-
-            if (entry.actionTitles.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    entry.actionTitles.forEach { action ->
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        ) {
-                            Text(
-                                text = action,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        val launchIntent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
-                        if (launchIntent != null) {
-                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(launchIntent)
-                        } else {
-                            Toast.makeText(context, "App not installed", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier.height(28.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Rounded.Launch, contentDescription = null, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Open App", fontSize = 11.sp)
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        val fullText = buildString {
-                            if (entry.title.isNotBlank()) appendLine(entry.title)
-                            if (entry.text.isNotBlank()) append(entry.text)
-                        }
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                        val clip = ClipData.newPlainText("SmartIsland Notification", fullText)
-                        clipboard?.setPrimaryClip(clip)
-                        Toast.makeText(context, "Notification text copied", Toast.LENGTH_SHORT).show()
-                    },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier.height(28.dp)
-                ) {
-                    Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Copy", fontSize = 11.sp)
-                }
-            }
         }
     }
 }
 
-@Composable
-private fun AppFilterDialog(
-    appSummaries: List<AppNotificationSummary>,
-    totalCount: Int,
-    selectedPackage: String?,
-    onDismiss: () -> Unit,
-    onSelectFilter: (String?) -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 260.dp, max = 520.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Rounded.FilterList, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text(
-                            text = stringResource(R.string.filter_by_app),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                Text(
-                    text = "Select an app to view its notifications, or choose All Apps to see all logs together.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item(key = "filter_dialog_all_apps") {
-                        val isAllSelected = selectedPackage == null
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isAllSelected)
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            border = if (isAllSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectFilter(null) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.AllInbox,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = stringResource(R.string.filter_all_apps),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.filter_all_apps_desc) + " ($totalCount)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                if (isAllSelected) {
-                                    Icon(
-                                        Icons.Rounded.Check,
-                                        contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    items(appSummaries, key = { it.packageName }) { app ->
-                        val isSelected = selectedPackage == app.packageName
-                        val icon = rememberAppIcon(app.packageName)
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected)
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectFilter(app.packageName) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                if (icon != null) {
-                                    Image(
-                                        bitmap = icon,
-                                        contentDescription = app.appName,
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primaryContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = app.appName.firstOrNull()?.uppercase() ?: "A",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = app.appName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${app.count} notification${if (app.count == 1) "" else "s"}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                if (isSelected) {
-                                    Icon(
-                                        Icons.Rounded.Check,
-                                        contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+private fun summarizeByApp(entries: List<NotificationHistoryEntry>): List<AppNotificationSummary> {
+    return entries
+        .groupBy { it.packageName }
+        .map { (pkg, appEntries) ->
+            AppNotificationSummary(
+                packageName = pkg,
+                appName = appEntries.firstOrNull()?.appName ?: pkg,
+                count = appEntries.size
+            )
         }
-    }
+        .sortedByDescending { it.count }
 }
 
-@Composable
-private fun DeleteByAppDialog(
-    appSummaries: List<AppNotificationSummary>,
-    onDismiss: () -> Unit,
-    onSelectFilter: (String) -> Unit,
-    onDeleteApp: (AppNotificationSummary) -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 260.dp, max = 520.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Rounded.Apps, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text(
-                            text = "Delete by App",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", modifier = Modifier.size(18.dp))
-                    }
-                }
-
-                Text(
-                    text = "Select an app to filter or delete all recorded notification logs for that app.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(appSummaries, key = { it.packageName }) { app ->
-                        val icon = rememberAppIcon(app.packageName)
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectFilter(app.packageName) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                if (icon != null) {
-                                    Image(
-                                        bitmap = icon,
-                                        contentDescription = app.appName,
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primaryContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = app.appName.firstOrNull()?.uppercase() ?: "A",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = app.appName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "${app.count} notification${if (app.count == 1) "" else "s"}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = { onDeleteApp(app) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Delete,
-                                        contentDescription = "Delete all from ${app.appName}",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+private fun filterEntries(
+    entries: List<NotificationHistoryEntry>,
+    packageName: String?,
+    query: String
+): List<NotificationHistoryEntry> {
+    var list = entries
+    if (!packageName.isNullOrBlank()) {
+        list = list.filter { it.packageName == packageName }
+    }
+    if (query.isNotBlank()) {
+        val q = query.trim().lowercase(Locale.getDefault())
+        list = list.filter {
+            it.appName.lowercase(Locale.getDefault()).contains(q) ||
+                it.title.lowercase(Locale.getDefault()).contains(q) ||
+                it.text.lowercase(Locale.getDefault()).contains(q) ||
+                it.packageName.lowercase(Locale.getDefault()).contains(q)
         }
     }
-}
-
-@Composable
-private fun NotificationDetailDialog(
-    entry: NotificationHistoryEntry,
-    onDismiss: () -> Unit,
-    onDelete: () -> Unit,
-    onDeleteAllFromApp: () -> Unit
-) {
-    val fullDateFormatted = remember(entry.postTimeMillis) {
-        val sdf = SimpleDateFormat("EEEE, MMMM d, yyyy • h:mm:ss a", Locale.getDefault())
-        sdf.format(Date(entry.postTimeMillis))
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 560.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = "Message Inspection Details",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    DetailFieldItem(label = "Application", value = "${entry.appName} (${entry.packageName})")
-                    if (entry.title.isNotBlank()) {
-                        DetailFieldItem(label = "Title", value = entry.title)
-                    }
-                    if (entry.text.isNotBlank()) {
-                        DetailFieldItem(label = "Text Content", value = entry.text)
-                    }
-                    if (!entry.subText.isNullOrBlank()) {
-                        DetailFieldItem(label = "SubText", value = entry.subText)
-                    }
-                    DetailFieldItem(label = "Received Time", value = fullDateFormatted)
-                    if (!entry.category.isNullOrBlank()) {
-                        DetailFieldItem(label = "Category", value = entry.category)
-                    }
-                    if (!entry.channelId.isNullOrBlank()) {
-                        DetailFieldItem(label = "Channel ID", value = entry.channelId)
-                    }
-                    DetailFieldItem(label = "Island Mode", value = entry.mode)
-                    if (entry.actionTitles.isNotEmpty()) {
-                        DetailFieldItem(label = "Action Buttons", value = entry.actionTitles.joinToString(", "))
-                    }
-                }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TextButton(
-                            onClick = onDelete,
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Delete Log")
-                        }
-
-                        Button(
-                            onClick = onDismiss,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("Close")
-                        }
-                    }
-
-                    TextButton(
-                        onClick = onDeleteAllFromApp,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Delete All from ${entry.appName}", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailFieldItem(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = label.uppercase(Locale.getDefault()),
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            lineHeight = 16.sp
-        )
-    }
+    return list
 }
 
 private fun groupEntriesByDay(entries: List<NotificationHistoryEntry>): Map<String, List<NotificationHistoryEntry>> {

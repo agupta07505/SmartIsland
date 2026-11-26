@@ -5,10 +5,23 @@
   Licensed under the GNU GPL v3 License
   Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
 -->
+<!--
+  Android 12+ (API 31+). With no <include> element, everything is backed up or
+  transferred as before except the notification-history database, which stays on
+  this device for both cloud backup and device-to-device transfer. The journal,
+  WAL and SHM files are listed too because they can hold the same rows.
+-->
 <data-extraction-rules>
     <cloud-backup>
-        <include
-            domain="sharedpref"
-            path="." />
+        <exclude domain="database" path="smart_island_notification_history.db" />
+        <exclude domain="database" path="smart_island_notification_history.db-journal" />
+        <exclude domain="database" path="smart_island_notification_history.db-wal" />
+        <exclude domain="database" path="smart_island_notification_history.db-shm" />
     </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="smart_island_notification_history.db" />
+        <exclude domain="database" path="smart_island_notification_history.db-journal" />
+        <exclude domain="database" path="smart_island_notification_history.db-wal" />
+        <exclude domain="database" path="smart_island_notification_history.db-shm" />
+    </device-transfer>
 </data-extraction-rules>

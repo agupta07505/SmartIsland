@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,13 +31,10 @@ import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.NetSpeedRules
-import com.agupta07505.smartisland.ui.glass.Card
+import com.agupta07505.smartisland.ui.SettingsCard
 import kotlinx.coroutines.launch
 
-/**
- * Settings > Idle widgets > Network speed: the speed the busier direction must reach before the widget takes a turn
- * on the pill (Off, 50 KB/s, 200 KB/s, 1 MB/s).
- */
+/** Speed the busier direction must reach before the widget takes a turn (Off, 50 KB/s, 200 KB/s, 1 MB/s). */
 @Composable
 internal fun NetSpeedSettingsCard(
     settings: SmartIslandSettings,
@@ -60,13 +55,7 @@ internal fun NetSpeedSettingsCard(
         NetSpeedRules.CONN_WIFI to stringResource(R.string.net_cfg_conn_wifi),
         NetSpeedRules.CONN_MOBILE to stringResource(R.string.net_cfg_conn_mobile)
     )
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
+    SettingsCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = stringResource(R.string.net_cfg_title),
@@ -121,7 +110,7 @@ internal fun NetSpeedSettingsCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // Which connection the widget shows on: any, Wi-Fi only, or mobile data only (a data-saver view).
+            // Any, Wi-Fi only or mobile data only (data-saver view)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = stringResource(R.string.net_cfg_conn_title),

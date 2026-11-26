@@ -64,6 +64,8 @@ import com.agupta07505.smartisland.data.LaunchableApp
 import com.agupta07505.smartisland.data.PinnedApps
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.util.quietly
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -82,11 +84,11 @@ internal fun rememberAppIcon(packageName: String): ImageBitmap? {
     LaunchedEffect(packageName) {
         if (iconBitmap == null) {
             val loaded = withContext(Dispatchers.IO) {
-                runCatching {
+                quietly {
                     val drawable = context.packageManager.getApplicationIcon(packageName)
                     val bmp = drawable.toBitmap(width = 72, height = 72)
                     bmp.asImageBitmap()
-                }.getOrNull()
+                }
             }
             if (loaded != null) {
                 AppShortcutIconCache.put(packageName, loaded)
@@ -97,7 +99,6 @@ internal fun rememberAppIcon(packageName: String): ImageBitmap? {
     return iconBitmap
 }
 
-/** The "Select Pinned Apps" dialog. */
 @Composable
 fun AppPickerDialog(
     settings: SmartIslandSettings,
@@ -129,58 +130,14 @@ fun AppPickerDialog(
             )
         },
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Select Pinned Apps",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                ) {
-                    Text(
-                        text = "${settings.shortcutPackages.size} / 8",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
+            PickerTitle(settings = settings)
         },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text(stringResource(R.string.search_installed_apps)) },
-                    leadingIcon = {
-                        Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                PickerSearchField(query = query, onQueryChange = { query = it })
 
                 if (filteredApps.isEmpty()) {
                     Box(
@@ -203,82 +160,7 @@ fun AppPickerDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filteredApps, key = { it.packageName }) { app ->
-                            // An app inside a folder is pinned too; a new app needs a free slot (a folder is one slot).
-                            val selected = app.packageName in PinnedApps.flatPackages(settings.shortcutPackages)
-                            val canSelect = selected || settings.shortcutPackages.size < PinnedApps.MAX
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .clickable(enabled = canSelect) {
-                                        val updated = if (selected) {
-                                            PinnedApps.unpin(settings.shortcutPackages, app.packageName)
-                                        } else {
-                                            PinnedApps.pin(settings.shortcutPackages, app.packageName)
-                                        }
-                                        scope.launch { repository.setShortcutPackages(updated) }
-                                    }
-                                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val icon = rememberAppIcon(app.packageName)
-                                if (icon != null) {
-                                    Image(
-                                        bitmap = icon,
-                                        contentDescription = app.label,
-                                        modifier = Modifier
-                                            .size(34.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(34.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Apps,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-
-                                Spacer(Modifier.width(10.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = app.label,
-                                        fontWeight = FontWeight.SemiBold,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (canSelect) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Text(
-                                        text = app.packageName,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                Checkbox(
-                                    checked = selected,
-                                    enabled = canSelect,
-                                    onCheckedChange = { checked ->
-                                        val updated = if (checked) {
-                                            PinnedApps.pin(settings.shortcutPackages, app.packageName)
-                                        } else {
-                                            PinnedApps.unpin(settings.shortcutPackages, app.packageName)
-                                        }
-                                        scope.launch { repository.setShortcutPackages(updated) }
-                                    }
-                                )
-                            }
+                            PickerAppRow(app = app, settings = settings, repository = repository, scope = scope)
                         }
                     }
                 }
@@ -292,4 +174,146 @@ fun AppPickerDialog(
             }
         }
     )
+}
+
+@Composable
+private fun PickerTitle(settings: SmartIslandSettings) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Select Pinned Apps",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+        ) {
+            Text(
+                text = "${settings.shortcutPackages.size} / 8",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PickerSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(R.string.search_installed_apps)) },
+        leadingIcon = {
+            Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Clear search", modifier = Modifier.size(18.dp))
+                }
+            }
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun PickerAppRow(
+    app: LaunchableApp,
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository,
+    scope: CoroutineScope
+) {
+    // An app inside a folder is pinned too, a new app needs a free slot (a folder is 1 slot)
+    val selected = app.packageName in PinnedApps.flatPackages(settings.shortcutPackages)
+    val canSelect = selected || settings.shortcutPackages.size < PinnedApps.MAX
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(enabled = canSelect) {
+                val updated = if (selected) {
+                    PinnedApps.unpin(settings.shortcutPackages, app.packageName)
+                } else {
+                    PinnedApps.pin(settings.shortcutPackages, app.packageName)
+                }
+                scope.launch { repository.setShortcutPackages(updated) }
+            }
+            .padding(vertical = 6.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val icon = rememberAppIcon(app.packageName)
+        if (icon != null) {
+            Image(
+                bitmap = icon,
+                contentDescription = app.label,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Apps,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = app.label,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (canSelect) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Text(
+                text = app.packageName,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Checkbox(
+            checked = selected,
+            enabled = canSelect,
+            onCheckedChange = { checked ->
+                val updated = if (checked) {
+                    PinnedApps.pin(settings.shortcutPackages, app.packageName)
+                } else {
+                    PinnedApps.unpin(settings.shortcutPackages, app.packageName)
+                }
+                scope.launch { repository.setShortcutPackages(updated) }
+            }
+        )
+    }
 }

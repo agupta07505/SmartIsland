@@ -9,27 +9,17 @@ package com.agupta07505.smartisland.ui.search
 
 import java.text.Normalizer
 
-/**
- * One searchable setting row, already resolved to the strings the user sees in their language.
- *
- * @param id stable id, also used as the row key for scrolling and highlighting (may be shared with
- *   the screen the row lives on, see [SettingsSearchIndex])
- * @param title the row's title as shown on screen
- * @param subtitle the row's description, if it has one
- * @param keywords extra words people may type (aliases, English names, technical terms)
- * @param screen the name of the screen or tab the row lives on, shown under the result and
- *   searched too, so "timing" finds every row on the Timing screen
- */
 data class SearchableSetting(
     val id: String,
     val title: String,
     val subtitle: String = "",
     val keywords: List<String> = emptyList(),
-    val screen: String = ""
+    val screen: String = "",
+    val searchPriority: Int = 0
 )
 
 /**
- * Pure matching for the settings search box. No Android classes, so it is unit-tested on the JVM.
+ * Matching for the settings search box, with no Android classes
  */
 object SettingsSearch {
     const val MAX_RESULTS = 25
@@ -37,7 +27,7 @@ object SettingsSearch {
     private val combiningMarks = Regex("\\p{Mn}+")
     private val separators = Regex("[^\\p{L}\\p{N}]+")
 
-    /** Lower-cases, strips accents and turns every run of punctuation into one space. */
+    /** Lower-cases, strips accents and turns every run of punctuation into 1 space. */
     fun normalize(text: String): String {
         val decomposed = Normalizer.normalize(text, Normalizer.Form.NFD)
         return decomposed
@@ -59,7 +49,11 @@ object SettingsSearch {
                 val score = score(item, words)
                 if (score > 0) Triple(item, score, index) else null
             }
-            .sortedWith(compareByDescending<Triple<SearchableSetting, Int, Int>> { it.second }.thenBy { it.third })
+            .sortedWith(
+                compareByDescending<Triple<SearchableSetting, Int, Int>> { it.second }
+                    .thenByDescending { it.first.searchPriority }
+                    .thenBy { it.third }
+            )
             .take(MAX_RESULTS)
             .map { it.first }
     }
@@ -68,7 +62,7 @@ object SettingsSearch {
     internal fun score(item: SearchableSetting, words: List<String>): Int {
         val title = normalize(item.title)
         val titleWords = title.split(' ').filter { it.isNotEmpty() }
-        // The compact forms (no separators) let "wifi" find "Wi-Fi".
+        // The compact forms (no separators) let "wifi" find "Wi-Fi"
         val titleCompact = title.replace(" ", "")
         val keywordTexts = item.keywords.map { normalize(it) }
         val keywordCompact = keywordTexts.map { it.replace(" ", "") }

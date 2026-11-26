@@ -9,14 +9,7 @@ package com.agupta07505.smartisland.util
 
 import android.os.SystemClock
 
-/**
- * Lets an island button "just do its job" without leaving the app the user is in.
- *
- * Some apps (voice recorders in particular) give their Save / Stop button an *activity* PendingIntent,
- * so firing it brings the app to the front. [arm] is called right before such a button is fired; if the
- * accessibility service then sees that package's window open within [WINDOW_MS], [consume] returns true
- * once and the service sends the user back.
- */
+/** Runs an activity PendingIntent without leaving the foreground app when possible. */
 object SilentActionGuard {
     const val WINDOW_MS = 2500L
 

@@ -1,8 +1,5 @@
 # Smart Island Proguard Rules
 
-# Keep Compose Runtime and library classes
--keep class androidx.compose.** { *; }
-
 # Keep DataStore Preferences serializer/keys
 -keep class androidx.datastore.preferences.core.** { *; }
 
@@ -48,6 +45,7 @@
     public java.lang.CharSequence getName();
 }
 
-# R8's optimizer miscompiles the very large IslandOverlayView composable (dex VerifyError:
-# "type Float unexpected as arg to if-eqz/if-nez"). Keep shrinking/obfuscation, skip optimization.
--dontoptimize
+# Keep Compose selection class names readable in the toolbar probe log (SelectableText.kt)
+-keepnames class androidx.compose.foundation.text.selection.*
+-keepnames class androidx.compose.foundation.text.contextmenu.**
+-keepnames class androidx.compose.ui.platform.AndroidTextToolbar

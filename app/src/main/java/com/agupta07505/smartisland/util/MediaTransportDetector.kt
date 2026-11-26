@@ -7,15 +7,9 @@
 
 package com.agupta07505.smartisland.util
 
-/**
- * Recognises a media player's notification from its buttons alone (Previous / Play-Pause / Next).
- *
- * Most players use MediaStyle, but video apps, popup / picture-in-picture players and some
- * background-play clients draw their own buttons and also keep a progress bar. Without this they
- * score as downloads (a bar plus Pause / Stop buttons) and the island shows "Downloading".
- */
 object MediaTransportDetector {
-    private val PREVIOUS = listOf("previous", "prev", "rewind", "anterior", "précédent", "vorherige", "precedente", "上一")
+    private val PREVIOUS =
+        listOf("previous", "prev", "rewind", "anterior", "précédent", "vorherige", "precedente", "上一")
     private val NEXT = listOf("next", "skip", "siguiente", "suivant", "nächste", "successivo", "下一")
     private val PLAY_PAUSE = listOf("pause", "play", "pausa", "reproducir", "lecture", "wiedergabe", "暂停", "播放")
 

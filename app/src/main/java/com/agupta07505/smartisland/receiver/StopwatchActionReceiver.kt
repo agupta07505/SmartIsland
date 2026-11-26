@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import com.agupta07505.smartisland.util.InAppStopwatch
 
-/** Receives the Lap / Pause / Resume / Reset buttons of the island's own stopwatch card. */
 class StopwatchActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         InAppStopwatch.handle(context, intent.action)

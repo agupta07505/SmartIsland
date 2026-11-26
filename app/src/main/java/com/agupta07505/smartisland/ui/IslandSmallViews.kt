@@ -7,6 +7,9 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.content.Context
+import android.hardware.display.DisplayManager
+import android.view.Display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -27,24 +31,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.getValue
+import com.agupta07505.smartisland.data.CutoutPlacement
+import com.agupta07505.smartisland.data.IdleDotGeometry
+import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.CameraBand
+import com.agupta07505.smartisland.model.CutoutArea
+import com.agupta07505.smartisland.model.DisplayKey
+import com.agupta07505.smartisland.model.ExpandedCloseZone
+import com.agupta07505.smartisland.model.expandedCloseZone
+import com.agupta07505.smartisland.util.CameraCutoutDetector
 
-/**
- * The separate round tap target for the idle dot (a capsule in portrait, where it is as wide as the idle pill). Draws
- * nothing while [alpha] is ~0 or [dot] is null.
- */
+/** Separate round tap target for the idle dot. */
 @Composable
 internal fun LandscapeIdleDotView(
-    dot: com.agupta07505.smartisland.model.IdleDotGeometry?,
+    dot: IdleDotGeometry?,
     alpha: () -> Float,
     topShiftDp: () -> Float,
     color: Color,
     onTap: () -> Unit,
     onLongPress: () -> Unit = {}
 ) {
-    // The fade is read at draw time; composition only sees whether the dot is visible at all (flips once).
+    // The fade is read at draw time
     val alphaNow = rememberUpdatedState(alpha)
     val visible by remember { derivedStateOf { alphaNow.value() > 0.01f } }
     if (dot == null || !visible) return
@@ -70,11 +81,7 @@ internal fun LandscapeIdleDotView(
     )
 }
 
-/**
- * Portrait, island expanded: the glyph-free centre band of the pill, at the top of the expanded island, as a
- * transparent tap target drawn above the card (the card's own click would otherwise take the tap and open the
- * notification).
- */
+/** Portrait, island expanded: the glyph-free centre band of the pill. */
 @Composable
 internal fun PortraitPillCenterTarget(
     enabled: Boolean,
@@ -97,60 +104,72 @@ internal fun PortraitPillCenterTarget(
     )
 }
 
-/**
- * Where the expanded island's close target sits: on the camera cutout the device reports
- * ([com.agupta07505.smartisland.util.CameraCutoutDetector]), or on the pill's centre band when there is none.
- */
+/** Where the expanded island's close target sits. */
 @Composable
 internal fun rememberExpandedCloseZone(
-    settings: com.agupta07505.smartisland.data.SmartIslandSettings,
-    isLandscape: Boolean
-): com.agupta07505.smartisland.model.ExpandedCloseZone {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val cutout = remember(context, configuration) { com.agupta07505.smartisland.util.CameraCutoutDetector.detect(context) }
+    settings: SmartIslandSettings,
+    isLandscape: Boolean,
+    cameraBand: CameraBand? = null,
+    pillCentreXDp: Float = 0f
+): ExpandedCloseZone {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val cutoutGeneration = CameraCutoutDetector.generation
+    val cutout = remember(context, configuration, cutoutGeneration) { CameraCutoutDetector.detect(context) }
     return remember(
         cutout, settings.width, settings.height, settings.yOffset, settings.enableNotchMode, isLandscape,
-        settings.cameraCutoutManual, settings.cameraCutoutX, settings.cameraCutoutY,
-        settings.cameraCutoutWidth, settings.cameraCutoutHeight
+        settings.cameraCutoutManual, settings.cameraCutoutStyle, settings.cameraCutoutX, settings.cameraCutoutY,
+        settings.cameraCutoutWidth, settings.cameraCutoutHeight, cameraBand, pillCentreXDp, configuration.screenWidthDp
     ) {
-        // The manual cutout area (Positions) replaces the detected one when hardware detection fails on a phone.
-        // Notch mode has no camera hole of its own: the pill band is the close target, as without a cutout.
-        val manual = settings.cameraCutoutManual && !settings.enableNotchMode
-        com.agupta07505.smartisland.model.expandedCloseZone(
-            hasHardwareCutout = !settings.enableNotchMode && (manual || cutout.hasHardwareCutout),
-            cutoutWidthDp = if (manual) settings.cameraCutoutWidth else cutout.widthDp,
-            cutoutHeightDp = if (manual) settings.cameraCutoutHeight else cutout.heightDp,
-            cutoutXOffsetDp = if (manual) settings.cameraCutoutX else cutout.xOffsetDp,
-            cutoutTopDp = if (manual) settings.cameraCutoutY else cutout.yOffsetDp,
-            // The overlay window itself sits at the pill's Y offset in portrait (see the service's window params).
+        val placed = CutoutPlacement.area(settings, configuration.screenWidthDp.toFloat())
+        expandedCloseZone(
+            // The notch has no hole in landscape, the placed area is not its own
+            hasHardwareCutout = (placed != null || cutout.hasHardwareCutout) &&
+                !(settings.enableNotchMode && isLandscape),
+            cutoutWidthDp = placed?.widthDp ?: cutout.widthDp,
+            cutoutHeightDp = placed?.heightDp ?: cutout.heightDp,
+            cutoutXOffsetDp = placed?.centreXDp ?: cutout.centreXDp,
+            cutoutTopDp = placed?.topDp ?: cutout.yOffsetDp,
             windowTopDp = if (settings.enableNotchMode || isLandscape) 0f else settings.yOffset,
             pillWidthDp = settings.width,
-            pillHeightDp = settings.height
+            pillHeightDp = settings.height,
+            cameraBand = if (isLandscape) null else cameraBand,
+            pillCentreXDp = pillCentreXDp,
+            screenWidthDp = configuration.screenWidthDp.toFloat()
         )
     }
 }
 
 @Composable
 internal fun rememberCameraCutoutArea(
-    settings: com.agupta07505.smartisland.data.SmartIslandSettings,
-    isLandscape: Boolean
-): com.agupta07505.smartisland.model.CutoutArea? {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val cutout = remember(context, configuration) { com.agupta07505.smartisland.util.CameraCutoutDetector.detect(context) }
+    settings: SmartIslandSettings,
+    isLandscape: Boolean,
+    withNotchHole: Boolean = false,
+    assumeCentre: Boolean = false
+): CutoutArea? {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val metrics = context.resources.displayMetrics
+    val displayKey = DisplayKey(
+        metrics.widthPixels, metrics.heightPixels,
+        (context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)
+            ?.getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: -1,
+        metrics.densityDpi
+    )
+    val cutoutGeneration = CameraCutoutDetector.generation
+    val cutout = remember(context, configuration, displayKey, cutoutGeneration) { CameraCutoutDetector.detect(context) }
     return remember(
-        cutout, isLandscape, settings.enableNotchMode, settings.cameraCutoutManual, settings.cameraCutoutX, settings.cameraCutoutY,
-        settings.cameraCutoutWidth, settings.cameraCutoutHeight
+        cutout, isLandscape, withNotchHole, assumeCentre, settings.enableNotchMode, settings.cameraCutoutManual,
+            settings.cameraCutoutStyle, settings.cameraCutoutX, settings.cameraCutoutY,
+        settings.cameraCutoutWidth, settings.cameraCutoutHeight, configuration.screenWidthDp
     ) {
-        com.agupta07505.smartisland.util.CameraCutoutDetector.areaFor(settings, cutout, isLandscape)
+        val screenWidthDp = configuration.screenWidthDp.toFloat()
+        if (withNotchHole) CameraCutoutDetector.areaFor(settings, cutout, isLandscape, screenWidthDp, assumeCentre)
+        else CameraCutoutDetector.layoutAreaFor(settings, cutout, isLandscape, screenWidthDp)
     }
 }
 
-/**
- * Portrait, island collapsed, centre band NOT overlapping the camera cutout: a transparent long-press target over the
- * camera cutout (hide / show the pill, or the configured long-press action).
- */
+/** Portrait, island collapsed, centre band not overlapping the camera cutout. */
 @Composable
 internal fun CutoutLongPressTarget(
     enabled: Boolean,
@@ -171,7 +190,6 @@ internal fun CutoutLongPressTarget(
     )
 }
 
-/** Three short lines: the glyph of the secondary cutout while it is the sibling picker button. */
 @Composable
 internal fun SiblingPickerLines(open: Boolean) {
     val lineColor = Color.White.copy(alpha = if (open) 1f else 0.85f)

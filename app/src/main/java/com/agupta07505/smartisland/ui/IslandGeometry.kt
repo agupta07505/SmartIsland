@@ -7,29 +7,33 @@
 
 package com.agupta07505.smartisland.ui
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import android.content.Context
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.model.BubbleIntoCutout
+import com.agupta07505.smartisland.model.CollapsedGroupPlacement
 import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.TorchCardSize
+import com.agupta07505.smartisland.ui.expanded.BATTERY_EXPANDED_HEIGHT
+import com.agupta07505.smartisland.ui.expanded.NAVIGATION_EXPANDED_HEIGHT
+import com.agupta07505.smartisland.ui.expanded.RING_GLANCE_HEIGHT
+import com.agupta07505.smartisland.ui.expanded.SPLIT_ISLAND_GAP
+import com.agupta07505.smartisland.util.AnimationSpeed
+import com.agupta07505.smartisland.util.IdleCloseSequence
+import com.agupta07505.smartisland.util.SECONDARY_RETURN_BASE_MS
 
 internal const val EXPANDED_WIDTH_RATIO = 0.95f
 internal const val LANDSCAPE_EXPANDED_WIDTH_RATIO = 0.5f
 internal const val LANDSCAPE_EXPANDED_MIN_WIDTH_DP = 340f
 internal const val LANDSCAPE_EXPANDED_MAX_WIDTH_DP = 560f
-// Landscape with the sibling picker open: two islands (card left, picker right) with a gap.
 internal const val LANDSCAPE_SPLIT_PICKER_WIDTH_RATIO = 0.30f
 internal const val LANDSCAPE_SPLIT_PICKER_MIN_WIDTH_DP = 240f
 internal const val LANDSCAPE_SPLIT_PICKER_MAX_WIDTH_DP = 300f
-// The whole split group (card + gap + picker) is about this share of the screen width, which
-// with the shorter picker makes the two islands cover roughly 30% of the screen.
 internal const val LANDSCAPE_SPLIT_TOTAL_WIDTH_RATIO = 0.62f
-// Landscape: the expanded island sits this much higher than the status bar line.
 internal const val LANDSCAPE_EXPANDED_LIFT_DP = 14f
 
-/** The app-shortcuts launcher window sits this much higher than other expanded cards (both orientations; never above the screen edge). */
 internal const val LAUNCHER_EXPANDED_LIFT_DP = 6f
 internal const val LANDSCAPE_SPLIT_CARD_MIN_WIDTH_DP = 240f
 internal const val LANDSCAPE_PICKER_SCREEN_MARGIN_DP = 16f
@@ -38,19 +42,13 @@ internal fun splitPickerLeftFraction(islandWidthDp: Float, screenWidthDp: Float)
     if (islandWidthDp <= 0f) 0.5f
     else (1f - splitPickerWidthDp(screenWidthDp) / islandWidthDp).coerceIn(0.3f, 0.9f)
 
-/** Width of the picker island in the landscape split layout. */
 internal fun splitPickerWidthDp(screenWidthDp: Float): Float =
     (screenWidthDp * LANDSCAPE_SPLIT_PICKER_WIDTH_RATIO)
         .coerceIn(LANDSCAPE_SPLIT_PICKER_MIN_WIDTH_DP, LANDSCAPE_SPLIT_PICKER_MAX_WIDTH_DP)
 
-/**
- * Widest the card island may get in the split layout: what is left of the split group's share of the screen after the
- * gap and the picker, never so wide that card + gap + picker would not fit the screen minus its margin, and never
- * below the minimum card width.
- */
 internal fun splitCardMaxWidthDp(screenWidthDp: Float): Float {
     val picker = splitPickerWidthDp(screenWidthDp)
-    val gap = com.agupta07505.smartisland.ui.expanded.SPLIT_ISLAND_GAP.value
+    val gap = SPLIT_ISLAND_GAP.value
     val share = screenWidthDp * LANDSCAPE_SPLIT_TOTAL_WIDTH_RATIO - gap - picker
     val fits = screenWidthDp - LANDSCAPE_PICKER_SCREEN_MARGIN_DP - gap - picker
     return share
@@ -59,15 +57,10 @@ internal fun splitCardMaxWidthDp(screenWidthDp: Float): Float {
         .coerceAtLeast(LANDSCAPE_SPLIT_CARD_MIN_WIDTH_DP)
 }
 
-/**
- * Landscape: the overlay window always starts at the top of the screen, so the expanded island sits under the status
- * bar wherever the collapsed cutout was (a camera circle is mid-height on the side).
- */
 internal fun collapsedTopShiftDp(isLandscape: Boolean, enableNotchMode: Boolean, yOffsetDp: Float): Float =
     if (isLandscape && !enableNotchMode) yOffsetDp.coerceAtLeast(0f) else 0f
 
-/** Returns the landscape status bar height in dp, or 0f when the device doesn't define one. */
-internal fun landscapeStatusBarHeightDp(context: android.content.Context): Float {
+internal fun landscapeStatusBarHeightDp(context: Context): Float {
     val id = context.resources.getIdentifier("status_bar_height_landscape", "dimen", "android")
     if (id <= 0) return 0f
     val px = context.resources.getDimensionPixelSize(id)
@@ -80,18 +73,15 @@ internal fun calculateExpandedWidth(
     screenHeightDp: Float,
     ratio: Float = EXPANDED_WIDTH_RATIO,
     pickerSideBySide: Boolean = false,
-    // Measured natural width of the card island (split layout); null = not measured yet.
     splitCardWidthDp: Float? = null
 ): Float {
     return if (isLandscape && pickerSideBySide) {
-        // Card island (its natural width) + gap + picker island, never wider than the screen
-        // minus a margin.
+        // Card island (its natural width) + gap + picker island
         val card = (splitCardWidthDp ?: splitCardMaxWidthDp(screenWidthDp))
             .coerceIn(LANDSCAPE_SPLIT_CARD_MIN_WIDTH_DP, splitCardMaxWidthDp(screenWidthDp))
-        (card + com.agupta07505.smartisland.ui.expanded.SPLIT_ISLAND_GAP.value + splitPickerWidthDp(screenWidthDp))
+        (card + SPLIT_ISLAND_GAP.value + splitPickerWidthDp(screenWidthDp))
             .coerceAtMost((screenWidthDp - LANDSCAPE_PICKER_SCREEN_MARGIN_DP).coerceAtLeast(0f))
     } else if (isLandscape) {
-        // Landscape: about half of the screen width, centred, so the card takes the same top strip a heads-up notification does.
         (screenWidthDp * LANDSCAPE_EXPANDED_WIDTH_RATIO)
             .coerceIn(LANDSCAPE_EXPANDED_MIN_WIDTH_DP, LANDSCAPE_EXPANDED_MAX_WIDTH_DP)
     } else {
@@ -110,14 +100,21 @@ internal fun calculateExpandedTopOffset(
 ): Float {
     val offset = if (enableNotchMode) {
         maxOf(statusBarHeightDp, notchHeightDp) + 8f
-    } else if (hasCompanion) {
+    } else if (hasCompanion || !isLandscape) {
         maxOf(statusBarHeightDp, circleSizeDp + compactGapDp)
-    } else {
+    } else if (isLandscape) {
         statusBarHeightDp
+    } else {
+        maxOf(statusBarHeightDp, circleSizeDp + compactGapDp)
     }
-    // Landscape: a little higher than the status bar line, never above the screen edge.
+    // landscape: a little higher than the status bar line
     return if (isLandscape) (offset - LANDSCAPE_EXPANDED_LIFT_DP).coerceAtLeast(0f) else offset
 }
+
+/** Lone card in portrait: top edge just under the camera cutout, inside a window starting at [windowTopDp]. */
+internal fun singleCardTopBelowCutoutDp(cutoutBottomDp: Float, windowTopDp: Float,
+        gapDp: Float = SINGLE_CARD_CUTOUT_GAP_DP): Float =
+    (cutoutBottomDp + gapDp - windowTopDp).coerceAtLeast(0f)
 
 internal fun calculateSecondaryExpandedOffset(
     secondaryIsPill: Boolean,
@@ -141,27 +138,44 @@ internal fun calculateSecondaryExpandedOffset(
     }
 }
 internal const val SWIPE_THRESHOLD_DP = 35f
-/** Expanded island left / right swipe fire distance (dp). */
 internal const val EXPANDED_SIDE_SWIPE_THRESHOLD_DP = 48f
 internal const val PILL_SWIPE_THRESHOLD_DP = 16f
 internal const val DRAG_MAX_OFFSET_DP = 100f
-/** Dead-zone indicator (finger moved, lifting does nothing): how much the shell shrinks. The pill shows it more than the big card. */
 internal const val PILL_DEAD_SHRINK = 0.04f
 internal const val EXPANDED_DEAD_SHRINK = 0.015f
 
-/** The swipe-lock cue. */
 internal const val LOCK_CUE_OUTLINE_DP = 2.5f
 internal const val LOCK_CUE_OUTLINE_ALPHA = 0.55f
+internal const val HOLD_GLOW_ALPHA = 0.5f
+internal const val HOLD_GLOW_WIDTH_DP = 9f
+internal const val HOLD_GLOW_IN_MS = 140
 internal const val LOCK_CUE_IN_MS = 60
 internal const val LOCK_CUE_OUT_MS = 100
 internal const val COMPACT_INDICATOR_GAP_DP = 8f
+internal const val SINGLE_CARD_CUTOUT_GAP_DP = 4f
 internal const val HOLD_GESTURE_THRESHOLD_MS = 300L
-internal const val SECONDARY_RETURN_MS = com.agupta07505.smartisland.model.SECONDARY_RETURN_BASE_MS
-internal val MERGE_IN_EASING = androidx.compose.animation.core.CubicBezierEasing(0.55f, 0.05f, 0.35f, 1f)
-internal val MERGE_OUT_EASING = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+internal const val SECONDARY_RETURN_MS = SECONDARY_RETURN_BASE_MS
+internal val MERGE_IN_EASING = CubicBezierEasing(0.55f, 0.05f, 0.35f, 1f)
+/** Secondary bubble's glide into the cutout (model/BubbleIntoCutout.kt). */
+internal val GLIDE_EASING = CubicBezierEasing(
+    BubbleIntoCutout.GLIDE_X1,
+    BubbleIntoCutout.GLIDE_Y1,
+    BubbleIntoCutout.GLIDE_X2,
+    BubbleIntoCutout.GLIDE_Y2
+)
+internal val MERGE_OUT_EASING = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
 
 internal fun islandSpringDamping(isLandscape: Boolean): Float = if (isLandscape) 0.86f else 0.8f
 internal fun islandSpringStiffness(isLandscape: Boolean): Float = if (isLandscape) 280f else 400f
+
+internal fun idleClosePlan(
+    speed: AnimationSpeed,
+    edge: Boolean
+): IdleCloseSequence.Plan =
+    IdleCloseSequence.plan(
+        speed,
+        if (edge) speed.userStiffness(islandSpringStiffness(true)) to islandSpringDamping(true) else null
+    )
 
 internal enum class CompactNotificationShape { MiniPill, Circle }
 
@@ -169,12 +183,17 @@ internal fun defaultEstimatedHeightForMode(mode: IslandMode?): Dp {
     return when (mode) {
         IslandMode.Music -> 175.dp
         IslandMode.Notification -> 135.dp
-        IslandMode.IncomingCall, IslandMode.Battery -> 115.dp
+        IslandMode.IncomingCall -> 115.dp
+        IslandMode.CallEnded -> 132.dp
+        IslandMode.Battery -> BATTERY_EXPANDED_HEIGHT
         IslandMode.LiveActivity -> 180.dp
-        IslandMode.Navigation -> com.agupta07505.smartisland.ui.expanded.NAVIGATION_EXPANDED_HEIGHT
-        IslandMode.DownloadUpload, IslandMode.Hotspot -> 160.dp
-        IslandMode.Bluetooth, IslandMode.Flashlight, IslandMode.ScreenRecording, IslandMode.AudioRecording,
-        IslandMode.Timer, IslandMode.Stopwatch -> 115.dp
+        IslandMode.Navigation -> NAVIGATION_EXPANDED_HEIGHT
+        IslandMode.DownloadUpload -> 146.dp
+        IslandMode.Hotspot -> 125.dp
+        // the ring glance cards (timer, stopwatch, Bluetooth) are 94 dp
+        IslandMode.Bluetooth, IslandMode.Timer, IslandMode.Stopwatch -> RING_GLANCE_HEIGHT
+        IslandMode.Flashlight -> TorchCardSize.ESTIMATE_HEIGHT_DP.dp
+        IslandMode.ScreenRecording, IslandMode.AudioRecording -> 115.dp
         IslandMode.Empty, null -> 135.dp
     }
 }
@@ -185,6 +204,78 @@ internal fun compactNotificationShapes(
 ): List<CompactNotificationShape> = when {
     notificationCount < 2 -> emptyList()
     !expanded -> listOf(CompactNotificationShape.Circle)
-    notificationCount == 2 -> listOf(CompactNotificationShape.MiniPill)
-    else -> listOf(CompactNotificationShape.MiniPill, CompactNotificationShape.Circle)
+    // Expanded: the next event's bubble becomes the collapsed cutout whatever the number of events, no bubble stays
+    // beside the card
+    else -> listOf(CompactNotificationShape.MiniPill)
+}
+
+internal data class NotchGroupGeometry(
+    val mainLeft: Float,
+    val earLeft: Float,
+    val earOnLeft: Boolean,
+    val groupStart: Float,
+    val groupEnd: Float
+)
+
+internal fun notchGroupGeometry(
+    screenWidth: Float,
+    xOffset: Float,
+    notchWidth: Float,
+    earWidth: Float,
+    gap: Float,
+    edgeMargin: Float,
+    hasEar: Boolean,
+    preferLeft: Boolean
+): NotchGroupGeometry {
+    val mainLeft = screenWidth / 2f + xOffset - notchWidth / 2f
+    val mainRight = mainLeft + notchWidth
+    val need = gap + earWidth
+    val leftFits = mainLeft - edgeMargin >= need
+    val rightFits = screenWidth - edgeMargin - mainRight >= need
+    // The ear's side is decided even with no ear shown
+    val onLeft = if (preferLeft) leftFits || !rightFits else !rightFits && leftFits
+    val earLeft = if (onLeft) mainLeft - gap - earWidth else mainRight + gap
+    return NotchGroupGeometry(
+        mainLeft = mainLeft,
+        earLeft = earLeft,
+        earOnLeft = onLeft,
+        groupStart = if (hasEar && onLeft) earLeft else mainLeft,
+        groupEnd = if (hasEar && !onLeft) earLeft + earWidth else mainRight
+    )
+}
+
+internal data class CollapsedGroupSpan(val mainLeftPx: Float, val startPx: Float, val endPx: Float) {
+    fun windowXPx(screenWidthPx: Float): Int = ((startPx + endPx) / 2f - screenWidthPx / 2f).toInt()
+}
+
+/** [notchXOffsetPx] is null outside notch mode; the notch then fixes the pill and the group takes its ear's side. */
+internal fun collapsedGroupSpan(
+    desiredMainLeftPx: Float,
+    screenWidthPx: Float,
+    edgePaddingPx: Float,
+    mainWidthPx: Float,
+    circleSizePx: Float,
+    compactGapPx: Float,
+    isSplitMode: Boolean,
+    isCircleLeft: Boolean,
+    notchXOffsetPx: Float?
+): CollapsedGroupSpan {
+    val notch = notchXOffsetPx?.let {
+        notchGroupGeometry(
+            screenWidthPx, it, mainWidthPx, circleSizePx, compactGapPx, edgePaddingPx, isSplitMode, isCircleLeft
+        )
+    }
+    val mainLeftPx = CollapsedGroupPlacement.clampedMainLeftPx(
+        desiredMainLeftPx, screenWidthPx, edgePaddingPx, mainWidthPx, circleSizePx, compactGapPx, isSplitMode,
+        isCircleLeft
+    )
+    return CollapsedGroupSpan(
+        mainLeftPx = notch?.mainLeft ?: mainLeftPx,
+        startPx = notch?.groupStart ?: CollapsedGroupPlacement.groupStartPx(
+            mainLeftPx, circleSizePx, compactGapPx, isSplitMode, isCircleLeft
+        ),
+        endPx = notch?.groupEnd ?: CollapsedGroupPlacement.groupEndPx(
+            mainLeftPx, mainWidthPx, circleSizePx, compactGapPx, isSplitMode, isCircleLeft
+        )
+    )
 }

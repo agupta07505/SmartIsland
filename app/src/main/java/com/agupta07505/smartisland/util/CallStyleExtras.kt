@@ -9,15 +9,13 @@ package com.agupta07505.smartisland.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.app.Person
 import android.os.Build
+import androidx.annotation.RequiresApi
+import com.agupta07505.smartisland.model.CallActionRole
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import com.agupta07505.smartisland.model.VoipCallDetector
 
-/**
- * Reads the extras of `Notification.CallStyle`, so a ringing call is recognised even when the app's buttons have
- * no (or an unexpected) label, or the notification is not flagged ongoing (a heads-up incoming call usually is not).
- *
- * Every read is guarded: a malformed OEM bundle must never break notification handling.
- */
 object CallStyleExtras {
     private const val EXTRA_CALL_TYPE = "android.callType"
     private const val EXTRA_ANSWER_INTENT = "android.answerIntent"
@@ -32,94 +30,83 @@ object CallStyleExtras {
 
     /**
      * True for the platform CallStyle and for the androidx compat CallStyle (what apps use below Android 12, or when
-     * they build through NotificationCompat), which has its own template name.
+     * they build through NotificationCompat), which has its own template name
      */
-    fun isCallTemplate(n: Notification): Boolean = runCatching {
-        val extras = n.extras ?: return@runCatching false
+    fun isCallTemplate(n: Notification): Boolean = quietly(false) {
+        val extras = n.extras ?: return@quietly false
         extras.getString(Notification.EXTRA_TEMPLATE) == "android.app.Notification\$CallStyle" ||
             extras.getString(COMPAT_TEMPLATE_KEY)?.endsWith("CallStyle") == true
-    }.getOrDefault(false)
+    }
 
     private val CHANNEL_CALL_HINT = Regex("(^|[^a-z])(voip|calls?|ringing|ringtone)([^a-z]|$)")
-    private val CHANNEL_NOT_CALL = listOf("missed", "history", "ended", "summary", "reminder", "message", "record", "log")
+    private val CHANNEL_NOT_CALL =
+        listOf("missed", "history", "ended", "summary", "reminder", "message", "record", "log")
 
-    /**
-     * VoIP apps put their ringing and in-call notifications on a channel named like "voip_notification" or
-     * "incoming_calls". Used when the app sets no call category and no CallStyle.
-     */
+    /** Channels named like "voip_notification" or "incoming_calls", for apps with no call category or CallStyle. */
     fun channelLooksLikeCall(n: Notification): Boolean {
-        val id = runCatching { n.channelId }.getOrNull()?.lowercase() ?: return false
+        val id = quietly { n.channelId }?.lowercase() ?: return false
         if (CHANNEL_NOT_CALL.any { id.contains(it) }) return false
         return CHANNEL_CALL_HINT.containsMatchIn(id)
     }
 
     fun callType(n: Notification): Int =
-        runCatching { n.extras?.getInt(EXTRA_CALL_TYPE, 0) ?: 0 }.getOrDefault(0)
+        quietly(0) { n.extras?.getInt(EXTRA_CALL_TYPE, 0) ?: 0 }
 
-    private fun pendingIntent(n: Notification, key: String): PendingIntent? = runCatching {
-        val extras = n.extras ?: return@runCatching null
+    private fun pendingIntent(n: Notification, key: String): PendingIntent? = quietly {
+        val extras = n.extras ?: return@quietly null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             extras.getParcelable(key, PendingIntent::class.java)
         } else {
             @Suppress("DEPRECATION")
             extras.getParcelable<PendingIntent>(key)
         }
-    }.getOrNull()
+    }
 
-    /**
-     * True when the notification itself says the call is ringing: CallStyle type, an answer button, or an answer
-     * intent. Strict on purpose; it decides whether the shade copy is removed.
-     */
+    /** Hard evidence only: CallStyle type, an answer button or an answer intent. */
     fun isRinging(n: Notification): Boolean {
         val type = callType(n)
         if (type == CALL_TYPE_INCOMING || type == CALL_TYPE_SCREENING) return true
         if (type == CALL_TYPE_ONGOING) return false
-        val labels = runCatching { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
-            .getOrDefault(emptyList())
+        val labels = quietly(emptyList()) { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
         if (labels.any { VoipCallDetector.classifyCallAction(it) == CallActionRole.Answer }) return true
         return pendingIntent(n, EXTRA_ANSWER_INTENT) != null
     }
 
     /**
-     * [isRinging] plus guesses for VoIP apps that keep their buttons in a custom view: a call-category notification
-     * with a full-screen intent and no running chronometer, or one that says "incoming" / "ringing".
+     * Extends [isRinging] for VoIP apps with custom buttons: call category, full-screen intent, chronometer, ringing
+     * text
      */
     fun looksRinging(n: Notification): Boolean {
         if (isRinging(n)) return true
         if (callType(n) == CALL_TYPE_ONGOING) return false
-        if (n.category != Notification.CATEGORY_CALL) return false
-        val extras = n.extras
-        val timerRunning = runCatching { extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) == true }
-            .getOrDefault(false)
+        if (quietly { n.category } != Notification.CATEGORY_CALL) return false
+        val extras = quietly { n.extras }
+        val timerRunning = quietly(false) { extras?.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) == true }
         if (timerRunning) return false
-        if (n.fullScreenIntent != null) return true
-        val text = runCatching {
+        if (quietly { n.fullScreenIntent } != null) return true
+        val text = quietly("") {
             "${extras?.getCharSequence(Notification.EXTRA_TITLE)} ${extras?.getCharSequence(Notification.EXTRA_TEXT)}"
-        }.getOrDefault("").lowercase()
+        }.lowercase()
         return INCOMING_WORDS.any { text.contains(it) }
     }
 
-    /**
-     * The app's own status line ("Calling...", "Dialing", "Ringing"), exactly as written, when the notification is an
-     * outgoing call not yet picked up; null otherwise.
-     */
+    /** App's own status line ("Calling...", "Dialing") as written, for outgoing calls not yet picked up. */
     fun connectingStatus(n: Notification): String? {
         if (isRinging(n)) return null
-        val extras = n.extras ?: return null
-        val timerRunning = runCatching { extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) }
-            .getOrDefault(false)
+        val extras = quietly { n.extras } ?: return null
+        val timerRunning = quietly(false) { extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) }
         if (timerRunning) return null
-        val texts = runCatching {
+        val texts = quietly(emptyList()) {
             listOf(Notification.EXTRA_TEXT, Notification.EXTRA_SUB_TEXT, Notification.EXTRA_BIG_TEXT)
                 .mapNotNull { extras.getCharSequence(it)?.toString() }
-        }.getOrDefault(emptyList())
+        }
         return connectingStatusOf(texts)
     }
 
     fun connectingStatusOf(texts: List<String>): String? =
         texts.map { it.trim() }.firstOrNull { textLooksConnecting(it) }
 
-    /** Pure text check; the whole line must be a short "dialing" status. */
+    /** Pure text check, the whole line must be a short "dialing" status. */
     fun textLooksConnecting(text: String): Boolean {
         val cleaned = text.trim().lowercase().trimEnd('.', '\u2026', ' ')
         if (cleaned.isEmpty() || cleaned.length > 24) return false
@@ -140,8 +127,8 @@ object CallStyleExtras {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) callerNameApi28(n) else null
 
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.P)
-    private fun callerNameApi28(n: Notification): String? = runCatching {
-        val extras = n.extras ?: return@runCatching null
+    private fun callerNameApi28(n: Notification): String? = quietly {
+        val extras = n.extras ?: return@quietly null
         val person = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             extras.getParcelable("android.callPerson", android.app.Person::class.java)
         } else {
@@ -149,29 +136,25 @@ object CallStyleExtras {
             extras.getParcelable<android.app.Person>("android.callPerson")
         }
         person?.name?.toString()?.takeIf { it.isNotBlank() }
-    }.getOrNull()
+    }
 
-    /**
-     * The app's own buttons plus the CallStyle intents that are missing from them (some apps hand the system an
-     * action without a title, and those are dropped when the actions are read).
-     */
+    /** Adds the CallStyle intents the actions lack: untitled actions get dropped when read. */
     fun withCallIntents(
         n: Notification,
         actions: List<IslandNotificationAction>
     ): List<IslandNotificationAction> {
         val result = actions.toMutableList()
-        fun has(role: CallActionRole) = result.any { VoipCallDetector.classifyCallAction(it.title) == role }
-        if (!has(CallActionRole.Answer)) {
-            pendingIntent(n, EXTRA_ANSWER_INTENT)?.let { result.add(IslandNotificationAction("Answer", it)) }
+        // This fixes call answer button mismatch, on dialers with 3 buttons
+        // The AxionOS dialer port labels the extra action "answer to voicemail".
+        fun useCallIntent(role: CallActionRole, label: String, intent: PendingIntent?) {
+            if (intent == null) return
+            result.removeAll { it.pendingIntent == intent || VoipCallDetector.classifyCallAction(it.title) == role }
+            result.add(IslandNotificationAction(label, intent))
         }
-        if (!has(CallActionRole.HangUp)) {
-            val decline = pendingIntent(n, EXTRA_DECLINE_INTENT)
-            val hangUp = pendingIntent(n, EXTRA_HANG_UP_INTENT)
-            when {
-                decline != null -> result.add(IslandNotificationAction("Decline", decline))
-                hangUp != null -> result.add(IslandNotificationAction("Hang up", hangUp))
-            }
-        }
+        useCallIntent(CallActionRole.Answer, "Answer", pendingIntent(n, EXTRA_ANSWER_INTENT))
+        val decline = pendingIntent(n, EXTRA_DECLINE_INTENT)
+        if (decline != null) useCallIntent(CallActionRole.HangUp, "Decline", decline)
+        else useCallIntent(CallActionRole.HangUp, "Hang up", pendingIntent(n, EXTRA_HANG_UP_INTENT))
         return result
     }
 }

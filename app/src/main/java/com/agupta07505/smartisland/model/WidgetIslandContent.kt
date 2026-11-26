@@ -10,22 +10,16 @@ package com.agupta07505.smartisland.model
 import java.util.Locale
 
 /**
- * What the semi-expanded widget island says per widget (pure rules: when to show, the texts, the unit maths). The
- * clock has no island: its job is the hourly tick.
+ * What the semi-expanded widget island says per widget (pure rules: when to show, the texts, the unit maths). The clock
+ * has no island, its job is the hourly tick
  */
 object WidgetIslandContent {
-    /** Kept for [alarmInWindow]; the alarm's island does not wait for this window (see [hasContent]). */
     const val ALARM_WINDOW_MS = 12 * 60 * 60 * 1000L
 
-    /** Battery island line: watts or volts, chosen in settings. */
     const val BATTERY_WATT = "WATT"
     const val BATTERY_VOLT = "VOLT"
     val VALID_BATTERY_METRICS = setOf(BATTERY_WATT, BATTERY_VOLT)
 
-    /**
-     * Whether [kind] has anything to show in its island now. A glyph tap on a widget without content does nothing,
-     * and an open island whose content goes away (charger unplugged, alarm rang) closes.
-     */
     fun hasContent(
         kind: IdleWidgetKind,
         charging: Boolean,
@@ -38,7 +32,6 @@ object WidgetIslandContent {
         IdleWidgetKind.Clock, IdleWidgetKind.DayMoments -> false
         IdleWidgetKind.Date, IdleWidgetKind.NetSpeed, IdleWidgetKind.LiveClock -> true
         IdleWidgetKind.Weather, IdleWidgetKind.Wind -> hasWeather
-        // Not charging, the battery island says when it will run out; charging, how long to full.
         IdleWidgetKind.Battery -> true
         IdleWidgetKind.NextAlarm -> nextAlarmMs > nowMs
         IdleWidgetKind.Notifications -> notificationCount > 0
@@ -48,7 +41,6 @@ object WidgetIslandContent {
     fun alarmInWindow(nextAlarmMs: Long, nowMs: Long): Boolean =
         nextAlarmMs > nowMs && nextAlarmMs - nowMs <= ALARM_WINDOW_MS
 
-    /** "st", "nd", "rd" or "th" for a day of the month (11th, 12th, 13th are "th"). */
     fun ordinalSuffix(day: Int): String {
         val d = Math.floorMod(day, 100)
         if (d in 11..13) return "th"
@@ -65,7 +57,6 @@ object WidgetIslandContent {
 
     fun usesEnglishOrdinalDate(language: String): Boolean = language.equals("en", ignoreCase = true)
 
-    /** Time left as "5h 12m", "42m", "1d 2h" or "<1m", rounded down to the minute. */
     fun durationText(ms: Long): String {
         val totalMinutes = (ms.coerceAtLeast(0L) / 60_000L)
         val days = totalMinutes / (24 * 60)
@@ -79,7 +70,6 @@ object WidgetIslandContent {
         }
     }
 
-    /** Charging watts from battery current and voltage. */
     fun batteryWatts(currentRaw: Long, voltageMv: Int): Double? {
         if (voltageMv <= 0 || currentRaw == Long.MIN_VALUE) return null
         val magnitude = Math.abs(currentRaw)
@@ -94,7 +84,7 @@ object WidgetIslandContent {
 
     /**
      * Rough time until empty from the charge left ([chargeCounterUah]) and the draw ([currentRaw], read like in
-     * [batteryWatts]); -1 when missing or not sensible.
+     * [batteryWatts]), -1 when missing or not sensible
      */
     fun dischargeRemainingMs(chargeCounterUah: Long, currentRaw: Long): Long {
         if (chargeCounterUah <= 0L || currentRaw == Long.MIN_VALUE) return -1L
@@ -109,17 +99,12 @@ object WidgetIslandContent {
 
     fun voltsText(voltageMv: Int): String = String.format(Locale.US, "%.2f V", voltageMv / 1_000.0)
 
-    /**
-     * Battery temperature (tenths of a degree Celsius, as the system reports it) in the chosen unit, one decimal:
-     * "36.2°C".
-     */
     fun batteryTempText(tenthsC: Int, fahrenheit: Boolean): String {
         val c = tenthsC / 10.0
         return if (fahrenheit) String.format(Locale.US, "%.1f°F", c * 9.0 / 5.0 + 32.0)
         else String.format(Locale.US, "%.1f°C", c)
     }
 
-    /** Island speed ("0 KB/s", "320 KB/s", "4.2 MB/s") from bytes per second. */
     fun speedText(bytesPerSecond: Long): String {
         val b = bytesPerSecond.coerceAtLeast(0L).toDouble()
         return when {
@@ -130,7 +115,6 @@ object WidgetIslandContent {
         }
     }
 
-    /** Name of a WMO weather code. Open-Meteo reports only the code, so these are the standard WMO names. */
     fun weatherName(code: Int, isDay: Boolean): String = when (code) {
         0 -> if (isDay) "Sunny" else "Clear"
         1 -> if (isDay) "Mostly sunny" else "Mostly clear"

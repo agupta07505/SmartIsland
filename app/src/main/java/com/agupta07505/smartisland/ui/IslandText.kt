@@ -8,6 +8,7 @@
 package com.agupta07505.smartisland.ui
 
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,10 +22,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 
-/**
- * Drop-in for Material 3 `Text` in the island. It takes the island font from the surrounding text style; a
- * `fontFamily` set by the caller wins.
- */
+/** Drop-in for Material 3 `Text` in the island. */
 @Composable
 internal fun IslandText(
     text: String,
@@ -45,7 +43,7 @@ internal fun IslandText(
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,
     style: TextStyle = LocalTextStyle.current
 ) {
-    androidx.compose.material3.Text(
+    Text(
         text = text,
         modifier = modifier,
         color = color,

@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.model
 
-/** A picture made of LEDs: [cols] by [rows], row by row, true = lit. */
 class LedGrid(val cols: Int, val rows: Int, val bits: BooleanArray) {
     init {
         require(bits.size == cols * rows) { "bits must hold cols * rows LEDs" }
@@ -28,10 +27,6 @@ sealed interface LedFace {
 /** Dot icons the LED slots use instead of the Material glyphs: 7x7, weather icons 9x9 to fill the board's height. */
 enum class LedIcon { Clock, Sun, Moon, Cloud, Rain, Snow, Bolt, Battery, BatteryLow, BatteryFull, Alarm, ArrowUp, ArrowDown, Calendar, Wind }
 
-/**
- * Built-in LED font: 5x7 dots per letter, plus 7x7 icons and 9x9 weather icons. Drawn by the app (no font file);
- * other fonts become dots in ui/LedRaster.kt.
- */
 object LedFont {
     const val GLYPH_COLS = 5
     const val GLYPH_ROWS = 7
@@ -82,7 +77,6 @@ object LedFont {
         '/' to "00001000100001000100010000100010000",
         '+' to "00000001000010011111001000010000000",
         '°' to "01100100101001001100000000000000000",
-        // Feels like is drawn as "~19°".
         '~' to "00000000000100010101000100000000000"
     )
 
@@ -104,7 +98,6 @@ object LedFont {
         LedIcon.Wind to listOf("0001110", "0010001", "0000001", "1111110", "0000000", "0111110", "0000001")
     )
 
-    /** [text] in the built-in 7-row dot font. Lower case is drawn as capitals; a missing character becomes a space. */
     fun text(text: String): LedGrid {
         if (text.isEmpty()) return LedGrid(1, GLYPH_ROWS, BooleanArray(GLYPH_ROWS))
         val cols = text.length * (GLYPH_COLS + GAP) - GAP
@@ -118,7 +111,6 @@ object LedFont {
         return LedGrid(cols, GLYPH_ROWS, bits)
     }
 
-    /** Weather icons are [WEATHER_SIZE] by [WEATHER_SIZE] dots; every other icon is 7x7. */
     const val WEATHER_SIZE = 9
 
     fun icon(icon: LedIcon): LedGrid {
@@ -132,12 +124,7 @@ object LedFont {
     fun has(c: Char): Boolean = GLYPHS.containsKey(c.uppercaseChar())
 }
 
-/** Puts grids on a board and moves them whole LED rows. */
 object LedFrames {
-    /**
-     * [grid] centred on a [boardCols] x [boardRows] board and moved down by [shiftY] rows (negative = up); rows that
-     * leave are gone.
-     */
     fun place(grid: LedGrid, boardCols: Int, boardRows: Int, shiftY: Int): BooleanArray {
         val out = BooleanArray(boardCols * boardRows)
         val ox = (boardCols - grid.cols) / 2
@@ -154,11 +141,8 @@ object LedFrames {
         return out
     }
 
-    /**
-     * One burst frame: [from] moved [rowsOffset] rows up (down when [towardsDown]) with [to] following; after
-     * [LedTick.ROWS] rows only [to] is left. May be the same grid.
-     */
-    fun frame(from: LedGrid, to: LedGrid, towardsDown: Boolean, rowsOffset: Int, boardCols: Int, boardRows: Int = LedTick.ROWS): BooleanArray {
+    fun frame(from: LedGrid, to: LedGrid, towardsDown: Boolean, rowsOffset: Int, boardCols: Int,
+            boardRows: Int = LedTick.ROWS): BooleanArray {
         val dir = if (towardsDown) 1 else -1
         val rows = rowsOffset.coerceIn(0, boardRows)
         val out = place(from, boardCols, boardRows, dir * rows)
@@ -168,10 +152,6 @@ object LedFrames {
     }
 }
 
-/**
- * Fading afterglow of an LED board: a lit LED is full brightness at once and dies away over about [FADE_MS] once
- * dark, so moving text leaves a short trail.
- */
 class LedGlow(val cols: Int, val rows: Int = LedTick.ROWS) {
     val level = FloatArray(cols * rows)
 
@@ -183,10 +163,6 @@ class LedGlow(val cols: Int, val rows: Int = LedTick.ROWS) {
         }
     }
 
-    /**
-     * Sets every LED to a mix of two frames with no travel ([from] at 1 - [mix], [to] at [mix]): the cross-fade used
-     * when footsteps may not move (Battery Saver, "remove animations").
-     */
     fun blend(from: BooleanArray, to: BooleanArray, mix: Float) {
         val m = mix.coerceIn(0f, 1f)
         for (i in level.indices) {

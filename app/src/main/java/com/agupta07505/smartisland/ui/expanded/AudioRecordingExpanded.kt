@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.Dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandNotification
 
-/** Voice / audio recorder apps: mic glyph, timer, and the recorder's own Pause/Resume and Stop buttons. */
+/** Mic glyph, timer and the recorder's own Pause / Resume and Stop buttons. */
 @Composable
 fun AudioRecordingExpanded(
     notification: IslandNotification?,

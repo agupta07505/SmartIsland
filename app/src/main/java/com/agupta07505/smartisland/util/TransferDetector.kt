@@ -24,9 +24,9 @@ data class TransferInput(
     val progressMax: Int = 0,
     val indeterminate: Boolean = false,
     val isOngoing: Boolean = false,
-    /** Android 16 `Notification.ProgressStyle` template (Live Updates). */
+    /** Android 16 `Notification.ProgressStyle` template (Live Updates) */
     val isProgressStyle: Boolean = false,
-    /** The app asked for promoted-ongoing treatment (status bar chip). */
+    /** App asked for promoted-ongoing treatment (status bar chip). */
     val requestedPromoted: Boolean = false,
     val isMedia: Boolean = false,
     val isConversational: Boolean = false,
@@ -43,35 +43,34 @@ data class TransferInput(
             Notification.CATEGORY_EVENT
         )
 
-        private inline fun <T> safe(default: T, block: () -> T): T = runCatching(block).getOrDefault(default)
-
         fun fromNotification(n: Notification, packageName: String, isMessageSync: Boolean): TransferInput {
             val e = n.extras
-            fun cs(key: String): String = safe("") { e?.getCharSequence(key)?.toString().orEmpty() }
-            val template = safe("") { e?.getString(Notification.EXTRA_TEMPLATE).orEmpty() }
+            fun cs(key: String): String = quietly("") { e?.getCharSequence(key)?.toString().orEmpty() }
+            val template = quietly("") { e?.getString(Notification.EXTRA_TEMPLATE).orEmpty() }
             return TransferInput(
                 packageName = packageName,
-                channelId = safe("") { n.channelId.orEmpty() },
+                channelId = quietly("") { n.channelId.orEmpty() },
                 category = n.category,
                 title = cs(Notification.EXTRA_TITLE),
                 text = cs(Notification.EXTRA_TEXT),
                 bigText = cs(Notification.EXTRA_BIG_TEXT),
                 subText = cs(Notification.EXTRA_SUB_TEXT),
                 infoText = cs(Notification.EXTRA_INFO_TEXT),
-                progress = safe(0) { e?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0 },
-                progressMax = safe(0) { e?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0 },
-                indeterminate = safe(false) { e?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true },
+                progress = quietly(0) { e?.getInt(Notification.EXTRA_PROGRESS, 0) ?: 0 },
+                progressMax = quietly(0) { e?.getInt(Notification.EXTRA_PROGRESS_MAX, 0) ?: 0 },
+                indeterminate = quietly(false) { e?.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false) == true },
                 isOngoing = (n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0,
                 isProgressStyle = template.endsWith("ProgressStyle"),
-                requestedPromoted = safe(false) { e?.getBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, false) == true },
+                requestedPromoted = quietly(false) { e?.getBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, false) == true },
                 isMedia = n.category == Notification.CATEGORY_TRANSPORT ||
-                    safe(false) { e?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true } ||
-                    safe(false) { MediaTransportDetector.hasTransportButtons(n.actions.orEmpty().map { it.title?.toString().orEmpty() }) },
+                    quietly(false) { e?.containsKey(Notification.EXTRA_MEDIA_SESSION) == true } ||
+                    quietly(false) { MediaTransportDetector.hasTransportButtons(n.actions.orEmpty()
+                        .map { it.title?.toString().orEmpty() }) },
                 isConversational = n.category in CONVERSATIONAL_CATEGORIES ||
                     template.endsWith("MessagingStyle"),
                 isGroupSummary = (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
                 isMessageSync = isMessageSync,
-                actionLabels = safe(emptyList()) { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
+                actionLabels = quietly(emptyList()) { n.actions.orEmpty().map { it.title?.toString().orEmpty() } }
             )
         }
     }
@@ -91,7 +90,6 @@ data class TransferVerdict(
     val detail: String get() = listOfNotNull(speed, eta).joinToString(" · ")
 }
 
-/** What the wording of a notification says about a transfer. All matching is case-insensitive. */
 data class TransferTextFacts(
     val lower: String,
     val percent: Int?,
@@ -263,16 +261,18 @@ object TransferDetector {
         if (channelHint && (hasProgressSignal || input.isOngoing)) sem(2, "channel name")
         if (knownApp && hasBarSignal) sem(2, "download manager, browser, file manager or store")
         if (cloudApp && (hasBarSignal || facts.percent != null)) sem(2, "cloud storage app")
-        if ((hasPause || hasResume) && hasCancel && (hasProgressSignal || input.isOngoing)) sem(1, "pause and cancel buttons")
+        if ((hasPause || hasResume) && hasCancel && (hasProgressSignal
+            || input.isOngoing)) sem(1, "pause and cancel buttons")
         if (input.isOngoing && (hasProgressSignal || activeWord || facts.speed != null)) str(1, "ongoing")
 
-        // Wording only (no bar, no category, no progress style): demand real transfer evidence.
+        // Wording only (no bar, no category, no progress style): demand real transfer evidence
         val textOnly = !hasBarSignal && !categoryProgress && !input.isProgressStyle
         if (textOnly) {
             val speedWithContext = facts.speed != null &&
                 (facts.percent != null || facts.eta != null || genericWord || activeWord)
             if (!(activeWord || facts.hasSizeOf || speedWithContext)) {
-                return TransferVerdict(false, semantic + structural, percent, facts.speed, facts.eta, state, reasons + "wording too weak")
+                return TransferVerdict(false, semantic + structural, percent, facts.speed, facts.eta, state,
+                    reasons + "wording too weak")
             }
         }
 
@@ -288,7 +288,6 @@ object TransferDetector {
         )
     }
 
-    /** FAILED beats PAUSED beats WAITING; everything else is ACTIVE (completion is decided elsewhere). */
     internal fun detectState(lower: String, labels: List<String>): TransferState {
         val cleaned = ZERO_FAILED.replace(lower, "")
         if (FAILED_WORDS.any { cleaned.contains(it) }) return TransferState.FAILED

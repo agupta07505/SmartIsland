@@ -12,7 +12,6 @@ import android.content.Context
 import android.content.Intent
 import com.agupta07505.smartisland.util.InAppTimer
 
-/** Receives the Pause / Resume / +1 min / Stop buttons of the island's own timer card, and its end-of-countdown alarm. */
 class TimerActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         InAppTimer.handle(context, intent.action)

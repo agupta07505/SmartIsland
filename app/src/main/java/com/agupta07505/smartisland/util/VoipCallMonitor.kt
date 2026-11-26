@@ -15,15 +15,12 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import com.agupta07505.smartisland.model.VoipCallDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Watches the system audio mode. VoIP apps switch it to MODE_IN_COMMUNICATION for the whole call, which needs no
- * permission.
- */
 class VoipCallMonitor(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -76,8 +73,10 @@ class VoipCallMonitor(
             }
         }
         recordingCallback = callback
-        runCatchingLogged(TAG, "registerAudioRecordingCallback failed") {
+        try {
             am.registerAudioRecordingCallback(callback, Handler(Looper.getMainLooper()))
+        } catch (e: Exception) {
+            AppLogRecorder.e(TAG, "registerAudioRecordingCallback failed", e)
         }
 
         handleMode(am.mode)

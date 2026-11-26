@@ -7,9 +7,9 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -53,19 +52,24 @@ import com.agupta07505.smartisland.model.CityResult
 import com.agupta07505.smartisland.model.IdleWidgets
 import com.agupta07505.smartisland.model.WeatherConfig
 import com.agupta07505.smartisland.model.WeatherPill
+import com.agupta07505.smartisland.model.WeatherPrefs
 import com.agupta07505.smartisland.model.WeatherReadouts
 import com.agupta07505.smartisland.model.WeatherRules
-import com.agupta07505.smartisland.ui.glass.Card
+import com.agupta07505.smartisland.ui.SettingsCard
+import com.agupta07505.smartisland.ui.SettingsDescription
 import com.agupta07505.smartisland.util.IdleWeather
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 private enum class SearchState { Idle, Searching, NoResults }
 
 private enum class RefreshState { Idle, Working, Done, Failed }
 
 /**
- * Settings > Idle widgets > Weather: where the place comes from (device location, a searched city, or the last known
- * place), how often the weather is asked for, and which service answers.
+ * Where the place comes from (device, searched city, last known), how often the weather is asked for, which service
+ * answers
  */
 @Composable
 internal fun WeatherSettingsCard(
@@ -79,17 +83,11 @@ internal fun WeatherSettingsCard(
     var locationGranted by remember { mutableStateOf(IdleWeather.hasLocationPermission(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationGranted = granted
-        // The app is in front now: this is the moment the last known place can be read and kept.
-        if (granted) scope.launch { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { IdleWeather.captureLocation(context) } }
+        // App is in front, so the last known place can be read and kept
+        if (granted) scope.launch { withContext(Dispatchers.IO) { IdleWeather.captureLocation(context) } }
     }
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
+    SettingsCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = stringResource(R.string.weather_cfg_title),
@@ -116,14 +114,14 @@ internal fun WeatherSettingsCard(
                     Note(stringResource(R.string.weather_cfg_source_last_desc))
                     if (!locationGranted) {
                         Note(stringResource(R.string.weather_cfg_last_needs_permission))
-                        PermissionButton { permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+                        PermissionButton { permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
                     } else if (!IdleWeather.hasStoredPlace(context)) {
                         Note(stringResource(R.string.weather_cfg_last_none))
                     }
                 }
                 else -> {
                     Note(stringResource(R.string.weather_cfg_source_auto_desc))
-                    if (!locationGranted) PermissionButton { permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+                    if (!locationGranted) PermissionButton { permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
                 }
             }
 
@@ -155,7 +153,8 @@ internal fun WeatherSettingsCard(
                 onToggle = { scope.launch { repository.setWeatherIslandReadouts(WeatherReadouts.toggle(settings.weatherIslandReadouts, it)) } }
             )
             Note(stringResource(R.string.weather_cfg_readouts_desc))
-            if (prefs.provider == WeatherConfig.PROVIDER_CUSTOM && WeatherReadouts.AQI in WeatherReadouts.parse(settings.weatherIslandReadouts)) {
+            if (prefs.provider == WeatherConfig.PROVIDER_CUSTOM
+                && WeatherReadouts.AQI in WeatherReadouts.parse(settings.weatherIslandReadouts)) {
                 Note(stringResource(R.string.weather_cfg_readout_aqi_custom))
             }
 
@@ -212,7 +211,7 @@ private fun SmartDisplayRules(settings: SmartIslandSettings, repository: SmartIs
     val scope = rememberCoroutineScope()
     val rules = settings.weatherRules()
     val triggers = WeatherRules.parseTriggers(rules.triggers)
-    val fahrenheit = IdleWidgets.useFahrenheit(settings.idleWidgetTempUnit, java.util.Locale.getDefault().country)
+    val fahrenheit = IdleWidgets.useFahrenheit(settings.idleWidgetTempUnit, Locale.getDefault().country)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Choices(
             title = stringResource(R.string.weather_cfg_rule_title),
@@ -237,7 +236,8 @@ private fun SmartDisplayRules(settings: SmartIslandSettings, repository: SmartIs
             )
             if (WeatherRules.TRIGGER_HOT in triggers) {
                 Stepper(
-                    text = stringResource(R.string.weather_cfg_hot_at, IdleWidgets.displayTemp(rules.hotC.toFloat(), fahrenheit)),
+                    text = stringResource(R.string.weather_cfg_hot_at,
+                        IdleWidgets.displayTemp(rules.hotC.toFloat(), fahrenheit)),
                     canDecrease = rules.hotC > WeatherRules.MIN_HOT_C,
                     canIncrease = rules.hotC < WeatherRules.MAX_HOT_C,
                     onChange = { scope.launch { repository.setWeatherHotC(rules.hotC + it) } }
@@ -245,7 +245,8 @@ private fun SmartDisplayRules(settings: SmartIslandSettings, repository: SmartIs
             }
             if (WeatherRules.TRIGGER_COLD in triggers) {
                 Stepper(
-                    text = stringResource(R.string.weather_cfg_cold_at, IdleWidgets.displayTemp(rules.coldC.toFloat(), fahrenheit)),
+                    text = stringResource(R.string.weather_cfg_cold_at,
+                        IdleWidgets.displayTemp(rules.coldC.toFloat(), fahrenheit)),
                     canDecrease = rules.coldC > WeatherRules.MIN_COLD_C,
                     canIncrease = rules.coldC < WeatherRules.MAX_COLD_C,
                     onChange = { scope.launch { repository.setWeatherColdC(rules.coldC + it) } }
@@ -263,20 +264,22 @@ private fun SmartDisplayRules(settings: SmartIslandSettings, repository: SmartIs
                 text = stringResource(R.string.weather_cfg_night_from, hourText(rules.nightStartHour)),
                 canDecrease = true,
                 canIncrease = true,
-                onChange = { scope.launch { repository.setWeatherNightStartHour(Math.floorMod(rules.nightStartHour + it, 24)) } }
+                onChange = { scope.launch { repository.setWeatherNightStartHour(Math.floorMod(rules.nightStartHour + it,
+                    24)) } }
             )
             Stepper(
                 text = stringResource(R.string.weather_cfg_night_to, hourText(rules.nightEndHour)),
                 canDecrease = true,
                 canIncrease = true,
-                onChange = { scope.launch { repository.setWeatherNightEndHour(Math.floorMod(rules.nightEndHour + it, 24)) } }
+                onChange = { scope.launch { repository.setWeatherNightEndHour(Math.floorMod(rules.nightEndHour + it,
+                    24)) } }
             )
         }
         if (rules.active) Note(stringResource(R.string.weather_cfg_rules_desc))
     }
 }
 
-private fun hourText(hour: Int): String = String.format(java.util.Locale.US, "%02d:00", hour)
+private fun hourText(hour: Int): String = String.format(Locale.US, "%02d:00", hour)
 
 @Composable
 private fun Stepper(text: String, canDecrease: Boolean, canIncrease: Boolean, onChange: (Int) -> Unit) {
@@ -292,8 +295,10 @@ private fun Stepper(text: String, canDecrease: Boolean, canIncrease: Boolean, on
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        OutlinedButton(enabled = canDecrease, onClick = { onChange(-1) }) { Text(stringResource(R.string.weather_cfg_step_minus)) }
-        OutlinedButton(enabled = canIncrease, onClick = { onChange(1) }) { Text(stringResource(R.string.weather_cfg_step_plus)) }
+        OutlinedButton(enabled = canDecrease,
+            onClick = { onChange(-1) }) { Text(stringResource(R.string.weather_cfg_step_minus)) }
+        OutlinedButton(enabled = canIncrease,
+            onClick = { onChange(1) }) { Text(stringResource(R.string.weather_cfg_step_plus)) }
     }
 }
 
@@ -345,7 +350,8 @@ private fun ManualCity(chosen: String, repository: SmartIslandSettingsRepository
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { search() })
             )
-            Button(onClick = { search() }, enabled = query.trim().length >= WeatherConfig.MIN_SEARCH_LENGTH && state != SearchState.Searching) {
+            Button(onClick = { search() }, enabled = query.trim().length >= WeatherConfig.MIN_SEARCH_LENGTH
+                && state != SearchState.Searching) {
                 Text(stringResource(R.string.weather_cfg_city_search))
             }
         }
@@ -379,7 +385,7 @@ private fun ManualCity(chosen: String, repository: SmartIslandSettingsRepository
 }
 
 @Composable
-private fun RefreshNow(enabled: Boolean, prefs: com.agupta07505.smartisland.model.WeatherPrefs) {
+private fun RefreshNow(enabled: Boolean, prefs: WeatherPrefs) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var state by remember { mutableStateOf(RefreshState.Idle) }
@@ -448,7 +454,7 @@ private fun CustomProvider(savedUrl: String, savedKey: String, repository: Smart
 
 @Composable
 private fun Note(text: String) {
-    Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    SettingsDescription(text)
 }
 
 @Composable
@@ -470,7 +476,8 @@ private fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean
 }
 
 @Composable
-private fun MultiChoices(title: String, options: List<Pair<String, String>>, selected: Set<String>, onToggle: (String) -> Unit) {
+private fun MultiChoices(title: String, options: List<Pair<String, String>>, selected: Set<String>,
+        onToggle: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = title,

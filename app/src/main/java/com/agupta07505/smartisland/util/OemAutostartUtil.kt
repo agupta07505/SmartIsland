@@ -12,8 +12,8 @@ import android.content.Context
 object OemAutostartUtil {
 
     /**
-     * Opens the manufacturer's Autostart / background management screen, so OEM power managers (MIUI Powerkeeper,
-     * ColorOS, Samsung Care, Vivo) stop killing background accessibility services. Never throws.
+     * Opens the manufacturer's Autostart / background management screen so OEM power managers (MIUI Powerkeeper,
+     * ColorOS, Samsung Care, Vivo) stop killing background accessibility services. Never throws
      */
     fun openAutostartSettings(context: Context, deviceType: String? = null): Boolean {
         return try {
@@ -27,7 +27,8 @@ object OemAutostartUtil {
             }
 
             false
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            AppLogRecorder.w("OemAutostartUtil", "opening autostart settings failed", t)
             false
         }
     }

@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -47,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.ui.glass.Switch
 
-// Settings > Appearance: the liquid glass switch, Material You, and the Material colour picker for the app's accent.
+// Liquid glass switch, Material You and the Material colour picker
 
 private val MaterialAccentSwatches = listOf(
     0xFFF44336L to "Red",
@@ -82,7 +81,7 @@ private fun hueOf(argb: Long): Float {
     return hsv[0]
 }
 
-/** The rows that go inside the Appearance group of the Settings tab, below the Light / Dark / System selector. */
+/** Go inside the Appearance group, below the Light / Dark / System selector. */
 @Composable
 fun AppThemeOptions(
     settings: SmartIslandSettings,
@@ -99,7 +98,7 @@ fun AppThemeOptions(
             checked = settings.liquidGlassTheme,
             onChange = onLiquidGlassChange
         )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        SettingsDivider(0.5f)
         if (dynamicAvailable) {
             ThemeToggleRow(
                 title = "Material You colours",
@@ -107,7 +106,7 @@ fun AppThemeOptions(
                 checked = settings.materialYou,
                 onChange = onMaterialYouChange
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            SettingsDivider(0.5f)
         }
         Column(
             modifier = Modifier
@@ -159,8 +158,10 @@ private fun ThemeToggleRow(title: String, subtitle: String, checked: Boolean, on
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onChange)
     }
@@ -181,7 +182,8 @@ private fun AccentSwatch(color: Color, name: String, selected: Boolean, enabled:
         contentAlignment = Alignment.Center
     ) {
         if (selected) {
-            Icon(Icons.Rounded.Check, contentDescription = "$name, selected", tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Check, contentDescription = "$name, selected", tint = Color.White,
+                modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -191,7 +193,8 @@ private fun CustomHueSlider(accent: Long, enabled: Boolean, onAccentChange: (Lon
     var hue by remember(accent) { mutableFloatStateOf(hueOf(accent)) }
     val rainbow = remember { (0..12).map { Color.hsv(it * 30f, 0.80f, 0.95f) } }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text("Custom hue", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Custom hue", style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(modifier = Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier

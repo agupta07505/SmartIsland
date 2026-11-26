@@ -9,15 +9,15 @@ package com.agupta07505.smartisland.util
 
 import android.os.SystemClock
 import android.service.notification.StatusBarNotification
+import com.agupta07505.smartisland.data.INotificationRepository
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.model.IslandEvent
 import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.IslandNotification
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Per-app rate limit for notification bursts: more than the threshold within a 30-second window starts a cooldown.
- */
+/** Per-app rate limit for bursts: more than the threshold within 30 seconds starts a cooldown. */
 object NotificationCooldownManager {
     const val DETECTION_WINDOW_MS = 30_000L
 
@@ -28,8 +28,8 @@ object NotificationCooldownManager {
     private val cooldownExpirations = ConcurrentHashMap<String, Long>()
 
     /**
-     * System events that come from the system (broadcasts and callbacks) rather than from an app's notification, so
-     * the per-app list cannot cover them. Each one can be switched into the cooldown on its own.
+     * System events (broadcasts and callbacks) come from the system, not an app's notification, so the per-app list
+     * cannot cover them. Each can be switched into the cooldown on its own
      */
     val SYSTEM_EVENTS: List<IslandEvent> = listOf(
         IslandEvent.PLUGGED_IN,
@@ -51,7 +51,7 @@ object NotificationCooldownManager {
 
     private const val SYSTEM_KEY_PREFIX = "system:"
 
-    // packageName -> latest buffered notification during cooldown
+    // packageName -> latest buffered notification during cooldown.
     private val bufferedNotifications = ConcurrentHashMap<String, StatusBarNotification>()
 
     /** @return true when the notification is throttled and must not pop up or sound in the island. */
@@ -64,8 +64,8 @@ object NotificationCooldownManager {
     ): Boolean {
         if (!settings.enableNotificationCooldown) return false
         if (isExemptMode(mode)) return false
-        // A download manager's or cloud app's own notification (a finished download has no progress bar, so its mode
-        // is an ordinary notification) is never held back, and never counts towards the spam threshold.
+        // A download manager's or cloud app's notification (a finished download has no progress bar, so it is an
+        // ordinary notification) is never held back and never counts towards the spam threshold
         if (transferRelated) return false
 
         val pkg = sbn.packageName
@@ -99,10 +99,7 @@ object NotificationCooldownManager {
         return false
     }
 
-    /**
-     * Anti-spam for one system event announcement (a charger plugged in again and again, Wi-Fi that keeps
-     * reconnecting).
-     */
+    /** Anti-spam for one system event (a charger plugged in again and again, Wi-Fi that keeps reconnecting). */
     fun shouldThrottleSystemEvent(
         eventId: String,
         settings: SmartIslandSettings,
@@ -141,7 +138,7 @@ object NotificationCooldownManager {
             mode == IslandMode.Music ||
             mode == IslandMode.Navigation ||
             mode == IslandMode.Hotspot ||
-            // Progress updates arrive every second or so; counting them as spam would hold back the "download finished" notification.
+            // Progress updates arrive every second or so, counting them as spam would hold back "download finished"
             mode == IslandMode.DownloadUpload ||
             mode == IslandMode.Battery ||
             mode == IslandMode.Flashlight ||
@@ -177,4 +174,22 @@ object NotificationCooldownManager {
         cooldownExpirations.clear()
         bufferedNotifications.clear()
     }
+}
+
+/**
+ * Posts a system event's card with the anti-spam check applied once. A card that [wantsExpand] but is throttled does
+ * not open the island and, as a repeat, arrives quietly on the pill without a pulse. The check only runs
+ * when [wantsExpand], as before, so a card that never wanted to open is not counted and still pulses
+ */
+fun INotificationRepository.postSystemEvent(
+    card: IslandNotification,
+    eventId: String,
+    settings: SmartIslandSettings,
+    wantsExpand: Boolean = true
+) {
+    val throttled = wantsExpand && NotificationCooldownManager.shouldThrottleSystemEvent(eventId, settings)
+    postNotification(
+        if (throttled) card.copy(quietArrival = true) else card,
+        autoExpand = wantsExpand && !throttled
+    )
 }

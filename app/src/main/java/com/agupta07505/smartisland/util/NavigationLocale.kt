@@ -7,14 +7,6 @@
 
 package com.agupta07505.smartisland.util
 
-/**
- * Navigation vocabulary beyond English, so a Yandex Navigator notification in Russian, an Amap one in Chinese or a Kakao one in
- * Korean still gives a distance, a turn direction and a "this is guidance" signal.
- *
- * Covered: English, Russian/Ukrainian, Spanish, Portuguese, French, German, Italian, Dutch, Turkish, Polish, Indonesian,
- * Vietnamese, Chinese, Japanese, Korean, Arabic and Hindi. Phrases are lower case. Latin and Cyrillic phrases only match as whole
- * words ("turn" does not match "return"); the other scripts attach particles to words, so they match anywhere.
- */
 internal object NavigationLocale {
 
     private const val LETTER_OR_DIGIT = "\\p{L}\\p{N}"
@@ -40,12 +32,11 @@ internal object NavigationLocale {
         return Regex(parts.joinToString("|"), setOf(RegexOption.IGNORE_CASE))
     }
 
-
     private val METRIC_AND_IMPERIAL_UNITS = listOf(
         // English and the Latin-script languages that share the symbols
         "m", "km", "ft", "mi", "yd", "yds", "mile", "miles", "meter", "meters", "metre", "metres", "kilometer", "kilometers",
         "kilometre", "kilometres", "foot", "feet", "yard", "yards",
-        // Spanish, Portuguese, Italian, French, German, Dutch, Turkish, Polish, Indonesian
+        // spanish, Portuguese, Italian, French, German, Dutch, Turkish, Polish, Indonesian
         "metro", "metros", "metri", "mètre", "mètres", "kilómetro", "kilómetros", "quilómetro", "quilómetros", "chilometro",
         "chilometri", "kilomètre", "kilomètres", "kilometer", "kilometern", "meter", "metern", "kilometre", "kilometrů", "metrów",
         "metr", "metry", "kilometr", "kilometry", "kilometrów", "milha", "milhas", "milla", "millas", "miglio", "miglia",
@@ -68,19 +59,18 @@ internal object NavigationLocale {
     ).distinct().sortedByDescending { it.length }
 
     // A Latin or Cyrillic unit must end the word ("24 min" is not "24 m"); CJK, Arabic and Devanagari units run into
-    // the next word ("300米后左转").
+    // the next word ("300米后左转")
     private val UNIT_ALTERNATION = METRIC_AND_IMPERIAL_UNITS.joinToString("|") { unit ->
         if (isBoundarySafe(unit)) Regex.escape(unit) + "(?![$LATIN_CYRILLIC_OR_DIGIT])" else Regex.escape(unit)
     }
 
-    // A decimal comma ("1,2 km") is as common as a decimal point; \p{Nd} also takes Arabic-Indic and Devanagari digits.
+    // A decimal comma ("1,2 km") is as common as a decimal point; \p{Nd} also takes Arabic-Indic and Devanagari digits
     private const val NUMBER = "\\p{Nd}+(?:[.,٫]\\p{Nd}+)?"
     private val unitOptions = setOf(RegexOption.IGNORE_CASE)
 
-    /** A distance at the very start of the title ("In 300 m"-style titles are handled by the caller; this takes "300 m ..."). */
+    /** Distance at the very start of the title ("In 300 m"-style titles are handled by the caller; this takes "300 m ..."). */
     val LEADING_DISTANCE = Regex("^($NUMBER)\\s*(?:$UNIT_ALTERNATION)", unitOptions)
 
-    /** A distance anywhere in the text. */
     val ANY_DISTANCE = Regex("($NUMBER)\\s*(?:$UNIT_ALTERNATION)", unitOptions)
 
     /** "In 300 m", "через 300 м", "dans 300 m" ... at the start of a title, with the separator after it. */
@@ -89,9 +79,8 @@ internal object NavigationLocale {
         unitOptions
     )
 
-    /** A whole segment that is a trip distance ("8.5 km", "5 мили", "12公里") rather than the distance to the next turn. */
+    /** A standalone distance segment, i.e. the trip distance here. Next-turn instructions are handled separately. */
     val TRIP_DISTANCE = Regex("^$NUMBER\\s*(?:km|mi|miles?|км|кілометрів|公里|千米|英里|킬로미터|마일|كم|किमी|मील)$", unitOptions)
-
 
     val U_TURN = listOf(
         "u-turn", "uturn", "u turn", "make a u turn", "разворот", "развернитесь", "развороте", "розворот", "demi-tour", "faites demi-tour",
@@ -159,11 +148,10 @@ internal object NavigationLocale {
         "直進", "道なり", "직진", "진입", "استمر", "مخرج", "सीधे", "निकास"
     )
 
-    /** True when the text reads as turn-by-turn wording in any covered language. */
+    /** Text reads as turn-by-turn wording in any covered language. */
     val MANEUVER_WORDING: Regex = anyOf(
         U_TURN + SLIGHT_LEFT + SLIGHT_RIGHT + LEFT + RIGHT + ROUNDABOUT + DESTINATION + OTHER_MANEUVER
     )
-
 
     val TRIP_STAT: Regex = Regex(
         "(?<![$LETTER_OR_DIGIT])\\p{Nd}+(?:[.,]\\p{Nd}+)?\\s*(?:min|mins|minutes?|minuti|minutos?|minuten|minuut|minuta|minut|menit|phút|dakika|dk|мин|хв|分钟|分鐘|分|분|دقيقة|دقائق|मिनट|h|hr|hrs|hours?|std|stunden?|heures?|horas?|ore|uur|saat|godz|jam|giờ|ч|час|часа|часов|год|小时|時間|시간|ساعة|ساعات|घंटे?)(?![$LETTER_OR_DIGIT])" +
@@ -172,7 +160,7 @@ internal object NavigationLocale {
         setOf(RegexOption.IGNORE_CASE)
     )
 
-    // Delivery and ride wording: a notification with these is about an order or a ride, not about guidance.
+    // Delivery and ride wording: about an order or a ride, not guidance
 
     val DELIVERY_OR_RIDE_WORDING: Regex = anyOf(
         listOf(

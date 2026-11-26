@@ -16,12 +16,12 @@ import androidx.core.content.ContextCompat
 import com.agupta07505.smartisland.model.CalendarRules
 import com.agupta07505.smartisland.model.NextEvent
 
-/** Reads the next event from the phone's visible calendars. Needs READ_CALENDAR. */
 internal object CalendarReader {
     fun hasPermission(context: Context): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(context,
+            Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
 
-    /** The soonest timed event that begins after [nowMs] within the next 24 hours; all-day, cancelled and declined events are skipped. */
+    /** Next 24 hours only, skips all-day, cancelled and declined events. */
     fun nextEvent(context: Context, nowMs: Long): NextEvent? {
         if (!hasPermission(context)) return null
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
@@ -37,8 +37,9 @@ internal object CalendarReader {
             CalendarContract.Events.SELF_ATTENDEE_STATUS
         )
         val events = ArrayList<NextEvent>()
-        runCatching {
-            context.contentResolver.query(uri, projection, null, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
+        try {
+            context.contentResolver.query(uri, projection, null, null, "${CalendarContract.Instances.BEGIN} ASC")
+                ?.use { c ->
                 while (c.moveToNext()) {
                     val allDay = c.getInt(3) == 1
                     val cancelled = !c.isNull(4) && c.getInt(4) == CalendarContract.Events.STATUS_CANCELED
@@ -47,6 +48,8 @@ internal object CalendarReader {
                     events += NextEvent(title = c.getString(0).orEmpty(), beginMs = c.getLong(1), endMs = c.getLong(2))
                 }
             }
+        } catch (e: Exception) {
+            AppLogRecorder.e("CalendarReader", "Could not read the calendar", e)
         }
         return CalendarRules.pickNext(events, nowMs)
     }

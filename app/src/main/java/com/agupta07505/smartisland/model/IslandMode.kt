@@ -22,5 +22,6 @@ enum class IslandMode {
     ScreenRecording,
     AudioRecording,
     Timer,
-    Stopwatch
+    Stopwatch,
+    CallEnded
 }
