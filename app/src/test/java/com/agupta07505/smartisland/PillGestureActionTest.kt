@@ -17,7 +17,7 @@ import org.junit.Test
 class PillGestureActionTest {
 
     @Test
-    fun nextOrPreviousNotificationDoesNotDismissOnSingleNotification() {
+    fun singleNotificationNavigation() {
         var dismissed = false
         var pageSelected = -1
 
@@ -81,7 +81,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun nextNotificationCyclesIndexWhenMultipleNotificationsExist() {
+    fun nextNotificationWraparound() {
         var selectedPage = -1
 
         executeSwipeAction(
@@ -142,7 +142,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun nextNotificationCyclesEndlesslyBothDirections() {
+    fun nextNotificationCycles() {
         var selectedPage = -1
 
         // 2 notifications, currently at index 1 -> swipe next should wrap to index 0
@@ -181,7 +181,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun nextTrackAndPreviousTrackDoNotChangeNotificationIndex() {
+    fun mediaActionsKeepSelection() {
         var selectedPage = -1
 
         executeSwipeAction(
@@ -218,7 +218,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun eventSwitchActionsAskForNextOrPreviousEvent() {
+    fun eventSwitchAsksNextPrev() {
         val requests = mutableListOf<Boolean>()
         var pageSelected = -1
         for (action in listOf(SwipeAction.NextEvent, SwipeAction.PreviousEvent)) {
@@ -265,7 +265,7 @@ class PillGestureActionTest {
     )
 
     @Test
-    fun nextAndPreviousNotificationUseEntrySwitchWhenProvided() {
+    fun notificationEntrySwitch() {
         val requests = mutableListOf<Boolean>()
         var pageSelected = -1
         run(SwipeAction.NextNotification, { pageSelected = it }, { requests += it; true })
@@ -276,7 +276,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun entrySwitchReturningFalseDoesNotChangePageEither() {
+    fun entrySwitchFalseKeepsPage() {
         var pageSelected = -1
         run(SwipeAction.NextNotification, { pageSelected = it }, { false })
         run(SwipeAction.PreviousNotification, { pageSelected = it }, { false })
@@ -284,7 +284,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun siblingActionsAskForNextOrPreviousSiblingOnly() {
+    fun siblingActionsAskSiblingOnly() {
         val siblingRequests = mutableListOf<Boolean>()
         var pageSelected = -1
         var entryCalls = 0
@@ -302,7 +302,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun siblingActionWithoutSiblingDoesNothing() {
+    fun noSiblingActionNoop() {
         var pageSelected = -1
         run(SwipeAction.NextSibling, { pageSelected = it }, { true }, { false })
         assertEquals(-1, pageSelected)
@@ -315,7 +315,7 @@ class PillGestureActionTest {
     }
 
     @Test
-    fun togglePillCallsOnlyTheToggleCallback() {
+    fun togglePillCallsToggleOnly() {
         var toggled = 0
         var other = false
         executeSwipeAction(

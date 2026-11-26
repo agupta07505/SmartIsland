@@ -7,10 +7,10 @@
 
 package com.agupta07505.smartisland.util
 
-/** What [ShadeDetector] needs to know about one accessibility window (kept free of Android types so it can be unit tested). */
+/** 1 accessibility window as [ShadeDetector] needs it (no Android types, so it can be unit tested). */
 data class ShadeWindow(
     val packageName: String?,
-    /** The window's accessibility title (SystemUI sets "Notification shade.", "Quick settings.", "Lock screen."). */
+    /** Window's accessibility title (SystemUI sets "Notification shade.", "Quick settings.", "Lock screen."). */
     val title: String?,
     val isSystemType: Boolean,
     val isActive: Boolean,
@@ -21,7 +21,6 @@ data class ShadeWindow(
     val height: Int get() = bottom - top
 }
 
-/** The titles SystemUI uses, in the phone's current language (the service reads them from SystemUI's own resources). */
 data class ShadeTitles(
     val shade: List<String>,
     val lockScreen: List<String>
@@ -37,8 +36,11 @@ data class ShadeTitles(
 object ShadeDetector {
     const val SYSTEM_UI = "com.android.systemui"
 
-    /** A shade window covers at least this much of the screen height; the status bar and navigation bar windows do not. */
+    /** Shade window covers at least this much of the screen height, the status bar and navigation bar windows do not. */
     const val MIN_HEIGHT_FRACTION = 0.4f
+
+    /** Titles of the window the shade lives in on older Android or on skins that name it their own way. */
+    private val SHADE_HOST_TITLES = listOf("Status bar", "Notification panel", "Notifications")
 
     fun isShadeOpen(
         windows: List<ShadeWindow>,
@@ -53,7 +55,11 @@ object ShadeDetector {
             !tall -> false
             titles.lockScreen.matches(title) -> false
             keyguardLocked -> titles.shade.matches(title)
-            else -> w.isActive || w.isFocused
+            // Some SystemUI builds leave the shade window untitled.
+            else -> (w.isActive || w.isFocused) &&
+                (title.isBlank() || titles.shade.matches(title) || SHADE_HOST_TITLES.any { host ->
+                    host.equals(title.substringBefore(',').trim().trimEnd('.'), ignoreCase = true)
+                })
         }
     }
 

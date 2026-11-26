@@ -7,7 +7,8 @@
 
 package com.agupta07505.smartisland.util
 
-/** Timer arithmetic matching the shade's truncating chronometer. */
+import kotlin.math.abs
+
 object TimerClock {
     private const val MAX_PLAUSIBLE_MS = 100L * 3600L * 1000L
 
@@ -20,7 +21,7 @@ object TimerClock {
 
     fun targetFromShownSeconds(nowMs: Long, shownSec: Long): Long = nowMs + shownSec * 1000L + 999L
 
-    /** Remaining time a paused countdown chronometer had when posted; null if the printed text disagrees. */
+    /** Remaining time a paused countdown chronometer had when posted, null if the printed text disagrees. */
     fun frozenFromChronometer(baseElapsedMs: Long, postElapsedMs: Long, shownSec: Long?, applyDelayMs: Long): Long? {
         val corrected = baseElapsedMs - postElapsedMs
         if (corrected <= 0L || corrected > MAX_PLAUSIBLE_MS) return null
@@ -33,7 +34,7 @@ object TimerClock {
         return corrected
     }
 
-    /** Elapsed time a paused stopwatch had when posted; null if the printed text disagrees. */
+    /** Elapsed time a paused stopwatch had when posted, null if the printed text disagrees. */
     fun elapsedFromChronometer(baseElapsedMs: Long, postElapsedMs: Long, shownSec: Long?, applyDelayMs: Long): Long? {
         val corrected = postElapsedMs - baseElapsedMs
         if (corrected < 0L || corrected > MAX_PLAUSIBLE_MS) return null
@@ -47,4 +48,35 @@ object TimerClock {
     }
 
     fun msToNextTickUp(elapsedMs: Long): Long = 1000L - (elapsedMs.coerceAtLeast(0L) % 1000L) + 5L
+}
+
+object TimerFreeze {
+    private const val SHADE_TOLERANCE_MS = 2_000L
+
+    fun remainingMs(
+        nowMs: Long,
+        rememberedFrozenMs: Long?,
+        runningTargetMs: Long?,
+        keptFrozenMs: Long?,
+        textRemainingMs: Long?,
+        shadeShownMs: Long? = null,
+        shadeExactMs: Long? = null,
+        shownMs: Long? = null,
+        previousShownMs: Long? = null
+    ): Long = when {
+        shadeExactMs != null && shadeExactMs > 0L -> shadeExactMs
+        // Covers a resume and pause the island never saw
+        shadeShownMs != null && shadeShownMs > 0L &&
+            (rememberedFrozenMs == null || abs(shadeShownMs - rememberedFrozenMs) > SHADE_TOLERANCE_MS) ->
+            shadeShownMs
+        // Time added in the app while paused
+        rememberedFrozenMs != null && shownMs != null && previousShownMs != null &&
+            shownMs - previousShownMs > SHADE_TOLERANCE_MS ->
+            rememberedFrozenMs + (shownMs - previousShownMs)
+        rememberedFrozenMs != null -> rememberedFrozenMs
+        runningTargetMs != null && runningTargetMs > nowMs -> runningTargetMs - nowMs
+        keptFrozenMs != null -> keptFrozenMs
+        textRemainingMs != null && textRemainingMs > 0L -> textRemainingMs
+        else -> 0L
+    }
 }

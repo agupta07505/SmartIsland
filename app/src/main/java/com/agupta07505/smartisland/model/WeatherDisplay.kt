@@ -7,9 +7,9 @@
 
 package com.agupta07505.smartisland.model
 
-import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 object WeatherPill {
     const val TEMP_ICON = "TEMP_ICON"
@@ -50,11 +50,9 @@ object WeatherReadouts {
 
 data class HourPoint(val epochSec: Long, val tempC: Float, val code: Int)
 
-/** Extra readings behind the island rows. Unknown numbers are NaN, negative or zero as noted. */
 data class WeatherExtras(
     val highC: Float = Float.NaN,
     val lowC: Float = Float.NaN,
-    /** Chance of rain today in percent; -1 = unknown. */
     val rainChancePct: Int = -1,
     val humidityPct: Int = -1,
     val uvIndex: Float = -1f,
@@ -128,7 +126,6 @@ data class WeatherSlots(val left: WeatherSlotFace, val right: WeatherSlotFace)
 
 data class WeatherStat(val label: String, val value: String)
 
-/** Turns the weather service's answers into a [WeatherSnapshot]. */
 object WeatherParser {
     const val HOURS_KEPT = 24
 
@@ -146,13 +143,15 @@ object WeatherParser {
             fetchedAtMs = nowMs,
             windKmh = if (current.has("wind_speed_10m")) current.optDouble("wind_speed_10m", -1.0).toFloat() else -1f,
             windDirectionDeg = if (current.has("wind_direction_10m")) current.optInt("wind_direction_10m", -1) else -1,
-            feelsLikeC = if (current.has("apparent_temperature")) current.optDouble("apparent_temperature").toFloat() else Float.NaN,
+            feelsLikeC = if (current.has("apparent_temperature")) current.optDouble("apparent_temperature")
+                .toFloat() else Float.NaN,
             detailed = true,
             extras = extras
         )
     }
 
-    private fun buildExtras(root: JSONObject, readouts: List<String>, offset: Int, humidity: Int, nowMs: Long): WeatherExtras {
+    private fun buildExtras(root: JSONObject, readouts: List<String>, offset: Int, humidity: Int,
+            nowMs: Long): WeatherExtras {
         val daily = root.optJSONObject("daily")
         fun day(key: String): Double = daily?.optJSONArray(key)?.optDouble(0) ?: Double.NaN
         fun dayLong(key: String): Long = daily?.optJSONArray(key)?.optLong(0, 0L) ?: 0L
@@ -189,7 +188,6 @@ object WeatherParser {
         )
     }
 
-    /** US air quality index of an Open-Meteo air-quality answer; null when missing. */
     fun parseAqi(body: String): Int? {
         val current = runCatching { JSONObject(body).optJSONObject("current") }.getOrNull() ?: return null
         if (!current.has("us_aqi") || current.isNull("us_aqi")) return null
@@ -197,7 +195,6 @@ object WeatherParser {
     }
 }
 
-/** Pure rules for what the weather pill and island draw. */
 object WeatherDisplay {
     const val ISLAND_PAD_DP = 8f
     const val ISLAND_HEADER_DP = 36f
@@ -224,7 +221,6 @@ object WeatherDisplay {
     fun feelsText(s: WeatherSnapshot, fahrenheit: Boolean): String? =
         if (s.feelsLikeC.isNaN()) null else "~" + IdleWidgets.displayTemp(s.feelsLikeC, fahrenheit)
 
-    /** The small round pill has one value: feels-like in that mode, else the temperature. */
     fun compactText(mode: String, s: WeatherSnapshot, fahrenheit: Boolean): String =
         if (WeatherPill.normalize(mode) == WeatherPill.FEELS && !s.feelsLikeC.isNaN()) {
             IdleWidgets.displayTemp(s.feelsLikeC, fahrenheit)
@@ -232,7 +228,6 @@ object WeatherDisplay {
             IdleWidgets.displayTemp(s.temperatureC, fahrenheit)
         }
 
-    /** At most five letters: the pill's value slot is narrow. */
     fun shortName(look: WeatherLook, isDay: Boolean): String = when (look) {
         WeatherLook.Clear -> if (isDay) "Sunny" else "Clear"
         WeatherLook.PartlyCloudy -> "Fair"
@@ -243,7 +238,6 @@ object WeatherDisplay {
         WeatherLook.Storm -> "Storm"
     }
 
-    /** True when the lookup has to ask again to get what the choices need. */
     fun missingData(pillMode: String, readouts: List<String>, s: WeatherSnapshot): Boolean {
         val needsFeels = WeatherPill.normalize(pillMode) == WeatherPill.FEELS
         if (!needsFeels && readouts.isEmpty()) return false
@@ -255,7 +249,6 @@ object WeatherDisplay {
     fun iconAnimates(enabled: Boolean, pauseOnSaver: Boolean, saverOn: Boolean, systemAnimationsOff: Boolean): Boolean =
         enabled && !systemAnimationsOff && !(pauseOnSaver && saverOn)
 
-    /** Selected readouts that have a value now. Daily values count only on the day they were fetched. */
     fun availableReadouts(selected: List<String>, s: WeatherSnapshot, nowMs: Long): List<String> {
         val x = s.extras ?: return emptyList()
         val sameDay = sameLocalDay(s.fetchedAtMs / 1000L, nowMs / 1000L, x.utcOffsetSec)
@@ -273,7 +266,6 @@ object WeatherDisplay {
         }
     }
 
-    /** Height the island needs for [available] rows; 0 = the plain island size. */
     fun islandContentHeightDp(available: List<String>): Float {
         if (available.isEmpty()) return 0f
         val rows = (available.count { it != WeatherReadouts.HOURLY } + 1) / 2
@@ -285,12 +277,14 @@ object WeatherDisplay {
 
     fun stat(id: String, x: WeatherExtras, fahrenheit: Boolean, is24: Boolean): WeatherStat? = when (id) {
         WeatherReadouts.HIGH_LOW ->
-            WeatherStat("High / Low", IdleWidgets.displayTemp(x.highC, fahrenheit) + " / " + IdleWidgets.displayTemp(x.lowC, fahrenheit))
+            WeatherStat("High / Low", IdleWidgets.displayTemp(x.highC,
+                fahrenheit) + " / " + IdleWidgets.displayTemp(x.lowC, fahrenheit))
         WeatherReadouts.RAIN -> WeatherStat("Rain chance", "${x.rainChancePct}%")
         WeatherReadouts.HUMIDITY -> WeatherStat("Humidity", "${x.humidityPct}%")
         WeatherReadouts.UV -> WeatherStat("UV index", "${Math.round(x.uvIndex)} ${uvLabel(x.uvIndex)}")
         WeatherReadouts.SUN ->
-            WeatherStat("Sun", "\u2191" + clockText(x.sunriseSec, x.utcOffsetSec, is24) + " \u2193" + clockText(x.sunsetSec, x.utcOffsetSec, is24))
+            WeatherStat("Sun", "\u2191" + clockText(x.sunriseSec, x.utcOffsetSec,
+                is24) + " \u2193" + clockText(x.sunsetSec, x.utcOffsetSec, is24))
         WeatherReadouts.AQI -> WeatherStat("Air quality", "${x.aqi} ${aqiLabel(x.aqi)}")
         else -> null
     }
@@ -315,7 +309,6 @@ object WeatherDisplay {
     fun upcomingHours(x: WeatherExtras, nowMs: Long, count: Int = HOURLY_SHOWN): List<HourPoint> =
         x.hourly.filter { it.epochSec > nowMs / 1000L }.take(count)
 
-    /** Whether the sun is up at [epochSec], from the day's sunrise and sunset; 06:00 to 20:00 when unknown. */
     fun isDayAt(x: WeatherExtras, epochSec: Long): Boolean {
         val t = timeOfDay(epochSec, x.utcOffsetSec)
         if (x.sunriseSec <= 0L || x.sunsetSec <= 0L) return t in 6 * 3600 until 20 * 3600
@@ -337,7 +330,8 @@ object WeatherDisplay {
 
     fun hourLabel(epochSec: Long, offsetSec: Int, is24: Boolean): String {
         val hour = timeOfDay(epochSec, offsetSec) / 3600
-        return if (is24) String.format(Locale.US, "%02d", hour) else "${if (hour % 12 == 0) 12 else hour % 12}${if (hour < 12) "a" else "p"}"
+        return if (is24) String.format(Locale.US, "%02d",
+            hour) else "${if (hour % 12 == 0) 12 else hour % 12}${if (hour < 12) "a" else "p"}"
     }
 
     fun sameLocalDay(aSec: Long, bSec: Long, offsetSec: Int): Boolean =

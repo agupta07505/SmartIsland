@@ -7,6 +7,8 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -41,8 +43,8 @@ fun HeaderSection() {
             val drawable = context.packageManager.getApplicationIcon(context.packageName)
             val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 144
             val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 144
-            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, width, height)
             drawable.draw(canvas)
             bitmap.asImageBitmap()

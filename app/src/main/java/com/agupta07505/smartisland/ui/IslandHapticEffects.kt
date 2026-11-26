@@ -9,30 +9,33 @@ package com.agupta07505.smartisland.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.MotionDurationScale
 import androidx.compose.ui.platform.LocalContext
 import com.agupta07505.smartisland.util.HapticKind
 import com.agupta07505.smartisland.util.HapticStrength
 import com.agupta07505.smartisland.util.IslandHaptics
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.util.SystemAnimScale
+import kotlin.coroutines.coroutineContext
 
-/** Expand / collapse buzz. It follows the real state change, whatever caused it (tap, swipe, a card opening itself). */
+/** Expand / collapse buzz, follows the real state change whatever caused it (tap, swipe, a card opening itself). */
 @Composable
-internal fun ExpandCollapseHapticEffect(expanded: Boolean, cb: IslandCallbacks, launcherOpen: Boolean = false) {
+internal fun ExpandCollapseHapticEffect(expanded: Boolean, wiring: IslandWiring, launcherOpen: Boolean = false) {
     val hapticContext = LocalContext.current
     var hapticExpandedSeen by remember { mutableStateOf(expanded) }
     LaunchedEffect(expanded) {
         if (expanded != hapticExpandedSeen) {
             hapticExpandedSeen = expanded
-            // The app-shortcuts launcher opens silently (it is not a card expanding).
+            // the app-shortcuts launcher opens silently (it is not a card expanding)
             if (expanded && launcherOpen) return@LaunchedEffect
             IslandHaptics.play(
                 hapticContext,
-                HapticStrength.fromId(cb.currentSettings.hapticStrength),
+                HapticStrength.fromId(wiring.view.settings.hapticStrength),
                 if (expanded) HapticKind.Expand else HapticKind.Collapse
             )
         }
@@ -44,33 +47,30 @@ internal fun ExpandCollapseHapticEffect(expanded: Boolean, cb: IslandCallbacks, 
 internal fun AnimScaleProbeEffect() {
     // Does Compose already carry the system animator scale into its animations?
     LaunchedEffect(Unit) {
-        val carried = kotlin.coroutines.coroutineContext[androidx.compose.ui.MotionDurationScale]
-        com.agupta07505.smartisland.util.SystemAnimScale.composeAppliesScale = carried != null
-        com.agupta07505.smartisland.util.AppLogRecorder.i(
-            "AnimScale",
-            "system=${com.agupta07505.smartisland.util.SystemAnimScale.timeScale()} composeApplies=${carried != null} factor=${carried?.scaleFactor}"
-        )
+        val carried = coroutineContext[MotionDurationScale]
+        SystemAnimScale.composeAppliesScale = carried != null
     }
 }
 
 @Composable
-internal fun MergeTouchHapticEffect(layout: IslandLayout, secondary: IslandSecondary, cb: IslandCallbacks) {
+internal fun MergeTouchHapticEffect(layout: IslandLayout, secondary: IslandSecondary, wiring: IslandWiring) {
     val hapticContext = LocalContext.current
-    // Light tick when the merging cutouts touch (first contact while merging in); follows the haptic strength setting.
+    // light tick when the merging cutouts first touch, follows the haptic strength setting
     val mergeSecondary by rememberUpdatedState(secondary)
     val mergeLayout by rememberUpdatedState(layout)
     LaunchedEffect(Unit) {
         var previous = 0f
-        snapshotFlow { mergeSecondary.secondaryMergeAnim.value }.collect { now ->
+        snapshotFlow { mergeSecondary.merge.anim.value }.collect { now ->
             val contact = mergeContactFraction(
-                (mergeLayout.animatedXOffset - mergeSecondary.secondaryOffset).value,
+                (mergeLayout.animatedXOffset - mergeSecondary.offsets.state.value).value,
                 mergeLayout.safeWidth.value,
-                mergeSecondary.secondaryBubbleWidth.value
+                mergeSecondary.anims.bubbleWidth.value.value
             )
-            if (!cb.currentExpanded && !com.agupta07505.smartisland.util.SystemAnimScale.animationsOff() &&
+            if (!wiring.view.expanded && !SystemAnimScale.animationsOff() &&
                 mergeTouchCrossed(previous, now, contact)
             ) {
-                IslandHaptics.play(hapticContext, HapticStrength.fromId(cb.currentSettings.hapticStrength), HapticKind.Merge)
+                IslandHaptics.play(hapticContext, HapticStrength.fromId(wiring.view.settings.hapticStrength),
+                    HapticKind.Merge)
             }
             previous = now
         }

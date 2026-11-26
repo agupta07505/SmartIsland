@@ -10,19 +10,20 @@ package com.agupta07505.smartisland.util
 import android.app.AutomaticZenRule
 import android.app.NotificationManager
 import android.content.Context
-import android.service.notification.Condition
 import android.os.Build
+import android.service.notification.Condition
+import androidx.annotation.RequiresApi
 import com.agupta07505.smartisland.model.DndModes
 import com.agupta07505.smartisland.model.ModeKind
 import com.agupta07505.smartisland.model.ModeStatus
 
 object DndModeReader {
     fun hasPolicyAccess(context: Context): Boolean =
-        runCatching { notificationManager(context)?.isNotificationPolicyAccessGranted == true }.getOrDefault(false)
+        notificationManager(context)?.isNotificationPolicyAccessGranted == true
 
     fun read(context: Context): ModeStatus {
         val nm = notificationManager(context) ?: return ModeStatus.Off
-        val filter = runCatching { nm.currentInterruptionFilter }.getOrDefault(DndModes.FILTER_UNKNOWN)
+        val filter = nm.currentInterruptionFilter
         val rule = activeRule(nm)
         if (rule != null) return rule.copy(filter = if (DndModes.filterActive(filter)) filter else 0)
         return DndModes.fromFilter(filter)
@@ -30,32 +31,32 @@ object DndModeReader {
 
     private fun activeRule(nm: NotificationManager): ModeStatus? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return null
-        val active = runCatching {
+        val active = quietly {
             nm.automaticZenRules.entries.mapNotNull { (id, rule) ->
                 if (nm.getAutomaticZenRuleState(id) == Condition.STATE_TRUE) rule.toStatus() else null
             }
-        }.getOrNull().orEmpty()
+        }.orEmpty()
         return DndModes.pick(active)
     }
 
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun AutomaticZenRule.toStatus(): ModeStatus {
         val kind = kindOf(this)
-        // The icon lives in the package that owns the mode: the system for Android's modes, the phone maker's app for its own.
-        val iconPackage = runCatching { owner?.packageName ?: configurationActivity?.packageName }.getOrNull().orEmpty()
+        // Icon lives in the package that owns the mode: the system for Android modes, the maker's app for its own
+        val iconPackage = (owner?.packageName ?: configurationActivity?.packageName).orEmpty()
         return ModeStatus(
             active = true,
             kind = kind,
             name = DndModes.withName(kind, name),
             fromRule = true,
-            iconRes = runCatching { iconResId }.getOrDefault(0),
+            iconRes = iconResId,
             iconPackage = iconPackage
         )
     }
 
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     private fun kindOf(rule: AutomaticZenRule): ModeKind {
-        when (runCatching { rule.type }.getOrDefault(AutomaticZenRule.TYPE_UNKNOWN)) {
+        when (rule.type) {
             AutomaticZenRule.TYPE_BEDTIME -> return ModeKind.Bedtime
             AutomaticZenRule.TYPE_DRIVING -> return ModeKind.Driving
             AutomaticZenRule.TYPE_THEATER -> return ModeKind.Theater
@@ -63,7 +64,7 @@ object DndModeReader {
             AutomaticZenRule.TYPE_SCHEDULE_TIME, AutomaticZenRule.TYPE_SCHEDULE_CALENDAR -> return ModeKind.Schedule
             else -> Unit
         }
-        // An "other" type: the name tells.
+        // An "other" type: the name tells
         return DndModes.kindFromName(rule.name.orEmpty())
     }
 

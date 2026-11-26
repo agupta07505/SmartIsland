@@ -19,17 +19,17 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 
 /**
- * Invisible touch target over the pill's spot while the pill is hidden, so tapping the area reveals the pill (auto-
- * hide), brings back put-away idle cards, or opens the shortcuts.
+ * Invisible touch target over the pill's spot while it is hidden: a tap reveals the pill (auto-hide), brings back
+ * put-away idle cards, or opens the shortcuts
  */
 @Composable
 internal fun HiddenPillTouchTarget(
     settings: SmartIslandSettings,
     layout: IslandLayout,
-    cb: IslandCallbacks,
+    wiring: IslandWiring,
     ui: IslandInteractionState
 ) {
-    if (layout.isHiding && !cb.currentExpanded) {
+    if (layout.isHiding && !wiring.view.expanded) {
         Box(
             modifier = Modifier
                 .width(settings.width.dp)
@@ -42,10 +42,10 @@ internal fun HiddenPillTouchTarget(
                         if (settings.autoHidePill && ui.isAutoHidden) {
                             ui.isAutoHidden = false
                             ui.touch()
-                        } else if (cb.currentNotifications.isEmpty() && cb.currentHasIdleStoredCards) {
-                            cb.currentOnRevealIdleCards()
-                        } else if (cb.currentNotifications.isNotEmpty()) {
-                            cb.currentOnToggle()
+                        } else if (wiring.view.notifications.isEmpty() && wiring.view.hasIdleStoredCards) {
+                            wiring.actions.idle.revealCards()
+                        } else if (wiring.view.notifications.isNotEmpty()) {
+                            wiring.actions.expand.toggle()
                         }
                     }
                 }

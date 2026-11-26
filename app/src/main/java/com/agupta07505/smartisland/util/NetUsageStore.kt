@@ -13,7 +13,7 @@ import android.net.NetworkCapabilities
 import com.agupta07505.smartisland.model.DailyUsage
 import com.agupta07505.smartisland.model.NetConnection
 
-/** The daily Wi-Fi / mobile data counter of the net speed island, kept in its own small preferences file (it is a count, not a setting). */
+/** Daily Wi-Fi / mobile counter of the net speed island, in its own small preferences file (a count, not a setting). */
 internal class NetUsageStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("net_usage", Context.MODE_PRIVATE)
 
@@ -24,25 +24,27 @@ internal class NetUsageStore(context: Context) {
     )
 
     fun save(usage: DailyUsage) {
-        prefs.edit().putInt("day", usage.dayKey).putLong("wifi", usage.wifiBytes).putLong("mobile", usage.mobileBytes).apply()
+        prefs.edit().putInt("day", usage.dayKey).putLong("wifi", usage.wifiBytes).putLong("mobile", usage.mobileBytes)
+            .apply()
     }
 }
 
-/** Whether Android's own Data Saver (Settings > Network > Data Saver) is switched on. */
+/** Whether Android's Data Saver is on (Settings > Network > Data Saver). */
 internal object DataSaverReader {
     fun isOn(context: Context): Boolean {
-        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        // ENABLED: Data Saver is on for this app. WHITELISTED: it is on, but this app is allowed to use data in the
-        // background. Both mean the setting is on.
-        return runCatching { cm.restrictBackgroundStatus != ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED }.getOrDefault(false)
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return false
+        // ENABLED: on for this app. WHITELISTED: on, but this app may use background data. Both mean the setting is on.
+        return cm.restrictBackgroundStatus != ConnectivityManager.RESTRICT_BACKGROUND_STATUS_DISABLED
     }
 }
 
-/** What the device is connected to right now (needs only ACCESS_NETWORK_STATE, which the app already holds). */
+/** What the device is connected to right now (needs only ACCESS_NETWORK_STATE, already held). */
 internal object NetConnectionReader {
     fun read(context: Context): NetConnection {
-        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return NetConnection.None
-        val caps = runCatching { cm.getNetworkCapabilities(cm.activeNetwork) }.getOrNull() ?: return NetConnection.None
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return NetConnection.None
+        val caps = quietly { cm.getNetworkCapabilities(cm.activeNetwork) } ?: return NetConnection.None
         return when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetConnection.Wifi
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetConnection.Mobile

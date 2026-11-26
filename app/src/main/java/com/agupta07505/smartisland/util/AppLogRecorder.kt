@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.util
 
+import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -41,9 +42,10 @@ object AppLogRecorder {
     private val inMemoryLogs = ConcurrentLinkedQueue<String>()
     private val logCount = AtomicInteger(0)
 
-    // Disk copy of the buffer: when the system or an OEM task killer stops the listener, the process
-    // and its in-memory buffer die too. One thread keeps the file writes in order.
-    private val diskExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SmartIslandLogWriter").apply { isDaemon = true } }
+    // Disk copy: an OEM task killer takes the in-memory buffer with the process
+    // One thread keeps the file writes in order
+    private val diskExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SmartIslandLogWriter")
+        .apply { isDaemon = true } }
     @Volatile private var logFile: File? = null
 
     @Volatile
@@ -53,13 +55,13 @@ object AppLogRecorder {
             if (value) MainThreadWatchdog.start() else MainThreadWatchdog.stop()
         }
 
-    /** Safe to call on every settings emission: it only acts when the value changes. */
+    /** Safe on every settings emission, only acts when the value changes. */
     fun applySetting(context: Context, enabled: Boolean) {
         attach(context)
         if (enabled != isRecording) updateRecordingState(context, enabled)
     }
 
-    /** Call early in each process (Application and service onCreate), so a system restart of the app is itself logged. */
+    /** Call early in each process so a system restart gets logged. */
     fun restore(context: Context) {
         attach(context)
     }
@@ -70,7 +72,8 @@ object AppLogRecorder {
             isRecording = true
             saveRecordingFlag(context, true)
             record("I", TAG, "Diagnostic log recording started for Smart Island v${BuildConfig.VERSION_NAME} (pid ${Process.myPid()})")
-            record("I", TAG, "Environment: " + runCatching { EnvironmentDiagnostics.snapshot(context) }.getOrDefault("unavailable"))
+            record("I", TAG, "Environment: " + runCatching { EnvironmentDiagnostics.snapshot(context) }
+                .getOrDefault("unavailable"))
         } else {
             record("I", TAG, "Diagnostic log recording paused")
             isRecording = false
@@ -114,6 +117,7 @@ object AppLogRecorder {
     }
 
     fun record(level: String, tag: String, message: String, tr: Throwable? = null) {
+        if (BuildConfig.DEBUG) mirrorToLogcat(level, tag, message, tr)
         if (!isRecording) return
 
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
@@ -127,12 +131,21 @@ object AppLogRecorder {
 
         inMemoryLogs.add(entry)
         logCount.incrementAndGet()
-        // Re-read the counter on every pass: a stale value here would spin forever once full.
+        // Re-read each pass, a stale count would spin forever once full
         while (logCount.get() > MAX_IN_MEMORY_LOGS) {
             if (inMemoryLogs.poll() == null) break
             logCount.decrementAndGet()
         }
         appendToDisk(entry)
+    }
+
+    private fun mirrorToLogcat(level: String, tag: String, message: String, tr: Throwable?) {
+        runCatching {
+            when (level) {
+                "E" -> Log.e(tag, message, tr)
+                "W" -> Log.w(tag, message, tr)
+            }
+        }
     }
 
     private fun appendToDisk(entry: String) {
@@ -141,7 +154,6 @@ object AppLogRecorder {
             diskExecutor.execute {
                 runCatching {
                     if (file.exists() && file.length() > MAX_FILE_BYTES) {
-                        // Keep the newest half of the file.
                         val text = file.readText(Charsets.UTF_8)
                         val cut = text.indexOf(ENTRY_SEPARATOR, text.length / 2)
                         file.writeText(if (cut >= 0) text.substring(cut + 1) else "", Charsets.UTF_8)
@@ -159,7 +171,7 @@ object AppLogRecorder {
 
     fun getLogCount(): Int = logCount.get()
 
-    /** Writes synchronously because the process is dying, and records even when the recorder is off. */
+    /** Synchronous, the process is dying. Records even when the recorder is off. */
     fun recordCrash(thread: Thread, error: Throwable) {
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
         val entry = "[$timestamp] [Thread: ${thread.name}] [E/CRASH] Uncaught exception, process is dying\n" +
@@ -211,12 +223,11 @@ object AppLogRecorder {
         }.getOrElse { "Failed to read process logcat: ${it.localizedMessage}" }
     }
 
-    suspend fun generateDiagnosticReport(context: Context, settings: SmartIslandSettings): String = withContext(Dispatchers.IO) {
+    suspend fun generateDiagnosticReport(context: Context, settings: SmartIslandSettings): String =
+            withContext(Dispatchers.IO) {
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss z", Locale.US).format(Date())
         val displayMetrics = context.resources.displayMetrics
-        val overlayAllowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(context)
-        } else true
+        val overlayAllowed = Settings.canDrawOverlays(context)
 
         val shizukuActive: Boolean = runCatching {
             ShizukuManager.isBinderAvailable() && ShizukuManager.hasPermission()
@@ -243,7 +254,7 @@ object AppLogRecorder {
             appendLine("Product: ${Build.PRODUCT}")
             appendLine("Hardware: ${Build.HARDWARE}")
             appendLine("Android Release: ${Build.VERSION.RELEASE} (API Level: ${Build.VERSION.SDK_INT})")
-            appendLine("Security Patch: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Build.VERSION.SECURITY_PATCH else "N/A"}")
+            appendLine("Security Patch: ${Build.VERSION.SECURITY_PATCH}")
             appendLine("Display Metrics: ${displayMetrics.widthPixels}x${displayMetrics.heightPixels} @ ${displayMetrics.densityDpi}dpi (density=${displayMetrics.density})")
             appendLine("OEM Protection Rules: ${OemDeviceRules.detectCurrentDevice()}")
             appendLine()
@@ -280,7 +291,7 @@ object AppLogRecorder {
         uri: Uri,
         settings: SmartIslandSettings
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        runSuspendCatching {
             val report = generateDiagnosticReport(context, settings)
             context.contentResolver.openOutputStream(uri)?.use { outStream ->
                 outStream.write(report.toByteArray(Charsets.UTF_8))
@@ -296,7 +307,7 @@ object AppLogRecorder {
                 "enabled_notification_listeners"
             )
             enabled?.split(":")?.any {
-                android.content.ComponentName.unflattenFromString(it)?.packageName == context.packageName
+                ComponentName.unflattenFromString(it)?.packageName == context.packageName
             } == true
         }.getOrDefault(false)
     }

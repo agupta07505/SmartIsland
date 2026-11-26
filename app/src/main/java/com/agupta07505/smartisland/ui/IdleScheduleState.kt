@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.agupta07505.smartisland.model.IdleSchedule
 import com.agupta07505.smartisland.model.IdleSchedulePrefs
+import com.agupta07505.smartisland.util.runCatchingLogged
 import java.util.Calendar
 
 private fun isChargingNow(intent: Intent?): Boolean {
@@ -29,7 +30,7 @@ private fun isChargingNow(intent: Intent?): Boolean {
     return status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
 }
 
-/** Whether the phone is charging. The battery broadcast is only followed while [track] is true. */
+/** Whether the phone is charging, the battery broadcast is only followed while [track] is true. */
 @Composable
 internal fun rememberIsCharging(track: Boolean): State<Boolean> {
     val context = LocalContext.current
@@ -41,16 +42,17 @@ internal fun rememberIsCharging(track: Boolean): State<Boolean> {
                 state.value = isChargingNow(intent)
             }
         }
+        // Seed from the sticky broadcast so the schedule is right even before charging changes.
         val sticky = ContextCompat.registerReceiver(
             context, receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED
         )
         state.value = isChargingNow(sticky)
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+        onDispose { runCatchingLogged("IdleScheduleState", "Could not unregister the charging receiver") { context.unregisterReceiver(receiver) } }
     }
     return state
 }
 
-/** The schedule in force now ([IdleSchedule.Context]). */
+/** Schedule in force now ([IdleSchedule.Context]) */
 @Composable
 internal fun rememberIdleScheduleContext(prefs: IdleSchedulePrefs, track: Boolean): IdleSchedule.Context {
     val charging by rememberIsCharging(track = track && prefs.chargingEnabled)

@@ -8,1326 +8,748 @@
 package com.agupta07505.smartisland.data
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
-import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.floatPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.core.longPreferencesKey
-import androidx.datastore.preferences.core.MutablePreferences
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import java.io.IOException
+import com.agupta07505.smartisland.model.CutoutArea
+import com.agupta07505.smartisland.model.CutoutFitPlan
+import com.agupta07505.smartisland.model.EdgePillFit
+import com.agupta07505.smartisland.model.EdgePillTuning
+import com.agupta07505.smartisland.model.EventColors
+import com.agupta07505.smartisland.model.FloatingWindowMode
+import com.agupta07505.smartisland.model.FoldPosture
+import com.agupta07505.smartisland.model.GestureSensitivity
+import com.agupta07505.smartisland.model.IdleSchedule
+import com.agupta07505.smartisland.model.IdleSlots
+import com.agupta07505.smartisland.model.IdleWidgets
+import com.agupta07505.smartisland.model.IslandEvent
+import com.agupta07505.smartisland.model.LandscapeLayoutStyle
+import com.agupta07505.smartisland.model.LedTick
+import com.agupta07505.smartisland.model.MergeStyle
+import com.agupta07505.smartisland.model.NetSpeedRules
+import com.agupta07505.smartisland.model.UtilityLayout
+import com.agupta07505.smartisland.model.UtilityPlacement
+import com.agupta07505.smartisland.model.WeatherConfig
+import com.agupta07505.smartisland.model.WeatherPill
+import com.agupta07505.smartisland.model.WeatherReadouts
+import com.agupta07505.smartisland.model.WeatherRules
+import com.agupta07505.smartisland.model.WidgetIslandContent
+import com.agupta07505.smartisland.model.WidgetIslandTimer
+import com.agupta07505.smartisland.util.AnimationSpeed
+import com.agupta07505.smartisland.util.AppAutoExpand
+import com.agupta07505.smartisland.util.AppLogRecorder
+import com.agupta07505.smartisland.util.BulkAppAction
+import com.agupta07505.smartisland.util.CameraCutoutDetector
+import com.agupta07505.smartisland.util.HapticStrength
+import com.agupta07505.smartisland.util.runSuspendCatching
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
-import com.agupta07505.smartisland.util.AnimationSpeed
-import com.agupta07505.smartisland.util.MergeStyle
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 private val Context.smartIslandDataStore by preferencesDataStore(
     name = "smart_island_settings",
     corruptionHandler = ReplaceFileCorruptionHandler {
-        Log.e("SmartIslandSettings", "Settings were corrupted; restoring safe defaults")
+        AppLogRecorder.e("SmartIslandSettings", "settings corrupted, restoring defaults")
         emptyPreferences()
     }
 )
 
-class SmartIslandSettingsRepository(private val context: Context) {
-    private object Keys {
-        val Enabled = booleanPreferencesKey("enabled")
-        val Width = floatPreferencesKey("width")
-        val Height = floatPreferencesKey("height")
-        val XOffset = floatPreferencesKey("x_offset")
-        val YOffset = floatPreferencesKey("y_offset")
-        val CornerRadius = floatPreferencesKey("corner_radius")
-        val Opacity = floatPreferencesKey("opacity")
-        val PillColor = longPreferencesKey("pill_color")
-        val BatteryColor = longPreferencesKey("battery_color")
-        val NotificationDotColor = longPreferencesKey("notification_dot_color")
-        val MusicVisualizerColor = longPreferencesKey("music_visualizer_color")
-        val HotspotColor = longPreferencesKey("hotspot_color")
-        val CallColor = longPreferencesKey("call_color")
-        val LiveActivityColor = longPreferencesKey("live_activity_color")
-        val TransferColor = longPreferencesKey("transfer_color")
-        val NavigationColor = longPreferencesKey("navigation_color")
-        val BluetoothColor = longPreferencesKey("bluetooth_color")
-        val FlashlightColor = longPreferencesKey("flashlight_color")
-        val ScreenRecordingColor = longPreferencesKey("screen_recording_color")
-        val TimerColor = longPreferencesKey("timer_color")
-        val StopwatchColor = longPreferencesKey("stopwatch_color")
-        val EnableAppShortcuts = booleanPreferencesKey("enable_app_shortcuts")
-        /** Legacy unordered set. Read once to migrate, then removed whenever the ordered list below is written. */
-        val ShortcutPackages = stringSetPreferencesKey("shortcut_packages")
-        val ShortcutOrder = stringPreferencesKey("shortcut_order")
-        val ShowRecentApps = booleanPreferencesKey("show_recent_apps")
-        val UtilityLayout = stringPreferencesKey("utility_layout")
-        val UtilityCalculatorPackage = stringPreferencesKey("utility_calculator_package")
-        val UtilityCalculatorFloating = booleanPreferencesKey("utility_calculator_floating")
-        val WelcomeDialogShown = booleanPreferencesKey("welcome_dialog_shown")
-        val ShowOnLockScreen = booleanPreferencesKey("show_on_lock_screen")
-        val ShowLiveEventsInForeground = booleanPreferencesKey("show_live_events_in_foreground")
-        val LockScreenPrivacy = stringPreferencesKey("lock_screen_privacy")
-        val ShowNotificationActions = booleanPreferencesKey("show_notification_actions")
-        val HideFromNotificationShade = booleanPreferencesKey("hide_from_notification_shade")
-        val LiveActivitiesEnabled = booleanPreferencesKey("live_activities_enabled")
-        val NavigationEnabled = booleanPreferencesKey("navigation_enabled")
-        val DisabledNotificationPackages = stringSetPreferencesKey("disabled_notification_packages")
-        val DisabledSoundPackages = stringSetPreferencesKey("disabled_sound_packages")
-        val DisabledEvents = stringSetPreferencesKey("disabled_events")
-        val HideWhenIdle = booleanPreferencesKey("hide_when_idle")
-        val AutoHidePill = booleanPreferencesKey("auto_hide_pill")
-        val AutoHideTimeoutSeconds = intPreferencesKey("auto_hide_timeout_seconds")
-        val ShowInLandscape = booleanPreferencesKey("show_in_landscape")
-        val AutoExpandOnNotification = booleanPreferencesKey("auto_expand_on_notification")
-        val AutoExpandOnLockScreen = booleanPreferencesKey("auto_expand_on_lock_screen")
-        val EnableShadow = booleanPreferencesKey("enable_shadow")
-        val ExpandedBlurEnabled = booleanPreferencesKey("expanded_blur_enabled")
-        val ExpandedBlurRadius = floatPreferencesKey("expanded_blur_radius")
-        val MediaBlurEnabled = booleanPreferencesKey("media_blur_enabled")
-        val MediaBlurRadius = floatPreferencesKey("media_blur_radius")
-        val MediaOpacity = floatPreferencesKey("media_opacity")
-        val ExpandedGradientEnabled = booleanPreferencesKey("expanded_gradient_enabled")
-        val ExpandedGradientColor = longPreferencesKey("expanded_gradient_color")
-        val ExpandedGradientStrength = floatPreferencesKey("expanded_gradient_strength")
-        val ShadowElevation = floatPreferencesKey("shadow_elevation")
-        val EnableMusicArtworkBackground = booleanPreferencesKey("enable_music_artwork_background")
-        val EnableNotificationBackdrop = booleanPreferencesKey("enable_notification_backdrop")
-        val DeviceType = stringPreferencesKey("device_type")
-        val AllowNetworkChecks = booleanPreferencesKey("allow_network_checks")
-        val DetectTransfersBySpeed = booleanPreferencesKey("detect_transfers_by_speed")
-        val EnableNotificationHistory = booleanPreferencesKey("enable_notification_history")
-        val NotificationHistoryRetentionHours = intPreferencesKey("notification_history_retention_hours")
-        val ShowBluetoothBattery = booleanPreferencesKey("show_bluetooth_battery")
-        val EnableBatteryMode = booleanPreferencesKey("enable_battery_mode")
-        val EnableNotificationCooldown = booleanPreferencesKey("enable_notification_cooldown")
-        val NotificationCooldownDurationMinutes = intPreferencesKey("notification_cooldown_duration_minutes")
-        val NotificationCooldownThreshold = intPreferencesKey("notification_cooldown_threshold")
-        val NotificationCooldownExcludedPackages = stringSetPreferencesKey("notification_cooldown_excluded_packages")
-        val NotificationCooldownSystemEvents = stringSetPreferencesKey("notification_cooldown_system_events")
-        val DeveloperModeEnabled = booleanPreferencesKey("developer_mode_enabled")
-        val RecordLogs = booleanPreferencesKey("record_logs")
-        val FaceUnlockMode = stringPreferencesKey("face_unlock_mode")
-        val FaceIdStyle = stringPreferencesKey("face_id_style")
-        val AppFaceIdEnabled = booleanPreferencesKey("app_face_id_enabled")
-        val AppFaceIdStyle = stringPreferencesKey("app_face_id_style")
-        val FingerprintAnimationEnabled = booleanPreferencesKey("fingerprint_animation_enabled")
-        val ThemeMode = stringPreferencesKey("theme_mode")
-        val LiquidGlassTheme = booleanPreferencesKey("liquid_glass_theme")
-        val MaterialYou = booleanPreferencesKey("material_you")
-        val AccentColor = longPreferencesKey("accent_color")
-        val ExpandedTheme = stringPreferencesKey("expanded_theme")
-        val IslandFont = stringPreferencesKey("island_font")
-        val EnableNotchMode = booleanPreferencesKey("enable_notch_mode")
-        val CameraCutoutManual = booleanPreferencesKey("camera_cutout_manual")
-        val CameraCutoutX = floatPreferencesKey("camera_cutout_x")
-        val CameraCutoutY = floatPreferencesKey("camera_cutout_y")
-        val CameraCutoutWidth = floatPreferencesKey("camera_cutout_width")
-        val CameraCutoutHeight = floatPreferencesKey("camera_cutout_height")
-        val EnableSwipeActions = booleanPreferencesKey("enable_swipe_actions")
-        val SwipeUpAction = stringPreferencesKey("swipe_up_action")
-        val SwipeHoldUpAction = stringPreferencesKey("swipe_hold_up_action")
-        val SwipeDownAction = stringPreferencesKey("swipe_down_action")
-        val SwipeDownCollapsedAction = stringPreferencesKey("swipe_down_collapsed_action")
-        val SwipeLeftAction = stringPreferencesKey("swipe_left_action")
-        val SwipeRightAction = stringPreferencesKey("swipe_right_action")
-        val SwipeHorizontalCollapsedAction = stringPreferencesKey("swipe_horizontal_collapsed_action")
-        val EnablePillSwipeActions = booleanPreferencesKey("enable_pill_swipe_actions")
-        val PillSwipeUpAction = stringPreferencesKey("pill_swipe_up_action")
-        val PillSwipeDownAction = stringPreferencesKey("pill_swipe_down_action")
-        val PillSwipeLeftAction = stringPreferencesKey("pill_swipe_left_action")
-        val PillSwipeRightAction = stringPreferencesKey("pill_swipe_right_action")
-        val LongPressAction = stringPreferencesKey("long_press_action")
-        val CirclePosition = stringPreferencesKey("circle_position")
-        val LandscapeShape = stringPreferencesKey("landscape_shape")
-        val LandscapeWidth = floatPreferencesKey("landscape_width")
-        val LandscapeHeight = floatPreferencesKey("landscape_height")
-        val LandscapeXOffset = floatPreferencesKey("landscape_x_offset")
-        val LandscapeYOffset = floatPreferencesKey("landscape_y_offset")
-        val LandscapeCornerRadius = floatPreferencesKey("landscape_corner_radius")
-        val LandscapeOpacity = floatPreferencesKey("landscape_opacity")
-        val LandscapeCircleSize = floatPreferencesKey("landscape_circle_size")
-        val LandscapeCircleOpacity = floatPreferencesKey("landscape_circle_opacity")
-        val LandscapeCircleEdgeInset = floatPreferencesKey("landscape_circle_edge_inset")
-        val LandscapeCircleYOffset = floatPreferencesKey("landscape_circle_y_offset")
-        val LandscapeCirclePosition = stringPreferencesKey("landscape_circle_position")
-        val LandscapePillPosition = stringPreferencesKey("landscape_pill_position")
-        val LandscapeCircleXAdjust = floatPreferencesKey("landscape_circle_x_adjust")
-        val LandscapeCircleYAdjust = floatPreferencesKey("landscape_circle_y_adjust")
-        val DisabledEventsLandscape = stringSetPreferencesKey("disabled_events_landscape")
-        val IdleTimeoutMs = intPreferencesKey("idle_timeout_ms")
-        val BatteryWarningMs = intPreferencesKey("battery_warning_ms")
-        val PopupMs = intPreferencesKey("popup_ms")
-        val TransferExpiryMinutes = intPreferencesKey("transfer_expiry_minutes")
-        val IdleWidgetsEnabled = booleanPreferencesKey("idle_widgets_enabled")
-        val IdleWidgetsEnabledLandscape = booleanPreferencesKey("idle_widgets_enabled_landscape")
-        val IdleOffAfterTapClose = booleanPreferencesKey("idle_off_after_tap_close")
-        val IdleOffAfterTapCloseLandscape = booleanPreferencesKey("idle_off_after_tap_close_landscape")
-        val IdleOffAfterLongPress = booleanPreferencesKey("idle_off_after_long_press")
-        val IdleOffAfterLongPressLandscape = booleanPreferencesKey("idle_off_after_long_press_landscape")
-        val ContentPillSameAsIdle = booleanPreferencesKey("content_pill_same_as_idle")
-        val ContentPillWidthPercent = floatPreferencesKey("content_pill_width_percent")
-        val IslandExemptApps = stringSetPreferencesKey("island_exempt_apps")
-        val IslandExemptAppsLandscape = stringSetPreferencesKey("island_exempt_apps_landscape")
-        val IslandExemptAppsStatic = stringSetPreferencesKey("island_exempt_apps_static")
-        val ContentPillSameAsIdleLandscape = booleanPreferencesKey("content_pill_same_as_idle_landscape")
-        val ContentPillWidthPercentLandscape = floatPreferencesKey("content_pill_width_percent_landscape")
-        val IdleOffWhenStored = booleanPreferencesKey("idle_off_when_stored")
-        val IdleOffWhenStoredLandscape = booleanPreferencesKey("idle_off_when_stored_landscape")
-        val IdleGlyphTickSeconds = floatPreferencesKey("idle_glyph_tick_seconds")
-        val IdleWidgetIds = stringPreferencesKey("idle_widget_ids")
-        val IdleWidgetCycleSeconds = intPreferencesKey("idle_widget_cycle_seconds")
-        val WidgetIslandCloseSeconds = intPreferencesKey("widget_island_close_seconds")
-        val IdleAlarmHideBeyond12h = booleanPreferencesKey("idle_alarm_hide_beyond_12h")
-        val BatteryOnlyWhenCharging = booleanPreferencesKey("battery_only_when_charging")
-        val IdleBeatOnlyOnChange = booleanPreferencesKey("idle_beat_only_on_change")
-        val IdleWidgetTempUnit = stringPreferencesKey("idle_widget_temp_unit")
-        val IdleWidgetWindUnit = stringPreferencesKey("idle_widget_wind_unit")
-        val WeatherLocationSource = stringPreferencesKey("weather_location_source")
-        val WeatherManualCity = stringPreferencesKey("weather_manual_city")
-        val WeatherManualLat = floatPreferencesKey("weather_manual_lat")
-        val WeatherManualLon = floatPreferencesKey("weather_manual_lon")
-        val WeatherRefreshMinutes = intPreferencesKey("weather_refresh_minutes")
-        val WeatherProvider = stringPreferencesKey("weather_provider")
-        val WeatherCustomUrl = stringPreferencesKey("weather_custom_url")
-        val WeatherCustomKey = stringPreferencesKey("weather_custom_key")
-        val WeatherPillMode = stringPreferencesKey("weather_pill_mode")
-        val WeatherIslandReadouts = stringPreferencesKey("weather_island_readouts")
-        val WeatherIconAnimated = booleanPreferencesKey("weather_icon_animated")
-        val WeatherIconPauseOnSaver = booleanPreferencesKey("weather_icon_pause_on_saver")
-        val WeatherShowRule = stringPreferencesKey("weather_show_rule")
-        val WeatherNotableTriggers = stringPreferencesKey("weather_notable_triggers")
-        val WeatherHotC = intPreferencesKey("weather_hot_c")
-        val WeatherColdC = intPreferencesKey("weather_cold_c")
-        val WeatherHideAtNight = booleanPreferencesKey("weather_hide_at_night")
-        val WeatherNightStartHour = intPreferencesKey("weather_night_start_hour")
-        val WeatherNightEndHour = intPreferencesKey("weather_night_end_hour")
-        val NetSpeedThresholdKbps = intPreferencesKey("net_speed_threshold_kbps")
-        val NetSpeedConnection = stringPreferencesKey("net_speed_connection")
-        val IdleScheduleWorkEnabled = booleanPreferencesKey("idle_schedule_work_enabled")
-        val IdleScheduleWorkHidden = stringPreferencesKey("idle_schedule_work_hidden")
-        val IdleScheduleWorkStartHour = intPreferencesKey("idle_schedule_work_start_hour")
-        val IdleScheduleWorkEndHour = intPreferencesKey("idle_schedule_work_end_hour")
-        val IdleScheduleWorkWeekdaysOnly = booleanPreferencesKey("idle_schedule_work_weekdays_only")
-        val IdleScheduleNightEnabled = booleanPreferencesKey("idle_schedule_night_enabled")
-        val IdleScheduleNightHidden = stringPreferencesKey("idle_schedule_night_hidden")
-        val IdleScheduleNightStartHour = intPreferencesKey("idle_schedule_night_start_hour")
-        val IdleScheduleNightEndHour = intPreferencesKey("idle_schedule_night_end_hour")
-        val IdleScheduleChargingEnabled = booleanPreferencesKey("idle_schedule_charging_enabled")
-        val IdleScheduleChargingHidden = stringPreferencesKey("idle_schedule_charging_hidden")
-        val IdleWidgetPinnedFirst = stringPreferencesKey("idle_widget_pinned_first")
-        val IdleTickStyle = stringPreferencesKey("idle_tick_style")
-        val LedTickPattern = stringPreferencesKey("led_tick_pattern")
-        val LedTickPaceMs = intPreferencesKey("led_tick_pace_ms")
-        val LedTickFont = stringPreferencesKey("led_tick_font")
-        val LedTickColor = stringPreferencesKey("led_tick_color")
-        val LedTickStagger = booleanPreferencesKey("led_tick_stagger")
-        val IdleGlyphFont = stringPreferencesKey("idle_glyph_font")
-        val FontMixEnabled = booleanPreferencesKey("font_mix_enabled")
-        val FontMixLight = stringPreferencesKey("font_mix_light")
-        val FontMixRegular = stringPreferencesKey("font_mix_regular")
-        val FontMixMedium = stringPreferencesKey("font_mix_medium")
-        val IdleGlyphScale = intPreferencesKey("idle_glyph_scale")
-        val WidgetIslandBatteryMetric = stringPreferencesKey("widget_island_battery_metric")
-        val SecondaryMergeMs = intPreferencesKey("secondary_merge_ms")
-        val AnimSpeedPortrait = stringPreferencesKey("anim_speed_portrait")
-        val AnimSpeedLandscape = stringPreferencesKey("anim_speed_landscape")
-        val MergeStyleId = stringPreferencesKey("merge_style")
-        val MergeStyleLandscapeId = stringPreferencesKey("merge_style_landscape")
-        val ShowDuringDnd = booleanPreferencesKey("show_during_dnd")
-        val HapticStrength = stringPreferencesKey("haptic_strength")
-        val GestureSensitivityId = stringPreferencesKey("gesture_sensitivity")
-        val FloatingWindowEnabled = booleanPreferencesKey("floating_window_enabled")
-        val FloatingWindowMode = stringPreferencesKey("floating_window_mode")
-        val NoExpandPackages = stringSetPreferencesKey("no_expand_packages")
-        val NoAutoExpandPackages = stringSetPreferencesKey("no_auto_expand_packages")
-        val AutoExpandPackages = stringSetPreferencesKey("auto_expand_packages")
-        val NoAutoExpandEvents = stringSetPreferencesKey("no_auto_expand_events")
-        val HideAllOnLockScreen = booleanPreferencesKey("hide_all_on_lock_screen")
-        val HideOnLockScreenEvents = stringSetPreferencesKey("hide_on_lock_screen_events")
-        val NotificationsEnabled = booleanPreferencesKey("notifications_enabled")
-        val HideOnLockScreenPackages = stringSetPreferencesKey("hide_on_lock_screen_packages")
-        /** Set once the landscape shape was moved to the top-middle pill. */
-        val LandscapePillMigrated = booleanPreferencesKey("landscape_pill_migrated_l2")
+/** The read side of the settings: what the card feed needs, so it can run on a fake instead of DataStore. */
+interface SettingsSource {
+    val settings: Flow<SmartIslandSettings>
+    fun forPosture(posture: FoldPosture?): SettingsSource
+}
+
+/** App's settings. [profile] is null for the normal ones. */
+class SmartIslandSettingsRepository(private val context: Context, profile: FoldPosture? = null) : SettingsSource {
+    /** Fold mode this repository is bound to, or null for the normal settings. */
+    private val activeProfile: FoldPosture? = profile?.takeIf { it != FoldPosture.Standard }
+
+    private val profileRepos = ConcurrentHashMap<FoldPosture, SmartIslandSettingsRepository>()
+
+    override fun forPosture(posture: FoldPosture?): SmartIslandSettingsRepository {
+        val wanted = posture?.takeIf { it != FoldPosture.Standard }
+        if (wanted == activeProfile) return this
+        return profileRepos.getOrPut(wanted ?: FoldPosture.Standard) { SmartIslandSettingsRepository(context, wanted) }
     }
 
-    private suspend fun migrateLandscapeShapeOnce() {
-        val prefs = runCatching { context.smartIslandDataStore.data.first() }.getOrNull() ?: return
-        if (prefs[Keys.LandscapePillMigrated] == true) return
+    /** Runs [migrate] once: the flag is checked before and again inside the edit, and set by the same edit. */
+    private suspend fun migrateOnce(done: Preferences.Key<Boolean>, migrate: (MutablePreferences) -> Unit) {
+        val prefs = runSuspendCatching { context.smartIslandDataStore.data.first() }.getOrNull() ?: return
+        if (prefs[done] == true) return
         editSafely {
-            if (it[Keys.LandscapePillMigrated] == true) return@editSafely
-            it[Keys.LandscapeShape] = SmartIslandSettings.LANDSCAPE_SHAPE_PILL
-            it[Keys.LandscapePillMigrated] = true
+            if (it[done] == true) return@editSafely
+            migrate(it)
+            it[done] = true
         }
     }
 
-    val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
-        .onStart { migrateLandscapeShapeOnce() }
+    private suspend fun migrateLandscapeShapeOnce() =
+        migrateOnce(SettingsKeys.LandscapePillMigrated) {
+            it[SettingsKeys.LandscapeShape] = SmartIslandSettings.LANDSCAPE_SHAPE_PILL
+        }
+
+    private suspend fun migrateEdgePillSizeOnce() =
+        migrateOnce(SettingsKeys.EdgePillPortraitSize) {
+            it[SettingsKeys.EdgePill]?.let { saved ->
+                it[SettingsKeys.EdgePill] = EdgePillTuning
+                    .decode(saved, flatEdgeDefault = teardropPhone).withPortraitSizes().coerced().encode()
+            }
+        }
+
+    private val teardropPhone: Boolean
+        get() = CameraCutoutDetector.isTeardrop(context)
+
+    override val settings: Flow<SmartIslandSettings> = context.smartIslandDataStore.data
+        .onStart { if (activeProfile == null) { migrateLandscapeShapeOnce(); migrateEdgePillSizeOnce() } }
         .catch { error ->
             if (error is IOException) {
-                Log.e(TAG, "Unable to read settings; using safe defaults", error)
+                AppLogRecorder.e(TAG, "could not read settings, using defaults", error)
                 emit(emptyPreferences())
             } else {
                 throw error
             }
         }
-        .map { prefs ->
-            val defaults = SmartIslandSettings.Default
-            SmartIslandSettings(
-                enabled = prefs[Keys.Enabled] ?: defaults.enabled,
-                width = validDimension(
-                    prefs[Keys.Width],
-                    defaults.width,
-                    SmartIslandSettings.MIN_WIDTH,
-                    SmartIslandSettings.MAX_WIDTH
-                ),
-                height = validDimension(
-                    prefs[Keys.Height],
-                    defaults.height,
-                    SmartIslandSettings.MIN_HEIGHT,
-                    SmartIslandSettings.MAX_HEIGHT
-                ),
-                xOffset = validDimension(
-                    prefs[Keys.XOffset],
-                    defaults.xOffset,
-                    SmartIslandSettings.MIN_X_OFFSET,
-                    SmartIslandSettings.MAX_X_OFFSET
-                ),
-                yOffset = validDimension(
-                    prefs[Keys.YOffset],
-                    defaults.yOffset,
-                    SmartIslandSettings.MIN_Y_OFFSET,
-                    SmartIslandSettings.MAX_Y_OFFSET
-                ),
-                cornerRadius = validDimension(
-                    prefs[Keys.CornerRadius],
-                    defaults.cornerRadius,
-                    SmartIslandSettings.MIN_CORNER_RADIUS,
-                    SmartIslandSettings.MAX_CORNER_RADIUS
-                ),
-                opacity = validDimension(
-                    prefs[Keys.Opacity],
-                    defaults.opacity,
-                    SmartIslandSettings.MIN_OPACITY,
-                    SmartIslandSettings.MAX_OPACITY
-                ),
-                pillColor = validColor(prefs[Keys.PillColor], defaults.pillColor),
-                batteryColor = validColor(prefs[Keys.BatteryColor], defaults.batteryColor),
-                notificationDotColor = validColor(
-                    prefs[Keys.NotificationDotColor],
-                    defaults.notificationDotColor
-                ),
-                musicVisualizerColor = validColor(
-                    prefs[Keys.MusicVisualizerColor],
-                    defaults.musicVisualizerColor
-                ),
-                hotspotColor = validColor(prefs[Keys.HotspotColor], defaults.hotspotColor),
-                callColor = validColor(prefs[Keys.CallColor], defaults.callColor),
-                liveActivityColor = validColor(prefs[Keys.LiveActivityColor], defaults.liveActivityColor),
-                transferColor = validColor(prefs[Keys.TransferColor], defaults.transferColor),
-                navigationColor = validColor(prefs[Keys.NavigationColor], defaults.navigationColor),
-                bluetoothColor = validColor(prefs[Keys.BluetoothColor], defaults.bluetoothColor),
-                flashlightColor = validColor(prefs[Keys.FlashlightColor], defaults.flashlightColor),
-                screenRecordingColor = validColor(prefs[Keys.ScreenRecordingColor], defaults.screenRecordingColor),
-                timerColor = validColor(prefs[Keys.TimerColor], defaults.timerColor),
-                stopwatchColor = validColor(prefs[Keys.StopwatchColor], defaults.stopwatchColor),
-                enableAppShortcuts = prefs[Keys.EnableAppShortcuts] ?: defaults.enableAppShortcuts,
-                shortcutPackages = if (prefs[Keys.ShortcutOrder] == null && prefs[Keys.ShortcutPackages] == null) {
-                    defaults.shortcutPackages
-                } else {
-                    PinnedApps.restore(prefs[Keys.ShortcutOrder], prefs[Keys.ShortcutPackages])
-                },
-                showRecentApps = prefs[Keys.ShowRecentApps] ?: defaults.showRecentApps,
-                utilityLayout = prefs[Keys.UtilityLayout] ?: defaults.utilityLayout,
-                utilityCalculatorPackage = prefs[Keys.UtilityCalculatorPackage] ?: defaults.utilityCalculatorPackage,
-                utilityCalculatorFloating = prefs[Keys.UtilityCalculatorFloating] ?: defaults.utilityCalculatorFloating,
-                welcomeDialogShown = prefs[Keys.WelcomeDialogShown] ?: defaults.welcomeDialogShown,
-                showOnLockScreen = prefs[Keys.ShowOnLockScreen] ?: defaults.showOnLockScreen,
-                showLiveEventsInForeground = prefs[Keys.ShowLiveEventsInForeground] ?: defaults.showLiveEventsInForeground,
-                lockScreenPrivacy = prefs[Keys.LockScreenPrivacy]
-                    ?.takeIf { it in VALID_LOCK_SCREEN_PRIVACY_VALUES }
-                    ?: defaults.lockScreenPrivacy,
-                showNotificationActions = prefs[Keys.ShowNotificationActions]
-                    ?: defaults.showNotificationActions,
-                hideFromNotificationShade = prefs[Keys.HideFromNotificationShade]
-                    ?: defaults.hideFromNotificationShade,
-                liveActivitiesEnabled = prefs[Keys.LiveActivitiesEnabled]
-                    ?: defaults.liveActivitiesEnabled,
-                navigationEnabled = prefs[Keys.NavigationEnabled]
-                    ?: defaults.navigationEnabled,
-                disabledNotificationPackages = prefs[Keys.DisabledNotificationPackages]
-                    ?.asSequence()
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.disabledNotificationPackages,
-                disabledSoundPackages = prefs[Keys.DisabledSoundPackages]
-                    ?.asSequence()
-                    ?.filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.disabledSoundPackages,
-                disabledEvents = prefs[Keys.DisabledEvents]
-                    ?.filter { it.isNotBlank() && it.length <= 64 }
-                    ?.toSet()
-                    ?: defaults.disabledEvents,
-                hideWhenIdle = prefs[Keys.HideWhenIdle] ?: defaults.hideWhenIdle,
-                autoHidePill = prefs[Keys.AutoHidePill] ?: defaults.autoHidePill,
-                autoHideTimeoutSeconds = prefs[Keys.AutoHideTimeoutSeconds] ?: defaults.autoHideTimeoutSeconds,
-                showInLandscape = prefs[Keys.ShowInLandscape] ?: defaults.showInLandscape,
-                autoExpandOnNotification = prefs[Keys.AutoExpandOnNotification] ?: defaults.autoExpandOnNotification,
-                autoExpandOnLockScreen = prefs[Keys.AutoExpandOnLockScreen] ?: defaults.autoExpandOnLockScreen,
-                enableShadow = prefs[Keys.EnableShadow] ?: defaults.enableShadow,
-                expandedBlurEnabled = prefs[Keys.ExpandedBlurEnabled] ?: defaults.expandedBlurEnabled,
-                expandedBlurRadius = (prefs[Keys.ExpandedBlurRadius] ?: defaults.expandedBlurRadius)
-                    .coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR),
-                // Media keys fall back to the shared values until the owner sets them.
-                mediaBlurEnabled = prefs[Keys.MediaBlurEnabled] ?: prefs[Keys.ExpandedBlurEnabled] ?: defaults.mediaBlurEnabled,
-                mediaBlurRadius = (prefs[Keys.MediaBlurRadius] ?: prefs[Keys.ExpandedBlurRadius] ?: defaults.mediaBlurRadius)
-                    .coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR),
-                mediaOpacity = validDimension(
-                    prefs[Keys.MediaOpacity] ?: prefs[Keys.Opacity],
-                    defaults.mediaOpacity,
-                    SmartIslandSettings.MIN_OPACITY,
-                    SmartIslandSettings.MAX_OPACITY
-                ),
-                expandedGradientEnabled = prefs[Keys.ExpandedGradientEnabled] ?: defaults.expandedGradientEnabled,
-                expandedGradientColor = validColor(prefs[Keys.ExpandedGradientColor], defaults.expandedGradientColor),
-                expandedGradientStrength = (prefs[Keys.ExpandedGradientStrength] ?: defaults.expandedGradientStrength)
-                    .coerceIn(SmartIslandSettings.MIN_GRADIENT_STRENGTH, SmartIslandSettings.MAX_GRADIENT_STRENGTH),
-                shadowElevation = validDimension(
-                    prefs[Keys.ShadowElevation],
-                    defaults.shadowElevation,
-                    SmartIslandSettings.MIN_SHADOW_ELEVATION,
-                    SmartIslandSettings.MAX_SHADOW_ELEVATION
-                ),
-                enableMusicArtworkBackground = prefs[Keys.EnableMusicArtworkBackground] ?: defaults.enableMusicArtworkBackground,
-                enableNotificationBackdrop = prefs[Keys.EnableNotificationBackdrop] ?: defaults.enableNotificationBackdrop,
-                deviceType = prefs[Keys.DeviceType] ?: defaults.deviceType,
-                allowNetworkChecks = prefs[Keys.AllowNetworkChecks] ?: defaults.allowNetworkChecks,
-                detectTransfersBySpeed = prefs[Keys.DetectTransfersBySpeed] ?: defaults.detectTransfersBySpeed,
-                enableNotificationHistory = prefs[Keys.EnableNotificationHistory] ?: defaults.enableNotificationHistory,
-                notificationHistoryRetentionHours = prefs[Keys.NotificationHistoryRetentionHours] ?: defaults.notificationHistoryRetentionHours,
-                showBluetoothBattery = prefs[Keys.ShowBluetoothBattery] ?: defaults.showBluetoothBattery,
-                enableBatteryMode = prefs[Keys.EnableBatteryMode] ?: defaults.enableBatteryMode,
-                enableNotificationCooldown = prefs[Keys.EnableNotificationCooldown] ?: defaults.enableNotificationCooldown,
-                notificationCooldownDurationMinutes = prefs[Keys.NotificationCooldownDurationMinutes] ?: defaults.notificationCooldownDurationMinutes,
-                notificationCooldownThreshold = prefs[Keys.NotificationCooldownThreshold] ?: defaults.notificationCooldownThreshold,
-                notificationCooldownExcludedPackages = prefs[Keys.NotificationCooldownExcludedPackages] ?: defaults.notificationCooldownExcludedPackages,
-                notificationCooldownSystemEvents = prefs[Keys.NotificationCooldownSystemEvents] ?: defaults.notificationCooldownSystemEvents,
-                developerModeEnabled = prefs[Keys.DeveloperModeEnabled] ?: defaults.developerModeEnabled,
-                recordLogs = prefs[Keys.RecordLogs] ?: defaults.recordLogs,
-                faceUnlockMode = prefs[Keys.FaceUnlockMode]?.takeIf { it in setOf("face_only", "any") } ?: defaults.faceUnlockMode,
-                faceIdStyle = prefs[Keys.FaceIdStyle]?.takeIf { it in setOf("square", "cutout", "square_tick") } ?: defaults.faceIdStyle,
-                appFaceIdEnabled = prefs[Keys.AppFaceIdEnabled] ?: defaults.appFaceIdEnabled,
-                appFaceIdStyle = prefs[Keys.AppFaceIdStyle]?.takeIf { it in setOf("square", "cutout", "square_tick") } ?: defaults.appFaceIdStyle,
-                fingerprintAnimationEnabled = prefs[Keys.FingerprintAnimationEnabled] ?: defaults.fingerprintAnimationEnabled,
-                themeMode = prefs[Keys.ThemeMode] ?: defaults.themeMode,
-                liquidGlassTheme = prefs[Keys.LiquidGlassTheme] ?: defaults.liquidGlassTheme,
-                materialYou = prefs[Keys.MaterialYou] ?: defaults.materialYou,
-                accentColor = validColor(prefs[Keys.AccentColor], defaults.accentColor),
-                expandedTheme = prefs[Keys.ExpandedTheme]?.takeIf { it in SmartIslandSettings.VALID_EXPANDED_THEMES } ?: defaults.expandedTheme,
-                islandFont = prefs[Keys.IslandFont]?.takeIf { SmartIslandSettings.isValidFont(it) } ?: defaults.islandFont,
-                enableNotchMode = prefs[Keys.EnableNotchMode] ?: defaults.enableNotchMode,
-                cameraCutoutManual = prefs[Keys.CameraCutoutManual] ?: defaults.cameraCutoutManual,
-                cameraCutoutX = validDimension(prefs[Keys.CameraCutoutX], defaults.cameraCutoutX, SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET),
-                cameraCutoutY = validDimension(prefs[Keys.CameraCutoutY], defaults.cameraCutoutY, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET),
-                cameraCutoutWidth = validDimension(prefs[Keys.CameraCutoutWidth], defaults.cameraCutoutWidth, SmartIslandSettings.MIN_CUTOUT_WIDTH, SmartIslandSettings.MAX_CUTOUT_WIDTH),
-                cameraCutoutHeight = validDimension(prefs[Keys.CameraCutoutHeight], defaults.cameraCutoutHeight, SmartIslandSettings.MIN_CUTOUT_HEIGHT, SmartIslandSettings.MAX_CUTOUT_HEIGHT),
-                enableSwipeActions = prefs[Keys.EnableSwipeActions] ?: defaults.enableSwipeActions,
-                swipeUpAction = prefs[Keys.SwipeUpAction] ?: defaults.swipeUpAction,
-                swipeHoldUpAction = prefs[Keys.SwipeHoldUpAction] ?: defaults.swipeHoldUpAction,
-                swipeDownAction = prefs[Keys.SwipeDownAction] ?: defaults.swipeDownAction,
-                swipeDownCollapsedAction = prefs[Keys.SwipeDownCollapsedAction] ?: defaults.swipeDownCollapsedAction,
-                swipeLeftAction = prefs[Keys.SwipeLeftAction] ?: defaults.swipeLeftAction,
-                swipeRightAction = prefs[Keys.SwipeRightAction] ?: defaults.swipeRightAction,
-                swipeHorizontalCollapsedAction = prefs[Keys.SwipeHorizontalCollapsedAction] ?: defaults.swipeHorizontalCollapsedAction,
-                enablePillSwipeActions = prefs[Keys.EnablePillSwipeActions] ?: defaults.enablePillSwipeActions,
-                pillSwipeUpAction = prefs[Keys.PillSwipeUpAction] ?: defaults.pillSwipeUpAction,
-                pillSwipeDownAction = prefs[Keys.PillSwipeDownAction] ?: defaults.pillSwipeDownAction,
-                pillSwipeLeftAction = prefs[Keys.PillSwipeLeftAction] ?: defaults.pillSwipeLeftAction,
-                pillSwipeRightAction = prefs[Keys.PillSwipeRightAction] ?: defaults.pillSwipeRightAction,
-                longPressAction = prefs[Keys.LongPressAction] ?: defaults.longPressAction,
-                circlePosition = prefs[Keys.CirclePosition]?.takeIf { it in VALID_CIRCLE_POSITIONS } ?: defaults.circlePosition,
-                landscapeShape = prefs[Keys.LandscapeShape]?.takeIf { it in VALID_LANDSCAPE_SHAPES } ?: defaults.landscapeShape,
-                landscapeWidth = validDimension(prefs[Keys.LandscapeWidth], defaults.landscapeWidth, SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH),
-                landscapeHeight = validDimension(prefs[Keys.LandscapeHeight], defaults.landscapeHeight, SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT),
-                landscapeXOffset = validDimension(prefs[Keys.LandscapeXOffset], defaults.landscapeXOffset, -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET),
-                landscapeYOffset = validDimension(prefs[Keys.LandscapeYOffset], defaults.landscapeYOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET),
-                landscapeCornerRadius = validDimension(prefs[Keys.LandscapeCornerRadius], defaults.landscapeCornerRadius, SmartIslandSettings.MIN_CORNER_RADIUS, SmartIslandSettings.MAX_CORNER_RADIUS),
-                landscapeOpacity = validDimension(prefs[Keys.LandscapeOpacity], defaults.landscapeOpacity, SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY),
-                landscapeCircleSize = validDimension(prefs[Keys.LandscapeCircleSize], defaults.landscapeCircleSize, SmartIslandSettings.MIN_CIRCLE_SIZE, SmartIslandSettings.MAX_CIRCLE_SIZE),
-                landscapeCircleOpacity = validDimension(prefs[Keys.LandscapeCircleOpacity], defaults.landscapeCircleOpacity, SmartIslandSettings.MIN_CIRCLE_OPACITY, SmartIslandSettings.MAX_OPACITY),
-                landscapeCircleEdgeInset = validDimension(prefs[Keys.LandscapeCircleEdgeInset], defaults.landscapeCircleEdgeInset, SmartIslandSettings.MIN_CIRCLE_EDGE_INSET, SmartIslandSettings.MAX_CIRCLE_EDGE_INSET),
-                landscapeCircleYOffset = validDimension(prefs[Keys.LandscapeCircleYOffset], defaults.landscapeCircleYOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET),
-                landscapeCirclePosition = prefs[Keys.LandscapeCirclePosition]?.takeIf { it in VALID_LANDSCAPE_POSITIONS } ?: defaults.landscapeCirclePosition,
-                landscapePillPosition = prefs[Keys.LandscapePillPosition]?.takeIf { it in VALID_LANDSCAPE_POSITIONS } ?: defaults.landscapePillPosition,
-                landscapeCircleXAdjust = validDimension(prefs[Keys.LandscapeCircleXAdjust], defaults.landscapeCircleXAdjust, -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET),
-                landscapeCircleYAdjust = validDimension(prefs[Keys.LandscapeCircleYAdjust], defaults.landscapeCircleYAdjust, -SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET),
-                disabledEventsLandscape = prefs[Keys.DisabledEventsLandscape]
-                    ?.filter { it.isNotBlank() && it.length <= 64 }
-                    ?.toSet()
-                    ?: defaults.disabledEventsLandscape,
-                idleTimeoutMs = (prefs[Keys.IdleTimeoutMs] ?: defaults.idleTimeoutMs)
-                    .coerceIn(SmartIslandSettings.MIN_IDLE_TIMEOUT_MS, SmartIslandSettings.MAX_IDLE_TIMEOUT_MS),
-                batteryWarningMs = (prefs[Keys.BatteryWarningMs] ?: defaults.batteryWarningMs)
-                    .coerceIn(SmartIslandSettings.MIN_BATTERY_WARNING_MS, SmartIslandSettings.MAX_BATTERY_WARNING_MS),
-                popupMs = (prefs[Keys.PopupMs] ?: defaults.popupMs)
-                    .coerceIn(SmartIslandSettings.MIN_POPUP_MS, SmartIslandSettings.MAX_POPUP_MS),
-                transferExpiryMinutes = (prefs[Keys.TransferExpiryMinutes] ?: defaults.transferExpiryMinutes)
-                    .coerceIn(0, SmartIslandSettings.MAX_TRANSFER_EXPIRY_MINUTES),
-                idleWidgetsEnabled = prefs[Keys.IdleWidgetsEnabled] ?: defaults.idleWidgetsEnabled,
-                // Installs from before the per-orientation switch start landscape from the one they had.
-                idleWidgetsEnabledLandscape = prefs[Keys.IdleWidgetsEnabledLandscape]
-                    ?: prefs[Keys.IdleWidgetsEnabled] ?: defaults.idleWidgetsEnabledLandscape,
-                idleOffAfterTapClose = prefs[Keys.IdleOffAfterTapClose] ?: defaults.idleOffAfterTapClose,
-                idleOffAfterTapCloseLandscape = prefs[Keys.IdleOffAfterTapCloseLandscape] ?: defaults.idleOffAfterTapCloseLandscape,
-                idleOffAfterLongPress = prefs[Keys.IdleOffAfterLongPress] ?: defaults.idleOffAfterLongPress,
-                idleOffAfterLongPressLandscape = prefs[Keys.IdleOffAfterLongPressLandscape] ?: defaults.idleOffAfterLongPressLandscape,
-                idleOffWhenStored = prefs[Keys.IdleOffWhenStored] ?: defaults.idleOffWhenStored,
-                contentPillSameAsIdle = prefs[Keys.ContentPillSameAsIdle] ?: defaults.contentPillSameAsIdle,
-                islandExemptApps = prefs[Keys.IslandExemptApps]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }?.toSet() ?: defaults.islandExemptApps,
-                islandExemptAppsLandscape = prefs[Keys.IslandExemptAppsLandscape]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }?.toSet() ?: defaults.islandExemptAppsLandscape,
-                islandExemptAppsStatic = prefs[Keys.IslandExemptAppsStatic]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }?.toSet() ?: defaults.islandExemptAppsStatic,
-                contentPillSameAsIdleLandscape = prefs[Keys.ContentPillSameAsIdleLandscape] ?: defaults.contentPillSameAsIdleLandscape,
-                contentPillWidthPercentLandscape = (prefs[Keys.ContentPillWidthPercentLandscape] ?: defaults.contentPillWidthPercentLandscape).let {
-                    if (it.isNaN()) defaults.contentPillWidthPercentLandscape
-                    else it.coerceIn(SmartIslandSettings.MIN_CONTENT_PILL_PERCENT, SmartIslandSettings.MAX_CONTENT_PILL_PERCENT)
-                },
-                contentPillWidthPercent = (prefs[Keys.ContentPillWidthPercent] ?: defaults.contentPillWidthPercent).let {
-                    if (it.isNaN()) defaults.contentPillWidthPercent
-                    else it.coerceIn(SmartIslandSettings.MIN_CONTENT_PILL_PERCENT, SmartIslandSettings.MAX_CONTENT_PILL_PERCENT)
-                },
-                idleOffWhenStoredLandscape = prefs[Keys.IdleOffWhenStoredLandscape] ?: defaults.idleOffWhenStoredLandscape,
-                idleGlyphTickSeconds = com.agupta07505.smartisland.model.IdleSlots.normalizeTickSeconds(
-                    prefs[Keys.IdleGlyphTickSeconds] ?: defaults.idleGlyphTickSeconds
-                ),
-                idleWidgetIds = com.agupta07505.smartisland.model.IdleWidgets.normalize(
-                    prefs[Keys.IdleWidgetIds] ?: defaults.idleWidgetIds
-                ),
-                idleWidgetCycleSeconds = (prefs[Keys.IdleWidgetCycleSeconds] ?: defaults.idleWidgetCycleSeconds)
-                    .coerceIn(
-                        com.agupta07505.smartisland.model.IdleWidgets.MIN_CYCLE_SECONDS,
-                        com.agupta07505.smartisland.model.IdleWidgets.MAX_CYCLE_SECONDS
-                    ),
-                idleAlarmHideBeyond12h = prefs[Keys.IdleAlarmHideBeyond12h] ?: defaults.idleAlarmHideBeyond12h,
-                batteryOnlyWhenCharging = prefs[Keys.BatteryOnlyWhenCharging] ?: defaults.batteryOnlyWhenCharging,
-                idleBeatOnlyOnChange = prefs[Keys.IdleBeatOnlyOnChange] ?: defaults.idleBeatOnlyOnChange,
-                widgetIslandCloseSeconds = com.agupta07505.smartisland.model.WidgetIslandTimer.normalize(
-                    prefs[Keys.WidgetIslandCloseSeconds] ?: defaults.widgetIslandCloseSeconds
-                ),
-                widgetIslandBatteryMetric = (prefs[Keys.WidgetIslandBatteryMetric] ?: defaults.widgetIslandBatteryMetric)
-                    .takeIf { it in com.agupta07505.smartisland.model.WidgetIslandContent.VALID_BATTERY_METRICS } ?: defaults.widgetIslandBatteryMetric,
-                idleGlyphFont = prefs[Keys.IdleGlyphFont]?.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: defaults.idleGlyphFont,
-                fontMixEnabled = prefs[Keys.FontMixEnabled] ?: defaults.fontMixEnabled,
-                fontMixLight = prefs[Keys.FontMixLight]?.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: defaults.fontMixLight,
-                fontMixRegular = prefs[Keys.FontMixRegular]?.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: defaults.fontMixRegular,
-                fontMixMedium = prefs[Keys.FontMixMedium]?.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: defaults.fontMixMedium,
-                idleGlyphScale = com.agupta07505.smartisland.model.IdleSlots.normalizeGlyphScale(
-                    prefs[Keys.IdleGlyphScale] ?: defaults.idleGlyphScale
-                ),
-                idleWidgetTempUnit = (prefs[Keys.IdleWidgetTempUnit] ?: defaults.idleWidgetTempUnit)
-                    .takeIf { it in com.agupta07505.smartisland.model.IdleWidgets.VALID_UNITS } ?: defaults.idleWidgetTempUnit,
-                idleWidgetWindUnit = (prefs[Keys.IdleWidgetWindUnit] ?: defaults.idleWidgetWindUnit)
-                    .takeIf { it in com.agupta07505.smartisland.model.IdleWidgets.VALID_WIND_UNITS } ?: defaults.idleWidgetWindUnit,
-                weatherLocationSource = com.agupta07505.smartisland.model.WeatherConfig.normalizeSource(
-                    prefs[Keys.WeatherLocationSource] ?: defaults.weatherLocationSource
-                ),
-                weatherManualCity = com.agupta07505.smartisland.model.WeatherConfig.normalizeCity(
-                    prefs[Keys.WeatherManualCity] ?: defaults.weatherManualCity
-                ),
-                weatherManualLat = (prefs[Keys.WeatherManualLat] ?: defaults.weatherManualLat)
-                    .takeIf { it.isFinite() && it in -90f..90f } ?: defaults.weatherManualLat,
-                weatherManualLon = (prefs[Keys.WeatherManualLon] ?: defaults.weatherManualLon)
-                    .takeIf { it.isFinite() && it in -180f..180f } ?: defaults.weatherManualLon,
-                weatherRefreshMinutes = com.agupta07505.smartisland.model.WeatherConfig.normalizeRefreshMinutes(
-                    prefs[Keys.WeatherRefreshMinutes] ?: defaults.weatherRefreshMinutes
-                ),
-                weatherProvider = com.agupta07505.smartisland.model.WeatherConfig.normalizeProvider(
-                    prefs[Keys.WeatherProvider] ?: defaults.weatherProvider
-                ),
-                weatherCustomUrl = com.agupta07505.smartisland.model.WeatherConfig.normalizeCustomUrl(
-                    prefs[Keys.WeatherCustomUrl] ?: defaults.weatherCustomUrl
-                ),
-                weatherCustomKey = com.agupta07505.smartisland.model.WeatherConfig.normalizeKey(
-                    prefs[Keys.WeatherCustomKey] ?: defaults.weatherCustomKey
-                ),
-                weatherPillMode = com.agupta07505.smartisland.model.WeatherPill.normalize(
-                    prefs[Keys.WeatherPillMode] ?: defaults.weatherPillMode
-                ),
-                weatherIslandReadouts = com.agupta07505.smartisland.model.WeatherReadouts.normalize(
-                    prefs[Keys.WeatherIslandReadouts] ?: defaults.weatherIslandReadouts
-                ),
-                weatherIconAnimated = prefs[Keys.WeatherIconAnimated] ?: defaults.weatherIconAnimated,
-                weatherIconPauseOnSaver = prefs[Keys.WeatherIconPauseOnSaver] ?: defaults.weatherIconPauseOnSaver,
-                weatherShowRule = com.agupta07505.smartisland.model.WeatherRules.normalizeMode(
-                    prefs[Keys.WeatherShowRule] ?: defaults.weatherShowRule
-                ),
-                weatherNotableTriggers = com.agupta07505.smartisland.model.WeatherRules.normalizeTriggers(
-                    prefs[Keys.WeatherNotableTriggers] ?: defaults.weatherNotableTriggers
-                ),
-                weatherHotC = com.agupta07505.smartisland.model.WeatherRules.normalizeHotC(
-                    prefs[Keys.WeatherHotC] ?: defaults.weatherHotC
-                ),
-                weatherColdC = com.agupta07505.smartisland.model.WeatherRules.normalizeColdC(
-                    prefs[Keys.WeatherColdC] ?: defaults.weatherColdC
-                ),
-                weatherHideAtNight = prefs[Keys.WeatherHideAtNight] ?: defaults.weatherHideAtNight,
-                weatherNightStartHour = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(
-                    prefs[Keys.WeatherNightStartHour] ?: defaults.weatherNightStartHour
-                ),
-                weatherNightEndHour = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(
-                    prefs[Keys.WeatherNightEndHour] ?: defaults.weatherNightEndHour
-                ),
-                netSpeedThresholdKbps = com.agupta07505.smartisland.model.NetSpeedRules.normalize(
-                    prefs[Keys.NetSpeedThresholdKbps] ?: defaults.netSpeedThresholdKbps
-                ),
-                netSpeedConnection = com.agupta07505.smartisland.model.NetSpeedRules.normalizeConnection(
-                    prefs[Keys.NetSpeedConnection] ?: defaults.netSpeedConnection
-                ),
-                idleScheduleWorkEnabled = prefs[Keys.IdleScheduleWorkEnabled] ?: defaults.idleScheduleWorkEnabled,
-                idleScheduleWorkHidden = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(prefs[Keys.IdleScheduleWorkHidden] ?: defaults.idleScheduleWorkHidden),
-                idleScheduleWorkStartHour = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(prefs[Keys.IdleScheduleWorkStartHour] ?: defaults.idleScheduleWorkStartHour),
-                idleScheduleWorkEndHour = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(prefs[Keys.IdleScheduleWorkEndHour] ?: defaults.idleScheduleWorkEndHour),
-                idleScheduleWorkWeekdaysOnly = prefs[Keys.IdleScheduleWorkWeekdaysOnly] ?: defaults.idleScheduleWorkWeekdaysOnly,
-                idleScheduleNightEnabled = prefs[Keys.IdleScheduleNightEnabled] ?: defaults.idleScheduleNightEnabled,
-                idleScheduleNightHidden = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(prefs[Keys.IdleScheduleNightHidden] ?: defaults.idleScheduleNightHidden),
-                idleScheduleNightStartHour = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(prefs[Keys.IdleScheduleNightStartHour] ?: defaults.idleScheduleNightStartHour),
-                idleScheduleNightEndHour = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(prefs[Keys.IdleScheduleNightEndHour] ?: defaults.idleScheduleNightEndHour),
-                idleScheduleChargingEnabled = prefs[Keys.IdleScheduleChargingEnabled] ?: defaults.idleScheduleChargingEnabled,
-                idleScheduleChargingHidden = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(prefs[Keys.IdleScheduleChargingHidden] ?: defaults.idleScheduleChargingHidden),
-                idleWidgetPinnedFirst = com.agupta07505.smartisland.model.IdleSchedule.normalizePinned(prefs[Keys.IdleWidgetPinnedFirst] ?: defaults.idleWidgetPinnedFirst),
-                idleTickStyle = com.agupta07505.smartisland.model.LedTick.normalizeStyle(prefs[Keys.IdleTickStyle] ?: defaults.idleTickStyle),
-                ledTickPattern = com.agupta07505.smartisland.model.LedTick.normalizePattern(prefs[Keys.LedTickPattern] ?: defaults.ledTickPattern),
-                ledTickPaceMs = com.agupta07505.smartisland.model.LedTick.normalizePace(prefs[Keys.LedTickPaceMs] ?: defaults.ledTickPaceMs),
-                ledTickFont = prefs[Keys.LedTickFont]?.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: defaults.ledTickFont,
-                ledTickColor = com.agupta07505.smartisland.model.LedTick.normalizeColor(prefs[Keys.LedTickColor] ?: defaults.ledTickColor),
-                ledTickStagger = prefs[Keys.LedTickStagger] ?: defaults.ledTickStagger,
-                secondaryMergeMs = (prefs[Keys.SecondaryMergeMs] ?: defaults.secondaryMergeMs)
-                    .coerceIn(SmartIslandSettings.MIN_SECONDARY_MERGE_MS, SmartIslandSettings.MAX_SECONDARY_MERGE_MS),
-                animSpeedPortrait = prefs[Keys.AnimSpeedPortrait]
-                    ?.takeIf { it in AnimationSpeed.VALID_IDS } ?: defaults.animSpeedPortrait,
-                animSpeedLandscape = prefs[Keys.AnimSpeedLandscape]
-                    ?.takeIf { it in AnimationSpeed.VALID_IDS } ?: defaults.animSpeedLandscape,
-                mergeStyle = prefs[Keys.MergeStyleId]
-                    ?.takeIf { it in MergeStyle.VALID_IDS } ?: defaults.mergeStyle,
-                // Installs from before the split have only the shared key: landscape keeps what they chose.
-                mergeStyleLandscape = prefs[Keys.MergeStyleLandscapeId]
-                    ?.takeIf { it in MergeStyle.VALID_IDS }
-                    ?: prefs[Keys.MergeStyleId]?.takeIf { it in MergeStyle.VALID_IDS }
-                    ?: defaults.mergeStyleLandscape,
-                showDuringDnd = prefs[Keys.ShowDuringDnd] ?: defaults.showDuringDnd,
-                hapticStrength = prefs[Keys.HapticStrength]
-                    ?.takeIf { it in com.agupta07505.smartisland.util.HapticStrength.VALID_IDS } ?: defaults.hapticStrength,
-                gestureSensitivity = prefs[Keys.GestureSensitivityId]
-                    ?.takeIf { it in com.agupta07505.smartisland.util.GestureSensitivity.VALID_IDS } ?: defaults.gestureSensitivity,
-                floatingWindowEnabled = prefs[Keys.FloatingWindowEnabled] ?: defaults.floatingWindowEnabled,
-                floatingWindowMode = prefs[Keys.FloatingWindowMode]
-                    ?.takeIf { it in com.agupta07505.smartisland.model.FloatingWindowMode.VALID_IDS } ?: defaults.floatingWindowMode,
-                noExpandPackages = prefs[Keys.NoExpandPackages]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.noExpandPackages,
-                noAutoExpandPackages = prefs[Keys.NoAutoExpandPackages]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.noAutoExpandPackages,
-                // An app in both sets is off: the explicit "off" wins.
-                autoExpandPackages = (prefs[Keys.AutoExpandPackages]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.autoExpandPackages) -
-                    (prefs[Keys.NoAutoExpandPackages] ?: emptySet()),
-                noAutoExpandEvents = prefs[Keys.NoAutoExpandEvents]
-                    ?.filter { id -> com.agupta07505.smartisland.model.IslandEvent.entries.any { it.id == id } }
-                    ?.toSet()
-                    ?: defaults.noAutoExpandEvents,
-                hideAllOnLockScreen = prefs[Keys.HideAllOnLockScreen] ?: defaults.hideAllOnLockScreen,
-                hideOnLockScreenEvents = prefs[Keys.HideOnLockScreenEvents]
-                    ?.filter { id -> com.agupta07505.smartisland.model.IslandEvent.entries.any { it.id == id } }
-                    ?.toSet()
-                    ?: defaults.hideOnLockScreenEvents,
-                notificationsEnabled = prefs[Keys.NotificationsEnabled] ?: defaults.notificationsEnabled,
-                hideOnLockScreenPackages = prefs[Keys.HideOnLockScreenPackages]
-                    ?.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-                    ?.toSet()
-                    ?: defaults.hideOnLockScreenPackages
-            )
+        .map { stored ->
+            // a fold mode reads its own values over the normal ones
+            val prefs: Preferences = activeProfile?.let { FoldProfiles.view(stored, it) } ?: stored
+            readSettings(prefs, teardropPhone)
         }
 
-    suspend fun setDeviceType(value: String) = editSafely { it[Keys.DeviceType] = value }
-    suspend fun setEnabled(value: Boolean) = editSafely { it[Keys.Enabled] = value }
-    suspend fun setEnableShadow(value: Boolean) = editSafely { it[Keys.EnableShadow] = value }
-    suspend fun setExpandedBlurEnabled(value: Boolean) = editSafely { it[Keys.ExpandedBlurEnabled] = value }
-    /** Picks Off or Card blur. */
+    suspend fun setDeviceType(value: String) = put(SettingsKeys.DeviceType, value)
+    suspend fun setEnabled(value: Boolean) = put(SettingsKeys.Enabled, value)
+    suspend fun setEnableShadow(value: Boolean) = put(SettingsKeys.EnableShadow, value)
     suspend fun setExpandedBlurMode(mode: ExpandedBlurMode) = editSafely {
-        if (it[Keys.MediaBlurEnabled] == null) {
-            it[Keys.MediaBlurEnabled] = it[Keys.ExpandedBlurEnabled] ?: SmartIslandSettings.Default.mediaBlurEnabled
+        if (it[SettingsKeys.MediaBlurEnabled] == null) {
+            it[SettingsKeys.MediaBlurEnabled] = it[SettingsKeys.ExpandedBlurEnabled]
+                ?: SmartIslandSettings.Default.mediaBlurEnabled
         }
-        if (it[Keys.MediaBlurRadius] == null) {
-            it[Keys.MediaBlurRadius] = (it[Keys.ExpandedBlurRadius] ?: SmartIslandSettings.Default.mediaBlurRadius)
+        if (it[SettingsKeys.MediaBlurRadius] == null) {
+            it[SettingsKeys.MediaBlurRadius] = (it[SettingsKeys.ExpandedBlurRadius]
+                ?: SmartIslandSettings.Default.mediaBlurRadius)
                 .coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
         }
-        it[Keys.ExpandedBlurEnabled] = mode == ExpandedBlurMode.Card
+        it[SettingsKeys.ExpandedBlurEnabled] = mode == ExpandedBlurMode.Card
     }
-    suspend fun setMediaBlurEnabled(value: Boolean) = editSafely { it[Keys.MediaBlurEnabled] = value }
-    suspend fun setMediaBlurRadius(value: Float) = editSafely {
-        it[Keys.MediaBlurRadius] = value.coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
-    }
-    suspend fun setMediaOpacity(value: Float) = editSafely {
-        it[Keys.MediaOpacity] = validDimension(
-            value,
-            SmartIslandSettings.Default.mediaOpacity,
-            SmartIslandSettings.MIN_OPACITY,
-            SmartIslandSettings.MAX_OPACITY
-        )
-    }
-    suspend fun setExpandedBlurRadius(value: Float) = editSafely {
-        it[Keys.ExpandedBlurRadius] = value.coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
-    }
-    suspend fun setExpandedGradientEnabled(value: Boolean) = editSafely { it[Keys.ExpandedGradientEnabled] = value }
-    suspend fun setExpandedGradientColor(value: Long) = editSafely {
-        it[Keys.ExpandedGradientColor] = validColor(value, SmartIslandSettings.Default.expandedGradientColor)
-    }
-    suspend fun setExpandedGradientStrength(value: Float) = editSafely {
-        it[Keys.ExpandedGradientStrength] = value.coerceIn(SmartIslandSettings.MIN_GRADIENT_STRENGTH, SmartIslandSettings.MAX_GRADIENT_STRENGTH)
-    }
-    suspend fun setShadowElevation(value: Float) = editSafely {
-        it[Keys.ShadowElevation] = validDimension(
-            value,
-            SmartIslandSettings.Default.shadowElevation,
-            SmartIslandSettings.MIN_SHADOW_ELEVATION,
-            SmartIslandSettings.MAX_SHADOW_ELEVATION
-        )
-    }
-    suspend fun setWidth(value: Float) = editSafely {
-        it[Keys.Width] = validDimension(
-            value,
-            SmartIslandSettings.Default.width,
-            SmartIslandSettings.MIN_WIDTH,
-            SmartIslandSettings.MAX_WIDTH
-        )
-    }
-    suspend fun setHeight(value: Float) = editSafely {
-        it[Keys.Height] = validDimension(
-            value,
-            SmartIslandSettings.Default.height,
-            SmartIslandSettings.MIN_HEIGHT,
-            SmartIslandSettings.MAX_HEIGHT
-        )
-    }
-    suspend fun setXOffset(value: Float) = editSafely {
-        it[Keys.XOffset] = validDimension(
-            value,
-            SmartIslandSettings.Default.xOffset,
-            SmartIslandSettings.MIN_X_OFFSET,
-            SmartIslandSettings.MAX_X_OFFSET
-        )
-    }
-    suspend fun setYOffset(value: Float) = editSafely {
-        it[Keys.YOffset] = validDimension(
-            value,
-            SmartIslandSettings.Default.yOffset,
-            SmartIslandSettings.MIN_Y_OFFSET,
-            SmartIslandSettings.MAX_Y_OFFSET
-        )
-    }
+    suspend fun setMediaBlurEnabled(value: Boolean) = put(SettingsKeys.MediaBlurEnabled, value)
+    suspend fun setMediaBlurRadius(value: Float) = putClamped(SettingsKeys.MediaBlurRadius, value,
+            SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
+    suspend fun setMediaOpacity(value: Float) = putDimension(SettingsKeys.MediaOpacity, value,
+            SmartIslandSettings.Default.mediaOpacity, SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY)
+    suspend fun setExpandedBlurRadius(value: Float) = putClamped(SettingsKeys.ExpandedBlurRadius, value,
+            SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
+    suspend fun setExpandedGradientEnabled(value: Boolean) = put(SettingsKeys.ExpandedGradientEnabled, value)
+    suspend fun setExpandedGradientColor(value: Long) = putColor(SettingsKeys.ExpandedGradientColor, value,
+            SmartIslandSettings.Default.expandedGradientColor)
+    suspend fun setExpandedGradientStrength(value: Float) = putClamped(SettingsKeys.ExpandedGradientStrength, value,
+            SmartIslandSettings.MIN_GRADIENT_STRENGTH, SmartIslandSettings.MAX_GRADIENT_STRENGTH)
+    suspend fun setShadowElevation(value: Float) = putDimension(SettingsKeys.ShadowElevation, value,
+            SmartIslandSettings.Default.shadowElevation, SmartIslandSettings.MIN_SHADOW_ELEVATION,
+            SmartIslandSettings.MAX_SHADOW_ELEVATION)
     suspend fun setPosition(
         width: Float,
         height: Float,
         xOffset: Float,
         yOffset: Float
     ) = editSafely {
-        it[Keys.Width] = validDimension(width, SmartIslandSettings.Default.width, SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH)
-        it[Keys.Height] = validDimension(height, SmartIslandSettings.Default.height, SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT)
-        it[Keys.XOffset] = validDimension(xOffset, SmartIslandSettings.Default.xOffset, SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET)
-        it[Keys.YOffset] = validDimension(yOffset, SmartIslandSettings.Default.yOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET)
+        it[SettingsKeys.Width] = validDimension(width, SmartIslandSettings.Default.width, SmartIslandSettings.MIN_WIDTH,
+            SmartIslandSettings.MAX_WIDTH)
+        it[SettingsKeys.Height] = validDimension(height, SmartIslandSettings.Default.height,
+            SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT)
+        it[SettingsKeys.XOffset] = validDimension(xOffset, SmartIslandSettings.Default.xOffset,
+            SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET)
+        it[SettingsKeys.YOffset] = validDimension(yOffset, SmartIslandSettings.Default.yOffset,
+            SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET)
     }
-    suspend fun setCornerRadius(value: Float) = editSafely {
-        it[Keys.CornerRadius] = validDimension(
-            value,
-            SmartIslandSettings.Default.cornerRadius,
-            SmartIslandSettings.MIN_CORNER_RADIUS,
-            SmartIslandSettings.MAX_CORNER_RADIUS
-        )
+    suspend fun setCornerRadius(value: Float) = putDimension(SettingsKeys.CornerRadius, value,
+            SmartIslandSettings.Default.cornerRadius, SmartIslandSettings.MIN_CORNER_RADIUS,
+            SmartIslandSettings.MAX_CORNER_RADIUS)
+    suspend fun setOpacity(value: Float) = putDimension(SettingsKeys.Opacity, value,
+            SmartIslandSettings.Default.opacity, SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY)
+    suspend fun setOledBlack(value: Boolean) = put(SettingsKeys.OledBlack, value)
+
+    suspend fun setPillColor(value: Long) = putColor(SettingsKeys.PillColor, value,
+            SmartIslandSettings.Default.pillColor)
+    suspend fun setBatteryColor(value: Long) = putColor(SettingsKeys.BatteryColor, value,
+            SmartIslandSettings.Default.batteryColor)
+    suspend fun setNotificationDotColor(value: Long) = putColor(SettingsKeys.NotificationDotColor, value,
+            SmartIslandSettings.Default.notificationDotColor)
+    suspend fun setMusicVisualizerColor(value: Long) = putColor(SettingsKeys.MusicVisualizerColor, value,
+            SmartIslandSettings.Default.musicVisualizerColor)
+    suspend fun setHotspotColor(value: Long) = putColor(SettingsKeys.HotspotColor, value,
+            SmartIslandSettings.Default.hotspotColor)
+    suspend fun setCallColor(value: Long) = putColor(SettingsKeys.CallColor, value,
+            SmartIslandSettings.Default.callColor)
+    suspend fun setLiveActivityColor(value: Long) = putColor(SettingsKeys.LiveActivityColor, value,
+            SmartIslandSettings.Default.liveActivityColor)
+    suspend fun setTransferColor(value: Long) = putColor(SettingsKeys.TransferColor, value,
+            SmartIslandSettings.Default.transferColor)
+    suspend fun setNavigationColor(value: Long) = putColor(SettingsKeys.NavigationColor, value,
+            SmartIslandSettings.Default.navigationColor)
+    suspend fun setBluetoothColor(value: Long) = putColor(SettingsKeys.BluetoothColor, value,
+            SmartIslandSettings.Default.bluetoothColor)
+    suspend fun setFlashlightColor(value: Long) = putColor(SettingsKeys.FlashlightColor, value,
+            SmartIslandSettings.Default.flashlightColor)
+    suspend fun setScreenRecordingColor(value: Long) = putColor(SettingsKeys.ScreenRecordingColor, value,
+            SmartIslandSettings.Default.screenRecordingColor)
+    suspend fun setTimerColor(value: Long) = putColor(SettingsKeys.TimerColor, value,
+            SmartIslandSettings.Default.timerColor)
+    suspend fun setStopwatchColor(value: Long) = putColor(SettingsKeys.StopwatchColor, value,
+            SmartIslandSettings.Default.stopwatchColor)
+    /** Gives [eventId] a colour of its own; an unknown event or a zero colour changes nothing. */
+    suspend fun setEventColor(eventId: String, value: Long) = editSafely {
+        val next = EventColors.decode(it[SettingsKeys.EventColors]).toMutableMap()
+        next[eventId] = value
+        it[SettingsKeys.EventColors] = EventColors.encode(next)
     }
-    suspend fun setOpacity(value: Float) = editSafely {
-        it[Keys.Opacity] = validDimension(
-            value,
-            SmartIslandSettings.Default.opacity,
-            SmartIslandSettings.MIN_OPACITY,
-            SmartIslandSettings.MAX_OPACITY
-        )
+
+    /** Takes [eventId]'s own colour away, it goes back to the colour it always had. */
+    suspend fun clearEventColor(eventId: String) = editSafely {
+        val next = EventColors.decode(it[SettingsKeys.EventColors]) - eventId
+        it[SettingsKeys.EventColors] = EventColors.encode(next)
     }
-    suspend fun setPillColor(value: Long) = editSafely {
-        it[Keys.PillColor] = validColor(value, SmartIslandSettings.Default.pillColor)
-    }
-    suspend fun setBatteryColor(value: Long) = editSafely {
-        it[Keys.BatteryColor] = validColor(value, SmartIslandSettings.Default.batteryColor)
-    }
-    suspend fun setNotificationDotColor(value: Long) = editSafely {
-        it[Keys.NotificationDotColor] = validColor(
-            value,
-            SmartIslandSettings.Default.notificationDotColor
-        )
-    }
-    suspend fun setMusicVisualizerColor(value: Long) = editSafely {
-        it[Keys.MusicVisualizerColor] = validColor(
-            value,
-            SmartIslandSettings.Default.musicVisualizerColor
-        )
-    }
-    suspend fun setHotspotColor(value: Long) = editSafely {
-        it[Keys.HotspotColor] = validColor(value, SmartIslandSettings.Default.hotspotColor)
-    }
-    suspend fun setCallColor(value: Long) = editSafely {
-        it[Keys.CallColor] = validColor(value, SmartIslandSettings.Default.callColor)
-    }
-    suspend fun setLiveActivityColor(value: Long) = editSafely {
-        it[Keys.LiveActivityColor] = validColor(value, SmartIslandSettings.Default.liveActivityColor)
-    }
-    suspend fun setTransferColor(value: Long) = editSafely {
-        it[Keys.TransferColor] = validColor(value, SmartIslandSettings.Default.transferColor)
-    }
-    suspend fun setNavigationColor(value: Long) = editSafely {
-        it[Keys.NavigationColor] = validColor(value, SmartIslandSettings.Default.navigationColor)
-    }
-    suspend fun setBluetoothColor(value: Long) = editSafely {
-        it[Keys.BluetoothColor] = validColor(value, SmartIslandSettings.Default.bluetoothColor)
-    }
-    suspend fun setFlashlightColor(value: Long) = editSafely {
-        it[Keys.FlashlightColor] = validColor(value, SmartIslandSettings.Default.flashlightColor)
-    }
-    suspend fun setScreenRecordingColor(value: Long) = editSafely {
-        it[Keys.ScreenRecordingColor] = validColor(value, SmartIslandSettings.Default.screenRecordingColor)
-    }
-    suspend fun setTimerColor(value: Long) = editSafely {
-        it[Keys.TimerColor] = validColor(value, SmartIslandSettings.Default.timerColor)
-    }
-    suspend fun setStopwatchColor(value: Long) = editSafely {
-        it[Keys.StopwatchColor] = validColor(value, SmartIslandSettings.Default.stopwatchColor)
-    }
-    suspend fun setEnableAppShortcuts(value: Boolean) = editSafely {
-        it[Keys.EnableAppShortcuts] = value
-    }
+
+    /** Takes every event's own colour away. */
+    suspend fun clearEventColors() = editSafely { it[SettingsKeys.EventColors] = emptySet() }
+
+    suspend fun setEnableAppShortcuts(value: Boolean) = put(SettingsKeys.EnableAppShortcuts, value)
     suspend fun setShortcutPackages(value: List<String>) = editSafely {
         writePinnedApps(it, value)
     }
-    suspend fun setShowRecentApps(value: Boolean) = editSafely {
-        it[Keys.ShowRecentApps] = value
-    }
-    suspend fun setUtilityLayout(value: List<com.agupta07505.smartisland.model.UtilityPlacement>) = editSafely {
-        it[Keys.UtilityLayout] = com.agupta07505.smartisland.model.UtilityLayout.encode(value)
-    }
+    suspend fun setShowRecentApps(value: Boolean) = put(SettingsKeys.ShowRecentApps, value)
+    suspend fun setUtilityLayout(value: List<UtilityPlacement>) =
+            putMapped(SettingsKeys.UtilityLayout, value) { UtilityLayout.encode(it) }
     suspend fun setUtilityCalculatorPackage(value: String) = editSafely {
-        it[Keys.UtilityCalculatorPackage] = value.take(255)
+        it[SettingsKeys.UtilityCalculatorPackage] = value.take(255)
     }
-    suspend fun setUtilityCalculatorFloating(value: Boolean) = editSafely {
-        it[Keys.UtilityCalculatorFloating] = value
-    }
-    suspend fun setWelcomeDialogShown(value: Boolean) = editSafely {
-        it[Keys.WelcomeDialogShown] = value
-    }
+    suspend fun setUtilityCalculatorFloating(value: Boolean) = put(SettingsKeys.UtilityCalculatorFloating, value)
+    suspend fun setWelcomeDialogShown(value: Boolean) = put(SettingsKeys.WelcomeDialogShown, value)
 
-    /**
-     * Reads the persisted value (awaits the first on-disk emission) rather than the Default placeholder that State
-     * flows emit on the first frame.
-     */
     suspend fun isWelcomeDialogShown(): Boolean = settings.first().welcomeDialogShown
 
-    suspend fun setShowOnLockScreen(value: Boolean) = editSafely {
-        it[Keys.ShowOnLockScreen] = value
+    suspend fun setTorchStrobeAcknowledged(value: Boolean) = put(SettingsKeys.TorchStrobeAcknowledged, value)
+
+    suspend fun setShowOnLockScreen(value: Boolean) = put(SettingsKeys.ShowOnLockScreen, value)
+    suspend fun setEventShownInForeground(eventId: String, shown: Boolean) = editSafely {
+        if (IslandEvent.FOREGROUND_SWITCHABLE.none { e -> e.id == eventId }) return@editSafely
+        // the first edit starts from what is showing now, which may still come from the old single switch
+        val current = it[SettingsKeys.ShowInForegroundEvents]
+            ?: if (it[SettingsKeys.ShowLiveEventsInForeground] == true) {
+                IslandEvent.FOREGROUND_SWITCHABLE.mapTo(LinkedHashSet()) { e -> e.id }
+            } else {
+                IslandEvent.DEFAULT_SHOW_IN_FOREGROUND_IDS
+            }
+        it[SettingsKeys.ShowInForegroundEvents] = if (shown) current + eventId else current - eventId
     }
-    suspend fun setShowLiveEventsInForeground(value: Boolean) = editSafely {
-        it[Keys.ShowLiveEventsInForeground] = value
-    }
+    suspend fun setHideInFullscreen(value: Boolean) = put(SettingsKeys.HideInFullscreen, value)
+    suspend fun setHideInShade(value: Boolean) = put(SettingsKeys.HideInShade, value)
     suspend fun setLockScreenPrivacy(value: String) = editSafely {
-        it[Keys.LockScreenPrivacy] = value.takeIf { privacy ->
+        it[SettingsKeys.LockScreenPrivacy] = value.takeIf { privacy ->
             privacy in VALID_LOCK_SCREEN_PRIVACY_VALUES
         } ?: SmartIslandSettings.Default.lockScreenPrivacy
     }
-    suspend fun setShowNotificationActions(value: Boolean) = editSafely {
-        it[Keys.ShowNotificationActions] = value
-    }
-    suspend fun setHideFromNotificationShade(value: Boolean) = editSafely {
-        it[Keys.HideFromNotificationShade] = value
-    }
-    suspend fun setDisabledNotificationPackages(value: Set<String>) = editSafely {
-        it[Keys.DisabledNotificationPackages] = value
-            .asSequence()
-            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-    }
+    suspend fun setShowNotificationActions(value: Boolean) = put(SettingsKeys.ShowNotificationActions, value)
+    suspend fun setHideFromNotificationShade(value: Boolean) = put(SettingsKeys.HideFromNotificationShade, value)
     suspend fun setEventEnabled(eventId: String, enabled: Boolean) = editSafely {
-        val current = it[Keys.DisabledEvents] ?: emptySet()
-        it[Keys.DisabledEvents] = if (enabled) current - eventId else current + eventId
+        it.setMembership(SettingsKeys.DisabledEvents, eventId, !enabled)
     }
 
-    suspend fun setDisabledSoundPackages(value: Set<String>) = editSafely {
-        it[Keys.DisabledSoundPackages] = value
-            .asSequence()
-            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-    }
-    suspend fun setHideWhenIdle(value: Boolean) = editSafely {
-        it[Keys.HideWhenIdle] = value
-    }
-    suspend fun setAutoHidePill(value: Boolean) = editSafely {
-        it[Keys.AutoHidePill] = value
-    }
-    suspend fun setAutoHideTimeoutSeconds(value: Int) = editSafely {
-        it[Keys.AutoHideTimeoutSeconds] = value.coerceIn(1, 120)
-    }
-    suspend fun setShowInLandscape(value: Boolean) = editSafely {
-        it[Keys.ShowInLandscape] = value
-    }
-    suspend fun setAutoExpandOnNotification(value: Boolean) = editSafely {
-        it[Keys.AutoExpandOnNotification] = value
-    }
-    suspend fun setAutoExpandOnLockScreen(value: Boolean) = editSafely {
-        it[Keys.AutoExpandOnLockScreen] = value
-    }
-    suspend fun setIdleTimeoutMs(value: Int) = editSafely {
-        it[Keys.IdleTimeoutMs] = value.coerceIn(SmartIslandSettings.MIN_IDLE_TIMEOUT_MS, SmartIslandSettings.MAX_IDLE_TIMEOUT_MS)
-    }
-    suspend fun setBatteryWarningMs(value: Int) = editSafely {
-        it[Keys.BatteryWarningMs] = value.coerceIn(SmartIslandSettings.MIN_BATTERY_WARNING_MS, SmartIslandSettings.MAX_BATTERY_WARNING_MS)
-    }
-    suspend fun setPopupMs(value: Int) = editSafely {
-        it[Keys.PopupMs] = value.coerceIn(SmartIslandSettings.MIN_POPUP_MS, SmartIslandSettings.MAX_POPUP_MS)
-    }
-    suspend fun setTransferExpiryMinutes(value: Int) = editSafely {
-        it[Keys.TransferExpiryMinutes] = value.coerceIn(0, SmartIslandSettings.MAX_TRANSFER_EXPIRY_MINUTES)
-    }
-    suspend fun setSecondaryMergeMs(value: Int) = editSafely {
-        it[Keys.SecondaryMergeMs] = value.coerceIn(SmartIslandSettings.MIN_SECONDARY_MERGE_MS, SmartIslandSettings.MAX_SECONDARY_MERGE_MS)
-    }
-    suspend fun setAnimSpeedPortrait(value: String) = editSafely {
-        it[Keys.AnimSpeedPortrait] = if (value in AnimationSpeed.VALID_IDS) value else SmartIslandSettings.Default.animSpeedPortrait
-    }
-    suspend fun setAnimSpeedLandscape(value: String) = editSafely {
-        it[Keys.AnimSpeedLandscape] = if (value in AnimationSpeed.VALID_IDS) value else SmartIslandSettings.Default.animSpeedLandscape
-    }
-    suspend fun setMergeStyle(value: String) = editSafely {
-        it[Keys.MergeStyleId] = if (value in MergeStyle.VALID_IDS) value else SmartIslandSettings.Default.mergeStyle
-    }
-    suspend fun setMergeStyleLandscape(value: String) = editSafely {
-        it[Keys.MergeStyleLandscapeId] = if (value in MergeStyle.VALID_IDS) value else SmartIslandSettings.Default.mergeStyleLandscape
-    }
-    suspend fun setShowDuringDnd(value: Boolean) = editSafely {
-        it[Keys.ShowDuringDnd] = value
-    }
-    suspend fun setHapticStrength(value: String) = editSafely {
-        it[Keys.HapticStrength] = if (value in com.agupta07505.smartisland.util.HapticStrength.VALID_IDS) value
-        else SmartIslandSettings.Default.hapticStrength
-    }
-    suspend fun setFloatingWindowEnabled(value: Boolean) = editSafely {
-        it[Keys.FloatingWindowEnabled] = value
-    }
-    suspend fun setFloatingWindowMode(value: String) = editSafely {
-        it[Keys.FloatingWindowMode] = if (value in com.agupta07505.smartisland.model.FloatingWindowMode.VALID_IDS) value
-        else SmartIslandSettings.Default.floatingWindowMode
-    }
-    suspend fun setGestureSensitivity(value: String) = editSafely {
-        it[Keys.GestureSensitivityId] = if (value in com.agupta07505.smartisland.util.GestureSensitivity.VALID_IDS) value
-        else SmartIslandSettings.Default.gestureSensitivity
-    }
-    suspend fun setNoExpandPackages(value: Set<String>) = editSafely {
-        it[Keys.NoExpandPackages] = value
-            .asSequence()
-            .filter { pkg -> pkg.isNotBlank() && pkg.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-    }
-    /**
-     * Sets one app's auto-expand choice in a single write, so the two sets never disagree. DEFAULT: in neither set
-     * (loud notifications open the card, silent ones do not).
-     */
-    suspend fun setAppAutoExpand(packageName: String, choice: com.agupta07505.smartisland.util.AppAutoExpand) = editSafely {
-        if (packageName.isBlank() || packageName.length > MAX_PACKAGE_NAME_LENGTH) return@editSafely
-        val allow = (it[Keys.AutoExpandPackages] ?: emptySet()) - packageName
-        val deny = (it[Keys.NoAutoExpandPackages] ?: emptySet()) - packageName
+    suspend fun setHideWhenIdle(value: Boolean) = put(SettingsKeys.HideWhenIdle, value)
+
+    suspend fun setAutoHidePill(value: Boolean) = put(SettingsKeys.AutoHidePill, value)
+    suspend fun setAutoHideTimeoutSeconds(value: Int) = putClamped(SettingsKeys.AutoHideTimeoutSeconds, value,
+            SmartIslandSettings.MIN_AUTO_HIDE_SECONDS, SmartIslandSettings.MAX_AUTO_HIDE_SECONDS)
+    suspend fun setShowInLandscape(value: Boolean) = put(SettingsKeys.ShowInLandscape, value)
+    suspend fun setAutoExpandOnNotification(value: Boolean) = put(SettingsKeys.AutoExpandOnNotification, value)
+    suspend fun setShowSuggestedReplies(value: Boolean) = put(SettingsKeys.ShowSuggestedReplies, value)
+
+    suspend fun setShowCopyCodeChip(value: Boolean) = put(SettingsKeys.ShowCopyCodeChip, value)
+    suspend fun setAutoExpandOnLockScreen(value: Boolean) = put(SettingsKeys.AutoExpandOnLockScreen, value)
+    suspend fun setIdleTimeoutNever(value: Boolean) = put(SettingsKeys.IdleTimeoutNever, value)
+    suspend fun setIdleTimeoutMs(value: Int) = putClamped(SettingsKeys.IdleTimeoutMs, value,
+            SmartIslandSettings.MIN_IDLE_TIMEOUT_MS, SmartIslandSettings.MAX_IDLE_TIMEOUT_MS)
+    suspend fun setBatteryWarningMs(value: Int) = putClamped(SettingsKeys.BatteryWarningMs, value,
+            SmartIslandSettings.MIN_BATTERY_WARNING_MS, SmartIslandSettings.MAX_BATTERY_WARNING_MS)
+    suspend fun setPulseHoldPercent(value: Int) = putClamped(SettingsKeys.PulseHoldPercent, value,
+            SmartIslandSettings.MIN_PULSE_HOLD_PERCENT, SmartIslandSettings.MAX_PULSE_HOLD_PERCENT)
+    suspend fun setTransferExpiryMinutes(value: Int) = putClamped(SettingsKeys.TransferExpiryMinutes, value, 0,
+            SmartIslandSettings.MAX_TRANSFER_EXPIRY_MINUTES)
+    suspend fun setSecondaryMergeMs(value: Int) = putClamped(SettingsKeys.SecondaryMergeMs, value,
+            SmartIslandSettings.MIN_SECONDARY_MERGE_MS, SmartIslandSettings.MAX_SECONDARY_MERGE_MS)
+    suspend fun setAnimSpeedPortrait(value: String) = putChoice(SettingsKeys.AnimSpeedPortrait, value,
+            AnimationSpeed.VALID_IDS, SmartIslandSettings.Default.animSpeedPortrait)
+    suspend fun setAnimSpeedLandscape(value: String) = putChoice(SettingsKeys.AnimSpeedLandscape, value,
+            AnimationSpeed.VALID_IDS, SmartIslandSettings.Default.animSpeedLandscape)
+    suspend fun setMergeStyle(value: String) = putChoice(SettingsKeys.MergeStyleId, value, MergeStyle.VALID_IDS,
+            SmartIslandSettings.Default.mergeStyle)
+    suspend fun setMergeStyleLandscape(value: String) = putChoice(SettingsKeys.MergeStyleLandscapeId, value,
+            MergeStyle.VALID_IDS, SmartIslandSettings.Default.mergeStyleLandscape)
+    suspend fun setShowDuringDnd(value: Boolean) = put(SettingsKeys.ShowDuringDnd, value)
+    suspend fun setHapticStrength(value: String) = putChoice(SettingsKeys.HapticStrength, value,
+            HapticStrength.VALID_IDS, SmartIslandSettings.Default.hapticStrength)
+    suspend fun setFloatingWindowEnabled(value: Boolean) = put(SettingsKeys.FloatingWindowEnabled, value)
+    suspend fun setFloatingWindowMode(value: String) = putChoice(SettingsKeys.FloatingWindowMode, value,
+            FloatingWindowMode.VALID_IDS, SmartIslandSettings.Default.floatingWindowMode)
+    suspend fun setGestureSensitivity(value: String) = putChoice(SettingsKeys.GestureSensitivityId, value,
+            GestureSensitivity.VALID_IDS, SmartIslandSettings.Default.gestureSensitivity)
+    /** Sets one app's auto-expand choice in a single write. */
+    suspend fun setAppAutoExpand(packageName: String, choice: AppAutoExpand) = editSafely {
+        if (!validPackage(packageName)) return@editSafely
+        val allow = (it[SettingsKeys.AutoExpandPackages] ?: emptySet()) - packageName
+        val deny = (it[SettingsKeys.NoAutoExpandPackages] ?: emptySet()) - packageName
         when (choice) {
-            com.agupta07505.smartisland.util.AppAutoExpand.DEFAULT -> {
-                it[Keys.AutoExpandPackages] = allow
-                it[Keys.NoAutoExpandPackages] = deny
+            AppAutoExpand.DEFAULT -> {
+                it[SettingsKeys.AutoExpandPackages] = allow
+                it[SettingsKeys.NoAutoExpandPackages] = deny
             }
-            com.agupta07505.smartisland.util.AppAutoExpand.ALWAYS -> {
-                it[Keys.AutoExpandPackages] = allow + packageName
-                it[Keys.NoAutoExpandPackages] = deny
+            AppAutoExpand.ALWAYS -> {
+                it[SettingsKeys.AutoExpandPackages] = allow + packageName
+                it[SettingsKeys.NoAutoExpandPackages] = deny
             }
-            com.agupta07505.smartisland.util.AppAutoExpand.NEVER -> {
-                it[Keys.AutoExpandPackages] = allow
-                it[Keys.NoAutoExpandPackages] = deny + packageName
+            AppAutoExpand.NEVER -> {
+                it[SettingsKeys.AutoExpandPackages] = allow
+                it[SettingsKeys.NoAutoExpandPackages] = deny + packageName
             }
         }
     }
 
-    /** One system event's own auto-expand switch (off = the event only shows in the pill). */
     suspend fun setEventAutoExpand(eventId: String, enabled: Boolean) = editSafely {
-        if (com.agupta07505.smartisland.model.IslandEvent.entries.none { e -> e.id == eventId }) return@editSafely
-        val current = it[Keys.NoAutoExpandEvents] ?: emptySet()
-        it[Keys.NoAutoExpandEvents] = if (enabled) current - eventId else current + eventId
+        if (IslandEvent.entries.none { e -> e.id == eventId }) return@editSafely
+        // The first edit turned auto-expand on for the other events in both layouts.
+        // Start with the default exclusions if nothing is saved yet.
+        val current = it[SettingsKeys.NoAutoExpandEvents] ?: IslandEvent.DEFAULT_NO_AUTO_EXPAND_IDS
+        it[SettingsKeys.NoAutoExpandEvents] = if (enabled) current - eventId else current + eventId
     }
 
-    suspend fun setHideAllOnLockScreen(value: Boolean) = editSafely { it[Keys.HideAllOnLockScreen] = value }
+    suspend fun setLandscapeEventAutoExpand(eventId: String, enabled: Boolean) = editSafely {
+        if (IslandEvent.entries.none { e -> e.id == eventId }) return@editSafely
+        // The first landscape edit starts from the current portrait choices.
+        val current = it[SettingsKeys.NoAutoExpandEventsLandscape] ?: it[SettingsKeys.NoAutoExpandEvents]
+            ?: IslandEvent.DEFAULT_NO_AUTO_EXPAND_IDS
+        it[SettingsKeys.NoAutoExpandEventsLandscape] = if (enabled) current - eventId else current + eventId
+    }
 
-    /** One event's own lock-screen switch (true = the event is hidden in the pill while locked). */
+    suspend fun setHideAllOnLockScreen(value: Boolean) = put(SettingsKeys.HideAllOnLockScreen, value)
+
     suspend fun setEventHiddenOnLockScreen(eventId: String, hidden: Boolean) = editSafely {
-        if (com.agupta07505.smartisland.model.IslandEvent.entries.none { e -> e.id == eventId && e.canHideOnLockScreen }) {
+        if (IslandEvent.entries.none { e -> e.id == eventId && e.canHideOnLockScreen }) {
             return@editSafely
         }
-        val current = it[Keys.HideOnLockScreenEvents] ?: emptySet()
-        it[Keys.HideOnLockScreenEvents] = if (hidden) current + eventId else current - eventId
+        it.setMembership(SettingsKeys.HideOnLockScreenEvents, eventId, hidden)
     }
 
-    suspend fun applyLockScreenPreset(preset: com.agupta07505.smartisland.model.LockScreenPreset) = editSafely {
+    suspend fun applyLockScreenPreset(preset: LockScreenPreset) = editSafely {
         when (preset) {
-            com.agupta07505.smartisland.model.LockScreenPreset.ShowAll -> {
-                it[Keys.ShowOnLockScreen] = true
-                it[Keys.HideAllOnLockScreen] = false
-                it[Keys.HideOnLockScreenEvents] = emptySet()
+            LockScreenPreset.ShowAll -> {
+                it[SettingsKeys.ShowOnLockScreen] = true
+                it[SettingsKeys.HideAllOnLockScreen] = false
+                it[SettingsKeys.HideOnLockScreenEvents] = emptySet()
             }
-            com.agupta07505.smartisland.model.LockScreenPreset.MessagesOnly -> {
-                it[Keys.ShowOnLockScreen] = true
-                it[Keys.HideAllOnLockScreen] = false
-                it[Keys.HideOnLockScreenEvents] = com.agupta07505.smartisland.model.IslandEvent.entries
-                    .filter { e -> e.canHideOnLockScreen && e != com.agupta07505.smartisland.model.IslandEvent.NOTIFICATION }
+            LockScreenPreset.MessagesOnly -> {
+                it[SettingsKeys.ShowOnLockScreen] = true
+                it[SettingsKeys.HideAllOnLockScreen] = false
+                it[SettingsKeys.HideOnLockScreenEvents] = IslandEvent.entries
+                    .filter { e -> e.canHideOnLockScreen && e != IslandEvent.NOTIFICATION }
                     .map { e -> e.id }
                     .toSet()
             }
-            com.agupta07505.smartisland.model.LockScreenPreset.CallsOnly -> {
-                it[Keys.ShowOnLockScreen] = true
-                it[Keys.HideAllOnLockScreen] = true
-                it[Keys.HideOnLockScreenEvents] = emptySet()
+            LockScreenPreset.CallsOnly -> {
+                it[SettingsKeys.ShowOnLockScreen] = true
+                it[SettingsKeys.HideAllOnLockScreen] = true
+                it[SettingsKeys.HideOnLockScreenEvents] = emptySet()
             }
-            com.agupta07505.smartisland.model.LockScreenPreset.Off -> it[Keys.ShowOnLockScreen] = false
+            LockScreenPreset.Off -> it[SettingsKeys.ShowOnLockScreen] = false
         }
     }
 
-    /** One app's lock-screen rule (true = its cards stay out of the pill while the phone is locked). */
-    suspend fun setAppHiddenOnLockScreen(packageName: String, hidden: Boolean) = editSafely {
-        if (packageName.isBlank() || packageName.length > MAX_PACKAGE_NAME_LENGTH) return@editSafely
-        val current = it[Keys.HideOnLockScreenPackages] ?: emptySet()
-        it[Keys.HideOnLockScreenPackages] = if (hidden) current + packageName else current - packageName
+    suspend fun setAppHiddenOnLockScreen(packageName: String, hidden: Boolean) =
+        togglePackage(SettingsKeys.HideOnLockScreenPackages, packageName, hidden)
+
+    private fun MutablePreferences.setMembership(key: Preferences.Key<Set<String>>, value: String, present: Boolean) {
+        val current = this[key].orEmpty()
+        this[key] = if (present) current + value else current - value
     }
 
-    suspend fun setNotificationsEnabled(value: Boolean) = editSafely { it[Keys.NotificationsEnabled] = value }
+    suspend fun setAppExcluded(packageName: String, excluded: Boolean) =
+            togglePackage(SettingsKeys.DisabledNotificationPackages, packageName, excluded)
+
+    suspend fun setAppMuted(packageName: String, muted: Boolean) =
+            togglePackage(SettingsKeys.DisabledSoundPackages, packageName, muted)
+
+    /** Whether the app's card may open into the big card (noCard = never). */
+    suspend fun setAppNoCard(packageName: String, noCard: Boolean) =
+            togglePackage(SettingsKeys.NoExpandPackages, packageName, noCard)
+
+    suspend fun setAppCooldownBypass(packageName: String, bypass: Boolean) =
+            togglePackage(SettingsKeys.NotificationCooldownExcludedPackages, packageName, bypass)
+
+    suspend fun resetApps(packages: Collection<String>) = editSafely { prefs ->
+        val targets = packages.filter { pkg -> validPackage(pkg) }.toSet()
+        if (targets.isEmpty()) return@editSafely
+        listOf(
+            SettingsKeys.DisabledNotificationPackages,
+            SettingsKeys.DisabledSoundPackages,
+            SettingsKeys.NotificationCooldownExcludedPackages,
+            SettingsKeys.NoExpandPackages,
+            SettingsKeys.NoAutoExpandPackages,
+            SettingsKeys.AutoExpandPackages,
+            SettingsKeys.HideOnLockScreenPackages
+        ).forEach { key -> prefs[key] = (prefs[key] ?: emptySet()) - targets }
+    }
+
+    suspend fun applyToApps(packages: Collection<String>, action: BulkAppAction) {
+        when (action) {
+            BulkAppAction.Reset -> resetApps(packages)
+            BulkAppAction.Mute -> editSafely { prefs ->
+                val targets = packages.filter { pkg -> validPackage(pkg) }
+                prefs[SettingsKeys.DisabledSoundPackages] = (prefs[SettingsKeys.DisabledSoundPackages]
+                    ?: emptySet()) + targets
+            }
+            BulkAppAction.Exclude -> editSafely { prefs ->
+                val targets = packages.filter { pkg -> validPackage(pkg) }
+                prefs[SettingsKeys.DisabledNotificationPackages] =
+                    (prefs[SettingsKeys.DisabledNotificationPackages] ?: emptySet()) + targets
+            }
+        }
+    }
+
+    suspend fun setNotificationsEnabled(value: Boolean) = put(SettingsKeys.NotificationsEnabled, value)
 
     suspend fun resetTimings() = editSafely {
         val d = SmartIslandSettings.Default
-        it[Keys.IdleTimeoutMs] = d.idleTimeoutMs
-        it[Keys.BatteryWarningMs] = d.batteryWarningMs
-        it[Keys.PopupMs] = d.popupMs
-        it[Keys.SecondaryMergeMs] = d.secondaryMergeMs
-        it[Keys.TransferExpiryMinutes] = d.transferExpiryMinutes
+        it[SettingsKeys.IdleTimeoutMs] = d.idleTimeoutMs
+        it[SettingsKeys.IdleTimeoutNever] = d.idleTimeoutNever
+        it[SettingsKeys.AutoHidePill] = d.autoHidePill
+        it[SettingsKeys.AutoHideTimeoutSeconds] = d.autoHideTimeoutSeconds
+        it[SettingsKeys.BatteryWarningMs] = d.batteryWarningMs
+        it[SettingsKeys.PulseHoldPercent] = d.pulseHoldPercent
+        it[SettingsKeys.SecondaryMergeMs] = d.secondaryMergeMs
+        it[SettingsKeys.TransferExpiryMinutes] = d.transferExpiryMinutes
     }
-    suspend fun setIdleWidgetsEnabled(value: Boolean) = editSafely { it[Keys.IdleWidgetsEnabled] = value }
-    suspend fun setIdleWidgetsEnabledLandscape(value: Boolean) = editSafely { it[Keys.IdleWidgetsEnabledLandscape] = value }
+    suspend fun setIdleWidgetsEnabled(value: Boolean) = put(SettingsKeys.IdleWidgetsEnabled, value)
+    suspend fun setIdleWidgetsEnabledLandscape(value: Boolean) = put(SettingsKeys.IdleWidgetsEnabledLandscape, value)
     suspend fun setIdleOffAfterTapClose(landscape: Boolean, value: Boolean) = editSafely {
-        it[if (landscape) Keys.IdleOffAfterTapCloseLandscape else Keys.IdleOffAfterTapClose] = value
+        it[if (landscape) SettingsKeys.IdleOffAfterTapCloseLandscape else SettingsKeys.IdleOffAfterTapClose] = value
     }
-    /** One app's exemption (true = the island is totally off while that app is in the foreground), for one orientation. */
     suspend fun setIslandExemptApp(landscape: Boolean, packageName: String, exempt: Boolean) = editSafely {
-        if (packageName.isBlank() || packageName.length > MAX_PACKAGE_NAME_LENGTH) return@editSafely
-        val key = if (landscape) Keys.IslandExemptAppsLandscape else Keys.IslandExemptApps
-        val current = it[key] ?: emptySet()
-        it[key] = if (exempt) current + packageName else current - packageName
-        // Portrait: an app is either "off" or "static", never both. Adding it (as off) or removing it clears the static entry.
-        if (!landscape) it[Keys.IslandExemptAppsStatic] = (it[Keys.IslandExemptAppsStatic] ?: emptySet()) - packageName
+        if (!validPackage(packageName)) return@editSafely
+        val key = if (landscape) SettingsKeys.IslandExemptAppsLandscape else SettingsKeys.IslandExemptApps
+        it.setMembership(key, packageName, exempt)
+        // portrait: an app is either "off" or "static", never both
+        if (!landscape) it[SettingsKeys.IslandExemptAppsStatic] =
+            (it[SettingsKeys.IslandExemptAppsStatic] ?: emptySet()) - packageName
     }
 
-    /**
-     * Portrait only: switches an exempt app between "island off" (static = false) and "static pill" (static = true).
-     * The app ends up in exactly one of the two lists.
-     */
     suspend fun setIslandExemptStatic(packageName: String, static: Boolean) = editSafely {
-        if (packageName.isBlank() || packageName.length > MAX_PACKAGE_NAME_LENGTH) return@editSafely
-        val off = it[Keys.IslandExemptApps] ?: emptySet()
-        val stat = it[Keys.IslandExemptAppsStatic] ?: emptySet()
+        if (!validPackage(packageName)) return@editSafely
+        val off = it[SettingsKeys.IslandExemptApps] ?: emptySet()
+        val stat = it[SettingsKeys.IslandExemptAppsStatic] ?: emptySet()
         if (static) {
-            it[Keys.IslandExemptApps] = off - packageName
-            it[Keys.IslandExemptAppsStatic] = stat + packageName
+            it[SettingsKeys.IslandExemptApps] = off - packageName
+            it[SettingsKeys.IslandExemptAppsStatic] = stat + packageName
         } else {
-            it[Keys.IslandExemptAppsStatic] = stat - packageName
-            it[Keys.IslandExemptApps] = off + packageName
+            it[SettingsKeys.IslandExemptAppsStatic] = stat - packageName
+            it[SettingsKeys.IslandExemptApps] = off + packageName
         }
     }
     suspend fun setContentPillSameAsIdle(landscape: Boolean, value: Boolean) = editSafely {
-        it[if (landscape) Keys.ContentPillSameAsIdleLandscape else Keys.ContentPillSameAsIdle] = value
+        it[if (landscape) SettingsKeys.ContentPillSameAsIdleLandscape else SettingsKeys.ContentPillSameAsIdle] = value
     }
     suspend fun setContentPillWidthPercent(landscape: Boolean, value: Float) = editSafely {
-        it[if (landscape) Keys.ContentPillWidthPercentLandscape else Keys.ContentPillWidthPercent] = if (value.isNaN()) SmartIslandSettings.DEFAULT_CONTENT_PILL_PERCENT
+        it[if (landscape) SettingsKeys.ContentPillWidthPercentLandscape else SettingsKeys.ContentPillWidthPercent] =
+            if (value.isNaN()) SmartIslandSettings.DEFAULT_CONTENT_PILL_PERCENT
         else value.coerceIn(SmartIslandSettings.MIN_CONTENT_PILL_PERCENT, SmartIslandSettings.MAX_CONTENT_PILL_PERCENT)
     }
     suspend fun setIdleOffWhenStored(landscape: Boolean, value: Boolean) = editSafely {
-        it[if (landscape) Keys.IdleOffWhenStoredLandscape else Keys.IdleOffWhenStored] = value
+        it[if (landscape) SettingsKeys.IdleOffWhenStoredLandscape else SettingsKeys.IdleOffWhenStored] = value
     }
     suspend fun setIdleOffAfterLongPress(landscape: Boolean, value: Boolean) = editSafely {
-        it[if (landscape) Keys.IdleOffAfterLongPressLandscape else Keys.IdleOffAfterLongPress] = value
+        it[if (landscape) SettingsKeys.IdleOffAfterLongPressLandscape else SettingsKeys.IdleOffAfterLongPress] = value
     }
-    suspend fun setIdleGlyphTickSeconds(value: Float) = editSafely {
-        it[Keys.IdleGlyphTickSeconds] = com.agupta07505.smartisland.model.IdleSlots.normalizeTickSeconds(value)
-    }
-    suspend fun setIdleWidgetIds(value: String) = editSafely {
-        it[Keys.IdleWidgetIds] = com.agupta07505.smartisland.model.IdleWidgets.normalize(value)
-    }
-    suspend fun setIdleWidgetCycleSeconds(value: Int) = editSafely {
-        it[Keys.IdleWidgetCycleSeconds] = value.coerceIn(
-            com.agupta07505.smartisland.model.IdleWidgets.MIN_CYCLE_SECONDS,
-            com.agupta07505.smartisland.model.IdleWidgets.MAX_CYCLE_SECONDS
-        )
-    }
-    suspend fun setIdleAlarmHideBeyond12h(value: Boolean) = editSafely { it[Keys.IdleAlarmHideBeyond12h] = value }
-    suspend fun setBatteryOnlyWhenCharging(value: Boolean) = editSafely { it[Keys.BatteryOnlyWhenCharging] = value }
-    suspend fun setIdleBeatOnlyOnChange(value: Boolean) = editSafely { it[Keys.IdleBeatOnlyOnChange] = value }
-    suspend fun setWidgetIslandCloseSeconds(value: Int) = editSafely {
-        it[Keys.WidgetIslandCloseSeconds] = com.agupta07505.smartisland.model.WidgetIslandTimer.normalize(value)
-    }
+    suspend fun setIdleGlyphTickSeconds(value: Float) = putMapped(SettingsKeys.IdleGlyphTickSeconds,
+            value) { IdleSlots.normalizeTickSeconds(it) }
+    suspend fun setIdleWidgetIds(value: String) = putMapped(SettingsKeys.IdleWidgetIds,
+            value) { IdleWidgets.normalize(it) }
+    suspend fun setIdleWidgetCycleSeconds(value: Int) = putClamped(SettingsKeys.IdleWidgetCycleSeconds, value,
+            IdleWidgets.MIN_CYCLE_SECONDS, IdleWidgets.MAX_CYCLE_SECONDS)
+    suspend fun setIdleAlarmHideBeyond12h(value: Boolean) = put(SettingsKeys.IdleAlarmHideBeyond12h, value)
+    suspend fun setBatteryOnlyWhenCharging(value: Boolean) = put(SettingsKeys.BatteryOnlyWhenCharging, value)
+    suspend fun setIdleBeatOnlyOnChange(value: Boolean) = put(SettingsKeys.IdleBeatOnlyOnChange, value)
+    suspend fun setWidgetIslandCloseSeconds(value: Int) = putMapped(SettingsKeys.WidgetIslandCloseSeconds,
+            value) { WidgetIslandTimer.normalize(it) }
     suspend fun setWidgetIslandBatteryMetric(value: String) = editSafely {
-        it[Keys.WidgetIslandBatteryMetric] = value.takeIf { v -> v in com.agupta07505.smartisland.model.WidgetIslandContent.VALID_BATTERY_METRICS } ?: com.agupta07505.smartisland.model.WidgetIslandContent.BATTERY_WATT
+        it[SettingsKeys.WidgetIslandBatteryMetric] = value.takeIf { v ->
+            v in WidgetIslandContent.VALID_BATTERY_METRICS } ?: WidgetIslandContent.BATTERY_WATT
     }
-    /** Mix fonts: the switch and the three slot fonts in one write, so the island never sees a half-changed mix. */
+    /** Mix fonts: the switch and the 3 slot fonts in 1 write. */
     suspend fun setFontMix(enabled: Boolean, light: String, regular: String, medium: String) = editSafely {
         fun valid(id: String) = id.takeIf { v -> v.isEmpty() || SmartIslandSettings.isValidFont(v) } ?: ""
-        it[Keys.FontMixEnabled] = enabled
-        it[Keys.FontMixLight] = valid(light)
-        it[Keys.FontMixRegular] = valid(regular)
-        it[Keys.FontMixMedium] = valid(medium)
+        it[SettingsKeys.FontMixEnabled] = enabled
+        it[SettingsKeys.FontMixLight] = valid(light)
+        it[SettingsKeys.FontMixRegular] = valid(regular)
+        it[SettingsKeys.FontMixMedium] = valid(medium)
     }
     suspend fun setIdleGlyphFont(value: String) = editSafely {
-        it[Keys.IdleGlyphFont] = value.takeIf { v -> v.isEmpty() || SmartIslandSettings.isValidFont(v) } ?: ""
+        it[SettingsKeys.IdleGlyphFont] = value.takeIf { v -> v.isEmpty() || SmartIslandSettings.isValidFont(v) } ?: ""
     }
-    suspend fun setIdleGlyphScale(value: Int) = editSafely {
-        it[Keys.IdleGlyphScale] = com.agupta07505.smartisland.model.IdleSlots.normalizeGlyphScale(value)
-    }
-    suspend fun setIdleTickStyle(value: String) = editSafely {
-        it[Keys.IdleTickStyle] = com.agupta07505.smartisland.model.LedTick.normalizeStyle(value)
-    }
-    suspend fun setLedTickPattern(value: String) = editSafely {
-        it[Keys.LedTickPattern] = com.agupta07505.smartisland.model.LedTick.normalizePattern(value)
-    }
-    suspend fun setLedTickPaceMs(value: Int) = editSafely {
-        it[Keys.LedTickPaceMs] = com.agupta07505.smartisland.model.LedTick.normalizePace(value)
-    }
+    suspend fun setIdleGlyphScale(value: Int) = putMapped(SettingsKeys.IdleGlyphScale,
+            value) { IdleSlots.normalizeGlyphScale(it) }
+    suspend fun setIdleTickStyle(value: String) = putMapped(SettingsKeys.IdleTickStyle,
+            value) { LedTick.normalizeStyle(it) }
+    suspend fun setLedTickPattern(value: String) = putMapped(SettingsKeys.LedTickPattern,
+            value) { LedTick.normalizePattern(it) }
+    suspend fun setLedTickPaceMs(value: Int) = putMapped(SettingsKeys.LedTickPaceMs,
+            value) { LedTick.normalizePace(it) }
     suspend fun setLedTickFont(value: String) = editSafely {
-        it[Keys.LedTickFont] = value.takeIf { v -> v.isEmpty() || SmartIslandSettings.isValidFont(v) } ?: ""
+        it[SettingsKeys.LedTickFont] = value.takeIf { v -> v.isEmpty() || SmartIslandSettings.isValidFont(v) } ?: ""
     }
-    suspend fun setLedTickColor(value: String) = editSafely {
-        it[Keys.LedTickColor] = com.agupta07505.smartisland.model.LedTick.normalizeColor(value)
-    }
-    suspend fun setLedTickStagger(enabled: Boolean) = editSafely {
-        it[Keys.LedTickStagger] = enabled
-    }
+    suspend fun setLedTickColor(value: String) = putMapped(SettingsKeys.LedTickColor,
+            value) { LedTick.normalizeColor(it) }
+    suspend fun setLedTickStagger(enabled: Boolean) = put(SettingsKeys.LedTickStagger, enabled)
     suspend fun setIdleWidgetTempUnit(value: String) = editSafely {
-        it[Keys.IdleWidgetTempUnit] = value.takeIf { v -> v in com.agupta07505.smartisland.model.IdleWidgets.VALID_UNITS }
-            ?: com.agupta07505.smartisland.model.IdleWidgets.UNIT_AUTO
+        it[SettingsKeys.IdleWidgetTempUnit] = value.takeIf { v -> v in IdleWidgets.VALID_UNITS }
+            ?: IdleWidgets.UNIT_AUTO
     }
     suspend fun setIdleWidgetWindUnit(value: String) = editSafely {
-        it[Keys.IdleWidgetWindUnit] = value.takeIf { v -> v in com.agupta07505.smartisland.model.IdleWidgets.VALID_WIND_UNITS }
-            ?: com.agupta07505.smartisland.model.IdleWidgets.UNIT_AUTO
+        it[SettingsKeys.IdleWidgetWindUnit] = value.takeIf { v -> v in IdleWidgets.VALID_WIND_UNITS }
+            ?: IdleWidgets.UNIT_AUTO
     }
-    suspend fun setWeatherLocationSource(value: String) = editSafely {
-        it[Keys.WeatherLocationSource] = com.agupta07505.smartisland.model.WeatherConfig.normalizeSource(value)
-    }
+    suspend fun setWeatherLocationSource(value: String) = putMapped(SettingsKeys.WeatherLocationSource,
+            value) { WeatherConfig.normalizeSource(it) }
     suspend fun setWeatherManualCity(name: String, lat: Float, lon: Float) = editSafely {
-        if (com.agupta07505.smartisland.model.WeatherConfig.validCoordinates(lat, lon)) {
-            it[Keys.WeatherManualCity] = com.agupta07505.smartisland.model.WeatherConfig.normalizeCity(name)
-            it[Keys.WeatherManualLat] = lat
-            it[Keys.WeatherManualLon] = lon
+        if (WeatherConfig.validCoordinates(lat, lon)) {
+            it[SettingsKeys.WeatherManualCity] = WeatherConfig.normalizeCity(name)
+            it[SettingsKeys.WeatherManualLat] = lat
+            it[SettingsKeys.WeatherManualLon] = lon
         }
     }
-    suspend fun setWeatherRefreshMinutes(value: Int) = editSafely {
-        it[Keys.WeatherRefreshMinutes] = com.agupta07505.smartisland.model.WeatherConfig.normalizeRefreshMinutes(value)
-    }
-    suspend fun setWeatherProvider(value: String) = editSafely {
-        it[Keys.WeatherProvider] = com.agupta07505.smartisland.model.WeatherConfig.normalizeProvider(value)
-    }
-    suspend fun setWeatherCustomUrl(value: String) = editSafely {
-        it[Keys.WeatherCustomUrl] = com.agupta07505.smartisland.model.WeatherConfig.normalizeCustomUrl(value)
-    }
-    suspend fun setWeatherCustomKey(value: String) = editSafely {
-        it[Keys.WeatherCustomKey] = com.agupta07505.smartisland.model.WeatherConfig.normalizeKey(value)
-    }
-    suspend fun setWeatherPillMode(value: String) = editSafely {
-        it[Keys.WeatherPillMode] = com.agupta07505.smartisland.model.WeatherPill.normalize(value)
-    }
-    suspend fun setWeatherIslandReadouts(value: String) = editSafely {
-        it[Keys.WeatherIslandReadouts] = com.agupta07505.smartisland.model.WeatherReadouts.normalize(value)
-    }
-    suspend fun setWeatherIconAnimated(value: Boolean) = editSafely {
-        it[Keys.WeatherIconAnimated] = value
-    }
-    suspend fun setWeatherIconPauseOnSaver(value: Boolean) = editSafely {
-        it[Keys.WeatherIconPauseOnSaver] = value
-    }
-    suspend fun setWeatherShowRule(value: String) = editSafely {
-        it[Keys.WeatherShowRule] = com.agupta07505.smartisland.model.WeatherRules.normalizeMode(value)
-    }
-    suspend fun setWeatherNotableTriggers(value: String) = editSafely {
-        it[Keys.WeatherNotableTriggers] = com.agupta07505.smartisland.model.WeatherRules.normalizeTriggers(value)
-    }
-    suspend fun setWeatherHotC(value: Int) = editSafely {
-        it[Keys.WeatherHotC] = com.agupta07505.smartisland.model.WeatherRules.normalizeHotC(value)
-    }
-    suspend fun setWeatherColdC(value: Int) = editSafely {
-        it[Keys.WeatherColdC] = com.agupta07505.smartisland.model.WeatherRules.normalizeColdC(value)
-    }
-    suspend fun setWeatherHideAtNight(value: Boolean) = editSafely {
-        it[Keys.WeatherHideAtNight] = value
-    }
-    suspend fun setWeatherNightStartHour(value: Int) = editSafely {
-        it[Keys.WeatherNightStartHour] = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(value)
-    }
-    suspend fun setWeatherNightEndHour(value: Int) = editSafely {
-        it[Keys.WeatherNightEndHour] = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(value)
-    }
-    suspend fun setNetSpeedConnection(value: String) = editSafely {
-        it[Keys.NetSpeedConnection] = com.agupta07505.smartisland.model.NetSpeedRules.normalizeConnection(value)
-    }
-    suspend fun setIdleScheduleWorkEnabled(value: Boolean) = editSafely { it[Keys.IdleScheduleWorkEnabled] = value }
-    suspend fun setIdleScheduleWorkHidden(value: String) = editSafely { it[Keys.IdleScheduleWorkHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(value) }
-    suspend fun setIdleScheduleWorkStartHour(value: Int) = editSafely { it[Keys.IdleScheduleWorkStartHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(value) }
-    suspend fun setIdleScheduleWorkEndHour(value: Int) = editSafely { it[Keys.IdleScheduleWorkEndHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(value) }
-    suspend fun setIdleScheduleWorkWeekdaysOnly(value: Boolean) = editSafely { it[Keys.IdleScheduleWorkWeekdaysOnly] = value }
-    suspend fun setIdleScheduleNightEnabled(value: Boolean) = editSafely { it[Keys.IdleScheduleNightEnabled] = value }
-    suspend fun setIdleScheduleNightHidden(value: String) = editSafely { it[Keys.IdleScheduleNightHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(value) }
-    suspend fun setIdleScheduleNightStartHour(value: Int) = editSafely { it[Keys.IdleScheduleNightStartHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(value) }
-    suspend fun setIdleScheduleNightEndHour(value: Int) = editSafely { it[Keys.IdleScheduleNightEndHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(value) }
-    suspend fun setIdleScheduleChargingEnabled(value: Boolean) = editSafely { it[Keys.IdleScheduleChargingEnabled] = value }
-    suspend fun setIdleScheduleChargingHidden(value: String) = editSafely { it[Keys.IdleScheduleChargingHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(value) }
-    /** Sets the widget order and the pinned widget together, so the selector never shows one without the other. */
+    suspend fun setWeatherRefreshMinutes(value: Int) = putMapped(SettingsKeys.WeatherRefreshMinutes,
+            value) { WeatherConfig.normalizeRefreshMinutes(it) }
+    suspend fun setWeatherProvider(value: String) = putMapped(SettingsKeys.WeatherProvider,
+            value) { WeatherConfig.normalizeProvider(it) }
+    suspend fun setWeatherCustomUrl(value: String) = putMapped(SettingsKeys.WeatherCustomUrl,
+            value) { WeatherConfig.normalizeCustomUrl(it) }
+    suspend fun setWeatherCustomKey(value: String) = putMapped(SettingsKeys.WeatherCustomKey,
+            value) { WeatherConfig.normalizeKey(it) }
+    suspend fun setWeatherPillMode(value: String) = putMapped(SettingsKeys.WeatherPillMode,
+            value) { WeatherPill.normalize(it) }
+    suspend fun setWeatherIslandReadouts(value: String) = putMapped(SettingsKeys.WeatherIslandReadouts,
+            value) { WeatherReadouts.normalize(it) }
+    suspend fun setWeatherIconAnimated(value: Boolean) = put(SettingsKeys.WeatherIconAnimated, value)
+    suspend fun setWeatherIconPauseOnSaver(value: Boolean) = put(SettingsKeys.WeatherIconPauseOnSaver, value)
+    suspend fun setWeatherShowRule(value: String) = putMapped(SettingsKeys.WeatherShowRule,
+            value) { WeatherRules.normalizeMode(it) }
+    suspend fun setWeatherNotableTriggers(value: String) = putMapped(SettingsKeys.WeatherNotableTriggers,
+            value) { WeatherRules.normalizeTriggers(it) }
+    suspend fun setWeatherHotC(value: Int) = putMapped(SettingsKeys.WeatherHotC,
+            value) { WeatherRules.normalizeHotC(it) }
+    suspend fun setWeatherColdC(value: Int) = putMapped(SettingsKeys.WeatherColdC,
+            value) { WeatherRules.normalizeColdC(it) }
+    suspend fun setWeatherHideAtNight(value: Boolean) = put(SettingsKeys.WeatherHideAtNight, value)
+    suspend fun setWeatherNightStartHour(value: Int) = putMapped(SettingsKeys.WeatherNightStartHour,
+            value) { WeatherRules.normalizeHour(it) }
+    suspend fun setWeatherNightEndHour(value: Int) = putMapped(SettingsKeys.WeatherNightEndHour,
+            value) { WeatherRules.normalizeHour(it) }
+    suspend fun setNetSpeedConnection(value: String) = putMapped(SettingsKeys.NetSpeedConnection,
+            value) { NetSpeedRules.normalizeConnection(it) }
+    suspend fun setIdleScheduleWorkEnabled(value: Boolean) = put(SettingsKeys.IdleScheduleWorkEnabled, value)
+    suspend fun setIdleScheduleWorkHidden(value: String) = putMapped(SettingsKeys.IdleScheduleWorkHidden,
+            value) { IdleSchedule.normalizeHidden(it) }
+    suspend fun setIdleScheduleWorkStartHour(value: Int) = putMapped(SettingsKeys.IdleScheduleWorkStartHour,
+            value) { IdleSchedule.normalizeHour(it) }
+    suspend fun setIdleScheduleWorkEndHour(value: Int) = putMapped(SettingsKeys.IdleScheduleWorkEndHour,
+            value) { IdleSchedule.normalizeHour(it) }
+    suspend fun setIdleScheduleWorkWeekdaysOnly(value: Boolean) = put(SettingsKeys.IdleScheduleWorkWeekdaysOnly, value)
+    suspend fun setIdleScheduleNightEnabled(value: Boolean) = put(SettingsKeys.IdleScheduleNightEnabled, value)
+    suspend fun setIdleScheduleNightHidden(value: String) = putMapped(SettingsKeys.IdleScheduleNightHidden,
+            value) { IdleSchedule.normalizeHidden(it) }
+    suspend fun setIdleScheduleNightStartHour(value: Int) = putMapped(SettingsKeys.IdleScheduleNightStartHour,
+            value) { IdleSchedule.normalizeHour(it) }
+    suspend fun setIdleScheduleNightEndHour(value: Int) = putMapped(SettingsKeys.IdleScheduleNightEndHour,
+            value) { IdleSchedule.normalizeHour(it) }
+    suspend fun setIdleScheduleChargingEnabled(value: Boolean) = put(SettingsKeys.IdleScheduleChargingEnabled, value)
+    suspend fun setIdleScheduleChargingHidden(value: String) =
+            putMapped(SettingsKeys.IdleScheduleChargingHidden, value) { IdleSchedule.normalizeHidden(it) }
+    /** Sets the widget order and the pinned widget together. */
     suspend fun setIdleWidgetOrder(ids: String, pinnedFirst: String) = editSafely {
-        it[Keys.IdleWidgetIds] = com.agupta07505.smartisland.model.IdleWidgets.normalize(ids)
-        it[Keys.IdleWidgetPinnedFirst] = com.agupta07505.smartisland.model.IdleSchedule.normalizePinned(pinnedFirst)
+        it[SettingsKeys.IdleWidgetIds] = IdleWidgets.normalize(ids)
+        it[SettingsKeys.IdleWidgetPinnedFirst] = IdleSchedule.normalizePinned(pinnedFirst)
     }
-    suspend fun setNetSpeedThresholdKbps(value: Int) = editSafely {
-        it[Keys.NetSpeedThresholdKbps] = com.agupta07505.smartisland.model.NetSpeedRules.normalize(value)
-    }
-    suspend fun setAllowNetworkChecks(value: Boolean) = editSafely {
-        it[Keys.AllowNetworkChecks] = value
-    }
-    suspend fun setDetectTransfersBySpeed(value: Boolean) = editSafely {
-        it[Keys.DetectTransfersBySpeed] = value
-    }
-    suspend fun setEnableNotificationHistory(value: Boolean) = editSafely {
-        it[Keys.EnableNotificationHistory] = value
-    }
-    suspend fun setNotificationHistoryRetentionHours(value: Int) = editSafely {
-        it[Keys.NotificationHistoryRetentionHours] = value
-    }
-    suspend fun setShowBluetoothBattery(value: Boolean) = editSafely {
-        it[Keys.ShowBluetoothBattery] = value
-    }
-    suspend fun setEnableNotificationCooldown(value: Boolean) = editSafely {
-        it[Keys.EnableNotificationCooldown] = value
-    }
-    suspend fun setNotificationCooldownDurationMinutes(value: Int) = editSafely {
-        it[Keys.NotificationCooldownDurationMinutes] = value.coerceIn(1, 60)
-    }
-    suspend fun setNotificationCooldownThreshold(value: Int) = editSafely {
-        it[Keys.NotificationCooldownThreshold] = value.coerceIn(2, 20)
-    }
-    suspend fun setNotificationCooldownExcludedPackages(packages: Set<String>) = editSafely {
-        it[Keys.NotificationCooldownExcludedPackages] = packages
-    }
-    suspend fun setThemeMode(value: String) = editSafely {
-        it[Keys.ThemeMode] = value
-    }
-    suspend fun setLiquidGlassTheme(value: Boolean) = editSafely { it[Keys.LiquidGlassTheme] = value }
-    suspend fun setMaterialYou(value: Boolean) = editSafely { it[Keys.MaterialYou] = value }
-    suspend fun setAccentColor(value: Long) = editSafely {
-        it[Keys.AccentColor] = validColor(value, SmartIslandSettings.Default.accentColor)
-    }
-    suspend fun setExpandedTheme(value: String) = editSafely {
-        it[Keys.ExpandedTheme] = if (value in SmartIslandSettings.VALID_EXPANDED_THEMES) value else SmartIslandSettings.Default.expandedTheme
-    }
+    suspend fun setNetSpeedThresholdKbps(value: Int) = putMapped(SettingsKeys.NetSpeedThresholdKbps,
+            value) { NetSpeedRules.normalize(it) }
+    suspend fun setAllowNetworkChecks(value: Boolean) = put(SettingsKeys.AllowNetworkChecks, value)
+    suspend fun setDetectTransfersBySpeed(value: Boolean) = put(SettingsKeys.DetectTransfersBySpeed, value)
+    suspend fun setEnableNotificationHistory(value: Boolean) = put(SettingsKeys.EnableNotificationHistory, value)
+    suspend fun setNotificationHistoryRetentionHours(value: Int) =
+            put(SettingsKeys.NotificationHistoryRetentionHours, value)
+    suspend fun setShowBluetoothBattery(value: Boolean) = put(SettingsKeys.ShowBluetoothBattery, value)
+    suspend fun setEnableNotificationCooldown(value: Boolean) = put(SettingsKeys.EnableNotificationCooldown, value)
+    suspend fun setNotificationCooldownDurationMinutes(value: Int) =
+            putClamped(SettingsKeys.NotificationCooldownDurationMinutes, value, 1, 60)
+    suspend fun setNotificationCooldownThreshold(value: Int) =
+            putClamped(SettingsKeys.NotificationCooldownThreshold, value, 2, 20)
+    suspend fun setNotificationCooldownExcludedPackages(packages: Set<String>) =
+            put(SettingsKeys.NotificationCooldownExcludedPackages, packages)
+    suspend fun setThemeMode(value: String) = put(SettingsKeys.ThemeMode, value)
+    suspend fun setLiquidGlassTheme(value: Boolean) = put(SettingsKeys.LiquidGlassTheme, value)
+    suspend fun setMaterialYou(value: Boolean) = put(SettingsKeys.MaterialYou, value)
+    suspend fun setAccentColor(value: Long) = putColor(SettingsKeys.AccentColor, value,
+            SmartIslandSettings.Default.accentColor)
+    suspend fun setExpandedTheme(value: String) = putChoice(SettingsKeys.ExpandedTheme, value,
+            SmartIslandSettings.VALID_EXPANDED_THEMES, SmartIslandSettings.Default.expandedTheme)
     suspend fun setIslandFont(value: String) = editSafely {
-        it[Keys.IslandFont] = if (SmartIslandSettings.isValidFont(value)) value else SmartIslandSettings.Default.islandFont
+        it[SettingsKeys.IslandFont] =
+            if (SmartIslandSettings.isValidFont(value)) value else SmartIslandSettings.Default.islandFont
     }
     suspend fun setFaceUnlockMode(value: String) = editSafely {
-        it[Keys.FaceUnlockMode] = if (value == "any") "any" else "face_only"
+        it[SettingsKeys.FaceUnlockMode] = if (value == "any") "any" else "face_only"
     }
     suspend fun setFaceIdStyle(value: String) = editSafely {
-        it[Keys.FaceIdStyle] = if (value == "cutout" || value == "square_tick") value else "square"
+        it[SettingsKeys.FaceIdStyle] = if (value == "cutout" || value == "square_tick") value else "square"
     }
-    suspend fun setAppFaceIdEnabled(value: Boolean) = editSafely {
-        it[Keys.AppFaceIdEnabled] = value
+    suspend fun setStatusBarHidden(value: Boolean) = put(SettingsKeys.StatusBarHidden, value)
+    suspend fun setStatusBarHidePersistent(value: Boolean) = put(SettingsKeys.StatusBarHidePersistent, value)
+    suspend fun setStatusBarHideNotificationIcons(value: Boolean) =
+            put(SettingsKeys.StatusBarHideNotificationIcons, value)
+    suspend fun setStatusBarHideClock(value: Boolean) = put(SettingsKeys.StatusBarHideClock, value)
+    suspend fun setStatusBarHideAllSystemIcons(value: Boolean) = put(SettingsKeys.StatusBarHideAllSystemIcons, value)
+    suspend fun setStatusBarHiddenSystemIcons(keys: Set<String>) = put(SettingsKeys.StatusBarHiddenSystemIcons, keys)
+    suspend fun setStatusBarSystemIconHidden(key: String, hidden: Boolean) = editSafely {
+        it.setMembership(SettingsKeys.StatusBarHiddenSystemIcons, key, hidden)
     }
-    suspend fun setFingerprintAnimationEnabled(value: Boolean) = editSafely {
-        it[Keys.FingerprintAnimationEnabled] = value
-    }
+    suspend fun setAppFaceIdEnabled(value: Boolean) = put(SettingsKeys.AppFaceIdEnabled, value)
+    suspend fun setFingerprintAnimationEnabled(value: Boolean) = put(SettingsKeys.FingerprintAnimationEnabled, value)
     suspend fun setAppFaceIdStyle(value: String) = editSafely {
-        it[Keys.AppFaceIdStyle] = if (value == "cutout" || value == "square_tick") value else "square"
+        it[SettingsKeys.AppFaceIdStyle] = if (value == "cutout" || value == "square_tick") value else "square"
     }
-    suspend fun setRecordLogs(value: Boolean) = editSafely {
-        it[Keys.RecordLogs] = value
-    }
-    suspend fun setEnableNotchMode(value: Boolean) = editSafely {
-        it[Keys.EnableNotchMode] = value
+    suspend fun setRecordLogs(value: Boolean) = put(SettingsKeys.RecordLogs, value)
+    suspend fun switchLayoutMode(toNotch: Boolean, compactFallback: CutoutFitPlan? = null) = editSafely {
+        SettingsLayoutWriter.switchLayoutMode(it, toNotch, compactFallback, teardropPhone)
     }
     suspend fun setCameraCutoutManual(value: Boolean) = editSafely {
-        it[Keys.CameraCutoutManual] = value
+        it[SettingsKeys.CameraCutoutManual] = value
+        fitEdgePillToPlacedCutout(it)
     }
-    /** Saves the manual camera cutout area in one write (centre X from the screen centre, top Y, width, height; all dp). */
+    suspend fun setCameraCutoutStyle(style: String) = editSafely {
+        val valid = style.takeIf { s -> s in VALID_CUTOUT_STYLES } ?: SmartIslandSettings.Default.cameraCutoutStyle
+        if (it[SettingsKeys.CameraCutoutStyle] != valid) {
+            it[SettingsKeys.CameraCutoutStyle] = valid
+            it[SettingsKeys.CameraCutoutX] = SmartIslandSettings.Default.cameraCutoutX
+        }
+        fitEdgePillToPlacedCutout(it)
+    }
+
+    /**
+     * This keeps the landscape edge pill fitted when the portrait cutout is moved by hand or set by a preset.
+     * A manual landscape camera takes precedence.
+     */
+    private fun fitEdgePillToPlacedCutout(prefs: MutablePreferences) {
+        val cfg = context.resources.configuration
+        val portraitWidthDp = minOf(cfg.screenWidthDp, cfg.screenHeightDp).toFloat()
+        if (portraitWidthDp <= 0f) return
+        val hole = CutoutPlacement.placedFor(readSettings(prefs, teardropPhone), portraitWidthDp)
+            ?.clampedTo(portraitWidthDp) ?: return
+        val edge = EdgePillTuning.decode(prefs[SettingsKeys.EdgePill], flatEdgeDefault = teardropPhone)
+        if (edge.cameraManual) return
+        // a hole placed by hand is no measure of the camera, so the pill keeps at least its default size
+        prefs[SettingsKeys.EdgePill] = EdgePillFit.fitPortrait(edge, hole, assumed = true).coerced().encode()
+    }
     suspend fun setCameraCutoutArea(x: Float, y: Float, width: Float, height: Float) = editSafely {
         val d = SmartIslandSettings.Default
-        it[Keys.CameraCutoutX] = validDimension(x, d.cameraCutoutX, SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET)
-        it[Keys.CameraCutoutY] = validDimension(y, d.cameraCutoutY, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET)
-        it[Keys.CameraCutoutWidth] = validDimension(width, d.cameraCutoutWidth, SmartIslandSettings.MIN_CUTOUT_WIDTH, SmartIslandSettings.MAX_CUTOUT_WIDTH)
-        it[Keys.CameraCutoutHeight] = validDimension(height, d.cameraCutoutHeight, SmartIslandSettings.MIN_CUTOUT_HEIGHT, SmartIslandSettings.MAX_CUTOUT_HEIGHT)
+        it[SettingsKeys.CameraCutoutX] = validDimension(x, d.cameraCutoutX, SmartIslandSettings.MIN_CUTOUT_X,
+            SmartIslandSettings.MAX_CUTOUT_X)
+        it[SettingsKeys.CameraCutoutY] = validDimension(y, d.cameraCutoutY, SmartIslandSettings.MIN_Y_OFFSET,
+            SmartIslandSettings.MAX_Y_OFFSET)
+        it[SettingsKeys.CameraCutoutWidth] = validDimension(width, d.cameraCutoutWidth,
+            SmartIslandSettings.MIN_CUTOUT_WIDTH, SmartIslandSettings.MAX_CUTOUT_WIDTH)
+        it[SettingsKeys.CameraCutoutHeight] = validDimension(height, d.cameraCutoutHeight,
+            SmartIslandSettings.MIN_CUTOUT_HEIGHT, SmartIslandSettings.MAX_CUTOUT_HEIGHT)
+        fitEdgePillToPlacedCutout(it)
     }
-    suspend fun setEnableSwipeActions(value: Boolean) = editSafely {
-        it[Keys.EnableSwipeActions] = value
+    suspend fun isCutoutFitDone(): Boolean =
+        runSuspendCatching { context.smartIslandDataStore.data.first()[SettingsKeys.CutoutFitDone] == true }
+            .getOrDefault(true)
+
+    suspend fun markCutoutFitDone() = editSafely { it[SettingsKeys.CutoutFitDone] = true }
+
+    suspend fun isNoCutoutPromptDone(): Boolean =
+        runSuspendCatching { context.smartIslandDataStore.data.first()[SettingsKeys.NoCutoutPromptDone] == true }
+            .getOrDefault(true)
+
+    suspend fun markNoCutoutPromptDone() = editSafely { it[SettingsKeys.NoCutoutPromptDone] = true }
+
+    val listenerSettings: Flow<SmartIslandSettings> by lazy {
+      combine(
+        listOf(
+            settings,
+            forPosture(FoldPosture.FoldedPortrait).settings,
+            forPosture(FoldPosture.UnfoldedPortrait).settings,
+            forPosture(FoldPosture.FoldedLandscape).settings,
+            forPosture(FoldPosture.UnfoldedLandscape).settings
+        )
+    ) { values ->
+        val base = values[0] as SmartIslandSettings
+        val portrait = listOf(values[1], values[2]).map { it as SmartIslandSettings }
+        val landscape = listOf(values[3], values[4]).map { it as SmartIslandSettings }
+        base.copy(
+            disabledEvents = portrait.map { it.disabledEvents }.reduce { a, b -> a intersect b },
+            disabledEventsLandscape = landscape.map { it.disabledEventsLandscape }.reduce { a, b -> a intersect b },
+            showInLandscape = landscape.any { it.showInLandscape },
+            foldDisabledSomewhere = portrait.flatMap { it.disabledEvents }.toSet() +
+                landscape.filter { it.showInLandscape }.flatMap { it.disabledEventsLandscape }
+        )
+      }
     }
-    suspend fun setSwipeUpAction(value: String) = editSafely {
-        it[Keys.SwipeUpAction] = value
+
+    /** Writes a detected-hole layout in one edit. */
+    suspend fun applyCutoutFit(
+        plan: CutoutFitPlan,
+        edgeHole: CutoutArea? = null,
+        teardrop: Boolean? = null
+    ) = editSafely {
+        SettingsLayoutWriter.applyCutoutFit(it, plan, edgeHole, teardrop, teardropPhone)
     }
-    suspend fun setSwipeHoldUpAction(value: String) = editSafely {
-        it[Keys.SwipeHoldUpAction] = value
-    }
-    suspend fun setSwipeDownAction(value: String) = editSafely {
-        it[Keys.SwipeDownAction] = value
-    }
-    suspend fun setSwipeLeftAction(value: String) = editSafely {
-        it[Keys.SwipeLeftAction] = value
-    }
-    suspend fun setSwipeRightAction(value: String) = editSafely {
-        it[Keys.SwipeRightAction] = value
-    }
-    suspend fun setEnablePillSwipeActions(value: Boolean) = editSafely {
-        it[Keys.EnablePillSwipeActions] = value
-    }
-    suspend fun setPillSwipeUpAction(value: String) = editSafely {
-        it[Keys.PillSwipeUpAction] = value
-    }
-    suspend fun setLongPressAction(value: String) = editSafely {
-        it[Keys.LongPressAction] = value
-    }
-    suspend fun setPillSwipeDownAction(value: String) = editSafely {
-        it[Keys.PillSwipeDownAction] = value
-    }
-    suspend fun setPillSwipeLeftAction(value: String) = editSafely {
-        it[Keys.PillSwipeLeftAction] = value
-    }
-    suspend fun setPillSwipeRightAction(value: String) = editSafely {
-        it[Keys.PillSwipeRightAction] = value
-    }
+
+    suspend fun setEnableSwipeActions(value: Boolean) = put(SettingsKeys.EnableSwipeActions, value)
+    suspend fun setSwipeUpAction(value: String) = put(SettingsKeys.SwipeUpAction, value)
+    suspend fun setSwipeHoldUpAction(value: String) = put(SettingsKeys.SwipeHoldUpAction, value)
+    suspend fun setSwipeDownAction(value: String) = put(SettingsKeys.SwipeDownAction, value)
+    suspend fun setSwipeLeftAction(value: String) = put(SettingsKeys.SwipeLeftAction, value)
+    suspend fun setSwipeRightAction(value: String) = put(SettingsKeys.SwipeRightAction, value)
+    suspend fun setEnablePillSwipeActions(value: Boolean) = put(SettingsKeys.EnablePillSwipeActions, value)
+    suspend fun setPillSwipeUpAction(value: String) = put(SettingsKeys.PillSwipeUpAction, value)
+    suspend fun setLongPressAction(value: String) = put(SettingsKeys.LongPressAction, value)
+    suspend fun setPillSwipeDownAction(value: String) = put(SettingsKeys.PillSwipeDownAction, value)
+    suspend fun setPillSwipeLeftAction(value: String) = put(SettingsKeys.PillSwipeLeftAction, value)
+    suspend fun setPillSwipeRightAction(value: String) = put(SettingsKeys.PillSwipeRightAction, value)
     suspend fun setLandscapeEventEnabled(eventId: String, enabled: Boolean) = editSafely {
-        val current = it[Keys.DisabledEventsLandscape] ?: emptySet()
-        it[Keys.DisabledEventsLandscape] = if (enabled) current - eventId else current + eventId
+        it.setMembership(SettingsKeys.DisabledEventsLandscape, eventId, !enabled)
     }
-    suspend fun setLandscapeCirclePosition(value: String) = editSafely {
-        it[Keys.LandscapeCirclePosition] = if (value in VALID_LANDSCAPE_POSITIONS) value else SmartIslandSettings.Default.landscapeCirclePosition
+    suspend fun setEdgePill(value: EdgePillTuning) = editSafely {
+        it[SettingsKeys.EdgePill] = value.coerced().encode()
     }
-    suspend fun setLandscapePillPosition(value: String) = editSafely {
-        it[Keys.LandscapePillPosition] = if (value in VALID_LANDSCAPE_POSITIONS) value else SmartIslandSettings.Default.landscapePillPosition
+    suspend fun switchEdgeLook(
+        current: EdgePillTuning,
+        toFlat: Boolean,
+        firstVisit: EdgePillTuning? = null
+    ): EdgePillTuning {
+        var result = current.copy(flatEdge = toFlat)
+        editSafely { result = SettingsLayoutWriter.switchEdgeLook(it, current, toFlat, firstVisit) }
+        return result
     }
+    suspend fun setLandscapeLayoutStyle(value: String) = putMapped(SettingsKeys.LandscapeLayoutStyle,
+            value) { LandscapeLayoutStyle.fromId(it) }
+    suspend fun setLandscapePillPosition(value: String) = putChoice(SettingsKeys.LandscapePillPosition, value,
+            VALID_LANDSCAPE_POSITIONS, SmartIslandSettings.Default.landscapePillPosition)
     suspend fun setLandscapePillGeometry(
         width: Float,
         height: Float,
@@ -1335,45 +757,45 @@ class SmartIslandSettingsRepository(private val context: Context) {
         yOffset: Float
     ) = editSafely {
         val d = SmartIslandSettings.Default
-        it[Keys.LandscapeWidth] = validDimension(width, d.landscapeWidth, SmartIslandSettings.MIN_WIDTH, SmartIslandSettings.MAX_WIDTH)
-        it[Keys.LandscapeHeight] = validDimension(height, d.landscapeHeight, SmartIslandSettings.MIN_HEIGHT, SmartIslandSettings.MAX_HEIGHT)
-        it[Keys.LandscapeXOffset] = validDimension(xOffset, d.landscapeXOffset, -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET)
-        it[Keys.LandscapeYOffset] = validDimension(yOffset, d.landscapeYOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
+        it[SettingsKeys.LandscapeWidth] = validDimension(width, d.landscapeWidth, SmartIslandSettings.MIN_WIDTH,
+            SmartIslandSettings.MAX_WIDTH)
+        it[SettingsKeys.LandscapeHeight] = validDimension(height, d.landscapeHeight, SmartIslandSettings.MIN_HEIGHT,
+            SmartIslandSettings.MAX_HEIGHT)
+        it[SettingsKeys.LandscapeXOffset] = validDimension(xOffset, d.landscapeXOffset,
+            -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET)
+        it[SettingsKeys.LandscapeYOffset] = validDimension(yOffset, d.landscapeYOffset,
+            SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
     }
-    suspend fun setLandscapeOpacity(value: Float) = editSafely {
-        it[Keys.LandscapeOpacity] = validDimension(value, SmartIslandSettings.Default.landscapeOpacity, SmartIslandSettings.MIN_OPACITY, SmartIslandSettings.MAX_OPACITY)
-    }
-    suspend fun setLandscapeCircleSize(value: Float) = editSafely {
-        it[Keys.LandscapeCircleSize] = validDimension(value, SmartIslandSettings.Default.landscapeCircleSize, SmartIslandSettings.MIN_CIRCLE_SIZE, SmartIslandSettings.MAX_CIRCLE_SIZE)
-    }
-    suspend fun setLandscapeCircleOpacity(value: Float) = editSafely {
-        it[Keys.LandscapeCircleOpacity] = validDimension(value, SmartIslandSettings.Default.landscapeCircleOpacity, SmartIslandSettings.MIN_CIRCLE_OPACITY, SmartIslandSettings.MAX_OPACITY)
-    }
-    suspend fun setLandscapeCircleEdgeInset(value: Float) = editSafely {
-        it[Keys.LandscapeCircleEdgeInset] = validDimension(value, SmartIslandSettings.Default.landscapeCircleEdgeInset, SmartIslandSettings.MIN_CIRCLE_EDGE_INSET, SmartIslandSettings.MAX_CIRCLE_EDGE_INSET)
-    }
-    suspend fun setLandscapeCircleYOffset(value: Float) = editSafely {
-        it[Keys.LandscapeCircleYOffset] = validDimension(value, SmartIslandSettings.Default.landscapeCircleYOffset, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
-    }
-    suspend fun setLandscapeCircleXAdjust(value: Float) = editSafely {
-        it[Keys.LandscapeCircleXAdjust] = validDimension(value, SmartIslandSettings.Default.landscapeCircleXAdjust, -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET)
-    }
-    suspend fun setLandscapeCircleYAdjust(value: Float) = editSafely {
-        it[Keys.LandscapeCircleYAdjust] = validDimension(value, SmartIslandSettings.Default.landscapeCircleYAdjust, -SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET, SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
-    }
-    suspend fun setCirclePosition(value: String) = editSafely {
-        it[Keys.CirclePosition] = if (value in VALID_CIRCLE_POSITIONS) value else SmartIslandSettings.CIRCLE_POSITION_RIGHT
-    }
-    suspend fun setNotificationCooldownSystemEvents(eventIds: Set<String>) = editSafely {
-        it[Keys.NotificationCooldownSystemEvents] = eventIds
-    }
+    suspend fun setLandscapeOpacity(value: Float) = putDimension(SettingsKeys.LandscapeOpacity, value,
+            SmartIslandSettings.Default.landscapeOpacity, SmartIslandSettings.MIN_OPACITY,
+            SmartIslandSettings.MAX_OPACITY)
+    suspend fun setLandscapeCircleSize(value: Float) = putDimension(SettingsKeys.LandscapeCircleSize, value,
+            SmartIslandSettings.Default.landscapeCircleSize, SmartIslandSettings.MIN_CIRCLE_SIZE,
+            SmartIslandSettings.MAX_CIRCLE_SIZE)
+    suspend fun setLandscapeCircleOpacity(value: Float) = putDimension(SettingsKeys.LandscapeCircleOpacity, value,
+            SmartIslandSettings.Default.landscapeCircleOpacity, SmartIslandSettings.MIN_CIRCLE_OPACITY,
+            SmartIslandSettings.MAX_OPACITY)
+    suspend fun setLandscapeCircleEdgeInset(value: Float) = putDimension(SettingsKeys.LandscapeCircleEdgeInset, value,
+            SmartIslandSettings.Default.landscapeCircleEdgeInset, SmartIslandSettings.MIN_CIRCLE_EDGE_INSET,
+            SmartIslandSettings.MAX_CIRCLE_EDGE_INSET)
+    suspend fun setLandscapeCircleXAdjust(value: Float) = putDimension(SettingsKeys.LandscapeCircleXAdjust, value,
+            SmartIslandSettings.Default.landscapeCircleXAdjust, -SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET,
+            SmartIslandSettings.MAX_LANDSCAPE_X_OFFSET)
+    suspend fun setLandscapeCircleYAdjust(value: Float) = putDimension(SettingsKeys.LandscapeCircleYAdjust, value,
+            SmartIslandSettings.Default.landscapeCircleYAdjust, -SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET,
+            SmartIslandSettings.MAX_LANDSCAPE_Y_OFFSET)
+    suspend fun setCirclePosition(value: String) = putChoice(SettingsKeys.CirclePosition, value, VALID_CIRCLE_POSITIONS,
+            SmartIslandSettings.CIRCLE_POSITION_RIGHT)
+    suspend fun setNotificationCooldownSystemEvents(eventIds: Set<String>) =
+            put(SettingsKeys.NotificationCooldownSystemEvents, eventIds)
     suspend fun toggleNotificationCooldownSystemEvent(eventId: String) = editSafely { prefs ->
-        val current = prefs[Keys.NotificationCooldownSystemEvents] ?: emptySet()
-        prefs[Keys.NotificationCooldownSystemEvents] = if (eventId in current) current - eventId else current + eventId
+        val current = prefs[SettingsKeys.NotificationCooldownSystemEvents] ?: emptySet()
+        prefs[SettingsKeys.NotificationCooldownSystemEvents] =
+            if (eventId in current) current - eventId else current + eventId
     }
     suspend fun toggleNotificationCooldownExcludedPackage(packageName: String) = editSafely { prefs ->
-        val current = prefs[Keys.NotificationCooldownExcludedPackages] ?: emptySet()
-        prefs[Keys.NotificationCooldownExcludedPackages] = if (packageName in current) {
+        val current = prefs[SettingsKeys.NotificationCooldownExcludedPackages] ?: emptySet()
+        prefs[SettingsKeys.NotificationCooldownExcludedPackages] = if (packageName in current) {
             current - packageName
         } else {
             current + packageName
@@ -1381,367 +803,69 @@ class SmartIslandSettingsRepository(private val context: Context) {
     }
 
     suspend fun restoreSettings(settings: SmartIslandSettings) = editSafely { prefs ->
-        prefs[Keys.Enabled] = settings.enabled
-        prefs[Keys.Width] = validDimension(
-            settings.width,
-            SmartIslandSettings.Default.width,
-            SmartIslandSettings.MIN_WIDTH,
-            SmartIslandSettings.MAX_WIDTH
-        )
-        prefs[Keys.Height] = validDimension(
-            settings.height,
-            SmartIslandSettings.Default.height,
-            SmartIslandSettings.MIN_HEIGHT,
-            SmartIslandSettings.MAX_HEIGHT
-        )
-        prefs[Keys.XOffset] = validDimension(
-            settings.xOffset,
-            SmartIslandSettings.Default.xOffset,
-            SmartIslandSettings.MIN_X_OFFSET,
-            SmartIslandSettings.MAX_X_OFFSET
-        )
-        prefs[Keys.YOffset] = validDimension(
-            settings.yOffset,
-            SmartIslandSettings.Default.yOffset,
-            SmartIslandSettings.MIN_Y_OFFSET,
-            SmartIslandSettings.MAX_Y_OFFSET
-        )
-        prefs[Keys.CornerRadius] = validDimension(
-            settings.cornerRadius,
-            SmartIslandSettings.Default.cornerRadius,
-            SmartIslandSettings.MIN_CORNER_RADIUS,
-            SmartIslandSettings.MAX_CORNER_RADIUS
-        )
-        prefs[Keys.Opacity] = validDimension(
-            settings.opacity,
-            SmartIslandSettings.Default.opacity,
-            SmartIslandSettings.MIN_OPACITY,
-            SmartIslandSettings.MAX_OPACITY
-        )
-        prefs[Keys.PillColor] = validColor(settings.pillColor, SmartIslandSettings.Default.pillColor)
-        prefs[Keys.BatteryColor] = validColor(settings.batteryColor, SmartIslandSettings.Default.batteryColor)
-        prefs[Keys.NotificationDotColor] = validColor(settings.notificationDotColor, SmartIslandSettings.Default.notificationDotColor)
-        prefs[Keys.MusicVisualizerColor] = validColor(settings.musicVisualizerColor, SmartIslandSettings.Default.musicVisualizerColor)
-        prefs[Keys.HotspotColor] = validColor(settings.hotspotColor, SmartIslandSettings.Default.hotspotColor)
-        prefs[Keys.CallColor] = validColor(settings.callColor, SmartIslandSettings.Default.callColor)
-        prefs[Keys.LiveActivityColor] = validColor(settings.liveActivityColor, SmartIslandSettings.Default.liveActivityColor)
-        prefs[Keys.TransferColor] = validColor(settings.transferColor, SmartIslandSettings.Default.transferColor)
-        prefs[Keys.NavigationColor] = validColor(settings.navigationColor, SmartIslandSettings.Default.navigationColor)
-        prefs[Keys.BluetoothColor] = validColor(settings.bluetoothColor, SmartIslandSettings.Default.bluetoothColor)
-        prefs[Keys.FlashlightColor] = validColor(settings.flashlightColor, SmartIslandSettings.Default.flashlightColor)
-        prefs[Keys.ScreenRecordingColor] = validColor(settings.screenRecordingColor, SmartIslandSettings.Default.screenRecordingColor)
-        prefs[Keys.TimerColor] = validColor(settings.timerColor, SmartIslandSettings.Default.timerColor)
-        prefs[Keys.StopwatchColor] = validColor(settings.stopwatchColor, SmartIslandSettings.Default.stopwatchColor)
-        prefs[Keys.EnableAppShortcuts] = settings.enableAppShortcuts
-        writePinnedApps(prefs, settings.shortcutPackages)
-        prefs[Keys.ShowRecentApps] = settings.showRecentApps
-        prefs[Keys.UtilityLayout] = com.agupta07505.smartisland.model.UtilityLayout.encode(
-            com.agupta07505.smartisland.model.UtilityLayout.decode(settings.utilityLayout)
-        )
-        prefs[Keys.UtilityCalculatorPackage] = settings.utilityCalculatorPackage.take(255)
-        prefs[Keys.UtilityCalculatorFloating] = settings.utilityCalculatorFloating
-        prefs[Keys.WelcomeDialogShown] = settings.welcomeDialogShown
-        prefs[Keys.ShowOnLockScreen] = settings.showOnLockScreen
-        prefs[Keys.ShowLiveEventsInForeground] = settings.showLiveEventsInForeground
-        prefs[Keys.LockScreenPrivacy] = settings.lockScreenPrivacy.takeIf { it in VALID_LOCK_SCREEN_PRIVACY_VALUES }
-            ?: SmartIslandSettings.Default.lockScreenPrivacy
-        prefs[Keys.ShowNotificationActions] = settings.showNotificationActions
-        prefs[Keys.HideFromNotificationShade] = settings.hideFromNotificationShade
-        prefs[Keys.LiveActivitiesEnabled] = settings.liveActivitiesEnabled
-        prefs[Keys.NavigationEnabled] = settings.navigationEnabled
-        prefs[Keys.DisabledNotificationPackages] = settings.disabledNotificationPackages
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-        prefs[Keys.DisabledSoundPackages] = settings.disabledSoundPackages
-        prefs[Keys.DisabledEvents] = settings.disabledEvents
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-        prefs[Keys.HideWhenIdle] = settings.hideWhenIdle
-        prefs[Keys.AutoHidePill] = settings.autoHidePill
-        prefs[Keys.AutoHideTimeoutSeconds] = settings.autoHideTimeoutSeconds.coerceIn(1, 120)
-        prefs[Keys.ShowInLandscape] = settings.showInLandscape
-        prefs[Keys.AutoExpandOnNotification] = settings.autoExpandOnNotification
-        prefs[Keys.AutoExpandOnLockScreen] = settings.autoExpandOnLockScreen
-        prefs[Keys.EnableShadow] = settings.enableShadow
-        prefs[Keys.ExpandedBlurEnabled] = settings.expandedBlurEnabled
-        prefs[Keys.ExpandedBlurRadius] = settings.expandedBlurRadius
-            .coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
-        prefs[Keys.MediaBlurEnabled] = settings.mediaBlurEnabled
-        prefs[Keys.MediaBlurRadius] = settings.mediaBlurRadius
-            .coerceIn(SmartIslandSettings.MIN_EXPANDED_BLUR, SmartIslandSettings.MAX_EXPANDED_BLUR)
-        prefs[Keys.MediaOpacity] = validDimension(
-            settings.mediaOpacity,
-            SmartIslandSettings.Default.mediaOpacity,
-            SmartIslandSettings.MIN_OPACITY,
-            SmartIslandSettings.MAX_OPACITY
-        )
-        prefs[Keys.ExpandedGradientEnabled] = settings.expandedGradientEnabled
-        prefs[Keys.ExpandedGradientColor] = validColor(settings.expandedGradientColor, SmartIslandSettings.Default.expandedGradientColor)
-        prefs[Keys.ExpandedGradientStrength] = settings.expandedGradientStrength
-            .coerceIn(SmartIslandSettings.MIN_GRADIENT_STRENGTH, SmartIslandSettings.MAX_GRADIENT_STRENGTH)
-        prefs[Keys.ShadowElevation] = validDimension(
-            settings.shadowElevation,
-            SmartIslandSettings.Default.shadowElevation,
-            SmartIslandSettings.MIN_SHADOW_ELEVATION,
-            SmartIslandSettings.MAX_SHADOW_ELEVATION
-        )
-        prefs[Keys.EnableMusicArtworkBackground] = settings.enableMusicArtworkBackground
-        prefs[Keys.EnableNotificationBackdrop] = settings.enableNotificationBackdrop
-        prefs[Keys.DeviceType] = settings.deviceType
-        prefs[Keys.AllowNetworkChecks] = settings.allowNetworkChecks
-        prefs[Keys.DetectTransfersBySpeed] = settings.detectTransfersBySpeed
-        prefs[Keys.EnableNotificationHistory] = settings.enableNotificationHistory
-        prefs[Keys.NotificationHistoryRetentionHours] = settings.notificationHistoryRetentionHours
-        prefs[Keys.ShowBluetoothBattery] = settings.showBluetoothBattery
-        prefs[Keys.EnableBatteryMode] = settings.enableBatteryMode
-        prefs[Keys.EnableNotificationCooldown] = settings.enableNotificationCooldown
-        prefs[Keys.NotificationCooldownDurationMinutes] = settings.notificationCooldownDurationMinutes
-        prefs[Keys.NotificationCooldownThreshold] = settings.notificationCooldownThreshold
-        prefs[Keys.NotificationCooldownExcludedPackages] = settings.notificationCooldownExcludedPackages
-        prefs[Keys.NotificationCooldownSystemEvents] = settings.notificationCooldownSystemEvents
-        prefs[Keys.DeveloperModeEnabled] = settings.developerModeEnabled
-        prefs[Keys.RecordLogs] = settings.recordLogs
-        prefs[Keys.FaceUnlockMode] = settings.faceUnlockMode
-        prefs[Keys.FaceIdStyle] = settings.faceIdStyle
-        prefs[Keys.AppFaceIdEnabled] = settings.appFaceIdEnabled
-        prefs[Keys.AppFaceIdStyle] = settings.appFaceIdStyle
-        prefs[Keys.FingerprintAnimationEnabled] = settings.fingerprintAnimationEnabled
-        prefs[Keys.ThemeMode] = settings.themeMode
-        prefs[Keys.LiquidGlassTheme] = settings.liquidGlassTheme
-        prefs[Keys.MaterialYou] = settings.materialYou
-        prefs[Keys.AccentColor] = validColor(settings.accentColor, SmartIslandSettings.Default.accentColor)
-        prefs[Keys.ExpandedTheme] = if (settings.expandedTheme in SmartIslandSettings.VALID_EXPANDED_THEMES) settings.expandedTheme else SmartIslandSettings.Default.expandedTheme
-        prefs[Keys.IslandFont] = settings.islandFont
-        prefs[Keys.EnableNotchMode] = settings.enableNotchMode
-        prefs[Keys.CameraCutoutManual] = settings.cameraCutoutManual
-        prefs[Keys.CameraCutoutX] = validDimension(settings.cameraCutoutX, SmartIslandSettings.Default.cameraCutoutX, SmartIslandSettings.MIN_X_OFFSET, SmartIslandSettings.MAX_X_OFFSET)
-        prefs[Keys.CameraCutoutY] = validDimension(settings.cameraCutoutY, SmartIslandSettings.Default.cameraCutoutY, SmartIslandSettings.MIN_Y_OFFSET, SmartIslandSettings.MAX_Y_OFFSET)
-        prefs[Keys.CameraCutoutWidth] = validDimension(settings.cameraCutoutWidth, SmartIslandSettings.Default.cameraCutoutWidth, SmartIslandSettings.MIN_CUTOUT_WIDTH, SmartIslandSettings.MAX_CUTOUT_WIDTH)
-        prefs[Keys.CameraCutoutHeight] = validDimension(settings.cameraCutoutHeight, SmartIslandSettings.Default.cameraCutoutHeight, SmartIslandSettings.MIN_CUTOUT_HEIGHT, SmartIslandSettings.MAX_CUTOUT_HEIGHT)
-        prefs[Keys.EnableSwipeActions] = settings.enableSwipeActions
-        prefs[Keys.SwipeUpAction] = settings.swipeUpAction
-        prefs[Keys.SwipeHoldUpAction] = settings.swipeHoldUpAction
-        prefs[Keys.SwipeDownAction] = settings.swipeDownAction
-        prefs[Keys.SwipeDownCollapsedAction] = settings.swipeDownCollapsedAction
-        prefs[Keys.SwipeLeftAction] = settings.swipeLeftAction
-        prefs[Keys.SwipeRightAction] = settings.swipeRightAction
-        prefs[Keys.SwipeHorizontalCollapsedAction] = settings.swipeHorizontalCollapsedAction
-        prefs[Keys.EnablePillSwipeActions] = settings.enablePillSwipeActions
-        prefs[Keys.PillSwipeUpAction] = settings.pillSwipeUpAction
-        prefs[Keys.PillSwipeDownAction] = settings.pillSwipeDownAction
-        prefs[Keys.PillSwipeLeftAction] = settings.pillSwipeLeftAction
-        prefs[Keys.PillSwipeRightAction] = settings.pillSwipeRightAction
-        prefs[Keys.LongPressAction] = settings.longPressAction
-        prefs[Keys.CirclePosition] = if (settings.circlePosition in VALID_CIRCLE_POSITIONS) {
-            settings.circlePosition
-        } else {
-            SmartIslandSettings.CIRCLE_POSITION_RIGHT
-        }
-        prefs[Keys.LandscapeShape] = settings.landscapeShape.takeIf { it in VALID_LANDSCAPE_SHAPES }
-            ?: SmartIslandSettings.Default.landscapeShape
-        prefs[Keys.LandscapeWidth] = settings.landscapeWidth
-        prefs[Keys.LandscapeHeight] = settings.landscapeHeight
-        prefs[Keys.LandscapeXOffset] = settings.landscapeXOffset
-        prefs[Keys.LandscapeYOffset] = settings.landscapeYOffset
-        prefs[Keys.LandscapeCornerRadius] = settings.landscapeCornerRadius
-        prefs[Keys.LandscapeOpacity] = settings.landscapeOpacity
-        prefs[Keys.LandscapeCircleSize] = settings.landscapeCircleSize
-        prefs[Keys.LandscapeCircleOpacity] = settings.landscapeCircleOpacity
-        prefs[Keys.LandscapeCircleEdgeInset] = settings.landscapeCircleEdgeInset
-        prefs[Keys.LandscapeCircleYOffset] = settings.landscapeCircleYOffset
-        prefs[Keys.LandscapeCircleXAdjust] = settings.landscapeCircleXAdjust
-        prefs[Keys.LandscapeCircleYAdjust] = settings.landscapeCircleYAdjust
-        prefs[Keys.LandscapeCirclePosition] = settings.landscapeCirclePosition.takeIf { it in VALID_LANDSCAPE_POSITIONS }
-            ?: SmartIslandSettings.Default.landscapeCirclePosition
-        prefs[Keys.LandscapePillPosition] = settings.landscapePillPosition.takeIf { it in VALID_LANDSCAPE_POSITIONS }
-            ?: SmartIslandSettings.Default.landscapePillPosition
-        prefs[Keys.DisabledEventsLandscape] = settings.disabledEventsLandscape
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-        prefs[Keys.IdleTimeoutMs] = settings.idleTimeoutMs
-            .coerceIn(SmartIslandSettings.MIN_IDLE_TIMEOUT_MS, SmartIslandSettings.MAX_IDLE_TIMEOUT_MS)
-        prefs[Keys.BatteryWarningMs] = settings.batteryWarningMs
-            .coerceIn(SmartIslandSettings.MIN_BATTERY_WARNING_MS, SmartIslandSettings.MAX_BATTERY_WARNING_MS)
-        prefs[Keys.PopupMs] = settings.popupMs
-            .coerceIn(SmartIslandSettings.MIN_POPUP_MS, SmartIslandSettings.MAX_POPUP_MS)
-        prefs[Keys.TransferExpiryMinutes] = settings.transferExpiryMinutes
-            .coerceIn(0, SmartIslandSettings.MAX_TRANSFER_EXPIRY_MINUTES)
-        prefs[Keys.IdleWidgetsEnabled] = settings.idleWidgetsEnabled
-        prefs[Keys.IdleWidgetsEnabledLandscape] = settings.idleWidgetsEnabledLandscape
-        prefs[Keys.IdleOffAfterTapClose] = settings.idleOffAfterTapClose
-        prefs[Keys.IdleOffAfterTapCloseLandscape] = settings.idleOffAfterTapCloseLandscape
-        prefs[Keys.IdleOffAfterLongPress] = settings.idleOffAfterLongPress
-        prefs[Keys.IdleOffAfterLongPressLandscape] = settings.idleOffAfterLongPressLandscape
-        prefs[Keys.IdleOffWhenStored] = settings.idleOffWhenStored
-        prefs[Keys.ContentPillSameAsIdle] = settings.contentPillSameAsIdle
-        prefs[Keys.ContentPillWidthPercent] = settings.contentPillWidthPercent
-        prefs[Keys.IslandExemptApps] = settings.islandExemptApps.filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }.toSet()
-        prefs[Keys.IslandExemptAppsLandscape] = settings.islandExemptAppsLandscape
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }.toSet()
-        prefs[Keys.IslandExemptAppsStatic] = settings.islandExemptAppsStatic
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }.toSet()
-        prefs[Keys.ContentPillSameAsIdleLandscape] = settings.contentPillSameAsIdleLandscape
-        prefs[Keys.ContentPillWidthPercentLandscape] = settings.contentPillWidthPercentLandscape
-        prefs[Keys.IdleOffWhenStoredLandscape] = settings.idleOffWhenStoredLandscape
-        prefs[Keys.IdleGlyphTickSeconds] = com.agupta07505.smartisland.model.IdleSlots.normalizeTickSeconds(settings.idleGlyphTickSeconds)
-        prefs[Keys.IdleWidgetIds] = com.agupta07505.smartisland.model.IdleWidgets.normalize(settings.idleWidgetIds)
-        prefs[Keys.IdleWidgetCycleSeconds] = settings.idleWidgetCycleSeconds.coerceIn(
-            com.agupta07505.smartisland.model.IdleWidgets.MIN_CYCLE_SECONDS,
-            com.agupta07505.smartisland.model.IdleWidgets.MAX_CYCLE_SECONDS
-        )
-        prefs[Keys.WidgetIslandCloseSeconds] = com.agupta07505.smartisland.model.WidgetIslandTimer.normalize(settings.widgetIslandCloseSeconds)
-        prefs[Keys.IdleAlarmHideBeyond12h] = settings.idleAlarmHideBeyond12h
-        prefs[Keys.BatteryOnlyWhenCharging] = settings.batteryOnlyWhenCharging
-        prefs[Keys.IdleBeatOnlyOnChange] = settings.idleBeatOnlyOnChange
-        prefs[Keys.WidgetIslandBatteryMetric] = settings.widgetIslandBatteryMetric
-            .takeIf { it in com.agupta07505.smartisland.model.WidgetIslandContent.VALID_BATTERY_METRICS } ?: com.agupta07505.smartisland.model.WidgetIslandContent.BATTERY_WATT
-        prefs[Keys.IdleGlyphFont] = settings.idleGlyphFont.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: ""
-        prefs[Keys.FontMixEnabled] = settings.fontMixEnabled
-        prefs[Keys.FontMixLight] = settings.fontMixLight.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: ""
-        prefs[Keys.FontMixRegular] = settings.fontMixRegular.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: ""
-        prefs[Keys.FontMixMedium] = settings.fontMixMedium.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: ""
-        prefs[Keys.IdleGlyphScale] = com.agupta07505.smartisland.model.IdleSlots.normalizeGlyphScale(settings.idleGlyphScale)
-        prefs[Keys.IdleWidgetTempUnit] = settings.idleWidgetTempUnit
-            .takeIf { it in com.agupta07505.smartisland.model.IdleWidgets.VALID_UNITS }
-            ?: com.agupta07505.smartisland.model.IdleWidgets.UNIT_AUTO
-        prefs[Keys.IdleWidgetWindUnit] = settings.idleWidgetWindUnit
-            .takeIf { it in com.agupta07505.smartisland.model.IdleWidgets.VALID_WIND_UNITS }
-            ?: com.agupta07505.smartisland.model.IdleWidgets.UNIT_AUTO
-        prefs[Keys.WeatherLocationSource] = com.agupta07505.smartisland.model.WeatherConfig.normalizeSource(settings.weatherLocationSource)
-        prefs[Keys.WeatherManualCity] = com.agupta07505.smartisland.model.WeatherConfig.normalizeCity(settings.weatherManualCity)
-        prefs[Keys.WeatherManualLat] = settings.weatherManualLat
-        prefs[Keys.WeatherManualLon] = settings.weatherManualLon
-        prefs[Keys.WeatherRefreshMinutes] = com.agupta07505.smartisland.model.WeatherConfig.normalizeRefreshMinutes(settings.weatherRefreshMinutes)
-        prefs[Keys.WeatherProvider] = com.agupta07505.smartisland.model.WeatherConfig.normalizeProvider(settings.weatherProvider)
-        prefs[Keys.WeatherCustomUrl] = com.agupta07505.smartisland.model.WeatherConfig.normalizeCustomUrl(settings.weatherCustomUrl)
-        // A restore does not carry the API key (backups never hold it); keep the one already on the device.
-        prefs[Keys.WeatherPillMode] = com.agupta07505.smartisland.model.WeatherPill.normalize(settings.weatherPillMode)
-        prefs[Keys.WeatherIslandReadouts] = com.agupta07505.smartisland.model.WeatherReadouts.normalize(settings.weatherIslandReadouts)
-        prefs[Keys.WeatherIconAnimated] = settings.weatherIconAnimated
-        prefs[Keys.WeatherIconPauseOnSaver] = settings.weatherIconPauseOnSaver
-        prefs[Keys.WeatherShowRule] = com.agupta07505.smartisland.model.WeatherRules.normalizeMode(settings.weatherShowRule)
-        prefs[Keys.WeatherNotableTriggers] = com.agupta07505.smartisland.model.WeatherRules.normalizeTriggers(settings.weatherNotableTriggers)
-        prefs[Keys.WeatherHotC] = com.agupta07505.smartisland.model.WeatherRules.normalizeHotC(settings.weatherHotC)
-        prefs[Keys.WeatherColdC] = com.agupta07505.smartisland.model.WeatherRules.normalizeColdC(settings.weatherColdC)
-        prefs[Keys.WeatherHideAtNight] = settings.weatherHideAtNight
-        prefs[Keys.WeatherNightStartHour] = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(settings.weatherNightStartHour)
-        prefs[Keys.WeatherNightEndHour] = com.agupta07505.smartisland.model.WeatherRules.normalizeHour(settings.weatherNightEndHour)
-        prefs[Keys.NetSpeedThresholdKbps] = com.agupta07505.smartisland.model.NetSpeedRules.normalize(settings.netSpeedThresholdKbps)
-        prefs[Keys.NetSpeedConnection] = com.agupta07505.smartisland.model.NetSpeedRules.normalizeConnection(settings.netSpeedConnection)
-        prefs[Keys.IdleScheduleWorkEnabled] = settings.idleScheduleWorkEnabled
-        prefs[Keys.IdleScheduleWorkHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(settings.idleScheduleWorkHidden)
-        prefs[Keys.IdleScheduleWorkStartHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(settings.idleScheduleWorkStartHour)
-        prefs[Keys.IdleScheduleWorkEndHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(settings.idleScheduleWorkEndHour)
-        prefs[Keys.IdleScheduleWorkWeekdaysOnly] = settings.idleScheduleWorkWeekdaysOnly
-        prefs[Keys.IdleScheduleNightEnabled] = settings.idleScheduleNightEnabled
-        prefs[Keys.IdleScheduleNightHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(settings.idleScheduleNightHidden)
-        prefs[Keys.IdleScheduleNightStartHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(settings.idleScheduleNightStartHour)
-        prefs[Keys.IdleScheduleNightEndHour] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHour(settings.idleScheduleNightEndHour)
-        prefs[Keys.IdleScheduleChargingEnabled] = settings.idleScheduleChargingEnabled
-        prefs[Keys.IdleScheduleChargingHidden] = com.agupta07505.smartisland.model.IdleSchedule.normalizeHidden(settings.idleScheduleChargingHidden)
-        prefs[Keys.IdleWidgetPinnedFirst] = com.agupta07505.smartisland.model.IdleSchedule.normalizePinned(settings.idleWidgetPinnedFirst)
-        prefs[Keys.IdleTickStyle] = com.agupta07505.smartisland.model.LedTick.normalizeStyle(settings.idleTickStyle)
-        prefs[Keys.LedTickPattern] = com.agupta07505.smartisland.model.LedTick.normalizePattern(settings.ledTickPattern)
-        prefs[Keys.LedTickPaceMs] = com.agupta07505.smartisland.model.LedTick.normalizePace(settings.ledTickPaceMs)
-        prefs[Keys.LedTickFont] = settings.ledTickFont.takeIf { it.isEmpty() || SmartIslandSettings.isValidFont(it) } ?: ""
-        prefs[Keys.LedTickColor] = com.agupta07505.smartisland.model.LedTick.normalizeColor(settings.ledTickColor)
-        prefs[Keys.LedTickStagger] = settings.ledTickStagger
-        prefs[Keys.SecondaryMergeMs] = settings.secondaryMergeMs
-            .coerceIn(SmartIslandSettings.MIN_SECONDARY_MERGE_MS, SmartIslandSettings.MAX_SECONDARY_MERGE_MS)
-        prefs[Keys.AnimSpeedPortrait] = settings.animSpeedPortrait
-            .takeIf { it in AnimationSpeed.VALID_IDS } ?: SmartIslandSettings.Default.animSpeedPortrait
-        prefs[Keys.AnimSpeedLandscape] = settings.animSpeedLandscape
-            .takeIf { it in AnimationSpeed.VALID_IDS } ?: SmartIslandSettings.Default.animSpeedLandscape
-        prefs[Keys.MergeStyleId] = settings.mergeStyle
-            .takeIf { it in MergeStyle.VALID_IDS } ?: SmartIslandSettings.Default.mergeStyle
-        prefs[Keys.MergeStyleLandscapeId] = settings.mergeStyleLandscape
-            .takeIf { it in MergeStyle.VALID_IDS } ?: SmartIslandSettings.Default.mergeStyleLandscape
-        prefs[Keys.ShowDuringDnd] = settings.showDuringDnd
-        prefs[Keys.HapticStrength] = settings.hapticStrength
-            .takeIf { it in com.agupta07505.smartisland.util.HapticStrength.VALID_IDS } ?: SmartIslandSettings.Default.hapticStrength
-        prefs[Keys.FloatingWindowEnabled] = settings.floatingWindowEnabled
-        prefs[Keys.FloatingWindowMode] = settings.floatingWindowMode
-            .takeIf { it in com.agupta07505.smartisland.model.FloatingWindowMode.VALID_IDS } ?: SmartIslandSettings.Default.floatingWindowMode
-        prefs[Keys.GestureSensitivityId] = settings.gestureSensitivity
-            .takeIf { it in com.agupta07505.smartisland.util.GestureSensitivity.VALID_IDS } ?: SmartIslandSettings.Default.gestureSensitivity
-        prefs[Keys.NoExpandPackages] = settings.noExpandPackages
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-        prefs[Keys.NoAutoExpandPackages] = settings.noAutoExpandPackages
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
-        prefs[Keys.AutoExpandPackages] = settings.autoExpandPackages
-            .asSequence()
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .filter { it !in settings.noAutoExpandPackages }
-            .toSet()
-        prefs[Keys.NoAutoExpandEvents] = settings.noAutoExpandEvents
-            .filter { id -> com.agupta07505.smartisland.model.IslandEvent.entries.any { it.id == id } }
-            .toSet()
-        prefs[Keys.HideAllOnLockScreen] = settings.hideAllOnLockScreen
-        prefs[Keys.HideOnLockScreenEvents] = settings.hideOnLockScreenEvents
-            .filter { id -> com.agupta07505.smartisland.model.IslandEvent.entries.any { it.id == id && it.canHideOnLockScreen } }
-            .toSet()
-        prefs[Keys.NotificationsEnabled] = settings.notificationsEnabled
-        prefs[Keys.HideOnLockScreenPackages] = settings.hideOnLockScreenPackages
-            .filter { it.isNotBlank() && it.length <= MAX_PACKAGE_NAME_LENGTH }
-            .toSet()
+        writeSettings(prefs, settings)
     }
 
     suspend fun resetAllSettings() {
-        restoreSettings(SmartIslandSettings.Default.copy(welcomeDialogShown = true))
-        // A restore leaves the weather API key alone (backups never hold it), so a factory reset clears it explicitly.
+        val base = SmartIslandSettings.Default
+        restoreSettings(
+            base.copy(
+                welcomeDialogShown = true,
+                enableNotchMode = teardropPhone,
+                edgePill = base.edgePill.copy(flatEdge = teardropPhone)
+            )
+        )
+        // a restore leaves the weather API key alone (backups never hold it)
         setWeatherCustomKey("")
+        // The saved per-mode layouts go with the rest of the settings
+        editSafely {
+            it.remove(SettingsKeys.SavedCompactLayout); it.remove(SettingsKeys.SavedNotchLayout)
+            it.remove(SettingsKeys.SavedEdgeFlatLook); it.remove(SettingsKeys.SavedEdgeRoundLook)
+            // Every fold mode goes back to following the normal settings
+            FoldProfiles.clearAll(it)
+        }
     }
 
     private suspend fun editSafely(transform: suspend (MutablePreferences) -> Unit) {
         try {
-            context.smartIslandDataStore.edit(transform)
+            val mode = activeProfile
+            if (mode == null) {
+                context.smartIslandDataStore.edit(transform)
+            } else {
+                context.smartIslandDataStore.edit { raw -> FoldProfiles.edit(raw, mode, transform) }
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
-            Log.e(TAG, "Unable to persist settings", error)
+            AppLogRecorder.e(TAG, "could not persist settings", error)
         }
     }
 
-    private fun validDimension(
-        value: Float?,
-        fallback: Float,
-        min: Float,
-        max: Float
-    ): Float = value?.takeIf { it.isFinite() }?.coerceIn(min, max) ?: fallback
+    private suspend fun <T> put(key: Preferences.Key<T>, value: T) = editSafely { it[key] = value }
 
-    private fun writePinnedApps(prefs: MutablePreferences, value: List<String>) {
-        prefs[Keys.ShortcutOrder] = PinnedApps.encode(value)
-        prefs.remove(Keys.ShortcutPackages)
-    }
+    private suspend fun <T, R> putMapped(key: Preferences.Key<R>, value: T, map: (T) -> R) =
+        editSafely { it[key] = map(value) }
 
-    private fun validColor(value: Long?, fallback: Long): Long =
-        value?.takeIf { it != 0L } ?: fallback
+    private suspend fun <T : Comparable<T>> putClamped(key: Preferences.Key<T>, value: T, min: T, max: T) =
+        editSafely { it[key] = value.coerceIn(min, max) }
+
+    private suspend fun putDimension(key: Preferences.Key<Float>, value: Float?, fallback: Float, min: Float,
+            max: Float) =
+        editSafely { it[key] = validDimension(value, fallback, min, max) }
+
+    private suspend fun putColor(key: Preferences.Key<Long>, value: Long?, fallback: Long) =
+        editSafely { it[key] = validColor(value, fallback) }
+
+    private suspend fun putChoice(key: Preferences.Key<String>, value: String, valid: Set<String>, fallback: String) =
+        editSafely { it[key] = if (value in valid) value else fallback }
+
+    private suspend fun togglePackage(key: Preferences.Key<Set<String>>, packageName: String, present: Boolean) =
+        editSafely {
+            if (!validPackage(packageName)) return@editSafely
+            it.setMembership(key, packageName, present)
+        }
 
     private companion object {
         const val TAG = "SmartIslandSettings"
-        const val MAX_SHORTCUTS = 8
-        const val MAX_PACKAGE_NAME_LENGTH = 255
-        val VALID_LOCK_SCREEN_PRIVACY_VALUES = setOf("AppIconOnly", "FullContent")
-        val VALID_CIRCLE_POSITIONS = setOf(
-            SmartIslandSettings.CIRCLE_POSITION_RIGHT,
-            SmartIslandSettings.CIRCLE_POSITION_LEFT
-        )
-        val VALID_LANDSCAPE_SHAPES = setOf(
-            SmartIslandSettings.LANDSCAPE_SHAPE_PILL,
-            SmartIslandSettings.LANDSCAPE_SHAPE_CIRCLE
-        )
-        val VALID_LANDSCAPE_POSITIONS = setOf(
-            SmartIslandSettings.LANDSCAPE_POSITION_AUTO,
-            SmartIslandSettings.LANDSCAPE_POSITION_LEFT,
-            SmartIslandSettings.LANDSCAPE_POSITION_RIGHT,
-            SmartIslandSettings.LANDSCAPE_POSITION_MIDDLE
-        )
     }
 }

@@ -137,10 +137,11 @@ class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
         } ?: emptyList()
     }
 
+    /** Rows deleted, or -1 when the delete failed (0 means the row was already gone). */
     fun deleteById(id: Long): Int {
         return runCatchingLogged(TAG, "Failed to delete entry $id") {
             writableDatabase.delete(TABLE_HISTORY, "$COL_ID = ?", arrayOf(id.toString()))
-        } ?: 0
+        } ?: -1
     }
 
     fun deleteByPackage(packageName: String): Int {
@@ -149,10 +150,11 @@ class NotificationHistoryDbHelper(context: Context) : SQLiteOpenHelper(
         } ?: 0
     }
 
+    /** Rows deleted, or -1 when the delete failed. */
     fun deleteAll(): Int {
         return runCatchingLogged(TAG, "Failed to clear all history") {
             writableDatabase.delete(TABLE_HISTORY, null, null)
-        } ?: 0
+        } ?: -1
     }
 
     fun deleteOlderThan(cutoffMillis: Long): Int {

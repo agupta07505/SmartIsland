@@ -12,6 +12,8 @@ buildscript {
     }
     dependencies {
         classpath("com.android.tools.build:gradle:9.1.1")
+        // Newer R8 than the one bundled with AGP (resolves from Google Maven; highest version wins)
+        classpath("com.android.tools:r8:9.4.38")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21")
         classpath("org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.3.21")
         classpath("com.google.dagger:hilt-android-gradle-plugin:2.60.1")

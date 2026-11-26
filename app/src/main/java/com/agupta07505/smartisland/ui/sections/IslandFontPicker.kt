@@ -8,7 +8,6 @@
 package com.agupta07505.smartisland.ui.sections
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -41,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.R
@@ -53,18 +53,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Pick the font of the island's text. Each row shows its own name in its own font. Under the built-in fonts the user
- * can add a font from a .ttf or .otf file; added fonts can be removed again.
- */
 @Composable
 internal fun IslandFontPicker(
     selected: String,
     onSelected: (String) -> Unit,
-    /** Another title and description than the island font's (the idle glyph font uses the same picker). */
+    /** Another title and description than the island font's, the idle glyph font uses the same picker. */
     title: String? = null,
     description: String? = null,
-    /** A first row that stands for "no font of its own" (selected = ""): label and note. Null = no such row. */
+    /** "No font of its own" row (selected = ""), null = no such row. */
     inheritRow: Pair<String, String>? = null
 ) {
     val context = LocalContext.current
@@ -81,14 +77,14 @@ internal fun IslandFontPicker(
                 is CustomFonts.ImportResult.Added -> {
                     customFonts = CustomFonts.list(context)
                     onSelected(result.id)
-                    Toast.makeText(context, context.getString(R.string.island_font_added), Toast.LENGTH_SHORT).show()
+                    context.showToast(context.getString(R.string.island_font_added))
                 }
                 CustomFonts.ImportResult.TooLarge ->
-                    Toast.makeText(context, context.getString(R.string.island_font_too_large), Toast.LENGTH_LONG).show()
+                    context.showToast(context.getString(R.string.island_font_too_large), long = true)
                 CustomFonts.ImportResult.NotAFont ->
-                    Toast.makeText(context, context.getString(R.string.island_font_not_a_font), Toast.LENGTH_LONG).show()
+                    context.showToast(context.getString(R.string.island_font_not_a_font), long = true)
                 CustomFonts.ImportResult.Failed ->
-                    Toast.makeText(context, context.getString(R.string.island_font_import_failed), Toast.LENGTH_LONG).show()
+                    context.showToast(context.getString(R.string.island_font_import_failed), long = true)
             }
         }
     }
@@ -116,7 +112,7 @@ internal fun IslandFontPicker(
             FontRow(
                 label = label,
                 note = note,
-                family = androidx.compose.ui.text.font.FontFamily.Default,
+                family = FontFamily.Default,
                 isSelected = selected.isEmpty(),
                 onClick = { onSelected("") }
             )
@@ -184,7 +180,7 @@ internal fun IslandFontPicker(
 private fun FontRow(
     label: String,
     note: String,
-    family: androidx.compose.ui.text.font.FontFamily,
+    family: FontFamily,
     isSelected: Boolean,
     onClick: () -> Unit,
     onRemove: (() -> Unit)? = null

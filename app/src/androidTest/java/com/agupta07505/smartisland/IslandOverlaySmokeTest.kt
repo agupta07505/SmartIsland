@@ -25,7 +25,7 @@ class IslandOverlaySmokeTest {
     val compose = createComposeRule()
 
     @Test
-    fun collapsed_renders_battery() {
+    fun collapsedPillRendersTheBatteryPercentage() {
         compose.setContent {
             SmartIslandTheme {
                 IslandCollapsedContent(

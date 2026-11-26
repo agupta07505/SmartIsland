@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.util
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,14 +85,22 @@ class FaceUnlockWatcher(
                             }
                         }
                     }
-                } catch (_: Throwable) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    AppLogRecorder.d(TAG, "log stream ended: ${t.javaClass.simpleName}")
                 } finally {
-                    runCatching { p.destroy() }
+                    try {
+                        p.destroy()
+                    } catch (e: Exception) {
+                        AppLogRecorder.e("FaceUnlockWatcher", "Could not stop the log process", e)
+                    }
                     process = null
                 }
                 if (!isActive) break
                 if (filtered && lines == 0 && System.currentTimeMillis() - started < QUICK_END_MS) filtered = false
-                pause = if (System.currentTimeMillis() - started > STABLE_MS) RETRY_MIN_MS else minOf(pause * 2, RETRY_MAX_MS)
+                pause = if (System.currentTimeMillis() - started > STABLE_MS) RETRY_MIN_MS else minOf(pause * 2,
+                    RETRY_MAX_MS)
                 delay(pause)
             }
         }
@@ -100,7 +109,11 @@ class FaceUnlockWatcher(
     fun stop() {
         job?.cancel()
         job = null
-        runCatching { process?.destroy() }
+        try {
+            process?.destroy()
+        } catch (e: Exception) {
+            AppLogRecorder.e("FaceUnlockWatcher", "Could not stop the log process", e)
+        }
         process = null
     }
 

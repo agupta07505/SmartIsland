@@ -21,8 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 
-// Drop-in replacements for Material 3's Card and Switch: the screens import these, so every card picks up the glass
-// edge and the glass switch colours.
+// Drop-in for Material 3 Card and Switch, so every screen picks up the glass edge and switch colours
 
 @Composable
 fun Card(
@@ -79,7 +78,7 @@ fun Card(
     )
 }
 
-/** Switch colours of the glass theme: a white thumb on the accent track, and a faint glass track when off. */
+/** White thumb on the accent track, faint glass track when off. */
 @Composable
 fun glassSwitchColors(): SwitchColors =
     if (LocalLiquidGlass.current) {

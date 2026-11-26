@@ -7,67 +7,68 @@
 
 package com.agupta07505.smartisland.ui.sections
 
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.semantics.Role
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.rounded.CloseFullscreen
-import androidx.compose.material.icons.rounded.OpenInFull
-import androidx.compose.ui.res.stringResource
-import com.agupta07505.smartisland.R
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.location.LocationManager
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.HeadsetOff
-import androidx.compose.material.icons.rounded.UsbOff
-import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.material.icons.rounded.AirplanemodeActive
 import androidx.compose.material.icons.rounded.AvTimer
 import androidx.compose.material.icons.rounded.Backup
-import androidx.compose.material.icons.rounded.DeleteSweep
-import androidx.compose.material.icons.rounded.Face
-import androidx.compose.material.icons.rounded.FileCopy
-import androidx.compose.material.icons.rounded.InstallMobile
 import androidx.compose.material.icons.rounded.BatteryAlert
 import androidx.compose.material.icons.rounded.BatteryFull
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.BluetoothConnected
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.CallEnd
+import androidx.compose.material.icons.rounded.CloseFullscreen
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material.icons.rounded.FileCopy
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.FlashlightOn
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.HeadsetOff
 import androidx.compose.material.icons.rounded.HourglassBottom
+import androidx.compose.material.icons.rounded.HourglassTop
+import androidx.compose.material.icons.rounded.InstallMobile
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Navigation
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material.icons.rounded.Power
-import androidx.compose.material.icons.rounded.Cast
-import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PowerOff
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Usb
+import androidx.compose.material.icons.rounded.UsbOff
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material.icons.rounded.VpnKeyOff
 import androidx.compose.material.icons.rounded.Wifi
@@ -75,32 +76,40 @@ import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import com.agupta07505.smartisland.ui.glass.Switch
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IslandEvent
 import com.agupta07505.smartisland.ui.components.CollapsibleCard
+import com.agupta07505.smartisland.ui.glass.Switch
 import com.agupta07505.smartisland.ui.search.searchAnchor
+import com.agupta07505.smartisland.util.runCatchingLogged
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 internal fun eventSearchKey(event: IslandEvent): String = "event.${event.group}.${event.id}"
 
@@ -120,7 +129,14 @@ internal fun iconFor(event: IslandEvent): ImageVector = when (event) {
     IslandEvent.HEADPHONES_CONNECTED -> Icons.Rounded.Headphones
     IslandEvent.HEADPHONES_DISCONNECTED -> Icons.Rounded.HeadsetOff
     IslandEvent.HOTSPOT -> Icons.Rounded.WifiTethering
+    IslandEvent.AIRPLANE_MODE -> Icons.Rounded.AirplanemodeActive
+    IslandEvent.RING -> Icons.Rounded.NotificationsActive
+    IslandEvent.VIBRATE -> Icons.Rounded.Vibration
+    IslandEvent.SILENT -> Icons.Rounded.VolumeOff
+    IslandEvent.DND -> Icons.Rounded.DoNotDisturbOn
+    IslandEvent.MODE -> Icons.Rounded.DirectionsCar
     IslandEvent.CALL -> Icons.Rounded.Call
+    IslandEvent.CALL_ENDED -> Icons.Rounded.CallEnd
     IslandEvent.MUSIC -> Icons.Rounded.MusicNote
     IslandEvent.NOTIFICATION -> Icons.Rounded.Notifications
     IslandEvent.NAVIGATION -> Icons.Rounded.Explore
@@ -135,6 +151,7 @@ internal fun iconFor(event: IslandEvent): ImageVector = when (event) {
     IslandEvent.SCREEN_RECORDING -> Icons.Rounded.Videocam
     IslandEvent.AUDIO_RECORDING -> Icons.Rounded.Mic
     IslandEvent.TIMER -> Icons.Rounded.HourglassBottom
+    IslandEvent.TIMER_FINISHED -> Icons.Rounded.HourglassTop
     IslandEvent.STOPWATCH -> Icons.Rounded.AvTimer
     IslandEvent.FACE_UNLOCK -> Icons.Rounded.Face
 }
@@ -157,7 +174,7 @@ fun EventTogglesSection(
     val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationGranted = granted
     }
-    // Permission and the location switch can change in system settings; re-read when coming back.
+    // Permission and location switch can change in system settings, re-read on return
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
@@ -173,122 +190,261 @@ fun EventTogglesSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         IslandEvent.entries.groupBy { it.group }.entries.forEachIndexed { groupIndex, (group, events) ->
-            fun isOn(event: IslandEvent) =
-                if (landscape) settings.isLandscapeEventEnabled(event.id) else settings.isEventEnabled(event.id)
+            EventGroupCard(
+                group = group,
+                groupIndex = groupIndex,
+                events = events,
+                settings = settings,
+                repository = repository,
+                landscape = landscape,
+                scope = scope,
+                configuration = configuration,
+                context = context,
+                locationGranted = locationGranted,
+                locationOn = locationOn,
+                onRequestLocation = { locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
+                onOpenFaceIdSettings = onOpenFaceIdSettings
+            )
+        }
+    }
+}
 
-            val onCount = events.count { isOn(it) }
-            CollapsibleCard(
-                title = group,
-                stateKey = "events_${if (landscape) "land" else "port"}_$group",
-                summary = "$onCount of ${events.size} on",
-                icon = iconFor(events.first()),
-                initiallyExpanded = groupIndex == 0,
-                searchKeyPrefix = "event.$group.",
-                trailing = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Auto-expand for the whole group: on when every event that has the switch is on.
-                        val switchable = events.filter { it.canSwitchAutoExpand }
-                        if (switchable.isNotEmpty()) {
-                            val allAuto = switchable.all { settings.isEventAutoExpand(it.id) }
-                            AutoExpandBadge(
-                                on = allAuto,
-                                modifier = Modifier.size(32.dp),
-                                onChange = { turnOn ->
-                                    scope.launch {
-                                        switchable.forEach { repository.setEventAutoExpand(it.id, turnOn) }
-                                    }
-                                }
-                            )
+@Composable
+private fun EventGroupCard(
+    group: String,
+    groupIndex: Int,
+    events: List<IslandEvent>,
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository,
+    landscape: Boolean,
+    scope: CoroutineScope,
+    configuration: Configuration,
+    context: Context,
+    locationGranted: Boolean,
+    locationOn: Boolean,
+    onRequestLocation: () -> Unit,
+    onOpenFaceIdSettings: () -> Unit
+) {
+    fun isOn(event: IslandEvent) =
+        if (landscape) settings.isLandscapeEventEnabled(event.id) else settings.isEventEnabled(event.id)
+
+    val onCount = events.count { isOn(it) }
+    CollapsibleCard(
+        title = group,
+        stateKey = "events_${if (landscape) "land" else "port"}_$group",
+        summary = "$onCount of ${events.size} on",
+        icon = iconFor(events.first()),
+        initiallyExpanded = groupIndex == 0,
+        searchKeyPrefix = "event.$group.",
+        trailing = {
+            EventGroupTrailing(
+                events = events,
+                settings = settings,
+                repository = repository,
+                landscape = landscape,
+                scope = scope,
+                onCount = onCount
+            )
+        }
+    ) {
+        EventGroupContent(
+            events = events,
+            isOn = ::isOn,
+            settings = settings,
+            repository = repository,
+            landscape = landscape,
+            scope = scope,
+            configuration = configuration,
+            context = context,
+            locationGranted = locationGranted,
+            locationOn = locationOn,
+            onRequestLocation = onRequestLocation,
+            onOpenFaceIdSettings = onOpenFaceIdSettings
+        )
+    }
+}
+
+@Composable
+private fun EventGroupTrailing(
+    events: List<IslandEvent>,
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository,
+    landscape: Boolean,
+    scope: CoroutineScope,
+    onCount: Int
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // auto-expand for the whole group: on when every event that has the switch is on
+        val switchable = events.filter { it.canSwitchAutoExpand }
+        if (switchable.isNotEmpty()) {
+            val allAuto = switchable.all {
+                if (landscape) settings.isLandscapeEventAutoExpand(it.id) else settings.isEventAutoExpand(it.id)
+            }
+            AutoExpandBadge(
+                on = allAuto,
+                modifier = Modifier.size(32.dp),
+                onChange = { turnOn ->
+                    scope.launch {
+                        switchable.forEach {
+                            if (landscape) repository.setLandscapeEventAutoExpand(it.id, turnOn)
+                            else repository.setEventAutoExpand(it.id, turnOn)
                         }
-                        Switch(
-                            checked = onCount == events.size,
-                            onCheckedChange = { turnOn ->
-                                scope.launch {
-                                    events.forEach { event ->
-                                        if (landscape) repository.setLandscapeEventEnabled(event.id, turnOn)
-                                        else repository.setEventEnabled(event.id, turnOn)
-                                    }
-                                }
-                            }
-                        )
                     }
                 }
-            ) {
-                val columns = eventGridColumns(configuration.screenWidthDp)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    gridRows(events, columns).forEach { rowEvents ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowEvents.forEach { event ->
-                                EventTile(
-                                    title = event.shortLabel,
-                                    icon = iconFor(event),
-                                    checked = isOn(event),
-                                    autoExpand = if (event.canSwitchAutoExpand) settings.isEventAutoExpand(event.id) else null,
-                                    onAutoExpandChange = { turnOn ->
-                                        scope.launch { repository.setEventAutoExpand(event.id, turnOn) }
-                                    },
-                                    onOpenSettings = if (event == IslandEvent.FACE_UNLOCK) onOpenFaceIdSettings else null,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .searchAnchor(eventSearchKey(event)),
-                                    onCheckedChange = { turnOn ->
-                                        scope.launch {
-                                            if (landscape) repository.setLandscapeEventEnabled(event.id, turnOn)
-                                            else repository.setEventEnabled(event.id, turnOn)
-                                        }
-                                        if (turnOn && event == IslandEvent.WIFI && !locationGranted) {
-                                            locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                                        }
-                                    }
-                                )
-                            }
-                            // Empty cells keep a short last row's tiles the same width as the rest.
-                            repeat(columns - rowEvents.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                    }
-
-                    // Prompts that belong to a row (location for Wi-Fi, network checks for
-                    // VPN, Shizuku for screen sharing) live under the grid, with their button.
+            )
+        }
+        Switch(
+            checked = onCount == events.size,
+            onCheckedChange = { turnOn ->
+                scope.launch {
                     events.forEach { event ->
-                        val needsLocation = event == IslandEvent.WIFI && !locationGranted
-                        val needsLocationSwitch = event == IslandEvent.WIFI && locationGranted && !locationOn
-                        val note = when {
-                            needsLocation -> "Wi-Fi: grant location permission to show the network name"
-                            needsLocationSwitch -> "Wi-Fi: turn on location services to show the network name"
-                            event == IslandEvent.VPN && !settings.allowNetworkChecks -> "VPN: location needs network checks turned on"
-                            else -> null
-                        }
-                        if (note != null) {
-                            EventNote(
-                                text = note,
-                                actionLabel = when {
-                                    needsLocation -> "Grant"
-                                    needsLocationSwitch -> "Turn on"
-                                    else -> null
-                                },
-                                onAction = {
-                                    if (needsLocation) {
-                                        locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                                    } else {
-                                        runCatching {
-                                            context.startActivity(
-                                                Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            )
-                                        }
-                                    }
-                                }
-                            )
-                        }
+                        if (landscape) repository.setLandscapeEventEnabled(event.id, turnOn)
+                        else repository.setEventEnabled(event.id, turnOn)
                     }
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun EventGroupContent(
+    events: List<IslandEvent>,
+    isOn: (IslandEvent) -> Boolean,
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository,
+    landscape: Boolean,
+    scope: CoroutineScope,
+    configuration: Configuration,
+    context: Context,
+    locationGranted: Boolean,
+    locationOn: Boolean,
+    onRequestLocation: () -> Unit,
+    onOpenFaceIdSettings: () -> Unit
+) {
+    val columns = eventGridColumns(configuration.screenWidthDp)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        EventTileRows(
+            events = events,
+            columns = columns,
+            isOn = isOn,
+            settings = settings,
+            repository = repository,
+            landscape = landscape,
+            scope = scope,
+            locationGranted = locationGranted,
+            onRequestLocation = onRequestLocation,
+            onOpenFaceIdSettings = onOpenFaceIdSettings
+        )
+
+        EventNotesList(
+            events = events,
+            settings = settings,
+            context = context,
+            locationGranted = locationGranted,
+            locationOn = locationOn,
+            onRequestLocation = onRequestLocation
+        )
+    }
+}
+
+@Composable
+private fun EventTileRows(
+    events: List<IslandEvent>,
+    columns: Int,
+    isOn: (IslandEvent) -> Boolean,
+    settings: SmartIslandSettings,
+    repository: SmartIslandSettingsRepository,
+    landscape: Boolean,
+    scope: CoroutineScope,
+    locationGranted: Boolean,
+    onRequestLocation: () -> Unit,
+    onOpenFaceIdSettings: () -> Unit
+) {
+    gridRows(events, columns).forEach { rowEvents ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            rowEvents.forEach { event ->
+                EventTile(
+                    title = event.shortLabel,
+                    icon = iconFor(event),
+                    checked = isOn(event),
+                    autoExpand = if (event.canSwitchAutoExpand) {
+                        if (landscape) settings.isLandscapeEventAutoExpand(event.id) else settings.isEventAutoExpand(event.id)
+                    } else null,
+                    onAutoExpandChange = { turnOn ->
+                        scope.launch {
+                            if (landscape) repository.setLandscapeEventAutoExpand(event.id, turnOn)
+                            else repository.setEventAutoExpand(event.id, turnOn)
+                        }
+                    },
+                    onOpenSettings = if (event == IslandEvent.FACE_UNLOCK) onOpenFaceIdSettings else null,
+                    modifier = Modifier
+                        .weight(1f)
+                        .searchAnchor(eventSearchKey(event)),
+                    onCheckedChange = { turnOn ->
+                        scope.launch {
+                            if (landscape) repository.setLandscapeEventEnabled(event.id, turnOn)
+                            else repository.setEventEnabled(event.id, turnOn)
+                        }
+                        if (turnOn && event == IslandEvent.WIFI && !locationGranted) {
+                            onRequestLocation()
+                        }
+                    }
+                )
+            }
+            // Empty cells keep a short last row's tiles the same width as the rest
+            repeat(columns - rowEvents.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+}
+
+@Composable
+private fun EventNotesList(
+    events: List<IslandEvent>,
+    settings: SmartIslandSettings,
+    context: Context,
+    locationGranted: Boolean,
+    locationOn: Boolean,
+    onRequestLocation: () -> Unit
+) {
+    // Prompts that belong to a row (location for Wi-Fi, network checks for VPN, Shizuku for screen sharing) sit under
+    // the grid with their button
+    events.forEach { event ->
+        val needsLocation = event == IslandEvent.WIFI && !locationGranted
+        val needsLocationSwitch = event == IslandEvent.WIFI && locationGranted && !locationOn
+        val note = when {
+            needsLocation -> "Wi-Fi: grant location permission to show the network name"
+            needsLocationSwitch -> "Wi-Fi: turn on location services to show the network name"
+            event == IslandEvent.VPN && !settings.allowNetworkChecks -> "VPN: location needs network checks turned on"
+            else -> null
+        }
+        if (note != null) {
+            EventNote(
+                text = note,
+                actionLabel = when {
+                    needsLocation -> "Grant"
+                    needsLocationSwitch -> "Turn on"
+                    else -> null
+                },
+                onAction = {
+                    if (needsLocation) {
+                        onRequestLocation()
+                    } else {
+                        runCatchingLogged("EventTogglesSection", "Could not open the location settings") {
+                            context.startActivity(
+                                Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -352,7 +508,7 @@ private fun EventTile(
             )
         }
         if (onOpenSettings != null) {
-            // Own touch target in the corner, so a tap here opens the event's settings and never toggles the event.
+            // own touch target so a tap opens the event's settings and never toggles it
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -420,9 +576,9 @@ private fun EventNote(
     }
 }
 
-private fun isLocationServiceOn(context: android.content.Context): Boolean {
+private fun isLocationServiceOn(context: Context): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return true
-    val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as? LocationManager
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
         ?: return true
-    return runCatching { manager.isLocationEnabled }.getOrDefault(true)
+    return manager.isLocationEnabled
 }

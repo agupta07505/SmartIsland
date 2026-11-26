@@ -22,7 +22,7 @@ import org.junit.Test
 class SystemEventReceiverTest {
 
     @Test
-    fun testPowerDisconnectedPostsBriefUnpluggedCard() {
+    fun unplugPostsBriefCard() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
 
@@ -52,7 +52,7 @@ class SystemEventReceiverTest {
     }
 
     @Test
-    fun testPowerConnectedPostsPluggedInCardThenNothingElseImmediately() {
+    fun plugInPostsPluggedCard() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         val context = mockk<Context>()
@@ -67,7 +67,7 @@ class SystemEventReceiverTest {
         }
 
         receiver.onReceive(context, plugIntent(Intent.ACTION_POWER_CONNECTED))
-        // The battery broadcast that follows a plug-in must not replace the plug card.
+        // the battery broadcast that follows a plug-in must not replace the plug card
         receiver.onReceive(context, plugIntent(Intent.ACTION_BATTERY_CHANGED))
 
         verify(exactly = 1) {
@@ -82,7 +82,7 @@ class SystemEventReceiverTest {
     }
 
     @Test
-    fun testChargeLimitPauseDoesNotCountAsUnplugged() {
+    fun chargeLimitPauseNotUnplug() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         val context = mockk<Context>()
@@ -96,9 +96,9 @@ class SystemEventReceiverTest {
             every { it.getIntExtra(BatteryManager.EXTRA_STATUS, -1) } returns status
         }
 
-        // Sticky broadcast on registration while charging: adopted silently.
+        // sticky broadcast on registration while charging: adopted silently
         receiver.onReceive(context, batteryIntent(BatteryManager.BATTERY_PLUGGED_AC, BatteryManager.BATTERY_STATUS_CHARGING))
-        // A charge limit pauses charging: still plugged, status NOT_CHARGING.
+        // A charge limit pauses charging: still plugged, status NOT_CHARGING
         receiver.onReceive(context, batteryIntent(BatteryManager.BATTERY_PLUGGED_AC, BatteryManager.BATTERY_STATUS_NOT_CHARGING))
 
         verify(exactly = 0) {
@@ -110,7 +110,7 @@ class SystemEventReceiverTest {
     }
 
     @Test
-    fun testBatteryLowPostsLowBatteryNotification() {
+    fun lowBatteryPostsNotification() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         
@@ -136,7 +136,7 @@ class SystemEventReceiverTest {
     }
 
     @Test
-    fun testSmartwatchConnectionIgnored() {
+    fun smartwatchConnectionIgnored() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         val context = mockk<Context>()
@@ -158,12 +158,12 @@ class SystemEventReceiverTest {
 
         receiver.onReceive(context, intent)
 
-        // Smartwatch connection should NOT post any notification or expand the island
+        // smartwatch connection should not post any notification or expand the island
         verify(exactly = 0) { repo.postNotification(any(), any()) }
     }
 
     @Test
-    fun testAudioDeviceConnectionAllowedAndDebounced() {
+    fun audioDeviceDebounced() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         val context = mockk<Context>()
@@ -183,7 +183,7 @@ class SystemEventReceiverTest {
         every { intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) } returns audioDevice
         every { intent.getIntExtra(any(), -1) } returns 85
 
-        // First connection: autoExpand = true
+        // first connection: autoExpand = true
         receiver.onReceive(context, intent)
         verify(exactly = 1) {
             repo.postNotification(
@@ -192,7 +192,7 @@ class SystemEventReceiverTest {
             )
         }
 
-        // Rapid second connection event for same device: autoExpand = false (debounced)
+        // rapid second connection event for same device: autoExpand = false (debounced)
         receiver.onReceive(context, intent)
         verify(exactly = 1) {
             repo.postNotification(
@@ -203,7 +203,7 @@ class SystemEventReceiverTest {
     }
 
     @Test
-    fun testWearableDisconnectDoesNotDismissActiveAudioDeviceNotification() {
+    fun wearableDropKeepsAudioCard() {
         val repo = mockk<SmartIslandNotificationRepository>(relaxed = true)
         val receiver = SystemEventReceiver(repo)
         val context = mockk<Context>()
@@ -216,7 +216,7 @@ class SystemEventReceiverTest {
         every { audioDevice.name } returns "Galaxy Buds Pro"
         every { audioDevice.address } returns "AA:BB:CC:DD:EE:01"
 
-        // Connect audio device
+        // connect audio device
         val connectIntent = mockk<Intent>()
         every { connectIntent.action } returns BluetoothDevice.ACTION_ACL_CONNECTED
         every { connectIntent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) } returns audioDevice
@@ -225,7 +225,7 @@ class SystemEventReceiverTest {
         every { connectIntent.getIntExtra(any(), -1) } returns 90
         receiver.onReceive(context, connectIntent)
 
-        // Now an unrelated watch disconnects
+        // now an unrelated watch disconnects
         val watchDevice = mockk<BluetoothDevice>()
         every { watchDevice.address } returns "99:88:77:66:55:44"
         val watchDisconnectIntent = mockk<Intent>()
@@ -236,10 +236,10 @@ class SystemEventReceiverTest {
 
         receiver.onReceive(context, watchDisconnectIntent)
 
-        // The audio device's system_bluetooth notification must NOT be removed!
+        // the audio device's system_bluetooth notification must not be removed
         verify(exactly = 0) { repo.removeNotification("system_bluetooth") }
 
-        // Now the actual audio device disconnects
+        // now the actual audio device disconnects
         val audioDisconnectIntent = mockk<Intent>()
         every { audioDisconnectIntent.action } returns BluetoothDevice.ACTION_ACL_DISCONNECTED
         every { audioDisconnectIntent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) } returns audioDevice
@@ -248,7 +248,7 @@ class SystemEventReceiverTest {
 
         receiver.onReceive(context, audioDisconnectIntent)
 
-        // Now it SHOULD be removed
+        // now it SHOULD be removed
         verify(exactly = 1) { repo.removeNotification("system_bluetooth") }
     }
 }

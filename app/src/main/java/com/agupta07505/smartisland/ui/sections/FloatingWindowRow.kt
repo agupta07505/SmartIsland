@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import com.agupta07505.smartisland.ui.glass.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,12 +31,13 @@ import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.FloatingWindowMode
+import com.agupta07505.smartisland.ui.glass.Switch
 import com.agupta07505.smartisland.ui.search.searchAnchor
 import kotlinx.coroutines.launch
 
 /**
- * Floating window: a switch for the white pull handle on the expanded card (off removes the pill and its swipe
- * animation, and the Floating window swipe action), and a System / LMO Freeform choice for what opens the window.
+ * Switch for the white pull handle (off removes the pill, its swipe animation and the Floating window swipe action),
+ * and System / LMO Freeform for what opens the window
  */
 @Composable
 fun FloatingWindowRow(

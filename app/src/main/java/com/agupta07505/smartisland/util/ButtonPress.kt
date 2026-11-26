@@ -7,7 +7,6 @@
 
 package com.agupta07505.smartisland.util
 
-/** Whether a press on a clock button can reach the app. */
 object ButtonPress {
 
     enum class Refusal {

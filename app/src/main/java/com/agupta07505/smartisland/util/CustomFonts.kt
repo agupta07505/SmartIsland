@@ -11,11 +11,12 @@ import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
 import android.provider.OpenableColumns
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
- * Fonts the user adds from a .ttf or .otf file, copied into private storage (`files/fonts`) so they keep working when
- * the original moves. The island font setting stores the id `custom:<file name>`.
+ * Fonts the user adds from a .ttf or .otf, copied into `files/fonts` so they survive the original moving. The font
+ * setting stores `custom:<file name>`
  */
 object CustomFonts {
     const val ID_PREFIX = "custom:"
@@ -36,7 +37,7 @@ object CustomFonts {
 
     fun idFor(fileName: String): String = ID_PREFIX + fileName
 
-    /** The stored file name behind a font id, or null when [id] is not a well-formed custom font id. */
+    /** Null if [id] is not a custom font id. */
     fun fileNameOf(id: String): String? {
         if (!id.startsWith(ID_PREFIX)) return null
         val name = id.substring(ID_PREFIX.length)
@@ -45,7 +46,7 @@ object CustomFonts {
 
     fun labelOf(fileName: String): String = fileName.substringBeforeLast('.')
 
-    /** "ttf" or "otf" from the first bytes of a font file, or null when it is neither. */
+    /** ttf or otf from the first bytes, null when neither. */
     fun sniffExtension(head: ByteArray): String? {
         if (head.size < 4) return null
         val b0 = head[0].toInt() and 0xFF
@@ -72,7 +73,7 @@ object CustomFonts {
         return "$base.$extension"
     }
 
-    /** [name] if it is free, otherwise "name (2).ext", "name (3).ext" ... */
+    /** [name] if free, else "name (2).ext", "name (3).ext" ... */
     fun uniqueFileName(name: String, taken: Set<String>): String {
         if (name !in taken) return name
         val base = name.substringBeforeLast('.')
@@ -98,16 +99,17 @@ object CustomFonts {
 
     fun typeface(context: Context, id: String): Typeface? {
         val file = fileFor(context, id) ?: return null
-        return runCatching { Typeface.createFromFile(file) }.getOrNull()?.takeIf { it !== Typeface.DEFAULT }
+        return quietly { Typeface.createFromFile(file) }?.takeIf { it !== Typeface.DEFAULT }
     }
 
-    /** Copies the picked font into private storage after checking its size and header. Run off the main thread. */
+    /** Blocking, run off the main thread */
     fun import(context: Context, uri: Uri): ImportResult {
         return try {
-            val displayName = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            val displayName = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null,
+                null)
                 ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
             val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-                val out = java.io.ByteArrayOutputStream()
+                val out = ByteArrayOutputStream()
                 val buffer = ByteArray(16 * 1024)
                 var total = 0L
                 while (true) {
@@ -131,7 +133,7 @@ object CustomFonts {
             }
             ImportResult.Added(id)
         } catch (e: Exception) {
-            runCatching { AppLogRecorder.w("CustomFonts", "Font import failed: ${e.javaClass.simpleName}") }
+            quietly { AppLogRecorder.w("CustomFonts", "Font import failed: ${e.javaClass.simpleName}") }
             ImportResult.Failed
         }
     }

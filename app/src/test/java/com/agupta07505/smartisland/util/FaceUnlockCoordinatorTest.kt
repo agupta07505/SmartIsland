@@ -59,8 +59,13 @@ class FaceUnlockCoordinatorTest {
     private fun faceOnly(logAvailable: Boolean = true) =
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = logAvailable)
 
+    private fun faceOnlyWithScreenOff() {
+        faceOnly()
+        c.onScreenOff()
+    }
+
     @Test
-    fun aStartLineWhileLockedStartsTheScan() {
+    fun startLineWhileLockedStartsTheScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         out.scanEnds()
@@ -69,14 +74,14 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withoutAnyStartLineTheScreenOnStartsTheScan() {
+    fun screenOnStartsWithoutLine() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         assertEquals(1, out.starts)
     }
 
     @Test
-    fun onceAStartLineWasSeenTheScreenOnAloneDoesNotStartIt() {
+    fun screenOnAfterLineNoStart() {
         faceOnly()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOn(locked = true, now = 10_000)
@@ -84,7 +89,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStartLineJustBeforeTheScreenOnStartsItWhenTheScreenComesOn() {
+    fun startBeforeScreenOn() {
         faceOnly()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOff()
@@ -95,19 +100,17 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anOldStartLineDoesNotStartItLater() {
-        faceOnly()
-        c.onScreenOff()
+    fun oldStartLineDoesNotStartItLater() {
+        faceOnlyWithScreenOff()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOn(locked = true, now = 20_000)
-        // The log is trusted from now on, so nothing starts by the screen alone.
+        // the log is trusted from now on, so nothing starts by the screen alone
         assertEquals(0, out.starts)
     }
 
     @Test
-    fun theScanPlaysAgainWhenTheFaceComesBack() {
-        faceOnly()
-        c.onScreenOff()
+    fun scanPlaysAgainWhenTheFaceComesBack() {
+        faceOnlyWithScreenOff()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOn(locked = true, now = 5)
         assertEquals(1, out.starts)
@@ -117,18 +120,16 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStartLineWithTheScreenAlreadyWakingStartsTheScanAtOnce() {
-        faceOnly()
-        c.onScreenOff()
+    fun scanDuringWake() {
+        faceOnlyWithScreenOff()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 1000)
         assertEquals(1, out.starts)
     }
 
     @Test
-    fun theLateScreenOnBroadcastDoesNotStopOrRestartTheScanTheStartLineBegan() {
-        faceOnly()
-        c.onScreenOff()
+    fun lateScreenOnLeavesRunningScanAlone() {
+        faceOnlyWithScreenOff()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 1000)
         c.onScreenOn(locked = true, now = 1750)
@@ -138,9 +139,8 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFaceThatMatchesBeforeTheScreenOnBroadcastStillPlaysTheTick() {
-        faceOnly()
-        c.onScreenOff()
+    fun earlyFaceMatch() {
+        faceOnlyWithScreenOff()
         c.onLog(FaceUnlockLogEvent.Start, 1000)
         c.onLog(FaceUnlockLogEvent.Success, 1573, strong = true)
         assertEquals(1, out.starts)
@@ -151,9 +151,8 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLooseSuccessBeforeTheScreenOnBroadcastDoesNotStartAScan() {
-        faceOnly()
-        c.onScreenOff()
+    fun earlyWeakMatch() {
+        faceOnlyWithScreenOff()
         c.onLog(FaceUnlockLogEvent.Start, 1000)
         c.onLog(FaceUnlockLogEvent.Success, 1573, strong = false)
         assertEquals(0, out.starts)
@@ -161,14 +160,14 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withTheLogTheScanWaitsForTheSystemInsteadOfAFixedTimer() {
+    fun logDrivenScanTimeout() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         assertEquals(FaceIdController.LOG_WAIT_MS, out.lastWaitMs)
     }
 
     @Test
-    fun theFailureEndingIsCountedFromTheStartLineNotFromTheAnimation() {
+    fun scanTimeoutOrigin() {
         faceOnly(logAvailable = false)
         c.onScreenOff()
         c.syncState(screenOn = true, locked = true)
@@ -190,7 +189,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun faceOnlyAcceptsOnTheSuccessLineAndTheUnlockThatFollowsLeavesItAlone() {
+    fun faceOnlyAcceptsOnSuccessLine() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 1000)
@@ -202,7 +201,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theUnlockMayComeBeforeTheSuccessLine() {
+    fun unlockMayComeBeforeTheSuccessLine() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onUserPresent(1000)
@@ -213,7 +212,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aSwipeLongAfterTheSuccessLineStillPlaysTheTickAndIsNotCancelled() {
+    fun lateSwipeAfterSuccessLineStillTicks() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 1000)
@@ -225,7 +224,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLooseSuccessLineNeedsTheUnlockBroadcastToo() {
+    fun looseSuccessNeedsUnlock() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 1000, strong = false)
@@ -235,7 +234,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLooseSuccessLineWithNoUnlockNeverPlaysTheTick() {
+    fun looseSuccessNoUnlockNoTick() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 1000, strong = false)
@@ -245,7 +244,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLooseSuccessLineTooFarFromTheUnlockIsNotConfirmed() {
+    fun looseSuccessFarFromUnlock() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 1000, strong = false)
@@ -254,7 +253,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintTypeAfterTheFaceWasAcceptedDoesNotCancelTheTick() {
+    fun lateFingerprintAfterFaceMatch() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 100)
@@ -265,7 +264,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theNextScanCanBeAcceptedAgain() {
+    fun nextScanCanBeAcceptedAgain() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 100)
@@ -277,7 +276,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintUnlockCancelsTheFaceOnlyScanQuietly() {
+    fun fingerprintCancelsFaceQuietly() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onUserPresent(2000)
@@ -297,7 +296,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withoutLogAccessFaceOnlyFallsBackToAnyUnlock() {
+    fun noLogAccessFallsToAnyUnlock() {
         faceOnly(logAvailable = false)
         c.onScreenOn(locked = true, now = 0)
         c.onUserPresent(900)
@@ -305,7 +304,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theScreenTurningOffCancelsTheScan() {
+    fun screenTurningOffCancelsTheScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onScreenOff()
@@ -324,7 +323,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun turningTheEventOffCancelsARunningScan() {
+    fun eventOffCancelsScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.configure(enabled = false, mode = FaceUnlockMode.FaceOnly, logAvailable = true)
@@ -332,7 +331,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anUnlockedScreenOnDoesNotStartAScan() {
+    fun unlockedScreenOnDoesNotStartAScan() {
         faceOnly()
         c.onScreenOn(locked = false, now = 0)
         assertEquals(0, out.starts)
@@ -343,11 +342,10 @@ class FaceUnlockCoordinatorTest {
         assertEquals(FaceUnlockMode.Any, FaceUnlockMode.fromId("any"))
         assertEquals(FaceUnlockMode.FaceOnly, FaceUnlockMode.fromId("face_only"))
         assertEquals(FaceUnlockMode.FaceOnly, FaceUnlockMode.fromId("junk"))
-        assertTrue(FaceUnlockCoordinator.CONFIRM_GRACE_MS < FaceUnlockCoordinator.CONFIRM_WINDOW_MS)
     }
 
     @Test
-    fun aFingerprintUnlockTurnsTheScanIntoTheFingerprintAnimation() {
+    fun fingerprintReplacesScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Fingerprint, 100)
@@ -355,14 +353,14 @@ class FaceUnlockCoordinatorTest {
         assertEquals(1, out.fingerprints)
         assertEquals(0, out.cancels)
         assertEquals(0, out.accepts)
-        // The unlock broadcast that follows finds nothing to do.
+        // the unlock broadcast that follows finds nothing to do
         c.onUserPresent(150)
         assertEquals(0, out.accepts)
         assertTrue(out.queued.isEmpty())
     }
 
     @Test
-    fun aPinUnlockEndsTheScanAtOnce() {
+    fun pinUnlockEndsTheScanAtOnce() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Credential, 100)
@@ -371,21 +369,21 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun swipingUpToThePinScreenEndsTheScanAtOnce() {
+    fun pinSwipeEndsScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onBouncerShown()
         assertFalse(out.scanning)
         assertEquals(1, out.cancels)
         assertEquals(0, out.accepts)
-        // The unlock broadcast after typing the PIN finds nothing to do.
+        // the unlock broadcast after typing the PIN finds nothing to do
         c.onUserPresent(3000)
         assertEquals(0, out.accepts)
         assertTrue(out.queued.isEmpty())
     }
 
     @Test
-    fun thePinScreenDoesNotCancelAnAcceptedFace() {
+    fun pinKeepsAcceptedFace() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 100)
@@ -395,7 +393,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anAnyUnlockKeepsTheScanWhenThePinScreenOpens() {
+    fun anyUnlockKeepsScanOnPin() {
         c.configure(enabled = true, mode = FaceUnlockMode.Any, logAvailable = true)
         c.onScreenOn(locked = true, now = 0)
         c.onBouncerShown()
@@ -405,7 +403,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFaceUnlockTypeDoesNotCancelTheScan() {
+    fun faceUnlockTypeDoesNotCancelTheScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 100)
@@ -416,7 +414,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anAnyUnlockPlaysTheFingerprintAnimationForAFingerAndIgnoresAPin() {
+    fun anyUnlockPlaysForFingerIgnoresPin() {
         c.configure(enabled = true, mode = FaceUnlockMode.Any, logAvailable = true)
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Credential, 50)
@@ -431,7 +429,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aSessionEndLineDoesNotWipeAWaitingSuccess() {
+    fun sessionEndKeepsWaitingSuccess() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onLog(FaceUnlockLogEvent.Success, 100)
@@ -441,20 +439,18 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintUnlockFromTheDarkScreenPlaysTheFingerprintAnimationAtOnce() {
-        faceOnly()
-        c.onScreenOff()
+    fun darkScreenFingerprintPlaysAtOnce() {
+        faceOnlyWithScreenOff()
         c.onUnlockType(UnlockType.Fingerprint, 1000)
         c.onScreenOn(locked = true, now = 1140)
         assertEquals(0, out.starts)
         assertEquals(1, out.directFingerprints)
-        // the unlock broadcast that follows must not play the face tick on top
         c.onUserPresent(1300)
         assertEquals(0, out.accepts)
     }
 
     @Test
-    fun aFingerprintUnlockFromTheDarkScreenAlsoPlaysWhenAnyUnlockIsAllowed() {
+    fun darkFingerprintAnyUnlock() {
         c.configure(enabled = true, mode = FaceUnlockMode.Any, logAvailable = true)
         c.onScreenOff()
         c.onUnlockType(UnlockType.Fingerprint, 1000)
@@ -464,7 +460,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintUnlockWithTheFeatureOffPlaysNothing() {
+    fun fingerprintFeatureOffSilent() {
         c.configure(enabled = false, mode = FaceUnlockMode.FaceOnly, logAvailable = true)
         c.onScreenOff()
         c.onUnlockType(UnlockType.Fingerprint, 1000)
@@ -474,9 +470,8 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLaterScreenOnStillStartsTheScan() {
-        faceOnly()
-        c.onScreenOff()
+    fun laterScreenOnStillStartsTheScan() {
+        faceOnlyWithScreenOff()
         c.onUnlockType(UnlockType.Fingerprint, 1000)
         c.onScreenOn(locked = true, now = 1000 + FaceUnlockCoordinator.NON_FACE_LEAD_MS + 1)
         assertTrue(out.scanning)
@@ -488,7 +483,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aDismissedPromptCancelsARunningAppScanThatWasNotAccepted() {
+    fun promptDismissalCancelsScan() {
         appOn()
         c.onAppLockRequired()
         c.onLog(FaceUnlockLogEvent.Start, 500, fromApp = true)
@@ -497,7 +492,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aDismissedPromptCancelsTheEarlyScanBeforeItsStartLine() {
+    fun dismissCancelsEarlyScan() {
         appOn()
         c.onAppLockRequired()
         c.onAppPromptDismissed()
@@ -505,7 +500,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aDismissedPromptDoesNotCancelAnAcceptedScanOrWhenNothingRuns() {
+    fun promptDismissalAfterAcceptance() {
         appOn()
         c.onAppPromptDismissed()
         assertEquals(0, out.cancels)
@@ -516,7 +511,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aDismissedPromptDoesNotEndTheLockScreenScan() {
+    fun dismissKeepsLockScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onAppPromptDismissed()
@@ -524,7 +519,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theAppLockLineStartsTheAppScanBeforeItsStartLine() {
+    fun appLockLineStartsEarly() {
         appOn()
         c.onAppLockRequired()
         assertEquals(1, out.appStarts)
@@ -535,7 +530,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theEarlyAppScanIsCancelledWhenNoStartLineFollows() {
+    fun earlyAppScanDropsNoStart() {
         appOn()
         c.onAppLockRequired()
         out.runLater()
@@ -543,7 +538,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStaleEndLineBeforeTheStartLineDoesNotCancelTheEarlyAppScan() {
+    fun staleEndBeforeAppScan() {
         appOn()
         c.onAppLockRequired()
         c.onLog(FaceUnlockLogEvent.End, 100)
@@ -556,7 +551,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintBeforeTheStartLineTurnsTheEarlyAppScanIntoTheFingerprint() {
+    fun fingerprintBeforeScanStart() {
         appOn()
         c.onAppLockRequired()
         c.onUnlockType(UnlockType.Fingerprint, 200)
@@ -566,7 +561,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theAppLockLineDoesNothingWhenAppFaceIdIsOffLockedOrAlreadyScanning() {
+    fun appLockLineIgnoredOffLocked() {
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, appEnabled = false)
         c.syncState(screenOn = true, locked = false)
         c.onAppLockRequired()
@@ -582,7 +577,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anAppStartLineWhileUnlockedStartsTheAppScanNotTheLockScreenOne() {
+    fun appStartUnlockedStarts() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         assertEquals(1, out.appStarts)
@@ -590,7 +585,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anAppStartLineDoesNothingWhenAppFaceIdIsOff() {
+    fun appStartFaceIdOffNoop() {
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, appEnabled = false)
         c.syncState(screenOn = true, locked = false)
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
@@ -598,7 +593,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anAppStartLineOnTheLockScreenIsIgnored() {
+    fun appStartOnLockIgnored() {
         appOn()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
@@ -606,7 +601,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun appFaceIdWorksWithTheLockScreenSwitchOff() {
+    fun appFaceIdLockSwitchOff() {
         c.configure(enabled = false, mode = FaceUnlockMode.FaceOnly, logAvailable = false, appEnabled = true)
         c.syncState(screenOn = true, locked = false)
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
@@ -614,7 +609,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStrongSuccessLineAcceptsTheAppScan() {
+    fun strongSuccessLineAcceptsTheAppScan() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Success, 800, strong = true)
@@ -622,7 +617,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLooseSuccessLineDoesNotAcceptTheAppScan() {
+    fun looseSuccessSkipsAppScan() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Success, 800, strong = false)
@@ -630,7 +625,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theAppLockUnlockedLineAcceptsAScanThatIsStillRunning() {
+    fun appUnlockedAcceptsRunning() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onAppUnlocked(900)
@@ -638,14 +633,14 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theAppLockUnlockedLineDoesNothingWithoutAScan() {
+    fun appUnlockedNoScanNoop() {
         appOn()
         c.onAppUnlocked(900)
         assertEquals(0, out.accepts)
     }
 
     @Test
-    fun theFaceClientClosingWithoutAMatchPlaysTheNoFaceEndingOfTheAppScan() {
+    fun clientCloseNoMatchSilent() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.End, 2000)
@@ -656,7 +651,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aSuccessLineRightAfterTheEndLineStillWinsTheAppScan() {
+    fun successAfterEndStillWins() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.End, 2000)
@@ -667,7 +662,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aDismissedPromptAfterTheEndLineCancelsInsteadOfPlayingTheNoFaceEnding() {
+    fun dismissedPromptAfterEndLineCancels() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.End, 2000)
@@ -678,7 +673,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aPinUnlockEndsTheAppScanEvenInAnyUnlockMode() {
+    fun pinUnlockEndsAppScan() {
         c.configure(enabled = true, mode = FaceUnlockMode.Any, logAvailable = true, appEnabled = true)
         c.syncState(screenOn = true, locked = false)
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
@@ -689,7 +684,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintUnlockJustBeforeTheAppUnlockedLineDoesNotAccept() {
+    fun fingerprintBeforeAppUnlock() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onUnlockType(UnlockType.Fingerprint, 1000)
@@ -699,7 +694,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun turningAppFaceIdOffCancelsARunningAppScan() {
+    fun appFaceIdOffCancelsScan() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, appEnabled = false)
@@ -707,7 +702,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theUnlockBroadcastAndPinScreenDoNotTouchAnAppScan() {
+    fun unlockAndPinSpareAppScan() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onBouncerShown()
@@ -717,7 +712,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStartLineSeenLongAgoNoLongerSilencesTheScreenOnStart() {
+    fun oldStartLineNoSilence() {
         faceOnly()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOff()
@@ -726,7 +721,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintLineArrivingAfterTheScreenOnStillPlaysTheFingerprintAnimation() {
+    fun lateFingerprintAnimates() {
         faceOnly()
         c.onLog(FaceUnlockLogEvent.Start, 0)
         c.onScreenOn(locked = true, now = 10_000)
@@ -738,7 +733,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintOnTheLockScreenAfterTheScanEndedPlaysTheFingerprintAnimation() {
+    fun lockFingerprintAfterEndPlays() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         out.scanEnds()
@@ -747,7 +742,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintWhileUnlockedAndLongAfterScreenOnPlaysNothing() {
+    fun lateUnlockedFingerprint() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         out.scanEnds()
@@ -757,7 +752,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theScreenTurningOffStopsTheRunningScan() {
+    fun screenTurningOffStopsTheRunningScan() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         assertTrue(out.scanning)
@@ -766,7 +761,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aScanLeftOverFromBeforeTheScreenOffIsStoppedAtScreenOn() {
+    fun staleScanAfterWake() {
         faceOnly()
         out.scanning = true
         c.onScreenOn(locked = true, now = 100)
@@ -774,7 +769,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withTheFingerprintAnimationOffAFingerprintEndsTheScanQuietly() {
+    fun fingerprintAnimationDisabled() {
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, fingerprintEnabled = false)
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Fingerprint, 500)
@@ -784,7 +779,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withTheFingerprintAnimationOffTheDarkScreenFingerprintPlaysNothing() {
+    fun animationOffDarkSilent() {
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, fingerprintEnabled = false)
         c.onScreenOff()
         c.onUnlockType(UnlockType.Fingerprint, 1000)
@@ -794,7 +789,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun withTheFingerprintAnimationOffAnyUnlockStillPlaysTheTickOnTheBroadcast() {
+    fun animationOffStillTicksOnBroadcast() {
         c.configure(enabled = true, mode = FaceUnlockMode.Any, logAvailable = true, fingerprintEnabled = false)
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Fingerprint, 500)
@@ -804,7 +799,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFailureLineRejectsTheLockScreenScanAtOnce() {
+    fun failureRejectsLockScan() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -815,7 +810,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFailureLineDoesNotRejectTheFingerprintAnimationOrAnAcceptedFace() {
+    fun failureSparesFingerAndFace() {
         faceOnly()
         c.onScreenOn(locked = true, now = 0)
         c.onUnlockType(UnlockType.Fingerprint, 100)
@@ -829,9 +824,8 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFailureLineWithNoScanShowingDoesNothingAndCancelsAWaitingStart() {
-        faceOnly()
-        c.onScreenOff()
+    fun failureNoScanCancelsWait() {
+        faceOnlyWithScreenOff()
         c.onLog(FaceUnlockLogEvent.Start, 1000)
         c.onLog(FaceUnlockLogEvent.Failure, 1200)
         c.onScreenOn(locked = true, now = 1300)
@@ -840,7 +834,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFailureLineRejectsTheAppScanOnceItsOwnStartLineCame() {
+    fun failureRejectsStartedAppScan() {
         appOn()
         c.onAppLockRequired()
         c.onLog(FaceUnlockLogEvent.Failure, 100)
@@ -853,7 +847,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFailureLineDoesNotRejectAnAcceptedAppScan() {
+    fun failureKeepsAcceptedApp() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Success, 900, strong = true)
@@ -862,7 +856,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintAfterTheAppFaceFailedPlaysTheFingerprintAnimationAtOnce() {
+    fun fingerprintAfterAppFailPlays() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Failure, 3000)
@@ -873,7 +867,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintInAnAppPromptThatIsGoneDoesNotPlay() {
+    fun goneAppPromptFingerSilent() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         out.scanEnds()
@@ -889,7 +883,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintTurnsTheRunningAppScanIntoTheFingerprintWhateverItIsShowing() {
+    fun fingerprintTakesAppScan() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Failure, 3000)
@@ -899,7 +893,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerprintOnTheLockScreenAfterAnAppPromptNeverPlaysTheAppAnimation() {
+    fun lockFingerprintSkipsApp() {
         appOn()
         c.onLog(FaceUnlockLogEvent.Start, 0, fromApp = true)
         c.onLog(FaceUnlockLogEvent.Failure, 3000)
@@ -913,7 +907,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStrongSuccessAfterTheScanWasLostStillPlaysTheTick() {
+    fun strongSuccessAfterLossTicks() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -924,7 +918,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aLateStrongSuccessDoesNotPlayTheTickAgain() {
+    fun lateStrongNoSecondTick() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -936,7 +930,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aStrongSuccessLongAfterTheStartLineIsIgnoredWithoutAScan() {
+    fun staleFaceMatch() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -947,7 +941,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerDuringTheFaceScanSwitchesToTheFingerprintAnimationAtOnce() {
+    fun fingerDuringFaceScanSwitchesAtOnce() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -958,18 +952,16 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aFingerFromTheDarkScreenStartsTheFingerprintScanBeforeTheScreenOnBroadcast() {
-        faceOnly()
-        c.onScreenOff()
+    fun darkFingerStartsEarly() {
+        faceOnlyWithScreenOff()
         c.syncState(screenOn = true, locked = true)
         c.onUnlockType(UnlockType.Fingerprint, 100)
         assertEquals(1, out.directFingerprints)
     }
 
     @Test
-    fun theScreenOnBroadcastAfterThatDoesNotStopTheFingerprintScan() {
-        faceOnly()
-        c.onScreenOff()
+    fun fingerprintSurvivesScreenOn() {
+        faceOnlyWithScreenOff()
         c.syncState(screenOn = true, locked = true)
         c.onUnlockType(UnlockType.Fingerprint, 100)
         c.onScreenOn(locked = false, now = 900)
@@ -978,7 +970,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun theEndOfTheFaceSessionWithoutAMatchRejectsTheScanSoon() {
+    fun faceEndNoMatchRejects() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -989,7 +981,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun aMatchRightAfterTheEndKeepsTheScan() {
+    fun matchRightAfterTheEndKeepsTheScan() {
         faceOnly()
         c.syncState(screenOn = true, locked = true)
         c.onLog(FaceUnlockLogEvent.Start, 0)
@@ -1001,7 +993,7 @@ class FaceUnlockCoordinatorTest {
     }
 
     @Test
-    fun anEarlyAppScanAnchorsWhenTheRealScanStarts() {
+    fun earlyAppScanAnchors() {
         c.configure(enabled = true, mode = FaceUnlockMode.FaceOnly, logAvailable = true, appEnabled = true)
         c.syncState(screenOn = true, locked = false)
         c.onAppLockRequired()

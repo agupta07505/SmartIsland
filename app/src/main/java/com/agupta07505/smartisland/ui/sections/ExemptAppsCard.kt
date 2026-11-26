@@ -46,10 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Exempt apps: while one of the chosen apps is in the foreground the island is totally off (no pill, no widgets, no
- * cards).
- */
+/** Island is totally off while a chosen app is in front (no pill, widgets or cards). */
 @Composable
 fun ExemptAppsCard(
     settings: SmartIslandSettings,
@@ -86,15 +83,18 @@ fun ExemptAppsCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(labels[pkg] ?: pkg, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(labels[pkg] ?: pkg, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis)
                         if (labels[pkg] != null) {
                             Text(
                                 pkg, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
-                    TextButton(onClick = { scope.launch { repository.setIslandExemptApp(landscape, pkg, false) } }) { Text("Remove") }
+                    TextButton(onClick = { scope.launch { repository.setIslandExemptApp(landscape, pkg,
+                        false) } }) { Text("Remove") }
                 }
                 if (!landscape) {
                     val isStatic = pkg in staticApps
@@ -120,7 +120,8 @@ fun ExemptAppsCard(
         var query by rememberSaveable { mutableStateOf("") }
         val shown = remember(installed, query) {
             if (query.isBlank()) installed
-            else installed.filter { it.label.contains(query, ignoreCase = true) || it.packageName.contains(query, ignoreCase = true) }
+            else installed.filter { it.label.contains(query, ignoreCase = true)
+                || it.packageName.contains(query, ignoreCase = true) }
         }
         AlertDialog(
             onDismissRequest = { picking = false },
@@ -140,13 +141,15 @@ fun ExemptAppsCard(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { scope.launch { repository.setIslandExemptApp(landscape, app.packageName, !checked) } }
+                                    .clickable { scope.launch { repository.setIslandExemptApp(landscape,
+                                        app.packageName, !checked) } }
                                     .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
                                     checked = checked,
-                                    onCheckedChange = { scope.launch { repository.setIslandExemptApp(landscape, app.packageName, it) } }
+                                    onCheckedChange = { scope.launch { repository.setIslandExemptApp(landscape,
+                                        app.packageName, it) } }
                                 )
                                 Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }

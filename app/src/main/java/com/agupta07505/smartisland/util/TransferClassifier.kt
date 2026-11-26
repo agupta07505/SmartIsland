@@ -11,7 +11,7 @@ import com.agupta07505.smartisland.model.TransferKind
 
 /**
  * Decides what kind of transfer a progress notification is, and holds the per-app workarounds for apps whose
- * notifications do not look like a normal download.
+ * notifications do not look like a normal download
  */
 object TransferClassifier {
 
@@ -37,7 +37,7 @@ object TransferClassifier {
         "下载", "下載", "ダウンロード", "다운로드", "تنزيل"
     )
 
-    /** "Uploading", "sending", "seeding" in other languages. */
+    /** "Uploading", "sending", "seeding" in other languages */
     val UPLOAD_WORDS_I18N = listOf(
         "subiendo", "enviando", "fazendo upload", "envoi en cours", "hochladen", "lädt hoch",
         "wird hochgeladen", "caricamento in corso", "yükleniyor", "mengunggah", "mengirim",
@@ -51,7 +51,6 @@ object TransferClassifier {
         "コピー中", "インストール中"
     )
 
-    /** Everything that says "a transfer is running" in a language other than English. */
     val ACTIVE_WORDS_I18N: List<String> = DOWNLOAD_WORDS_I18N + UPLOAD_WORDS_I18N + OTHER_ACTIVE_I18N
 
     /** "Done" in other languages, used when deciding a transfer card has finished. */
@@ -124,19 +123,20 @@ object TransferClassifier {
     private val FINISHED_WORDS = listOf("complete", "finished", "downloaded", "uploaded", "saved", "done")
 
     /**
-     * True when the text says a transfer has finished. The finished notification has no progress bar, so it is not
-     * read as a transfer card and would otherwise count as an ordinary alert.
+     * True when the text says a transfer has finished. A finished notification has no progress bar, so it is not read
+     * as a transfer card and would otherwise count as an ordinary alert
      */
     fun looksFinished(lowerText: String): Boolean =
         FINISHED_WORDS.any { lowerText.contains(it) } || COMPLETE_WORDS_I18N.any { lowerText.contains(it) }
 
     /**
-     * A notification the anti-spam cooldown must never hold back: anything from a download manager, file manager,
-     * store or cloud app (a held "download finished" arrived minutes late), and a browser's finished download.
+     * Notification the anti-spam cooldown must never hold back: anything from a download manager, file manager, store
+     * or cloud app (a held "download finished" arrived minutes late), and a browser's finished download
      */
     fun isCooldownExemptTransfer(packageName: String, lowerText: String): Boolean {
         val pkg = packageName.lowercase()
-        if (pkg in DOWNLOADER_PACKAGES || pkg in FILE_MANAGER_PACKAGES || pkg in STORE_PACKAGES || pkg in CLOUD_PACKAGES) return true
+        if (pkg in DOWNLOADER_PACKAGES || pkg in FILE_MANAGER_PACKAGES || pkg in STORE_PACKAGES
+            || pkg in CLOUD_PACKAGES) return true
         return BROWSER_PREFIXES.any { pkg == it || pkg.startsWith(it) } && looksFinished(lowerText)
     }
 
@@ -149,8 +149,8 @@ object TransferClassifier {
     }
 
     /**
-     * Voice recorders announce their cloud backup with the same notification channel as a live recording ("Backing up
-     * recordings"), which the audio-recording rules would read as a recording in progress.
+     * Voice recorders announce their cloud backup on the same channel as a live recording ("Backing up recordings"),
+     * which the audio-recording rules would read as a recording in progress
      */
     fun isRecorderTransfer(packageName: String, titleText: String, hasDeterminateProgress: Boolean): Boolean {
         if (!OemDeviceRules.isRecorderPackage(packageName)) return false
@@ -165,7 +165,7 @@ object TransferClassifier {
         return when {
             DELETE_WORDS.any { text.contains(it) } -> TransferKind.DELETE
             RESTORE_WORDS.any { text.contains(it) } -> TransferKind.DOWNLOAD
-            // A recorder never downloads; whatever it transfers is its backup.
+            // A recorder never downloads; whatever it transfers is its backup
             OemDeviceRules.isRecorderPackage(pkg) -> TransferKind.BACKUP
             BACKUP_WORDS.any { text.contains(it) } -> TransferKind.BACKUP
             SYNC_WORDS.any { text.contains(it) } -> TransferKind.BACKUP
@@ -175,7 +175,7 @@ object TransferClassifier {
             text.contains("download") || text.contains("receiving") ||
                 DOWNLOAD_WORDS_I18N.any { text.contains(it) } -> TransferKind.DOWNLOAD
             pkg in FILE_MANAGER_PACKAGES -> TransferKind.COPY_MOVE
-            // A cloud app with unhelpful wording is uploading or backing up, not downloading.
+            // A cloud app with unhelpful wording is uploading or backing up, not downloading
             pkg in CLOUD_PACKAGES -> TransferKind.UPLOAD
             else -> TransferKind.DOWNLOAD
         }

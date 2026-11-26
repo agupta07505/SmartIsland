@@ -8,7 +8,6 @@
 package com.agupta07505.smartisland.ui.sections
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,9 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -36,14 +33,12 @@ import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IdleSchedule
 import com.agupta07505.smartisland.model.IdleWidgetKind
-import com.agupta07505.smartisland.ui.glass.Card
+import com.agupta07505.smartisland.ui.SettingsCard
 import com.agupta07505.smartisland.ui.glass.Switch
 import kotlinx.coroutines.launch
+import java.util.Locale
 
-/**
- * Settings > Idle widgets > Schedules: which of the ticked widgets take turns during work hours, at night, or while
- * charging.
- */
+/** Which ticked widgets take turns during work hours, at night or while charging. */
 @Composable
 internal fun IdleScheduleCard(
     settings: SmartIslandSettings,
@@ -52,13 +47,7 @@ internal fun IdleScheduleCard(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
+    SettingsCard(modifier = modifier) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column(modifier = Modifier.animateContentSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
@@ -83,7 +72,7 @@ internal fun IdleScheduleCard(
                     onToggle = { scope.launch { repository.setIdleScheduleChargingHidden(IdleSchedule.toggleHidden(settings.idleScheduleChargingHidden, it)) } }
                 ) { }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                SettingsDivider(0.3f)
 
                 ScheduleGroup(
                     title = stringResource(R.string.idle_sched_night_title),
@@ -104,7 +93,7 @@ internal fun IdleScheduleCard(
                     )
                 }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                SettingsDivider(0.3f)
 
                 ScheduleGroup(
                     title = stringResource(R.string.idle_sched_work_title),
@@ -229,4 +218,4 @@ private fun Stepper(text: String, onChange: (Int) -> Unit) {
     }
 }
 
-private fun hourText(hour: Int): String = String.format(java.util.Locale.US, "%02d:00", hour)
+private fun hourText(hour: Int): String = String.format(Locale.US, "%02d:00", hour)

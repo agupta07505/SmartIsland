@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
-import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -31,8 +30,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,14 +41,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.agupta07505.smartisland.ui.glass.Card
 import com.agupta07505.smartisland.ui.search.LocalSearchFocus
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
-/**
- * A card whose header always shows (icon, title, short summary, optional trailing control such as a group switch) and
- * whose body folds away.
- */
+/** Header always shows (icon, title, summary, optional trailing control), the body folds away. */
 @Composable
 fun CollapsibleCard(
     title: String,
@@ -63,7 +60,7 @@ fun CollapsibleCard(
 ) {
     var expanded by rememberSaveable(stateKey) { mutableStateOf(initiallyExpanded) }
 
-    // A settings-search result inside this card opens it, so the row can be scrolled to.
+    // A settings-search result inside this card opens it so the row can be scrolled to
     val searchFocus = LocalSearchFocus.current
     LaunchedEffect(searchFocus?.token) {
         val target = searchFocus?.key

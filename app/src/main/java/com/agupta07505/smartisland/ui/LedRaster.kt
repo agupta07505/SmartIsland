@@ -16,14 +16,9 @@ import android.graphics.Rect
 import com.agupta07505.smartisland.model.LedFont
 import com.agupta07505.smartisland.model.LedGrid
 import com.agupta07505.smartisland.model.LedTick
+import com.agupta07505.smartisland.util.quietly
 
-/**
- * Turns text in any font (the phone's own, a built-in one or a font the user added) into LED dots for the LED tick style.
- *
- * The text is drawn once into a tiny bitmap whose letters are [LedFont.GLYPH_ROWS] pixels tall (the font's capital H is scaled to
- * that height), and every pixel that comes out lit becomes one LED. Nothing of the font is stored or copied anywhere: the font file
- * stays where it already is and only the dots are kept, for a moment, in memory.
- */
+/** Rasterizes text to LED dots on a small bitmap sized to [LedFont.GLYPH_ROWS], only the dots are retained. */
 internal object LedRaster {
     private const val MAX_COLS = 120
     private const val CACHE_LIMIT = 64
@@ -32,8 +27,8 @@ internal object LedRaster {
     private val cache = LinkedHashMap<String, LedGrid?>()
 
     /**
-     * [text] in the font [fontId] as dots, [LedTick.ROWS] rows tall; null when the font cannot be drawn (the caller
-     * uses the built-in font).
+     * [text] in font [fontId] as dots, [LedTick.ROWS] rows tall, null when the font cannot be drawn (caller uses the
+     * built-in font)
      */
     fun text(context: Context, text: String, fontId: String): LedGrid? {
         if (text.isEmpty()) return null
@@ -41,7 +36,7 @@ internal object LedRaster {
         synchronized(cache) {
             if (cache.containsKey(key)) return cache[key]
         }
-        val grid = runCatching { draw(context, text, fontId) }.getOrNull()
+        val grid = quietly { draw(context, text, fontId) }
         synchronized(cache) {
             if (cache.size >= CACHE_LIMIT) cache.remove(cache.keys.first())
             cache[key] = grid
@@ -65,7 +60,7 @@ internal object LedRaster {
         val width = (Math.ceil(paint.measureText(text).toDouble()).toInt() + 2).coerceIn(3, MAX_COLS)
         val rows = LedTick.ROWS
         val bitmap = Bitmap.createBitmap(width, rows, Bitmap.Config.ARGB_8888)
-        // Letters sit on row 7 (one spare row above, one below), like the built-in font.
+        // Letters sit on row 7 (one spare row above, 1 below), like the built-in font
         Canvas(bitmap).drawText(text, 1f, 1f + LedFont.GLYPH_ROWS, paint)
         val pixels = IntArray(width * rows)
         bitmap.getPixels(pixels, 0, width, 0, 0, width, rows)

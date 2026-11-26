@@ -7,21 +7,17 @@
 
 package com.agupta07505.smartisland.ui
 
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.sp
-import com.agupta07505.smartisland.model.IslandNotification
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.model.IslandNotification
+import com.agupta07505.smartisland.util.TimerClock
+import kotlinx.coroutines.delay
 
-/** Elapsed whole seconds of a recorder card. Frozen (never ticking) while paused or finished. */
+/** Elapsed whole seconds of a recorder card, frozen (never ticking) while paused or finished. */
 @Composable
 internal fun rememberRecordingSeconds(notification: IslandNotification?): Long {
     val frozen = notification?.recordingFrozenMs
@@ -31,10 +27,10 @@ internal fun rememberRecordingSeconds(notification: IslandNotification?): Long {
         if (frozen == null) {
             while (true) {
                 now = System.currentTimeMillis()
-                // Wake just after the shown second changes, at most 250 ms out.
+                // Wake just after the shown second changes, at most 250 ms out
                 val elapsed = (now - start).coerceAtLeast(0L)
-                kotlinx.coroutines.delay(
-                    com.agupta07505.smartisland.util.TimerClock.msToNextTickUp(elapsed).coerceIn(10L, 250L)
+                delay(
+                    TimerClock.msToNextTickUp(elapsed).coerceIn(10L, 250L)
                 )
             }
         }
@@ -48,22 +44,4 @@ internal fun formatRecordingTime(totalSeconds: Long): String {
     val m = (totalSeconds % 3600) / 60
     val s = totalSeconds % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
-}
-
-@Composable
-internal fun RecordingTimerText(
-    notification: IslandNotification?,
-    color: Color,
-    modifier: Modifier = Modifier,
-    fontSize: TextUnit = 11.sp,
-    fontWeight: FontWeight = FontWeight.SemiBold
-) {
-    val seconds = rememberRecordingSeconds(notification)
-    Text(
-        text = formatRecordingTime(seconds),
-        color = if (notification?.recordingFrozenMs != null) color.copy(alpha = 0.6f) else color,
-        fontSize = fontSize,
-        fontWeight = fontWeight,
-        modifier = modifier
-    )
 }

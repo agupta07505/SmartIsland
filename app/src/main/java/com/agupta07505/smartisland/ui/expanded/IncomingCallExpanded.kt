@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Icon
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,11 +39,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.CallActionRole
+import com.agupta07505.smartisland.model.CallButtonPick
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
+import com.agupta07505.smartisland.model.VoipCallDetector
+import com.agupta07505.smartisland.ui.CallTimer
 import com.agupta07505.smartisland.ui.bounceClick
-import com.agupta07505.smartisland.util.CallActionRole
-import com.agupta07505.smartisland.util.VoipCallDetector
+import com.agupta07505.smartisland.util.CallHangUps
+import com.agupta07505.smartisland.ui.IslandText as Text
 
 private data class CallControl(
     val action: IslandNotificationAction,
@@ -68,8 +71,10 @@ private fun callControls(notification: IslandNotification?): List<CallControl> {
     first(CallActionRole.Speaker)?.let {
         controls.add(CallControl(it, CallActionRole.Speaker, VoipCallDetector.isSpeakerOnLabel(it.title)))
     }
-    first(CallActionRole.HangUp)?.let { controls.add(CallControl(it, CallActionRole.HangUp, false)) }
-    first(CallActionRole.Answer)?.let { controls.add(CallControl(it, CallActionRole.Answer, false)) }
+    // dialers with 3+ buttons ("Decline with message", "Answer with voicemail"): pick the plain Decline and Answer
+    val titles = real.map { it.title }
+    CallButtonPick.pick(titles, CallActionRole.HangUp)?.let { controls.add(CallControl(real[it], CallActionRole.HangUp, false)) }
+    CallButtonPick.pick(titles, CallActionRole.Answer)?.let { controls.add(CallControl(real[it], CallActionRole.Answer, false)) }
     return controls
 }
 
@@ -81,8 +86,7 @@ fun IncomingCallExpanded(
     settings: SmartIslandSettings = SmartIslandSettings.Default
 ) {
     val isRinging = notification?.isCallRinging == true
-    // Only the call notification's own buttons are shown. Nothing here is made up by the island,
-    // so an app whose call notification has no mute / speaker button (WhatsApp) gets none.
+    // only the call notification's own buttons, nothing is made up, so WhatsApp gets no mute / speaker button
     val controls = remember(notification?.key, notification?.actionIntents) { callControls(notification) }
 
     Row(
@@ -106,8 +110,7 @@ fun IncomingCallExpanded(
                 overflow = TextOverflow.Ellipsis
             )
             if (notification?.isCallConnecting == true) {
-                // Dialing: the other side has not picked up, so there is nothing to time yet.
-                // The app's own words are shown ("Calling...", "Ringing...", "Dialing").
+                // Dialing: nothing to time yet, show the app's own words ("Calling...", "Ringing...")
                 Text(
                     text = notification.callStatusText,
                     color = Color(settings.callColor),
@@ -116,7 +119,7 @@ fun IncomingCallExpanded(
                 )
             } else if (!isRinging) {
                 val time = notification?.timeMillis ?: System.currentTimeMillis()
-                com.agupta07505.smartisland.ui.CallTimer(
+                CallTimer(
                     postTimeMillis = time,
                     color = Color(settings.callColor)
                 )
@@ -149,10 +152,11 @@ private fun CallControlButton(
         description = control.action.title,
         onClick = {
             if (isRinging) {
-                // The ringing card is island-only, so it is dropped here; the app will not post a removal for it.
-                notification.sendFirstAction(context, control.action.title)
+                // Ringing card is island-only, the app will not post a removal for it
+                if (notification?.sendSelectedAction(context, control.action) != true) return@CircleActionButton
             } else {
-                // An ongoing call's notification stays in the shade; the card follows it.
+                // An ongoing call's notification stays in the shade; the card follows it
+                if (control.role == CallActionRole.HangUp) notification?.let { CallHangUps.mark(it.key) }
                 notification?.fireAction(context, control.action)
             }
             if (control.role == CallActionRole.HangUp || control.role == CallActionRole.Answer) {
@@ -163,9 +167,10 @@ private fun CallControlButton(
 }
 
 @Composable
-private fun toggleStyle(active: Boolean, activeIcon: ImageVector, idleIcon: ImageVector): Triple<Color, Color, ImageVector> {
+private fun toggleStyle(active: Boolean, activeIcon: ImageVector,
+        idleIcon: ImageVector): Triple<Color, Color, ImageVector> {
     val palette = LocalIslandPalette.current
-    // Active: a solid disc with the opposite colour glyph; idle: a soft disc with the text-coloured glyph.
+    // active is a solid disc with the opposite colour glyph, idle a soft disc with the text colour
     return if (active) Triple(palette.inverseFill, palette.onInverse, activeIcon)
     else Triple(palette.tint(0.2f), palette.text, idleIcon)
 }

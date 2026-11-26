@@ -23,14 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.model.NotificationMedia
 
-/**
- * Landscape: the image selector of a card with 2 or more pictures, in the island beside the card at half-size height.
- */
+/** Landscape, 2 or more pictures, half-size height beside the card. */
 @Composable
 internal fun PictureSelector(
     media: List<NotificationMedia>,

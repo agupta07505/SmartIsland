@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,17 +26,15 @@ import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.model.IslandNotificationAction
 import com.agupta07505.smartisland.ui.bounceClick
+import com.agupta07505.smartisland.ui.IslandText as Text
 
-/**
- * The notification's own buttons (with a PendingIntent) that a card did not already show with a dedicated control:
- * exactly the buttons the app put in the shade.
- */
+/** Buttons with a PendingIntent that no dedicated control already shows. */
 fun IslandNotification?.leftoverActions(vararg shown: IslandNotificationAction?): List<IslandNotificationAction> {
     if (this == null) return emptyList()
     return actionIntents.filter { act -> act.pendingIntent != null && shown.none { it === act } }
 }
 
-/** A small text button for one of the app's own notification buttons; fires it like the shade does. */
+/** Fires the app's own notification button like the shade does. */
 @Composable
 fun ShadeActionChip(
     notification: IslandNotification,

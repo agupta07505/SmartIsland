@@ -11,23 +11,19 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * Clock widget: once an hour the pill ticks the hour (left slot) and minutes (right slot) over; the status bar
- * already shows the time. Drawing is in ui/HourChime.kt.
+ * Clock widget: once an hour the pill ticks the hour (left slot) and minutes (right slot) over, the status bar already
+ * shows the time. Drawing is in ui/HourChime.kt
  */
 object HourChime {
     const val MINUTES_BEFORE = "59"
     const val MINUTES_AFTER = "00"
 
-    /** The old time is shown this long (ms) before the tick, so "59" is seen. */
     const val HOLD_BEFORE_MS = 700
-    /** Tick length (ms), including its slow suspended pull-back ([IdleSlots.heavyTickProgress]). */
     const val TICK_MS = 2200
-    /** The new time stays this long (ms), then the pill goes back to what it showed. */
     const val HOLD_AFTER_MS = 2500
     const val FADE_IN_MS = 160
     const val FADE_OUT_MS = 260
 
-    /** Next full hour strictly after [nowMs] in [zone] (right for half-hour zones and daylight saving). */
     fun nextFullHourMs(nowMs: Long, zone: TimeZone = TimeZone.getDefault()): Long {
         val cal = Calendar.getInstance(zone)
         cal.timeInMillis = nowMs

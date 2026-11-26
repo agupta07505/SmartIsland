@@ -8,17 +8,32 @@
 package com.agupta07505.smartisland.util
 
 import android.app.Notification
+import android.os.Build
 import android.service.notification.StatusBarNotification
 
-enum class TurnDirection {
-    LEFT,
-    RIGHT,
-    SLIGHT_LEFT,
-    SLIGHT_RIGHT,
-    U_TURN,
-    STRAIGHT,
-    ROUNDABOUT,
-    DESTINATION
+enum class TurnDirection(val arrowAngleDeg: Float) {
+    LEFT(-90f),
+    RIGHT(90f),
+    SLIGHT_LEFT(-45f),
+    SLIGHT_RIGHT(45f),
+    U_TURN(180f),
+    STRAIGHT(0f),
+    ROUNDABOUT(0f),
+    DESTINATION(0f)
+}
+
+object TurnArrow {
+    /**
+     * The angle that shows [direction] and is the shortest way round from [currentDeg], so an arrow that goes from a
+     * u-turn to a left turn swings 90 degrees instead of unwinding 270 the other way
+     */
+    fun nextAngle(currentDeg: Float, direction: TurnDirection): Float {
+        val base = direction.arrowAngleDeg
+        val turns = Math.round((currentDeg - base) / FULL_TURN_DEG)
+        return base + turns * FULL_TURN_DEG
+    }
+
+    private const val FULL_TURN_DEG = 360f
 }
 
 data class NavigationInfo(
@@ -29,11 +44,10 @@ data class NavigationInfo(
     val turnDirection: TurnDirection = TurnDirection.STRAIGHT
 )
 
-/** What the expanded navigation card shows, split into its rows. */
 data class NavigationCardText(
-    /** "In 300 m" for the badge. */
+    /** "In 300 m" for the badge */
     val distance: String,
-    /** The maneuver itself ("Turn left onto MG Road"), without a leading distance. */
+    /** Maneuver itself ("Turn left onto MG Road"), without a leading distance. */
     val instruction: String,
     /** Extra instruction text such as a street or lane hint; empty when there is none. */
     val detail: String,
@@ -48,12 +62,12 @@ object NavigationParser {
     fun parse(sbn: StatusBarNotification): NavigationInfo? {
         val packageName = sbn.packageName
 
-        // Delivery and ride apps track an order or a trip; they never give turn-by-turn guidance, even when one of
-        // them tags its notification with the navigation category and a distance ("Your rider is 500 m away").
+        // Delivery and ride apps track an order or a trip, never turn-by-turn guidance, even when one tags its
+        // notification navigation with a distance ("Your rider is 500 m away")
         if (AppPackageCatalog.isLiveActivityApp(packageName)) return null
 
         val notification = sbn.notification ?: return null
-        val isCategoryNav = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        val isCategoryNav = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             notification.category == Notification.CATEGORY_NAVIGATION
         } else {
             notification.category == "navigation"
@@ -65,7 +79,7 @@ object NavigationParser {
         }
 
         // A map app also posts ordinary notifications (Maps' "Your September Timeline", a saved-place tip, a traffic
-        // alert).
+        // alert)
         if (!isCategoryNav) {
             val running = (notification.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE)) != 0
             if (!running) return null
@@ -81,7 +95,7 @@ object NavigationParser {
 
         val combinedContent = "$title $text".lowercase()
 
-        // Exclude OEM screen recording, voice recording, calls, and hotspot notifications from being hijacked by Navigation
+        // Keep OEM screen recording, voice recording, calls and hotspot notifications from being hijacked by Navigation
         if (OemDeviceRules.isNonNavigationContent(packageName, combinedContent)) {
             return null
         }
@@ -94,11 +108,11 @@ object NavigationParser {
         val hasTripStat = NavigationLocale.TRIP_STAT.containsMatchIn(combinedContent)
 
         if (knownApp) {
-            // A known map app that categorises the notification as navigation is trusted.
+            // A known map app that categorises the notification as navigation is trusted
             if (!isCategoryNav && !hasManeuverWording && distanceMatch == null && !hasTripStat) return null
         } else {
             // Any other app only gets here through the navigation category, which delivery, ride and tracking apps
-            // use too.
+            // use too
             if (!hasManeuverWording) return null
             if (NavigationLocale.DELIVERY_OR_RIDE_WORDING.containsMatchIn(combinedContent)) return null
         }
@@ -151,27 +165,32 @@ object NavigationParser {
             RIGHT.containsMatchIn(lower) -> TurnDirection.RIGHT
             ROUNDABOUT.containsMatchIn(lower) -> TurnDirection.ROUNDABOUT
             DESTINATION.containsMatchIn(lower) -> TurnDirection.DESTINATION
-            // Word-boundary direction matching only when not preceded by numbers/time words
+            // word-boundary direction matching only when not preceded by numbers/time words
             ENGLISH_LEFT_WORD.containsMatchIn(lower) -> TurnDirection.LEFT
             ENGLISH_RIGHT_WORD.containsMatchIn(lower) -> TurnDirection.RIGHT
-            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left") && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left") && LEFT_WORD.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
-            !lower.contains("right now") && !lower.contains("all right") && RIGHT_WORD.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street") || lower.contains("road") || lower.contains("ave")) -> TurnDirection.RIGHT
+            !lower.contains("left to") && !lower.contains("min left") && !lower.contains("mins left")
+                && !lower.contains("mb left") && !lower.contains("gb left") && !lower.contains("sec left")
+                && LEFT_WORD.containsMatchIn(lower) && (lower.contains("onto") || lower.contains("street")
+                || lower.contains("road") || lower.contains("ave")) -> TurnDirection.LEFT
+            !lower.contains("right now") && !lower.contains("all right") && RIGHT_WORD.containsMatchIn(lower)
+                && (lower.contains("onto") || lower.contains("street") || lower.contains("road")
+                || lower.contains("ave")) -> TurnDirection.RIGHT
             else -> TurnDirection.STRAIGHT
         }
     }
 
     private val SEGMENT_SPLIT = Regex("\\s*[\u2022\u00B7|]\\s*")
 
-    /** Splits a navigation notification into the rows of the expanded card. */
     fun cardText(title: String, text: String): NavigationCardText {
         val segments = text.split(SEGMENT_SPLIT).map { it.trim() }.filter { it.isNotEmpty() }
-        val (statSegments, detailSegments) = segments.partition { NavigationLocale.TRIP_STAT.containsMatchIn(it) || NavigationLocale.TRIP_DISTANCE.matches(it) }
+        val (statSegments, detailSegments) = segments.partition { NavigationLocale.TRIP_STAT.containsMatchIn(it)
+            || NavigationLocale.TRIP_DISTANCE.matches(it) }
         val eta = statSegments.joinToString(" \u2022 ")
         val detail = detailSegments.joinToString(" \u2022 ")
 
         val distanceSource = "$title $detail"
         val distMatch = NavigationLocale.ANY_DISTANCE.find(distanceSource)
-        // "In 300 m" for Latin-script text; other scripts show the distance as the app wrote it ("через 300 м" stays unprefixed).
+        // "In 300 m" for Latin-script text; other scripts show the distance as the app wrote it ("через 300 м" stays unprefixed)
         val distance = when {
             distMatch == null -> "In 200 m"
             distMatch.value.all { it.code < 128 } -> "In ${distMatch.value}"

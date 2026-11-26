@@ -12,17 +12,15 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 
 /**
- * Which app the usage stats say is in front, built from the stream of activity events (no Android types, so it can be unit tested).
- *
- * Some apps (ChatGPT, Google Authenticator) hide their window from accessibility services, so the window list has no
- * application window and no window event names them. The usage stats still know: an app that resumes is in front until it pauses.
+ * Which app the usage stats say is in front, built from the activity events (no Android types, so it can be unit
+ * tested)
  */
 class UsageForegroundTracker {
-    /** The app in front according to the events seen so far, or null when unknown (nothing resumed, or it paused). */
+    /** App in front per the events so far, null when unknown (nothing resumed, or it paused). */
     var current: String? = null
         private set
 
-    /** Timestamp of the newest event seen, so the next query starts after it. 0 when none was seen yet. */
+    /** Timestamp of the newest event seen, so the next query starts after it. 0 when none yet. */
     var lastEventTime: Long = 0L
         private set
 
@@ -37,30 +35,32 @@ class UsageForegroundTracker {
     }
 
     companion object {
-        /** UsageEvents.Event.ACTIVITY_RESUMED (MOVE_TO_FOREGROUND before Android 10). */
+        /** UsageEvents.Event.ACTIVITY_RESUMED (MOVE_TO_FOREGROUND before Android 10) */
         const val RESUMED = 1
 
-        /** UsageEvents.Event.ACTIVITY_PAUSED (MOVE_TO_BACKGROUND before Android 10). */
+        /** UsageEvents.Event.ACTIVITY_PAUSED (MOVE_TO_BACKGROUND before Android 10) */
         const val PAUSED = 2
 
-        /** UsageEvents.Event.ACTIVITY_STOPPED. */
+        /** UsageEvents.Event.ACTIVITY_STOPPED */
         const val STOPPED = 23
     }
 }
 
-/** Reads the usage events (Usage access) into a [UsageForegroundTracker]. Without the permission it simply knows nothing. */
+/** Reads the usage events (Usage access) into a [UsageForegroundTracker]. Without the permission it knows nothing. */
 class UsageForegroundSource(
     private val context: Context,
     private val tracker: UsageForegroundTracker = UsageForegroundTracker()
 ) {
     private var lastQueryMs = 0L
 
-    /** The app in front per the usage stats, or null when unknown. Queries are rate limited; the answer is cached between them. */
+    /**
+     * App in front per the usage stats, null when unknown. Queries are rate limited, the answer is cached between them
+     */
     fun current(ignored: (String) -> Boolean): String? {
         val now = System.currentTimeMillis()
         if (now - lastQueryMs >= MIN_QUERY_INTERVAL_MS) {
             lastQueryMs = now
-            runCatching { query(now, ignored) }
+            runCatchingLogged("UsageForegroundTracker", "Usage stats query failed") { query(now, ignored) }
         }
         return tracker.current
     }

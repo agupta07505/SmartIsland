@@ -8,27 +8,26 @@
 package com.agupta07505.smartisland.util
 
 import com.agupta07505.smartisland.model.IslandMode
+import com.agupta07505.smartisland.model.IslandNotification
 
-/** What [ForegroundApp] needs to know about one accessibility window (no Android types, so it can be unit tested). */
+/** One accessibility window as [ForegroundApp] needs it (no Android types, so it can be unit tested). */
 data class AppWindow(
     val packageName: String?,
-    /** `AccessibilityWindowInfo.TYPE_APPLICATION`. */
+    /** `AccessibilityWindowInfo.TYPE_APPLICATION` */
     val isApplicationType: Boolean,
     val isActive: Boolean,
     val isFocused: Boolean
 )
 
 /**
- * Which app the user is looking at, and which of the island's cards that app hides.
- *
- * The foreground app is read from the window list (the focused, else active application window), not from the last
- * "window opened" event, which a dialog, floating window or share sheet from another package would replace.
+ * Foreground app and the cards it hides. Uses the focused or active application window, the latest window event may
+ * belong to a dialog or overlay
  */
 object ForegroundApp {
 
     /**
-     * The package of the app window the user is in, or null when there is none (the shade, a transition). [ignored]
-     * is true for packages that must never count: this app, SystemUI, keyboards.
+     * Package of the window the user is in, null when none (the shade, a transition). [ignored] is true for this app,
+     * SystemUI and keyboards
      */
     fun pick(windows: List<AppWindow>, ignored: (String) -> Boolean): String? {
         val candidates = windows.filter { w ->
@@ -37,10 +36,7 @@ object ForegroundApp {
         return (candidates.firstOrNull { it.isFocused } ?: candidates.firstOrNull { it.isActive })?.packageName
     }
 
-    /**
-     * True when [mode] is a live card (something the app keeps running: music, navigation, a timer, a recording, a
-     * download, a live activity).
-     */
+    /** True when [mode] is a live card (music, navigation, a timer, a recording, a download, a live activity). */
     fun isLiveMode(mode: IslandMode): Boolean = when (mode) {
         IslandMode.Music,
         IslandMode.Navigation,
@@ -56,4 +52,10 @@ object ForegroundApp {
 
     fun hidesCard(mode: IslandMode, cardPackage: String, foregroundPackage: String?): Boolean =
         !foregroundPackage.isNullOrEmpty() && cardPackage == foregroundPackage && isLiveMode(mode)
+
+    /** An answered call hides in its own app where the timer is visible. Ringing and dialing stay visible. */
+    fun hidesCard(card: IslandNotification, foregroundPackage: String?): Boolean =
+        hidesCard(card.mode, card.packageName, foregroundPackage) ||
+            (!foregroundPackage.isNullOrEmpty() && card.packageName == foregroundPackage &&
+                card.mode == IslandMode.IncomingCall && !card.isCallRinging && !card.isCallConnecting)
 }

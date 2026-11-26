@@ -7,10 +7,6 @@
 
 package com.agupta07505.smartisland.model
 
-/**
- * Every activity the island can show, each with its own switch. `id` is persisted in
- * SmartIslandSettings.disabledEvents; `label` is the long description (Demo tab), `shortLabel` fits a Home tile.
- */
 enum class IslandEvent(val id: String, val label: String, val shortLabel: String, val group: String) {
     PLUGGED_IN("battery_plugged_in", "Charger plugged in (brief card)", "Plugged in", "Power"),
     PLUGGED_OUT("battery_plugged_out", "Charger unplugged", "Unplugged", "Power"),
@@ -29,7 +25,15 @@ enum class IslandEvent(val id: String, val label: String, val shortLabel: String
     HEADPHONES_DISCONNECTED("headphones_disconnected", "Wired Headphone unplugged", "Headphone out", "Connectivity"),
     HOTSPOT("hotspot", "Hotspot", "Hotspot", "Connectivity"),
 
+    AIRPLANE_MODE("airplane_mode", "Airplane mode on or off", "Airplane", "Modes"),
+    RING("ring_mode", "Ring mode", "Ring", "Modes"),
+    VIBRATE("vibrate_mode", "Vibrate mode", "Vibrate", "Modes"),
+    SILENT("silent_mode", "Silent mode", "Silent", "Modes"),
+    DND("dnd", "Do Not Disturb on or off", "DND", "Modes"),
+    MODE("mode", "Modes such as Driving or Bedtime (Android 15 and up)", "Mode", "Modes"),
+
     CALL("call", "Incoming and ongoing calls", "Calls", "Activities"),
+    CALL_ENDED("call_ended", "Call ended or hung up (with the call length)", "Call end", "Activities"),
     MUSIC("music", "Music player", "Music", "Activities"),
     NOTIFICATION("notification", "App notifications", "Notifications", "Activities"),
     NAVIGATION("navigation", "Navigation", "Navigation", "Activities"),
@@ -44,25 +48,42 @@ enum class IslandEvent(val id: String, val label: String, val shortLabel: String
     SCREEN_RECORDING("screen_recording", "Screen recording", "Screen rec.", "Activities"),
     AUDIO_RECORDING("audio_recording", "Audio recording", "Audio rec.", "Activities"),
     TIMER("timer", "Timer", "Timer", "Activities"),
+    TIMER_FINISHED("timer_finished", "Timer finished", "Timer done", "Activities"),
     STOPWATCH("stopwatch", "Stopwatch", "Stopwatch", "Activities"),
-    // drawn by ui/FaceIdLayer.kt over the cutout, not as a card
     FACE_UNLOCK("face_unlock", "Face ID scan (face unlock animation)", "Face ID", "Activities");
 
-    /**
-     * True when the event has its own auto-expand switch on the Home tab. Calls always open the island, so they have
-     * none.
-     */
-    val canSwitchAutoExpand: Boolean get() = this != CALL && this != FACE_UNLOCK
+    val canSwitchAutoExpand: Boolean get() = this != FACE_UNLOCK
 
     /**
-     * True when the event has its own "hide on the lock screen" switch. Calls never do: a ringing call must stay
-     * reachable.
+     * True when the event has its own "hide on the lock screen" switch. Calls never do, a ringing call must stay
+     * reachable
      */
     val canHideOnLockScreen: Boolean get() = this != CALL && this != FACE_UNLOCK
 
     companion object {
-        /** Event for real app notifications (not system broadcasts). */
-        fun forListenerMode(mode: IslandMode, transferKind: TransferKind = TransferKind.DOWNLOAD): IslandEvent? = when (mode) {
+        /** Live events that can stay on the island while their own app is open. Timer and stopwatch always hide there. */
+        val FOREGROUND_SWITCHABLE: List<IslandEvent> = listOf(
+            MUSIC, NAVIGATION, SCREEN_RECORDING, AUDIO_RECORDING, HOTSPOT, LIVE_ACTIVITY,
+            DOWNLOAD, UPLOAD, BACKUP, FILE_COPY_MOVE, FILE_DELETE, APP_INSTALL
+        )
+
+        /** Music and navigation stay hidden in their own app by default, the rest are shown. */
+        val DEFAULT_SHOW_IN_FOREGROUND_IDS: Set<String> = FOREGROUND_SWITCHABLE
+            .filter { it != MUSIC && it != NAVIGATION }
+            .mapTo(LinkedHashSet()) { it.id }
+
+        val AUTO_EXPAND_BY_DEFAULT: Set<IslandEvent> = setOf(CALL, NOTIFICATION, LOW_BATTERY, VPN_DISCONNECTED, TIMER_FINISHED)
+
+        /**
+         * Default of the "no auto-expand" sets: every switchable event outside [AUTO_EXPAND_BY_DEFAULT]. Built from
+         * [entries], so an event added later starts off.
+         */
+        val DEFAULT_NO_AUTO_EXPAND_IDS: Set<String> = entries
+            .filter { it.canSwitchAutoExpand && it !in AUTO_EXPAND_BY_DEFAULT }
+            .mapTo(LinkedHashSet()) { it.id }
+
+        fun forListenerMode(mode: IslandMode, transferKind: TransferKind = TransferKind.DOWNLOAD): IslandEvent? =
+                when (mode) {
             IslandMode.Notification -> NOTIFICATION
             IslandMode.IncomingCall -> CALL
             IslandMode.Music -> MUSIC
@@ -86,14 +107,11 @@ enum class IslandEvent(val id: String, val label: String, val shortLabel: String
             TransferKind.INSTALL -> APP_INSTALL
         }
 
-        /**
-         * Event a posted island notification belongs to, for filtering against the user's switches; null for modes
-         * that are never gated (Empty).
-         */
         fun forNotification(n: IslandNotification): IslandEvent? = when (n.mode) {
             IslandMode.Empty -> null
             IslandMode.Notification -> NOTIFICATION
             IslandMode.IncomingCall -> CALL
+            IslandMode.CallEnded -> CALL_ENDED
             IslandMode.Music -> MUSIC
             IslandMode.Battery -> when (n.category) {
                 "battery_plugged_in" -> PLUGGED_IN
@@ -121,12 +139,12 @@ enum class IslandEvent(val id: String, val label: String, val shortLabel: String
                 "usb_disconnected" -> USB_DISCONNECTED
                 "headphones_connected" -> HEADPHONES_CONNECTED
                 "headphones_disconnected" -> HEADPHONES_DISCONNECTED
-                else -> BLUETOOTH
+                else -> DeviceStates.eventOf(n.category) ?: BLUETOOTH
             }
             IslandMode.Flashlight -> FLASHLIGHT
             IslandMode.ScreenRecording -> SCREEN_RECORDING
             IslandMode.AudioRecording -> AUDIO_RECORDING
-            IslandMode.Timer -> TIMER
+            IslandMode.Timer -> if (n.timerFinished) TIMER_FINISHED else TIMER
             IslandMode.Stopwatch -> STOPWATCH
         }
     }

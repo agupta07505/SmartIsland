@@ -12,16 +12,15 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 
-/**
- * What a tap on the media card's output chip does.
- */
+private const val TAG = "MediaOutputSwitcher"
+
 object MediaOutputSwitcher {
     private const val ACTION = "com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG"
     private const val ACTION_SYSTEM = "com.android.systemui.action.LAUNCH_SYSTEM_MEDIA_OUTPUT_DIALOG"
     private const val SYSTEMUI = "com.android.systemui"
     private val PACKAGE_NAME = Regex("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+$")
 
-    /** The shell command for [packageName], or null when the name is not a plain package name (nothing is quoted into a shell). */
+    /** Null if the name is not a plain package name, nothing is quoted into a shell. */
     fun broadcastCommand(packageName: String): String? {
         if (packageName.length > 255 || !PACKAGE_NAME.matches(packageName)) return null
         return "am broadcast -a $ACTION -p $SYSTEMUI --es package_name $packageName 2>&1"
@@ -39,19 +38,14 @@ object MediaOutputSwitcher {
         }
     }
 
-    /**
-     * 1. Direct broadcast, when SystemUI's receiver can be seen (it is not on skins that rename it or hide the package).
-     * 2. Shizuku shell broadcast (the shell can send it whatever the skin exports).
-     * 3. The volume panel / Bluetooth settings.
-     * Returns what was used.
-     */
+    /** Direct broadcast, then Shizuku shell broadcast, then volume panel / Bluetooth settings. Returns what was used. */
     suspend fun open(context: Context, packageName: String): Used {
         val direct = directIntent(packageName)
-        val receiverVisible = runCatchingLogged("MediaOutputSwitcher", "receiver lookup failed") {
+        val receiverVisible = runCatchingLogged(TAG, "receiver lookup failed") {
             context.packageManager.queryBroadcastReceivers(direct, 0).isNotEmpty()
         } == true
         if (receiverVisible) {
-            val sent = runCatchingLogged("MediaOutputSwitcher", "direct broadcast failed") {
+            val sent = runCatchingLogged(TAG, "direct broadcast failed") {
                 context.sendBroadcast(direct)
                 true
             } == true

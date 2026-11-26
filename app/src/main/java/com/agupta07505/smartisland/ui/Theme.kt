@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -19,12 +20,15 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowCompat
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.ui.glass.GlassBackdropColors
 import com.agupta07505.smartisland.ui.glass.LiquidGlassBackdrop
@@ -32,9 +36,8 @@ import com.agupta07505.smartisland.ui.glass.LocalGlassBackdropColors
 import com.agupta07505.smartisland.ui.glass.LocalGlassDark
 import com.agupta07505.smartisland.ui.glass.LocalLiquidGlass
 
-// The app's theme: Material 3 colour roles, built from one accent colour (or from the wallpaper with Material You),
-// drawn either flat (plain Material 3) or as liquid glass (translucent panels over a soft colour backdrop, see
-// ui/glass).
+// The app's theme: Material 3 colour roles built from one accent colour (or the wallpaper with Material You), drawn
+// flat or as liquid glass (translucent panels over a soft colour backdrop, see ui/glass)
 
 private fun hsl(hue: Float, sat: Float, light: Float): Color {
     val h = ((hue % 360f) + 360f) % 360f
@@ -42,9 +45,8 @@ private fun hsl(hue: Float, sat: Float, light: Float): Color {
 }
 
 /**
- * A full Material 3 colour scheme grown from [seed]: primary, secondary (the same hue, calmer) and tertiary (a warm-
- * shifted hue) families plus neutrals that lean slightly towards the seed's hue, so surfaces never look grey next to
- * the accent.
+ * Full Material 3 colour scheme grown from [seed]: primary, secondary (same hue, calmer) and tertiary (warm-shifted)
+ * families plus neutrals leaning slightly to the seed's hue, so surfaces never look grey next to the accent
  */
 internal fun accentColorScheme(seed: Color, dark: Boolean): ColorScheme {
     val hsl = FloatArray(3)
@@ -52,7 +54,7 @@ internal fun accentColorScheme(seed: Color, dark: Boolean): ColorScheme {
     val h = hsl[0]
     val s = hsl[1].coerceIn(0.40f, 0.95f)
     val h3 = h + 58f
-    // A touch of the accent in the neutrals (more in the light theme, where it shows as a tinted white).
+    // A touch of the accent in the neutrals (more in the light theme, where it shows as a tinted white)
     val n = (s * 0.16f).coerceIn(0.05f, 0.14f)
     return if (!dark) {
         lightColorScheme(
@@ -119,11 +121,6 @@ internal fun accentColorScheme(seed: Color, dark: Boolean): ColorScheme {
     }
 }
 
-/**
- * The glass version of a scheme: the same colours, but the page background is clear (the backdrop is drawn behind
- * it), the panels (surface, surfaceVariant, surfaceContainer) are see-through so the backdrop tints them, and the
- * roles that dialogs, menus and sheets sit on stay nearly solid, so text over a dimmed screen stays readable.
- */
 internal fun ColorScheme.asGlass(dark: Boolean): ColorScheme = copy(
     background = Color.Transparent,
     surface = surface.copy(alpha = if (dark) 0.58f else 0.62f),
@@ -142,11 +139,11 @@ fun SmartIslandTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     /** "system" follows [darkTheme]; "light" / "dark" force one. */
     themeMode: String = "system",
-    /** Liquid glass look (translucent panels over a colour backdrop). Off gives plain Material 3. */
+    /** Liquid glass look (translucent panels over a colour backdrop), off gives plain Material 3. */
     liquidGlass: Boolean = SmartIslandSettings.Default.liquidGlassTheme,
-    /** Colours from the phone's wallpaper (Android 12+). Off builds the palette from [accentColor]. */
+    /** Colours from the phone's wallpaper (Android 12+), off builds the palette from [accentColor]. */
     materialYou: Boolean = SmartIslandSettings.Default.materialYou,
-    /** The accent colour (ARGB) the palette is built from when Material You is off. */
+    /** Accent colour (ARGB) the palette is built from when Material You is off. */
     accentColor: Long = SmartIslandSettings.Default.accentColor,
     content: @Composable () -> Unit
 ) {
@@ -165,12 +162,12 @@ fun SmartIslandTheme(
     }
     val colorScheme = if (liquidGlass) solid.asGlass(useDark) else solid
 
-    // Keep the status / navigation bar icons readable when the chosen theme differs from the phone's.
-    val view = androidx.compose.ui.platform.LocalView.current
+    // keep the status / navigation bar icons readable when the chosen theme differs from the phone's
+    val view = LocalView.current
     if (!view.isInEditMode) {
-        androidx.compose.runtime.SideEffect {
-            val window = (context as? android.app.Activity)?.window ?: return@SideEffect
-            val controller = androidx.core.view.WindowCompat.getInsetsController(window, view)
+        SideEffect {
+            val window = (context as? Activity)?.window ?: return@SideEffect
+            val controller = WindowCompat.getInsetsController(window, view)
             controller.isAppearanceLightStatusBars = !useDark
             controller.isAppearanceLightNavigationBars = !useDark
         }

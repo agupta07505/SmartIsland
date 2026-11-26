@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,17 +29,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.R
-import com.agupta07505.smartisland.ui.search.searchAnchor
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
+import com.agupta07505.smartisland.model.MergeStyle
+import com.agupta07505.smartisland.ui.glass.Card
+import com.agupta07505.smartisland.ui.search.searchAnchor
 import com.agupta07505.smartisland.util.AnimationSpeed
-import com.agupta07505.smartisland.util.MergeStyle
 import kotlinx.coroutines.launch
 
-/**
- * Layout tab: how fast the island opens, closes and settles. Follows the Portrait / Landscape switch above it, so
- * each orientation keeps its own speed.
- */
+/** Layout tab: how fast the island opens, closes and settles. */
 @Composable
 fun AnimationSpeedSection(
     settings: SmartIslandSettings,
@@ -116,10 +113,7 @@ fun AnimationSpeedSection(
     }
 }
 
-/**
- * Layout tab: how the small round cutout joins the main one when it merges. Follows the Portrait / Landscape switch
- * above it, so each orientation keeps its own choice.
- */
+/** Layout tab: how the small round cutout joins the main one when it merges. */
 @Composable
 fun MergeStyleSection(
     settings: SmartIslandSettings,

@@ -16,24 +16,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.DrawTransform
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.agupta07505.smartisland.data.SmartIslandSettings
+import com.agupta07505.smartisland.model.IslandEvent
 import com.agupta07505.smartisland.util.AnimationSpeed
 import com.agupta07505.smartisland.util.FaceIdController
 import com.agupta07505.smartisland.util.SystemAnimScale
@@ -54,6 +56,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.pow
+import kotlin.math.sin
 
 internal object FaceIdShell {
     var covering by mutableStateOf(false)
@@ -148,7 +151,7 @@ private fun faceIdPlace(p: FloatArray, scale: Float, dy: Float): FloatArray {
     return out
 }
 
-internal fun DrawScope.drawEye(cx: Float, open: Float, alpha: Float = 1f) {
+internal fun DrawScope.drawEye(cx: Float, open: Float, alpha: Float = 1f, color: Color = FACE_ID_NAVY) {
     val cy = FACE_ID_HEAD_CY + FACE_ID_EYE_DY
     val top = cy + FACE_ID_EYE_R * (0.5f - 1.5f * open)
     clipRect(
@@ -157,7 +160,7 @@ internal fun DrawScope.drawEye(cx: Float, open: Float, alpha: Float = 1f) {
         right = cx + FACE_ID_EYE_R + 1f,
         bottom = cy + FACE_ID_EYE_R + 1f
     ) {
-        drawCircle(FACE_ID_NAVY.copy(alpha = alpha), radius = FACE_ID_EYE_R, center = Offset(cx, cy))
+        drawCircle(color.copy(alpha = alpha), radius = FACE_ID_EYE_R, center = Offset(cx, cy))
     }
 }
 
@@ -173,12 +176,319 @@ internal fun FaceIdLayer(
     val state by FaceIdController.state.collectAsState()
     if (state.active) {
         key(state.session) {
+            // The card keeps the cutout's size and spot it started on: an event arriving behind it re-sizes the
+            // layout (a bubble or a pulse re-centres the group, the settings follow the cards), the scan does not follow
+            val startSettings = remember { settings }
+            val startX = remember { centerOffsetX }
+            val startTop = remember { topOffset }
             if (state.style == FaceIdController.Style.Cutout) {
-                FaceIdCutoutCard(state.session, settings, centerOffsetX, isLandscape, topOffset, modifier)
+                FaceIdCutoutCard(state.session, startSettings, startX, isLandscape, startTop, modifier)
             } else {
-                FaceIdCard(state.session, settings, pillColor, centerOffsetX, isLandscape, topOffset, modifier)
+                FaceIdCard(state.session, startSettings, pillColor, startX, isLandscape, startTop, modifier)
             }
         }
+    }
+}
+
+private class FaceIdCardAnims {
+    val open = Animatable(0f)
+    val scanT = Animatable(0f)
+    val blink = Animatable(0f)
+    val fade = Animatable(0f)
+    // 0 = face, 1 = tick
+    val morph = Animatable(0f)
+    // 0 = tick, 1 = arcs
+    val splitT = Animatable(0f)
+    val arcFade = Animatable(0f)
+    // Fingerprint unlock: face to fingerprint, scan line place, fingerprint to tick
+    val fpIn = Animatable(0f)
+    val fpScan = Animatable(FP_NO_SCAN)
+    val fpTick = Animatable(0f)
+    val quit = Animatable(0f)
+    // 0..1 = half a turn around the edge
+    val turnT = Animatable(0f)
+    // no-face ending: face to cross, then shake
+    val crossT = Animatable(0f)
+    val shake = Animatable(0f)
+}
+
+private class FaceIdCardPaths {
+    val disc = facePathOf(FACE_ID_DISC)
+    val hole = facePathOf(FACE_ID_HOLE)
+    val outlines = faceIdMorphOutlines()
+    val morphPoints = FloatArray(outlines.first.size)
+    val morphPath = Path()
+    val fpTickOutlines = faceIdFingerprintTickOutlines()
+    val fpTickPoints = FloatArray(fpTickOutlines.first.size)
+    val fpTickPath = Path()
+    val tickPath = facePathOf(FACE_ID_TICK)
+    val crossOutlines = faceIdCrossMorphOutlines()
+    val crossPoints = FloatArray(crossOutlines.first.size)
+    val crossMorphPath = Path()
+    val crossPath = facePathOf(FACE_ID_CROSS)
+}
+
+private class FaceIdCardArcs(val track: FaceIdEdgeTrack, faceA: Float, faceDy: Float) {
+    val split = faceIdSplitOutlines(track)
+    val leftFromAtFace = faceIdPlace(split.leftFrom, faceA, faceDy)
+    val rightFromAtFace = faceIdPlace(split.rightFrom, faceA, faceDy)
+    val leftPoints = FloatArray(split.leftFrom.size)
+    val rightPoints = FloatArray(split.rightFrom.size)
+    val arcPoints = FloatArray(FACE_ID_ARC_OUTLINE_POINTS * 2)
+    val leftPath = Path()
+    val rightPath = Path()
+}
+
+private suspend fun FaceIdCardAnims.playCancel(session: Int, speed: AnimationSpeed) {
+    FaceIdController.state.first { it.session == session && it.cancelled }
+    coroutineScope {
+        launch { open.animateTo(0f, tween(speed.durationMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
+        fade.animateTo(1f, tween(speed.durationMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
+    }
+    FaceIdController.finish(session)
+}
+
+private suspend fun FaceIdCardAnims.playScan(session: Int, speed: AnimationSpeed) {
+    if (SystemAnimScale.animationsOff()) {
+        FaceIdController.finish(session)
+        return
+    }
+    coroutineScope {
+        val normal = launch { playFaceVerdict(session, speed) }
+        var fingerprintStarted = false
+        val fingerprintJob = launch {
+            val direct = FaceIdController.state.first { it.session == session && it.fingerprint }.direct
+            fingerprintStarted = true
+            normal.cancelAndJoin()
+            blink.snapTo(0f)
+            shake.snapTo(0f)
+            fade.snapTo(0f)
+            playFingerprint(direct, session, speed)
+        }
+        normal.join()
+        if (fingerprintStarted) fingerprintJob.join() else fingerprintJob.cancel()
+    }
+}
+
+private suspend fun FaceIdCardAnims.playFaceVerdict(session: Int, speed: AnimationSpeed) {
+    fun finalMs(time: Int): Int = speed.durationMs(time)
+    fun scanMs(base: Int): Int = speed.durationMs((base / FACE_ID_SCAN_SPEEDUP).toInt().coerceAtLeast(1))
+    suspend fun blinkOnce() {
+        blink.animateTo(1f, tween(finalMs(BLINK_CLOSE_MS), easing = LinearEasing))
+        blink.animateTo(0f, tween(finalMs(BLINK_OPEN_MS), easing = LinearEasing))
+    }
+    coroutineScope {
+        open.animateTo(1f, tween(finalMs(CARD_OPEN_MS), easing = FastOutSlowInEasing))
+        val scanJob = launch { scanT.animateTo(FACE_ID_SCAN_END,
+            tween(scanMs((FACE_ID_SCAN_END * 1000f).toInt()), easing = LinearEasing)) }
+        val blinkJob = launch {
+            FaceIdController.state.first { it.session == session && it.anchored }
+            delay(finalMs(BLINK_1_AT_MS).toLong())
+            while (true) {
+                blinkOnce()
+                delay(finalMs(BLINK_PERIOD_MS - BLINK_CLOSE_MS - BLINK_OPEN_MS).toLong())
+            }
+        }
+        val verdict = withTimeoutOrNull(finalMs(FaceIdController.state.value.waitMs).toLong()) {
+            FaceIdController.state.first { it.session == session && (it.accepted || it.rejected) }
+        }
+        val accepted = verdict?.accepted == true
+        blinkJob.cancelAndJoin()
+        if (accepted && blink.value > 0f) blink.animateTo(0f, tween(finalMs(BLINK_OPEN_MS), easing = LinearEasing))
+        if (scanT.value < FACE_ID_SCAN_END) {
+            scanJob.cancelAndJoin()
+            scanT.animateTo(FACE_ID_SCAN_END, tween(finalMs(SCAN_SETTLE_MS), easing = LinearEasing))
+        }
+        if (accepted) {
+            morph.animateTo(1f, tween(finalMs(FACE_TO_TICK_MS), easing = FastOutSlowInEasing))
+            delay(finalMs(TICK_BEAT_MS).toLong())
+            if (FaceIdController.state.value.style == FaceIdController.Style.SquareTick) {
+                // Stop on the tick: the square collapses into the cutout, no arcs
+                val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
+                fade.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
+                closing.join()
+                FaceIdController.finish(session)
+                return@coroutineScope
+            }
+            // Tick splits into arcs while the card closes
+            val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
+            splitT.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
+            closing.join()
+            turnT.animateTo(1f, tween(finalMs(ARC_TURN_MS), easing = FastOutSlowInEasing))
+            arcFade.animateTo(1f, tween(finalMs(ARC_FADE_MS), easing = LinearEasing))
+            FaceIdController.finish(session)
+            return@coroutineScope
+        }
+        // No face: eyes shut, cross, shake, close
+        blink.animateTo(1f, tween(finalMs(EYES_SHUT_MS), easing = FastOutSlowInEasing))
+        crossT.animateTo(1f, tween(finalMs(CROSS_MS), easing = FastOutSlowInEasing))
+        delay(finalMs(CROSS_HOLD_MS).toLong())
+        shake.animateTo(1f, tween(SHAKE_MS, easing = LinearEasing))
+        val closing = launch { open.animateTo(0f, tween(finalMs(NO_FACE_CLOSE_MS), easing = FastOutSlowInEasing)) }
+        fade.animateTo(1f, tween(finalMs(NO_FACE_CLOSE_MS), easing = FastOutSlowInEasing))
+        closing.join()
+        FaceIdController.finish(session)
+    }
+}
+
+private suspend fun FaceIdCardAnims.playFingerprint(direct: Boolean, session: Int, speed: AnimationSpeed) {
+    fun finalMs(time: Int): Int = speed.durationMs(time)
+    coroutineScope {
+        if (direct) {
+            fpIn.snapTo(1f)
+            launch { open.animateTo(1f, tween(finalMs(CARD_OPEN_MS), easing = FastOutSlowInEasing)) }
+            launch { scanT.animateTo(FACE_ID_EYES_START, tween(finalMs(FPD_FADE_IN_MS), easing = LinearEasing)) }
+        } else {
+            coroutineScope {
+                launch { fpIn.animateTo(1f, tween(finalMs(FP_MORPH_IN_MS), easing = LinearEasing)) }
+                launch { if (open.value < 1f) open.animateTo(1f,
+                    tween(finalMs(FP_MORPH_IN_MS), easing = FastOutSlowInEasing)) }
+                launch {
+                    if (scanT.value < FACE_ID_EYES_START) {
+                        scanT.animateTo(FACE_ID_EYES_START, tween(finalMs(FP_MORPH_IN_MS), easing = LinearEasing))
+                    }
+                }
+            }
+        }
+        fpScan.snapTo(0f)
+        fpScan.animateTo(1f, tween(finalMs(FP_SWEEP_UP_MS), easing = LinearEasing))
+        fpScan.animateTo(0f, tween(finalMs(FP_SWEEP_DOWN_MS), easing = LinearEasing))
+        fpScan.snapTo(FP_NO_SCAN)
+        fpTick.animateTo(1f, tween(finalMs(FP_TO_TICK_MS), easing = FastOutSlowInEasing))
+        delay(finalMs(FP_HOLD_MS).toLong())
+        if (FaceIdController.state.value.style == FaceIdController.Style.SquareTick) {
+            val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
+            fade.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
+            closing.join()
+        } else {
+            val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
+            splitT.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
+            closing.join()
+            turnT.animateTo(1f, tween(finalMs(ARC_TURN_MS), easing = FastOutSlowInEasing))
+            arcFade.animateTo(1f, tween(finalMs(ARC_FADE_MS), easing = LinearEasing))
+        }
+        FaceIdController.finish(session)
+    }
+}
+
+private fun GraphicsLayerScope.applyFaceIdCardLayer(a: FaceIdCardAnims) {
+    val t = a.scanT.value
+    alpha = (faceSmooth(0f, FACE_ID_FADE_IN_END, t) * (1f - a.fade.value) * (1f - a.arcFade.value)).coerceIn(0f, 1f)
+    compositingStrategy = CompositingStrategy.Offscreen
+    // Settles from slightly large; shrinks a bit on fade-out
+    val settle = 1.12f - 0.12f * (1f - (1f - faceSmooth(0f, 1.4f, t)).pow(3))
+    val s = settle * (1f - 0.06f * a.fade.value)
+    scaleX = s
+    scaleY = s
+    translationX = sin(2.0 * Math.PI * SHAKE_CYCLES * a.shake.value).toFloat() * SHAKE_AMPLITUDE_DP.dp.toPx()
+}
+
+private fun DrawScope.drawFaceIdCard(
+    a: FaceIdCardAnims,
+    p: FaceIdCardPaths,
+    arcs: FaceIdCardArcs,
+    faceA: Float,
+    faceDy: Float,
+    faceColor: Color = FACE_ID_NAVY
+) {
+    val k = size.width / FACE_ID_DESIGN_W
+    withTransform({ scale(k, k, pivot = Offset.Zero) }) {
+        val m = a.morph.value
+        val fpi = a.fpIn.value
+        val headAlpha = ((1f - m) * (1f - fpi)).coerceIn(0f, 1f)
+        val headScale = 1f - (1f - FACE_ID_HEAD_END_SCALE) * m
+        val headPivot = Offset(FACE_ID_HEAD_CX, FACE_ID_HEAD_CY)
+        val faceT: DrawTransform.() -> Unit = {
+            translate(0f, faceDy)
+            scale(faceA, faceA, pivot = headPivot)
+        }
+        withTransform({
+            faceT()
+            scale(headScale, headScale, pivot = headPivot)
+        }) {
+            if (headAlpha > 0f) drawPath(p.disc, faceColor.copy(alpha = headAlpha))
+        }
+        drawFaceIdCardMark(a, p, arcs, faceT)
+        val t = a.scanT.value
+        val eyeAlpha = headAlpha * (1f - a.crossT.value)
+        if (eyeAlpha > 0f && t > FACE_ID_EYES_START - 0.02f) {
+            val shut = 1.3f * a.blink.value
+            withTransform({
+                faceT()
+                scale(headScale, headScale, pivot = headPivot)
+            }) {
+                drawEye(FACE_ID_HEAD_CX - FACE_ID_EYE_DX, faceEaseInOut(faceSmooth(FACE_ID_EYES_START, FACE_ID_EYES_END,
+                    t)) - shut, eyeAlpha, color = faceColor)
+                drawEye(FACE_ID_HEAD_CX + FACE_ID_EYE_DX, faceEaseInOut(faceSmooth(FACE_ID_EYES_START + 0.05f,
+                    FACE_ID_EYES_END + 0.05f, t)) - shut, eyeAlpha, color = faceColor)
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawFaceIdCardMark(
+    a: FaceIdCardAnims,
+    p: FaceIdCardPaths,
+    arcs: FaceIdCardArcs,
+    faceT: DrawTransform.() -> Unit
+) {
+    val track = arcs.track
+    val split = arcs.split
+    val m = a.morph.value
+    val fpi = a.fpIn.value
+    val sp = a.splitT.value
+    if (sp >= 1f) {
+        val turn = ARC_TURN_DIRECTION * a.turnT.value
+        track.leftOutlineInto(turn * track.leftSwap, arcs.arcPoints)
+        faceIdFillPath(arcs.leftPath, arcs.arcPoints)
+        drawPath(arcs.leftPath, Color.White)
+        track.rightOutlineInto(turn * track.rightSwap, arcs.arcPoints)
+        faceIdFillPath(arcs.rightPath, arcs.arcPoints)
+        drawPath(arcs.rightPath, Color.White)
+    } else if (sp > 0f) {
+        faceIdBlend(arcs.leftFromAtFace, split.leftTo, sp, arcs.leftPoints)
+        faceIdFillPath(arcs.leftPath, arcs.leftPoints)
+        drawPath(arcs.leftPath, Color.White)
+        faceIdBlend(arcs.rightFromAtFace, split.rightTo, sp, arcs.rightPoints)
+        faceIdFillPath(arcs.rightPath, arcs.rightPoints)
+        drawPath(arcs.rightPath, Color.White)
+    } else if (fpi > 0f) {
+        withTransform({ faceT() }) {
+            if (fpi < 1f) {
+                val glyphAlpha = Color.White.copy(alpha = 1f - fpi)
+                if (a.crossT.value >= 1f) {
+                    drawPath(p.crossPath, glyphAlpha)
+                } else if (a.crossT.value > 0f) {
+                    faceIdBlend(p.crossOutlines.first, p.crossOutlines.second, a.crossT.value, p.crossPoints)
+                    faceIdFillPath(p.crossMorphPath, p.crossPoints)
+                    drawPath(p.crossMorphPath, glyphAlpha)
+                } else {
+                    drawPath(p.hole, glyphAlpha)
+                }
+            }
+            val tp = a.fpTick.value
+            val toTick = faceSmooth(0f, FP_TICK_FADE, tp)
+            drawFingerprint(alpha = fpi * (1f - toTick), scan = a.fpScan.value)
+            if (tp > 0f) {
+                faceIdBlend(p.fpTickOutlines.first, p.fpTickOutlines.second, tp, p.fpTickPoints)
+                faceIdFillPath(p.fpTickPath, p.fpTickPoints)
+                drawPath(p.fpTickPath, Color.White.copy(alpha = toTick))
+            }
+        }
+    } else if (a.crossT.value >= 1f) {
+        withTransform({ faceT() }) { drawPath(p.crossPath, Color.White) }
+    } else if (a.crossT.value > 0f) {
+        faceIdBlend(p.crossOutlines.first, p.crossOutlines.second, a.crossT.value, p.crossPoints)
+        faceIdFillPath(p.crossMorphPath, p.crossPoints)
+        withTransform({ faceT() }) { drawPath(p.crossMorphPath, Color.White) }
+    } else if (m <= 0f) {
+        withTransform({ faceT() }) { drawPath(p.hole, Color.White) }
+    } else if (m >= 1f) {
+        withTransform({ faceT() }) { drawPath(p.tickPath, Color.White) }
+    } else {
+        faceIdBlend(p.outlines.first, p.outlines.second, m, p.morphPoints)
+        faceIdFillPath(p.morphPath, p.morphPoints)
+        withTransform({ faceT() }) { drawPath(p.morphPath, Color.White) }
     }
 }
 
@@ -197,44 +507,19 @@ private fun FaceIdCard(
         FaceIdShell.covering = true
         onDispose { FaceIdShell.covering = false }
     }
-    val open = remember { Animatable(0f) }
-    val scanT = remember { Animatable(0f) }
-    val blink = remember { Animatable(0f) }
-    val fade = remember { Animatable(0f) }
-    // 0 = face, 1 = tick
-    val morph = remember { Animatable(0f) }
-    val disc = remember { facePathOf(FACE_ID_DISC) }
-    val hole = remember { facePathOf(FACE_ID_HOLE) }
-    val outlines = remember { faceIdMorphOutlines() }
-    val morphPoints = remember { FloatArray(outlines.first.size) }
-    val morphPath = remember { Path() }
-    // 0 = tick, 1 = arcs
-    val splitT = remember { Animatable(0f) }
-    val arcFade = remember { Animatable(0f) }
-    // fingerprint unlock: face to fingerprint, scan line place, fingerprint to tick
-    val fpIn = remember { Animatable(0f) }
-    val fpScan = remember { Animatable(FP_NO_SCAN) }
-    val fpTick = remember { Animatable(0f) }
-    val fpTickOutlines = remember { faceIdFingerprintTickOutlines() }
-    val fpTickPoints = remember { FloatArray(fpTickOutlines.first.size) }
-    val fpTickPath = remember { Path() }
-    val quit = remember { Animatable(0f) }
-    // 0..1 = half a turn around the edge
-    val turnT = remember { Animatable(0f) }
-    val tickPath = remember { facePathOf(FACE_ID_TICK) }
-    // no-face ending: face to cross, then shake
-    val crossT = remember { Animatable(0f) }
-    val shake = remember { Animatable(0f) }
-    val crossOutlines = remember { faceIdCrossMorphOutlines() }
-    val crossPoints = remember { FloatArray(crossOutlines.first.size) }
-    val crossMorphPath = remember { Path() }
-    val crossPath = remember { facePathOf(FACE_ID_CROSS) }
-    // collapsed cutout size; radius clamped to half the smaller side
+    val anims = remember { FaceIdCardAnims() }
+    val paths = remember { FaceIdCardPaths() }
+    // The colour the user gave the Face ID event, the navy it always had without one
+    val faceColor = remember(settings.eventColors) {
+        settings.eventColors[IslandEvent.FACE_UNLOCK.id]?.let { Color(it) } ?: FACE_ID_NAVY
+    }
+    // Collapsed cutout size; radius clamped to half the smaller side
     val cutW = settings.width
     val cutH = settings.height
-    val cutR = minOf(settings.cornerRadius, cutW / 2f, cutH / 2f)
+    val notch = settings.enableNotchMode
+    val cutR = faceIdCutoutCornerRadius(settings.cornerRadius, cutW, cutH, notch)
     val unitsPerDp = FACE_ID_DESIGN_W / FACE_CARD_W.value
-    // square sits flush below the cutout
+    // Square sits flush below the cutout
     val cutWf = cutW.toFloat()
     val cutHf = cutH.toFloat()
     val side = cutWf * SQUARE_SIDE_OF_CUT_W
@@ -244,7 +529,7 @@ private fun FaceIdCard(
     val faceA = faceDiameterDp / FACE_HEAD_DP_AT_SCALE_1
     val faceDy = (squareTop + side / 2f) * unitsPerDp - FACE_ID_HEAD_CY
     val canvasH = maxOf(FACE_CARD_H.value, squareTop + side + 8f).dp
-    val track = remember(cutW, cutH, cutR) {
+    val track = remember(cutW, cutH, cutR, notch) {
         FaceIdEdgeTrack(
             cx = FACE_ID_HEAD_CX,
             cy = cutH * unitsPerDp / 2f,
@@ -253,150 +538,31 @@ private fun FaceIdCard(
             r = cutR * unitsPerDp,
             thickness = FaceIdArcThickness.Sliver.dp * unitsPerDp,
             reach = FACE_ID_ARC_REACH_DP * unitsPerDp,
-            inset = FACE_ID_ARC_INSET_DP * unitsPerDp
+            inset = FACE_ID_ARC_INSET_DP * unitsPerDp,
+            flatTop = notch,
+            hiddenRise = FACE_ID_NOTCH_RISE_DP * unitsPerDp
         )
     }
-    val split = remember(track) { faceIdSplitOutlines(track) }
-    val leftFromAtFace = remember(split, faceA, faceDy) { faceIdPlace(split.leftFrom, faceA, faceDy) }
-    val rightFromAtFace = remember(split, faceA, faceDy) { faceIdPlace(split.rightFrom, faceA, faceDy) }
-    val leftPoints = remember(split) { FloatArray(split.leftFrom.size) }
-    val rightPoints = remember(split) { FloatArray(split.rightFrom.size) }
-    val arcPoints = remember(track) { FloatArray(FACE_ID_ARC_OUTLINE_POINTS * 2) }
-    val leftPath = remember { Path() }
-    val rightPath = remember { Path() }
+    val arcs = remember(track, faceA, faceDy) { FaceIdCardArcs(track, faceA, faceDy) }
 
-    LaunchedEffect(session) {
-        FaceIdController.state.first { it.session == session && it.cancelled }
-        coroutineScope {
-            launch { open.animateTo(0f, tween(speed.durationMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
-            fade.animateTo(1f, tween(speed.durationMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
-        }
-        FaceIdController.finish(session)
-    }
+    LaunchedEffect(session) { anims.playCancel(session, speed) }
+    LaunchedEffect(session) { anims.playScan(session, speed) }
 
-    LaunchedEffect(session) {
-        if (SystemAnimScale.animationsOff()) {
-            FaceIdController.finish(session)
-            return@LaunchedEffect
-        }
-        fun finalMs(time: Int): Int = speed.durationMs(time)
-        fun scanMs(base: Int): Int = speed.durationMs((base / FACE_ID_SCAN_SPEEDUP).toInt().coerceAtLeast(1))
-        suspend fun blinkOnce() {
-            blink.animateTo(1f, tween(finalMs(BLINK_CLOSE_MS), easing = LinearEasing))
-            blink.animateTo(0f, tween(finalMs(BLINK_OPEN_MS), easing = LinearEasing))
-        }
-        val normal = launch {
-            open.animateTo(1f, tween(finalMs(CARD_OPEN_MS), easing = FastOutSlowInEasing))
-            val scanJob = launch { scanT.animateTo(FACE_ID_SCAN_END, tween(scanMs((FACE_ID_SCAN_END * 1000f).toInt()), easing = LinearEasing)) }
-            val blinkJob = launch {
-                // blink clock starts at the system's real scan start (app lock shows the card earlier)
-                FaceIdController.state.first { it.session == session && it.anchored }
-                delay(finalMs(BLINK_1_AT_MS).toLong())
-                while (true) {
-                    blinkOnce()
-                    delay(finalMs(BLINK_PERIOD_MS - BLINK_CLOSE_MS - BLINK_OPEN_MS).toLong())
-                }
-            }
-            val verdict = withTimeoutOrNull(finalMs(FaceIdController.state.value.waitMs).toLong()) {
-                FaceIdController.state.first { it.session == session && (it.accepted || it.rejected) }
-            }
-            val accepted = verdict?.accepted == true
-            blinkJob.cancelAndJoin()
-            if (accepted && blink.value > 0f) blink.animateTo(0f, tween(finalMs(BLINK_OPEN_MS), easing = LinearEasing))
-            if (scanT.value < FACE_ID_SCAN_END) {
-                scanJob.cancelAndJoin()
-                scanT.animateTo(FACE_ID_SCAN_END, tween(finalMs(SCAN_SETTLE_MS), easing = LinearEasing))
-            }
-            if (accepted) {
-                morph.animateTo(1f, tween(finalMs(FACE_TO_TICK_MS), easing = FastOutSlowInEasing))
-                delay(finalMs(TICK_BEAT_MS).toLong())
-                if (FaceIdController.state.value.style == FaceIdController.Style.SquareTick) {
-                    // stop on the tick: the square collapses into the cutout, no arcs
-                    val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
-                    fade.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
-                    closing.join()
-                    FaceIdController.finish(session)
-                    return@launch
-                }
-                // tick splits into arcs while the card closes
-                val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
-                splitT.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
-                closing.join()
-                // arcs swap sides, then fade
-                turnT.animateTo(1f, tween(finalMs(ARC_TURN_MS), easing = FastOutSlowInEasing))
-                arcFade.animateTo(1f, tween(finalMs(ARC_FADE_MS), easing = LinearEasing))
-                FaceIdController.finish(session)
-                return@launch
-            }
-            // no face: eyes shut, cross, shake, close
-            blink.animateTo(1f, tween(finalMs(EYES_SHUT_MS), easing = FastOutSlowInEasing))
-            crossT.animateTo(1f, tween(finalMs(CROSS_MS), easing = FastOutSlowInEasing))
-            delay(finalMs(CROSS_HOLD_MS).toLong())
-            shake.animateTo(1f, tween(SHAKE_MS, easing = LinearEasing))
-            val closing = launch { open.animateTo(0f, tween(finalMs(NO_FACE_CLOSE_MS), easing = FastOutSlowInEasing)) }
-            fade.animateTo(1f, tween(finalMs(NO_FACE_CLOSE_MS), easing = FastOutSlowInEasing))
-            closing.join()
-            FaceIdController.finish(session)
-        }
-        var fingerprintStarted = false
-        val fingerprintJob = launch {
-            val direct = FaceIdController.state.first { it.session == session && it.fingerprint }.direct
-            fingerprintStarted = true
-            normal.cancelAndJoin()
-            blink.snapTo(0f)
-            shake.snapTo(0f)
-            fade.snapTo(0f)
-            if (direct) {
-                fpIn.snapTo(1f)
-                launch { open.animateTo(1f, tween(finalMs(CARD_OPEN_MS), easing = FastOutSlowInEasing)) }
-                launch { scanT.animateTo(FACE_ID_EYES_START, tween(finalMs(FPD_FADE_IN_MS), easing = LinearEasing)) }
-            } else {
-                coroutineScope {
-                    launch { fpIn.animateTo(1f, tween(finalMs(FP_MORPH_IN_MS), easing = LinearEasing)) }
-                    launch { if (open.value < 1f) open.animateTo(1f, tween(finalMs(FP_MORPH_IN_MS), easing = FastOutSlowInEasing)) }
-                    launch {
-                        if (scanT.value < FACE_ID_EYES_START) {
-                            scanT.animateTo(FACE_ID_EYES_START, tween(finalMs(FP_MORPH_IN_MS), easing = LinearEasing))
-                        }
-                    }
-                }
-            }
-            fpScan.snapTo(0f)
-            fpScan.animateTo(1f, tween(finalMs(FP_SWEEP_UP_MS), easing = LinearEasing))
-            fpScan.animateTo(0f, tween(finalMs(FP_SWEEP_DOWN_MS), easing = LinearEasing))
-            fpScan.snapTo(FP_NO_SCAN)
-            fpTick.animateTo(1f, tween(finalMs(FP_TO_TICK_MS), easing = FastOutSlowInEasing))
-            delay(finalMs(FP_HOLD_MS).toLong())
-            if (FaceIdController.state.value.style == FaceIdController.Style.SquareTick) {
-                val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
-                fade.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
-                closing.join()
-            } else {
-                val closing = launch { open.animateTo(0f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing)) }
-                splitT.animateTo(1f, tween(finalMs(TICK_SPLIT_MS), easing = FastOutSlowInEasing))
-                closing.join()
-                turnT.animateTo(1f, tween(finalMs(ARC_TURN_MS), easing = FastOutSlowInEasing))
-                arcFade.animateTo(1f, tween(finalMs(ARC_FADE_MS), easing = LinearEasing))
-            }
-            FaceIdController.finish(session)
-        }
-        normal.join()
-        if (fingerprintStarted) fingerprintJob.join() else fingerprintJob.cancel()
-    }
-
-    val o = open.value
+    val o = anims.open.value
     val sqW = lerp(cutW.dp, side.dp, o)
     val sqH = lerp(cutH.dp, side.dp, o)
     val sqY = lerp(0.dp, squareTop.dp, o)
     val sqR = lerp(cutR.dp, squareR.dp, o)
     val sqAlpha = settings.opacity.coerceIn(0f, 1f)
+    val sqTopR = if (settings.enableNotchMode) lerp(0.dp, sqR, o) else sqR
+    val sqShape = RoundedCornerShape(topStart = sqTopR, topEnd = sqTopR, bottomStart = sqR, bottomEnd = sqR)
 
     Box(
         modifier = modifier
             .graphicsLayer {
                 translationX = centerOffsetX.toPx()
                 translationY = topOffset.toPx()
-                alpha = 1f - quit.value
+                alpha = 1f - anims.quit.value
             }
             .size(cutW.dp, cutH.dp),
         contentAlignment = Alignment.TopCenter
@@ -406,7 +572,7 @@ private fun FaceIdCard(
                 .wrapContentSize(Alignment.TopCenter, unbounded = true)
                 .offset(y = sqY)
                 .requiredSize(sqW, sqH)
-                .clip(RoundedCornerShape(sqR))
+                .clip(sqShape)
                 .background(pillColor.copy(alpha = sqAlpha))
         )
         Box(
@@ -414,112 +580,17 @@ private fun FaceIdCard(
                 .wrapContentSize(Alignment.TopCenter, unbounded = true)
                 .offset(y = sqY)
                 .requiredSize(sqW, sqH)
-                .then(if (splitT.value > 0f) Modifier else Modifier.clip(RoundedCornerShape(sqR))),
+                .then(if (anims.splitT.value > 0f) Modifier else Modifier.clip(sqShape)),
             contentAlignment = Alignment.TopCenter
         ) {
         Canvas(
             modifier = Modifier
-                // pin the oversized canvas to the cutout's top centre
                 .wrapContentSize(Alignment.TopCenter, unbounded = true)
                 .offset(y = -sqY)
                 .requiredSize(FACE_CARD_W, canvasH)
-                .graphicsLayer {
-                    val t = scanT.value
-                    alpha = (faceSmooth(0f, FACE_ID_FADE_IN_END, t) * (1f - fade.value) * (1f - arcFade.value)).coerceIn(0f, 1f)
-                    compositingStrategy = CompositingStrategy.Offscreen
-                    // settles from slightly large; shrinks a bit on fade-out
-                    val settle = 1.12f - 0.12f * (1f - (1f - faceSmooth(0f, 1.4f, t)).pow(3))
-                    val s = settle * (1f - 0.06f * fade.value)
-                    scaleX = s
-                    scaleY = s
-                    // no-face shake
-                    translationX = kotlin.math.sin(2.0 * Math.PI * SHAKE_CYCLES * shake.value).toFloat() * SHAKE_AMPLITUDE_DP.dp.toPx()
-                }
+                .graphicsLayer { applyFaceIdCardLayer(anims) }
         ) {
-            val k = size.width / FACE_ID_DESIGN_W
-            withTransform({ scale(k, k, pivot = Offset.Zero) }) {
-                val m = morph.value
-                val fpi = fpIn.value
-                val headAlpha = ((1f - m) * (1f - fpi)).coerceIn(0f, 1f)
-                val headScale = 1f - (1f - FACE_ID_HEAD_END_SCALE) * m
-                val headPivot = Offset(FACE_ID_HEAD_CX, FACE_ID_HEAD_CY)
-                val faceT: DrawTransform.() -> Unit = {
-                    translate(0f, faceDy)
-                    scale(faceA, faceA, pivot = headPivot)
-                }
-                withTransform({
-                    faceT()
-                    scale(headScale, headScale, pivot = headPivot)
-                }) {
-                    if (headAlpha > 0f) drawPath(disc, FACE_ID_NAVY.copy(alpha = headAlpha))
-                }
-                val sp = splitT.value
-                if (sp >= 1f) {
-                    val turn = ARC_TURN_DIRECTION * turnT.value * track.perimeter / 2f
-                    track.leftOutlineInto(turn, arcPoints)
-                    faceIdFillPath(leftPath, arcPoints)
-                    drawPath(leftPath, Color.White)
-                    track.rightOutlineInto(turn, arcPoints)
-                    faceIdFillPath(rightPath, arcPoints)
-                    drawPath(rightPath, Color.White)
-                } else if (sp > 0f) {
-                    faceIdBlend(leftFromAtFace, split.leftTo, sp, leftPoints)
-                    faceIdFillPath(leftPath, leftPoints)
-                    drawPath(leftPath, Color.White)
-                    faceIdBlend(rightFromAtFace, split.rightTo, sp, rightPoints)
-                    faceIdFillPath(rightPath, rightPoints)
-                    drawPath(rightPath, Color.White)
-                } else if (fpi > 0f) {
-                    withTransform({ faceT() }) {
-                        if (fpi < 1f) {
-                            val glyphAlpha = Color.White.copy(alpha = 1f - fpi)
-                            if (crossT.value >= 1f) {
-                                drawPath(crossPath, glyphAlpha)
-                            } else if (crossT.value > 0f) {
-                                faceIdBlend(crossOutlines.first, crossOutlines.second, crossT.value, crossPoints)
-                                faceIdFillPath(crossMorphPath, crossPoints)
-                                drawPath(crossMorphPath, glyphAlpha)
-                            } else {
-                                drawPath(hole, glyphAlpha)
-                            }
-                        }
-                        val tp = fpTick.value
-                        val toTick = faceSmooth(0f, FP_TICK_FADE, tp)
-                        drawFingerprint(alpha = fpi * (1f - toTick), scan = fpScan.value)
-                        if (tp > 0f) {
-                            faceIdBlend(fpTickOutlines.first, fpTickOutlines.second, tp, fpTickPoints)
-                            faceIdFillPath(fpTickPath, fpTickPoints)
-                            drawPath(fpTickPath, Color.White.copy(alpha = toTick))
-                        }
-                    }
-                } else if (crossT.value >= 1f) {
-                    withTransform({ faceT() }) { drawPath(crossPath, Color.White) }
-                } else if (crossT.value > 0f) {
-                    faceIdBlend(crossOutlines.first, crossOutlines.second, crossT.value, crossPoints)
-                    faceIdFillPath(crossMorphPath, crossPoints)
-                    withTransform({ faceT() }) { drawPath(crossMorphPath, Color.White) }
-                } else if (m <= 0f) {
-                    withTransform({ faceT() }) { drawPath(hole, Color.White) }
-                } else if (m >= 1f) {
-                    withTransform({ faceT() }) { drawPath(tickPath, Color.White) }
-                } else {
-                    faceIdBlend(outlines.first, outlines.second, m, morphPoints)
-                    faceIdFillPath(morphPath, morphPoints)
-                    withTransform({ faceT() }) { drawPath(morphPath, Color.White) }
-                }
-                val t = scanT.value
-                val eyeAlpha = headAlpha * (1f - crossT.value)
-                if (eyeAlpha > 0f && t > FACE_ID_EYES_START - 0.02f) {
-                    val shut = 1.3f * blink.value
-                    withTransform({
-                        faceT()
-                        scale(headScale, headScale, pivot = headPivot)
-                    }) {
-                        drawEye(FACE_ID_HEAD_CX - FACE_ID_EYE_DX, faceEaseInOut(faceSmooth(FACE_ID_EYES_START, FACE_ID_EYES_END, t)) - shut, eyeAlpha)
-                        drawEye(FACE_ID_HEAD_CX + FACE_ID_EYE_DX, faceEaseInOut(faceSmooth(FACE_ID_EYES_START + 0.05f, FACE_ID_EYES_END + 0.05f, t)) - shut, eyeAlpha)
-                    }
-                }
-            }
+            drawFaceIdCard(anims, paths, arcs, faceA, faceDy, faceColor)
         }
         }
     }

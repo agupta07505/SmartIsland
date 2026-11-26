@@ -37,10 +37,6 @@ import com.agupta07505.smartisland.util.HapticStrength
 import com.agupta07505.smartisland.util.IslandHaptics
 import kotlinx.coroutines.launch
 
-/**
- * Off / Light / Normal / Strong selector for the island's vibration. Picking a level plays an expand buzz at that
- * level so the choice can be felt straight away.
- */
 @Composable
 fun HapticStrengthRow(
     settings: SmartIslandSettings,

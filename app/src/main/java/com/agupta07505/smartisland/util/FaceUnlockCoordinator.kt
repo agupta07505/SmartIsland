@@ -7,12 +7,16 @@
 
 package com.agupta07505.smartisland.util
 
-enum class FaceUnlockMode(val id: String) {
+import com.agupta07505.smartisland.model.StableId
+import com.agupta07505.smartisland.model.enumById
+import kotlin.math.abs
+
+enum class FaceUnlockMode(override val id: String) : StableId {
     FaceOnly("face_only"),
     Any("any");
 
     companion object {
-        fun fromId(id: String?): FaceUnlockMode = entries.firstOrNull { it.id == id } ?: FaceOnly
+        fun fromId(id: String?): FaceUnlockMode = enumById(id, FaceOnly)
     }
 }
 
@@ -248,7 +252,8 @@ class FaceUnlockCoordinator(private val out: Output) {
     }
 
     fun onUnlockType(type: UnlockType, now: Long) {
-        if (type == UnlockType.Fingerprint && fingerprintEnabled && appEnabled && appPromptActive && !locked && screenOn && !out.isScanning()) {
+        if (type == UnlockType.Fingerprint && fingerprintEnabled && appEnabled && appPromptActive && !locked && screenOn
+            && !out.isScanning()) {
             clearAppPrompt()
             nonFaceUnlockAt = now
             resetUnlock()
@@ -311,7 +316,7 @@ class FaceUnlockCoordinator(private val out: Output) {
 
     private fun confirm(): Boolean {
         if (successAt == NONE || presentAt == NONE || !out.isScanning()) return false
-        if (kotlin.math.abs(presentAt - successAt) > CONFIRM_WINDOW_MS) return false
+        if (abs(presentAt - successAt) > CONFIRM_WINDOW_MS) return false
         resetUnlock()
         acceptNow()
         return true

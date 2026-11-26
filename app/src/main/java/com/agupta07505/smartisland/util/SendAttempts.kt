@@ -8,12 +8,11 @@
 package com.agupta07505.smartisland.util
 
 /**
- * Runs the ways of delivering one PendingIntent in order and reports whether any went through. No Android types.
- *
- * A clock app replaces its button intents when it re-posts, so a stale one throws on send and the caller must see that.
+ * Tries the ways of delivering one PendingIntent in order, reports whether any went through. No Android types. A clock
+ * app replaces its button intents when it re-posts, so a stale one throws on send and the caller has to see that
  */
 object SendAttempts {
-    /** True as soon as one attempt returns without throwing; later attempts are not run. */
+    /** True as soon as 1 attempt returns without throwing; later attempts are not run. */
     fun anySucceeds(attempts: List<() -> Unit>): Boolean {
         for (attempt in attempts) {
             val delivered = try {

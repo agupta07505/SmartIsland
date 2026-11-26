@@ -16,7 +16,6 @@ import kotlin.math.min
 import kotlin.math.sin
 
 internal const val FACE_ID_DESIGN_W = 220f
-internal const val FACE_ID_DESIGN_H = 185f
 internal const val FACE_ID_HEAD_CX = 110f
 internal const val FACE_ID_HEAD_CY = 92f
 internal const val FACE_ID_EYE_R = 6.89f
@@ -127,7 +126,7 @@ internal fun faceIdResample(p: FloatArray, count: Int): FloatArray {
     val cum = FloatArray(n + 1)
     for (i in 0 until n) {
         val j = (i + 1) % n
-        cum[i + 1] = cum[i] + kotlin.math.hypot(p[2 * j] - p[2 * i], p[2 * j + 1] - p[2 * i + 1])
+        cum[i + 1] = cum[i] + hypot(p[2 * j] - p[2 * i], p[2 * j + 1] - p[2 * i + 1])
     }
     val total = cum[n]
     val out = FloatArray(count * 2)
@@ -194,7 +193,7 @@ internal fun faceIdBlend(a: FloatArray, b: FloatArray, t: Float, out: FloatArray
     for (i in a.indices) out[i] = a[i] + (b[i] - a[i]) * t
 }
 
-// Tick split and edge arcs, in the same design units as the face.
+// Tick split and edge arcs, in the same design units as the face
 
 internal const val FACE_ID_TICK_SPLIT_X = 110.5f
 
@@ -202,10 +201,8 @@ internal const val FACE_ID_SPLIT_POINTS = 128
 
 internal const val FACE_ID_ARC_REACH_DP = 14f
 
-/** Gap between the arcs and the cutout's edge (dp). */
 internal const val FACE_ID_ARC_INSET_DP = 0.5f
 
-/** Arc thickness choices. The accepted animation uses Sliver. */
 internal enum class FaceIdArcThickness(val dp: Float) {
     Sliver(1.25f),
     Thin(2f),
@@ -256,6 +253,13 @@ internal const val FACE_ID_ARC_TIP_WIDTH = 0.25f
 
 private const val FACE_ID_MIN_GAP_STROKES = 3f
 
+internal const val FACE_ID_NOTCH_RISE_DP = 8f
+
+internal fun faceIdCutoutCornerRadius(radius: Float, w: Float, h: Float, flatTop: Boolean): Float {
+    val r = max(radius, 0f)
+    return if (flatTop) min(r, min(min(w, h), w / 2f)) else min(r, min(w / 2f, h / 2f))
+}
+
 internal class FaceIdEdgeTrack(
     private val cx: Float,
     private val cy: Float,
@@ -264,40 +268,64 @@ internal class FaceIdEdgeTrack(
     r: Float,
     val thickness: Float,
     reach: Float,
-    inset: Float
+    inset: Float,
+    flatTop: Boolean = false,
+    hiddenRise: Float = 0f
 ) {
     private val d = inset + thickness / 2f
     private val a = max(w / 2f - d, 0.01f)
-    private val b = max(h / 2f - d, 0.01f)
-    private val rc = min(max(min(r, min(w / 2f, h / 2f)) - d, 0f), min(a, b))
-    private val flatX = a - rc
-    private val flatY = b - rc
-    private val quarter = rc * FACE_ID_HALF_PI
+    private val rise = if (flatTop) max(hiddenRise, 2f * thickness) else 0f
+    private val bBottom = max(h / 2f - d, 0.01f)
+    private val bTop = if (flatTop) h / 2f + rise else bBottom
+    private val rb = min(
+        max(faceIdCutoutCornerRadius(r, w, h, flatTop) - d, 0f),
+        if (flatTop) min(a, bTop + bBottom) else min(a, bBottom)
+    )
+    private val rt = if (flatTop) 0f else rb
+    private val flatXb = a - rb
+    private val flatXt = a - rt
+    private val quarterB = rb * FACE_ID_HALF_PI
+    private val quarterT = rt * FACE_ID_HALF_PI
+    private val sideLength = bTop + bBottom - rt - rb
+    private val topY = cy - bTop
+    private val bottomY = cy + bBottom
+    private val sideTop = topY + rt
+    private val sideBottom = bottomY - rb
 
-    // end of each stretch, starting from the top-left half
-    private val e0 = flatX
-    private val e1 = e0 + quarter
-    private val e2 = e1 + 2f * flatY
-    private val e3 = e2 + quarter
-    private val e4 = e3 + 2f * flatX
-    private val e5 = e4 + quarter
-    private val e6 = e5 + 2f * flatY
-    private val e7 = e6 + quarter
+    // End of each stretch, starting from the top middle and running left
+    private val e0 = flatXt
+    private val e1 = e0 + quarterT
+    private val e2 = e1 + sideLength
+    private val e3 = e2 + quarterB
+    private val e4 = e3 + 2f * flatXb
+    private val e5 = e4 + quarterB
+    private val e6 = e5 + sideLength
+    private val e7 = e6 + quarterT
 
-    /** Length of the whole track. */
-    val perimeter: Float = e7 + flatX
+    val perimeter: Float = e7 + flatXt
 
-    /** Length of one arc along the track. */
+    // The straight part of the side that shows on screen, and the middle of it
+    private val visibleTop = if (flatTop) cy - h / 2f else sideTop
+    private val visibleHalf = max((sideBottom - visibleTop) / 2f, 0f)
+    private val centre = e1 + (visibleTop + visibleHalf - sideTop)
+
+    /** Run length of the left arc, against the track's direction. */
+    val leftSwap: Float = 2f * centre
+
+    /** Same for the right arc */
+    val rightSwap: Float = perimeter - leftSwap
+
     val arcLength: Float
 
     val arcStart: Float
 
     init {
-        val reachUsed = min(reach, max(flatX * 0.6f, 0f))
-        val wanted = 2f * reachUsed + 2f * quarter + 2f * flatY
-        val longest = perimeter / 2f - FACE_ID_MIN_GAP_STROKES * thickness
+        val reachUsed = min(reach, max(flatXb * 0.6f, 0f))
+        val wanted = 2f * reachUsed + 2f * quarterB + 2f * visibleHalf
+        val room = min(leftSwap, rightSwap)
+        val longest = room - FACE_ID_MIN_GAP_STROKES * thickness
         arcLength = min(wanted, max(longest, thickness))
-        arcStart = (e1 + flatY) - arcLength / 2f
+        arcStart = centre - arcLength / 2f
     }
 
     private val hws = FloatArray(FACE_ID_ARC_SEGMENTS + 1)
@@ -318,27 +346,27 @@ internal class FaceIdEdgeTrack(
         val x: Float
         val y: Float
         when {
-            v <= e0 -> { x = cx - v; y = cy - b }
+            v <= e0 -> { x = cx - v; y = topY }
             v <= e1 -> {
-                val th = -FACE_ID_HALF_PI - (v - e0) / max(rc, 1e-6f)
-                x = cx - flatX + rc * cos(th); y = cy - flatY + rc * sin(th)
+                val th = -FACE_ID_HALF_PI - (v - e0) / max(rt, 1e-6f)
+                x = cx - flatXt + rt * cos(th); y = sideTop + rt * sin(th)
             }
-            v <= e2 -> { x = cx - a; y = cy - flatY + (v - e1) }
+            v <= e2 -> { x = cx - a; y = sideTop + (v - e1) }
             v <= e3 -> {
-                val th = FACE_ID_PI - (v - e2) / max(rc, 1e-6f)
-                x = cx - flatX + rc * cos(th); y = cy + flatY + rc * sin(th)
+                val th = FACE_ID_PI - (v - e2) / max(rb, 1e-6f)
+                x = cx - flatXb + rb * cos(th); y = sideBottom + rb * sin(th)
             }
-            v <= e4 -> { x = cx - flatX + (v - e3); y = cy + b }
+            v <= e4 -> { x = cx - flatXb + (v - e3); y = bottomY }
             v <= e5 -> {
-                val th = FACE_ID_HALF_PI - (v - e4) / max(rc, 1e-6f)
-                x = cx + flatX + rc * cos(th); y = cy + flatY + rc * sin(th)
+                val th = FACE_ID_HALF_PI - (v - e4) / max(rb, 1e-6f)
+                x = cx + flatXb + rb * cos(th); y = sideBottom + rb * sin(th)
             }
-            v <= e6 -> { x = cx + a; y = cy + flatY - (v - e5) }
+            v <= e6 -> { x = cx + a; y = sideBottom - (v - e5) }
             v <= e7 -> {
-                val th = -(v - e6) / max(rc, 1e-6f)
-                x = cx + flatX + rc * cos(th); y = cy - flatY + rc * sin(th)
+                val th = -(v - e6) / max(rt, 1e-6f)
+                x = cx + flatXt + rt * cos(th); y = sideTop + rt * sin(th)
             }
-            else -> { x = cx + flatX - (v - e7); y = cy - b }
+            else -> { x = cx + flatXt - (v - e7); y = topY }
         }
         out[at] = x
         out[at + 1] = y
@@ -347,7 +375,7 @@ internal class FaceIdEdgeTrack(
     internal fun halfWidthAt(k: Int): Float {
         val half = arcLength / 2f
         val fromCentre = abs((k.toFloat() / FACE_ID_ARC_SEGMENTS - 0.5f) * arcLength)
-        val full = min(flatY, half)
+        val full = min(visibleHalf, half)
         val t = if (half - full < 1e-4f) 0f else ((fromCentre - full) / (half - full)).coerceIn(0f, 1f)
         val smooth = t * t * (3f - 2f * t)
         return thickness / 2f * (1f - (1f - FACE_ID_ARC_TIP_WIDTH) * smooth)
@@ -370,6 +398,12 @@ internal class FaceIdEdgeTrack(
             ty[k] = dy / len
         }
         for (k in 0..last) hws[k] = halfWidthAt(k)
+        // The taper thins the sliver from its inner side only.
+        for (k in 0..last) {
+            val lift = thickness / 2f - hws[k]
+            sx[k] -= ty[k] * lift
+            sy[k] += tx[k] * lift
+        }
         var o = 0
         fun put(x: Float, y: Float) {
             out[o++] = x
@@ -391,7 +425,8 @@ internal class FaceIdEdgeTrack(
 
     fun leftOutlineInto(turn: Float, out: FloatArray) = outlineInto(arcStart + turn, out)
 
-    fun rightOutlineInto(turn: Float, out: FloatArray) = outlineInto(arcStart + perimeter / 2f + turn, out)
+    /** Right arc sits where the left one's mirror image would. */
+    fun rightOutlineInto(turn: Float, out: FloatArray) = outlineInto(perimeter - arcStart - arcLength + turn, out)
 }
 
 internal fun faceIdSplitOutlines(track: FaceIdEdgeTrack): FaceIdSplitOutlines {

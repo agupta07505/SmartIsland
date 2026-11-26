@@ -29,13 +29,10 @@ import com.agupta07505.smartisland.model.UtilityLayout
 import com.agupta07505.smartisland.ui.SmartIslandTheme
 import com.agupta07505.smartisland.util.UtilityWidgets
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import kotlinx.coroutines.flow.first
+import javax.inject.Inject
 
-/**
- * The window the island opens for its pickers (the pinned apps picker and the "add a utility" picker): a see-through
- * activity in its own task that holds only the dialog, so choosing never brings the app's settings screen up.
- */
+/** See-through activity in its own task holding only the dialog, so choosing never brings the settings screen up. */
 @AndroidEntryPoint
 class PickerActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SmartIslandSettingsRepository
@@ -82,14 +79,14 @@ class PickerActivity : ComponentActivity() {
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        // An app widget's setup screen reports back by request code (see UtilityWidgets.configure); passed on as usual too.
+        // A widget setup screen reports back by request code (see UtilityWidgets.configure), passed on as usual too.
         UtilityWidgets.onActivityResult(requestCode, resultCode)
         super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun finish() {
         super.finish()
-        // The window is see-through and short-lived; no transition when it goes.
+        // the window is see-through and short-lived; no transition when it goes
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
     }
@@ -111,10 +108,7 @@ class PickerActivity : ComponentActivity() {
     }
 }
 
-/**
- * The "add a utility" picker in its window: the add dialog opens on the first empty cell of the Utilities grid (the
- * same cell the settings editor picks).
- */
+/** Opens on the first empty cell of the Utilities grid, the same cell the settings editor picks. */
 @Composable
 internal fun UtilityPickerHost(
     settings: SmartIslandSettings,
@@ -122,7 +116,7 @@ internal fun UtilityPickerHost(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    // The settings flow starts with the defaults; the cell must come from the saved layout, so wait for the first real value.
+    // Settings flow starts with the defaults, the cell must come from the saved layout so wait for the first real value
     val loaded by produceState<SmartIslandSettings?>(null, repository) { value = repository.settings.first() }
     val firstLayout = loaded?.utilityLayout ?: return
     val cell = remember { firstEmptyUtilityCell(UtilityLayout.decode(firstLayout)) }

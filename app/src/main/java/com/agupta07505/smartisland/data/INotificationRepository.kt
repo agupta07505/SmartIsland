@@ -20,9 +20,15 @@ interface INotificationRepository {
     fun postNotification(notification: IslandNotification, autoExpand: Boolean = false)
 
     /**
-     * Changes one stored card in place (never adds one, never auto-expands). Used for live fields that change faster
-     * than the app re-posts its notification, such as the track shown by a media card.
+     * True for a moment after [key] was posted with auto-expand: the island is about to open on it, so its pulse waits
+     * for that decision instead of starting and being cut a moment later
      */
+    fun expectsAutoExpand(key: String): Boolean = false
+
+    /** The island has decided about [key], whether it opened or not: its pulse no longer waits. */
+    fun settleAutoExpand(key: String) {}
+
+    /** Changes 1 stored card in place (never adds one, never auto-expands). */
     fun updateNotification(key: String, transform: (IslandNotification) -> IslandNotification) {}
     fun removeNotification(key: String)
     fun removeNotificationsForPackage(packageName: String)

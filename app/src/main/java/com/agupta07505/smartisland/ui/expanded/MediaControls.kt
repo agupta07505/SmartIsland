@@ -7,13 +7,13 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
+import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.os.Bundle
-import android.app.PendingIntent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -41,11 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.agupta07505.smartisland.model.IslandNotification
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.runCatchingLogged
+import com.agupta07505.smartisland.util.sendIntentWithOptions
 
-/**
- * One extra button of a media card (like, shuffle, cast ...), taken from the playing app: a custom action of its
- * media session or a button of its notification.
- */
 data class MediaCustomControl(
     val label: String,
     val packageName: String,
@@ -72,8 +68,7 @@ object MediaControls {
     private val PLAY_PAUSE_WORDS = listOf("play", "pause", "resume")
 
     /**
-     * Session first: its supported actions say whether previous / next exist (YouTube has no previous) and its custom
-     * actions are the app's extra buttons.
+     * Session first, its actions say whether previous / next exist (YouTube has no previous) and give the extra buttons
      */
     fun resolve(state: PlaybackState?, notification: IslandNotification?): ResolvedMediaControls {
         val pkg = notification?.packageName.orEmpty()
@@ -117,7 +112,7 @@ object MediaControls {
                 )
             }
         }
-        // Nothing readable at all: keep the basic transport so the card is not empty.
+        // nothing readable at all: keep the basic transport so the card is not empty
         if (!previous && !next && !playPause && customs.isEmpty()) {
             return build(hasPrevious = true, hasPlayPause = true, hasNext = true, customs = emptyList())
         }
@@ -140,7 +135,7 @@ object MediaControls {
         )
     }
 
-    /** Draws a drawable of another app's package as a bitmap, or null when it cannot be loaded. */
+    /** Null if it cannot be loaded */
     fun loadPackageIcon(context: Context, packageName: String, resId: Int): ImageBitmap? {
         if (packageName.isEmpty() || resId == 0) return null
         return runCatchingLogged("MediaControls", "Custom action icon could not be loaded") {
@@ -154,7 +149,6 @@ object MediaControls {
         }
     }
 
-    /** Stand-in glyph when the app's own icon cannot be read, chosen from the button's label. */
     fun fallbackIcon(label: String): ImageVector {
         val t = label.lowercase()
         return when {

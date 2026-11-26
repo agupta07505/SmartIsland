@@ -7,7 +7,13 @@
 
 package com.agupta07505.smartisland.ui.expanded
 
-import kotlinx.coroutines.launch
+import android.content.Context
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.media.session.MediaController
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -25,16 +31,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material.icons.rounded.Cast
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.TabletAndroid
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.Usb
 import androidx.compose.material3.Icon
-import com.agupta07505.smartisland.ui.IslandText as Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +59,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,24 +67,26 @@ import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.ui.bounceClick
 import com.agupta07505.smartisland.util.ArtworkTint
-import com.agupta07505.smartisland.util.runCatchingLogged
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import com.agupta07505.smartisland.util.LabColor
+import com.agupta07505.smartisland.util.MediaOutput
+import com.agupta07505.smartisland.util.MediaOutputKind
+import com.agupta07505.smartisland.util.MediaOutputReader
+import com.agupta07505.smartisland.util.RemoteDevice
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.agupta07505.smartisland.ui.IslandText as Text
 
 /* Building blocks of the media card laid out like the notification shade's media player. */
 
-/** The shade shows at most this many of the app's own buttons (like, shuffle, cast ...) after "next". */
 internal const val MEDIA_SHADE_MAX_CUSTOM = 2
 
-private const val EXPLICIT_KEY = "android.media.IS_EXPLICIT"
-
-/** The dim over the artwork: a little lighter on top, a little darker where the bar and buttons are. */
 internal const val MEDIA_SHADE_SCRIM_TOP = 0.40f
 internal const val MEDIA_SHADE_SCRIM_BOTTOM = 0.55f
 
 /**
- * Corner radii of the media card's buttons (play button 16 -> 12 dp while playing; paused stays a full circle at 24
- * dp; chip 13 -> 9 dp).
+ * Corner radii of the media card's buttons (play button 16 -> 12 dp while playing, paused stays a full circle at 24 dp,
+ * chip 13 -> 9 dp)
  */
 internal val PLAY_CORNER_PLAYING = 12.dp
 internal val PLAY_CORNER_PAUSED = 24.dp
@@ -77,14 +95,14 @@ internal val CHIP_CORNER = 9.dp
 internal data class MediaShadeColors(val container: Color, val onContainer: Color)
 
 /**
- * Android's shade colours built from tones: the container is the artwork's colour at lightness 90, the glyph the same
- * hue at 10, with the colour's real chroma, so a vivid cover gives a vivid button and a dull one a dull button.
+ * Android's shade tones: container is the artwork colour at lightness 90, glyph the same hue at 10, real chroma kept,
+ * so a vivid cover gives vivid buttons
  */
 internal fun mediaShadeColors(
     settings: SmartIslandSettings,
     tint: ArtworkTint?,
     hasArtwork: Boolean,
-    /** The light island: the tones swap (a dark container with a pale glyph) so the buttons stand out on the pale, washed artwork. */
+    /** Tones swap on the light island (dark container, pale glyph) to stand out on the washed artwork. */
     light: Boolean = false
 ): MediaShadeColors {
     val containerTone = if (light) SHADE_CONTAINER_TONE_LIGHT else SHADE_CONTAINER_TONE
@@ -109,38 +127,32 @@ internal fun mediaShadeColors(
     )
 }
 
-/** The shade's tones: container lightness 90, glyph lightness 10 (CIELAB L*). */
+/** Shade's tones: container lightness 90, glyph lightness 10 (CIELAB L*). */
 internal const val SHADE_CONTAINER_TONE = 90.0
 internal const val SHADE_GLYPH_TONE = 10.0
 
-/** The same tones on the light island: a deep container (lightness 30) with a pale glyph (95); both clear 4.5:1 against each other. */
+/** Light island: container at lightness 30, glyph 95, both clear 4.5:1. */
 internal const val SHADE_CONTAINER_TONE_LIGHT = 30.0
 internal const val SHADE_GLYPH_TONE_LIGHT = 95.0
 
-/** Chroma bounds (CIELAB C*) of the artwork colour; the shade gave 4.5 for a dark cover and 69 for a vivid one. */
+/** CIELAB C* bounds of the artwork colour, the shade gave 4.5 for a dark cover and 69 for a vivid one. */
 internal const val SHADE_MIN_CHROMA = 4.0
 internal const val SHADE_MAX_CHROMA = 70.0
 
-/** The glyph's chroma stays low even for a vivid cover. */
 internal const val SHADE_GLYPH_MAX_CHROMA = 22.0
 
 internal fun toneColor(tone: Double, chroma: Double, hueDeg: Float): Color {
-    val rgb = com.agupta07505.smartisland.util.LabColor.lchToSrgb(tone, chroma, hueDeg.toDouble())
+    val rgb = LabColor.lchToSrgb(tone, chroma, hueDeg.toDouble())
     return Color(rgb[0], rgb[1], rgb[2])
 }
 
-/** The colours eased over 350 ms, so a track change fades the buttons instead of snapping. */
+/** Eased over 350 ms so a track change fades instead of snapping. */
 @Composable
 internal fun animatedShadeColors(target: MediaShadeColors): MediaShadeColors {
     val container by animateColorAsState(target.container, tween(350), label = "mediaShadeContainer")
     val onContainer by animateColorAsState(target.onContainer, tween(350), label = "mediaShadeOnContainer")
     return MediaShadeColors(container, onContainer)
 }
-
-internal fun mediaIsExplicit(meta: android.media.MediaMetadata): Boolean =
-    runCatchingLogged("MediaShade", "Failed to read the explicit flag") {
-        meta.description?.extras?.getLong(EXPLICIT_KEY, 0L) == 1L || meta.getLong(EXPLICIT_KEY) == 1L
-    } == true
 
 /** App icon, top left, with no disc behind it. */
 @Composable
@@ -182,46 +194,58 @@ internal fun MediaAppBadge(
     }
 }
 
-internal fun mediaOutputIcon(kind: com.agupta07505.smartisland.util.MediaOutputKind): androidx.compose.ui.graphics.vector.ImageVector =
+internal fun mediaOutputIcon(output: MediaOutput): ImageVector =
+    if (output.kind == MediaOutputKind.Cast) {
+        when (output.device) {
+            RemoteDevice.Tv -> Icons.Rounded.Tv
+            RemoteDevice.Speaker -> Icons.Rounded.Speaker
+            RemoteDevice.Computer -> Icons.Rounded.Computer
+            RemoteDevice.Phone -> Icons.Rounded.PhoneAndroid
+            RemoteDevice.Tablet -> Icons.Rounded.TabletAndroid
+            RemoteDevice.Car -> Icons.Rounded.DirectionsCar
+            RemoteDevice.Generic -> Icons.Rounded.Cast
+        }
+    } else mediaOutputIcon(output.kind)
+
+internal fun mediaOutputIcon(kind: MediaOutputKind): ImageVector =
     when (kind) {
-        com.agupta07505.smartisland.util.MediaOutputKind.Phone -> Icons.Rounded.PhoneAndroid
-        com.agupta07505.smartisland.util.MediaOutputKind.Bluetooth -> Icons.Rounded.Bluetooth
-        com.agupta07505.smartisland.util.MediaOutputKind.Headphones -> Icons.Rounded.Headphones
-        com.agupta07505.smartisland.util.MediaOutputKind.Usb -> Icons.Rounded.Usb
-        com.agupta07505.smartisland.util.MediaOutputKind.Hdmi -> Icons.Rounded.Tv
-        com.agupta07505.smartisland.util.MediaOutputKind.Cast -> Icons.Rounded.Cast
+        MediaOutputKind.Phone -> Icons.Rounded.PhoneAndroid
+        MediaOutputKind.Bluetooth -> Icons.Rounded.Bluetooth
+        MediaOutputKind.Headphones -> Icons.Rounded.Headphones
+        MediaOutputKind.Usb -> Icons.Rounded.Usb
+        MediaOutputKind.Hdmi -> Icons.Rounded.Tv
+        MediaOutputKind.Cast -> Icons.Rounded.Cast
     }
 
-/** Where the music plays now: read when the card opens, then kept current while shown (a device connecting or leaving, a cast move). */
+/** Read when the card opens, then kept current (device connecting or leaving, cast move). */
 @Composable
-internal fun rememberMediaOutput(controller: android.media.session.MediaController?): com.agupta07505.smartisland.util.MediaOutput {
-    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    // Reading the audio routes is a binder call: it runs in the background (the card must not wait for it on the tap
-    // that opens it).
-    var output by androidx.compose.runtime.remember(controller) {
-        androidx.compose.runtime.mutableStateOf(lastMediaOutput ?: com.agupta07505.smartisland.util.MediaOutput.Phone)
+internal fun rememberMediaOutput(controller: MediaController?): MediaOutput {
+    val context = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
+    // Binder call, run in the background so the opening tap does not wait for it.
+    var output by remember(controller) {
+        mutableStateOf(lastMediaOutput ?: MediaOutput.Phone)
     }
-    androidx.compose.runtime.DisposableEffect(controller) {
-        val audio = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+    DisposableEffect(controller) {
+        val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val refresh = {
             scope.launch {
-                val read = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                    com.agupta07505.smartisland.util.MediaOutputReader.read(context, controller)
+                val read = withContext(Dispatchers.Default) {
+                    MediaOutputReader.read(context, controller)
                 }
                 lastMediaOutput = read
                 output = read
             }
             Unit
         }
-        val deviceCallback = object : android.media.AudioDeviceCallback() {
-            override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>?) = refresh()
-            override fun onAudioDevicesRemoved(removedDevices: Array<out android.media.AudioDeviceInfo>?) = refresh()
+        val deviceCallback = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) = refresh()
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) = refresh()
         }
-        val sessionCallback = object : android.media.session.MediaController.Callback() {
-            override fun onAudioInfoChanged(info: android.media.session.MediaController.PlaybackInfo) = refresh()
+        val sessionCallback = object : MediaController.Callback() {
+            override fun onAudioInfoChanged(info: MediaController.PlaybackInfo) = refresh()
         }
-        audio?.registerAudioDeviceCallback(deviceCallback, android.os.Handler(android.os.Looper.getMainLooper()))
+        audio?.registerAudioDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
         controller?.registerCallback(sessionCallback)
         refresh()
         onDispose {
@@ -232,16 +256,16 @@ internal fun rememberMediaOutput(controller: android.media.session.MediaControll
     return output
 }
 
-private var lastMediaOutput: com.agupta07505.smartisland.util.MediaOutput? = null
+private var lastMediaOutput: MediaOutput? = null
 
-/** Audio output chip, top right: the output's glyph and name. [onClick] null draws it without a tap action. */
+/** Top right, [onClick] null draws it without a tap action. */
 @Composable
 internal fun MediaOutputChip(
     label: String,
     colors: MediaShadeColors,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Rounded.PhoneAndroid
+    icon: ImageVector = Icons.Rounded.PhoneAndroid
 ) {
     val shade = animatedShadeColors(colors)
     val tappable = if (onClick != null) modifier.bounceClick { onClick() } else modifier
@@ -283,7 +307,7 @@ internal fun ExplicitBadge(color: Color, modifier: Modifier = Modifier) {
     }
 }
 
-/** Big tinted play / pause button: a rounded square while playing, a circle while paused. */
+/** Rounded square while playing, circle while paused. */
 @Composable
 internal fun MediaPlayPauseButton(
     isPlaying: Boolean,
@@ -292,7 +316,8 @@ internal fun MediaPlayPauseButton(
     modifier: Modifier = Modifier
 ) {
     val shade = animatedShadeColors(colors)
-    val corner by animateDpAsState(targetValue = if (isPlaying) PLAY_CORNER_PLAYING else PLAY_CORNER_PAUSED, label = "mediaPlayCorner")
+    val corner by animateDpAsState(targetValue = if (isPlaying) PLAY_CORNER_PLAYING else PLAY_CORNER_PAUSED,
+        label = "mediaPlayCorner")
     Box(
         modifier = modifier
             .size(48.dp)
@@ -323,6 +348,7 @@ internal fun MediaShadeIconButton(
             .bounceClick { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = icon, contentDescription = description, tint = LocalIslandPalette.current.text, modifier = Modifier.size(24.dp))
+        Icon(imageVector = icon, contentDescription = description, tint = LocalIslandPalette.current.text,
+            modifier = Modifier.size(24.dp))
     }
 }

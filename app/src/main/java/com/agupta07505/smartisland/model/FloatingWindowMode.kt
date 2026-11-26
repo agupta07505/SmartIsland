@@ -8,11 +8,10 @@
 package com.agupta07505.smartisland.model
 
 /**
- * Engine that opens the floating window.
- * - [System]: Android's own freeform windowing (needs ROM / developer-options support).
- * - [Lmo]: LMO Freeform (`com.libremobileos.freeform`) via its exported START_FREEFORM broadcast.
+ * Engine that opens the floating window. [System]: Android's own freeform windowing (needs ROM / developer-options
+ * support). [Lmo]: LMO Freeform (`com.libremobileos.freeform`) via its exported START_FREEFORM broadcast
  */
-enum class FloatingWindowMode(val id: String) {
+enum class FloatingWindowMode(override val id: String) : StableId {
     System("system"),
     Lmo("lmo");
 
@@ -21,11 +20,10 @@ enum class FloatingWindowMode(val id: String) {
         const val ID_LMO = "lmo"
         val VALID_IDS: Set<String> = entries.map { it.id }.toSet()
 
-        fun fromId(id: String?): FloatingWindowMode = entries.firstOrNull { it.id == id } ?: System
+        fun fromId(id: String?): FloatingWindowMode = enumById(id, System)
     }
 }
 
-/** Floating-window outcome decided from settings alone (no Android types, so unit-testable). */
 enum class FloatingWindowRoute { Off, System, Lmo }
 
 fun floatingWindowRoute(enabled: Boolean, modeId: String?): FloatingWindowRoute = when {

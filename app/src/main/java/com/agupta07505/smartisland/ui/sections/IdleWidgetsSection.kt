@@ -7,6 +7,7 @@
 
 package com.agupta07505.smartisland.ui.sections
 
+import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -16,27 +17,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Air
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
 import androidx.compose.material3.Button
-import com.agupta07505.smartisland.ui.glass.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -56,33 +54,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.agupta07505.smartisland.R
 import com.agupta07505.smartisland.data.SmartIslandSettings
 import com.agupta07505.smartisland.data.SmartIslandSettingsRepository
 import com.agupta07505.smartisland.model.IdleSlots
 import com.agupta07505.smartisland.model.IdleWidgetKind
 import com.agupta07505.smartisland.model.IdleWidgets
+import com.agupta07505.smartisland.model.WeatherConfig
 import com.agupta07505.smartisland.model.WidgetIslandContent
 import com.agupta07505.smartisland.model.WidgetIslandTimer
+import com.agupta07505.smartisland.ui.glass.Card
 import com.agupta07505.smartisland.ui.search.searchAnchor
 import com.agupta07505.smartisland.util.IdleWeather
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Layout tab: live readouts (time, weather, ...) that the collapsed cutout shows while no event is on the island. One
- * setting for both orientations; the landscape idle circle shows just the value.
- */
+/** Live readouts the collapsed cutout shows while no event is on the island. */
 @Composable
 fun IdleWidgetsSection(
     settings: SmartIslandSettings,
     repository: SmartIslandSettingsRepository,
-    /** Opens Settings > Idle widgets, where the switches, the widget selection and the timers are. */
+    /** Opens Settings > Idle widgets. */
     onOpenSettings: () -> Unit = {}
 ) {
-    // The switches are per orientation (Settings > Idle widgets); the display options below show while either one is on.
+    // Switches are per orientation, the display options show while either is on
     val anyEnabled = settings.idleWidgetsEnabled || settings.idleWidgetsEnabledLandscape
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -92,7 +88,7 @@ fun IdleWidgetsSection(
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         locationGranted = granted
     }
-    // The app is in front here, so this is the moment the last known place can be read and kept for the weather widget.
+    // App is in front, so the last known place can be read and kept for the weather widget
     LaunchedEffect(weatherOn, locationGranted) {
         if (weatherOn && locationGranted) withContext(Dispatchers.IO) { IdleWeather.captureLocation(context) }
     }
@@ -133,7 +129,7 @@ fun IdleWidgetsSection(
             }
 
             if (anyEnabled) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                SettingsDivider(0.2f)
 
                 ChoiceBlock(title = stringResource(R.string.idle_widgets_island_close_title)) {
                     ISLAND_CLOSE_CHOICES.forEach { seconds ->
@@ -202,16 +198,17 @@ fun IdleWidgetsSection(
                         }
                     }
                     when {
-                        !settings.allowNetworkChecks -> NoteText(stringResource(R.string.idle_widgets_weather_needs_network))
-                        settings.weatherLocationSource == com.agupta07505.smartisland.model.WeatherConfig.SOURCE_MANUAL ->
+                        !settings.allowNetworkChecks ->
+                            NoteText(stringResource(R.string.idle_widgets_weather_needs_network))
+                        settings.weatherLocationSource == WeatherConfig.SOURCE_MANUAL ->
                             NoteText(stringResource(R.string.idle_widgets_weather_manual_note))
-                        settings.weatherLocationSource == com.agupta07505.smartisland.model.WeatherConfig.SOURCE_LAST_KNOWN ->
+                        settings.weatherLocationSource == WeatherConfig.SOURCE_LAST_KNOWN ->
                             NoteText(stringResource(R.string.idle_widgets_weather_last_known_note))
                         locationGranted -> NoteText(stringResource(R.string.idle_widgets_weather_location_ok))
                         else -> {
                             NoteText(stringResource(R.string.idle_widgets_weather_no_location))
                             Button(
-                                onClick = { permissionLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION) }
+                                onClick = { permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION) }
                             ) {
                                 Text(stringResource(R.string.idle_widgets_allow_location))
                             }
@@ -284,7 +281,7 @@ internal fun kindDesc(kind: IdleWidgetKind): Int = when (kind) {
 }
 
 @Composable
-private fun ChoiceBlock(title: String, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+private fun ChoiceBlock(title: String, content: @Composable RowScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = title,

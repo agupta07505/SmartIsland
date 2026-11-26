@@ -14,12 +14,11 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/** [hue] in degrees (0 until 360) and [saturation] 0..1 are HSV. */
+/** [hue] is 0 until 360 degrees, [saturation] 0..1, both HSV. */
 data class ArtworkTint(val hue: Float, val saturation: Float, val chroma: Float = 0f, val labHue: Float = hue)
 
 /**
- * Finds the colour that stands out most in album art, like the notification shade's media tint: pixels vote for their
- * hue, vivid and bright ones count more, near-black and grey ones do not vote.
+ * Like the shade's media tint: pixels vote for a hue, vivid and bright ones count more, grey and near-black do not vote
  */
 object ArtworkPalette {
     private const val HUE_BINS = 36
@@ -29,7 +28,7 @@ object ArtworkPalette {
 
     private const val MIN_COLOURED_SHARE = 0.05f
 
-    /** Null when the picture has no real colour (black and white, grey, empty). */
+    /** Null for black and white, grey or empty. */
     fun dominantTint(pixels: IntArray): ArtworkTint? {
         val weight = DoubleArray(HUE_BINS)
         val sinSum = DoubleArray(HUE_BINS)
@@ -66,7 +65,7 @@ object ArtworkPalette {
         }
         if (opaque == 0 || coloured < opaque * MIN_COLOURED_SHARE) return null
 
-        // A hue that straddles two bins must not lose to a smaller, tidier one: score each bin with its neighbours.
+        // A hue across two bins must not lose to a smaller, tidier one, so score with the neighbours
         var best = 0
         var bestScore = -1.0
         for (i in 0 until HUE_BINS) {
@@ -90,7 +89,7 @@ object ArtworkPalette {
         if (sw <= 0.0) return null
         var hue = Math.toDegrees(atan2(sy, sx)).toFloat()
         if (hue < 0f) hue += 360f
-        // CIELAB mean of the pixels in the winning bin and its two neighbours.
+        // CIELAB mean of the winning bin and its neighbours
         var labA = 0.0
         var labB = 0.0
         var labCount = 0
@@ -119,11 +118,13 @@ object ArtworkPalette {
         }
         val chroma = if (labCount == 0) 0f else LabColor.chromaOf(labA / labCount, labB / labCount).toFloat()
         val labHue = if (labCount == 0) hue % 360f else LabColor.hueOf(labA, labB).toFloat()
-        return ArtworkTint(hue = hue % 360f, saturation = (ss / sw).toFloat().coerceIn(0f, 1f), chroma = chroma, labHue = labHue)
+        return ArtworkTint(hue = hue % 360f, saturation = (ss / sw).toFloat().coerceIn(0f, 1f), chroma = chroma,
+            labHue = labHue)
     }
 
-    /** Samples a small copy of the bitmap; null when it cannot be read or has no real colour. */
-    fun fromBitmap(bitmap: Bitmap): ArtworkTint? = runCatchingLogged("ArtworkPalette", "Could not read the artwork colour") {
+    /** Null when unreadable or no real colour. */
+    fun fromBitmap(bitmap: Bitmap): ArtworkTint? =
+            runCatchingLogged("ArtworkPalette", "Could not read the artwork colour") {
         val readable = if (bitmap.config == Bitmap.Config.HARDWARE) {
             bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: return@runCatchingLogged null
         } else {

@@ -7,173 +7,410 @@
 
 package com.agupta07505.smartisland.ui
 
+import android.os.SystemClock
 import androidx.compose.animation.core.Animatable
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import com.agupta07505.smartisland.model.BubbleOrigin
+import com.agupta07505.smartisland.model.CutoutTapIntent
+import com.agupta07505.smartisland.model.FlightTapHold
+import com.agupta07505.smartisland.model.IslandPhase
+import com.agupta07505.smartisland.model.ShellSwap
+import com.agupta07505.smartisland.model.SwapAbort
+import com.agupta07505.smartisland.model.SwapBurst
+import com.agupta07505.smartisland.model.SwapClock
+import com.agupta07505.smartisland.model.SwapCoordinator
+import com.agupta07505.smartisland.model.SwapTouchGuard
+import com.agupta07505.smartisland.model.SwipeLock
+import com.agupta07505.smartisland.model.TapMemory
+import com.agupta07505.smartisland.model.TapSwap
+import com.agupta07505.smartisland.model.TwoShellSwap
+import com.agupta07505.smartisland.model.lockCueHoldMs
+import com.agupta07505.smartisland.ui.expanded.PickerMotion
+import com.agupta07505.smartisland.ui.expanded.StepDragState
+import com.agupta07505.smartisland.util.AnimationSpeed
+import com.agupta07505.smartisland.util.AppLogRecorder
+import com.agupta07505.smartisland.util.ReaderScrollTracker
+import com.agupta07505.smartisland.util.SwapTrace
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Mutable state that several of the island's behaviours share: the finger-follow drags, the pill auto-hide, and the
- * "last touched" time that restarts the auto-hide / auto-collapse timers.
- */
 internal class IslandInteractionState {
-    /** Window position of the pill's gesture area, to turn a touch position into window pixels. */
-    var gestureOrigin: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero
-    /** True while the floating-window handle at the bottom of the expanded island owns the touch; the island's own gestures skip it. */
+    var gestureOrigin: Offset = Offset.Zero
     var handleOwnsTouch: Boolean = false
-    /**
-     * Called with true when a finger lands on the floating-window handle and false when that touch ends (lift,
-     * cancel, handle gone). Set by the overlay.
-     */
     var onHandleHeld: ((Boolean) -> Unit)? = null
-    /** 0..1.15: how far the floating-window handle has been pulled down. Read in the shell's `graphicsLayer`. */
+    // Dragging restarts the expanded card’s auto-collapse timer.
+    var onDragActive: (() -> Unit)? = null
+    var onHandleTap: (() -> Unit)? = null
+    // The handle can overshoot full travel by 15%.
     var handlePull by mutableFloatStateOf(0f)
-    var handleReleaseJob: kotlinx.coroutines.Job? = null
-    /** Vertical finger-follow of the main island (expanded: drag up/down; collapsed: a damped copy of the pill swipe). */
+    var handleReleaseJob: Job? = null
     var dragOffset by mutableFloatStateOf(0f)
     var pillDragOffsetX by mutableFloatStateOf(0f)
     var cornerPillDragX by mutableFloatStateOf(0f)
     var cornerPillDragY by mutableFloatStateOf(0f)
     var pillContentDragX by mutableFloatStateOf(0f)
-    /** 0..1: the pill swipe is armed (lifting now fires). Drives the small swell that says so. */
+    // These 3 cues animate between 0 and 1. A fully armed swipe fires on release.
     val pillArm = Animatable(0f)
-    /**
-     * 0..1, the finger is in the dead zone (moved too far for a tap, not far enough for a swipe, or a swipe that
-     * would do nothing): lifting now does nothing.
-     */
     val deadZone = Animatable(0f)
-    /** 0..1: the clock widget's hourly tick (ui/HourChime.kt) covers the pill's own content. The pill's content layer fades out by it. */
+    val holdGlow = Animatable(0f)
     val chimeShow = Animatable(0f)
-    /**
-     * Landscape: asks the view model to put the wide pill on the island for a tick while the pill is hidden
-     * ([withTickPill]). Set by the overlay.
-     */
     var onTickHold: (Boolean) -> Unit = {}
-    /** How many ticks hold the pill right now ([withTickPill]); the pill is released when it is back to 0. */
     var tickHolds = 0
     val cornerDeadZone = Animatable(0f)
-    /** The short swipe lock (an armed swipe was pulled back). Shared by every touch on the island, so it outlives a lift. */
-    val swipeLock = com.agupta07505.smartisland.util.SwipeLock()
-    /** 0..1: the lock cue (a thin outline over the shell). On exactly while [swipeLock] runs; see [startLockCue]. */
+    // Pulling an armed swipe back briefly locks it.
+    val swipeLock = SwipeLock()
     val lockCue = Animatable(0f)
-    var lockCueJob: kotlinx.coroutines.Job? = null
-    /** How far a swipe down has pulled the island (0..1.25, see [com.agupta07505.smartisland.util.SwipeDownPull]). */
+    var lockCueJob: Job? = null
     var swipeDownPull by mutableFloatStateOf(0f)
     var cornerSwipeDownPull by mutableFloatStateOf(0f)
-    /** When the reader text last scrolled; a touch that starts on it is not a tap. Set by the overlay. */
-    var readerScroll: com.agupta07505.smartisland.util.ReaderScrollTracker = com.agupta07505.smartisland.util.ReaderScrollTracker()
-    /** A card step following the finger (set by the overlay from the composition local). */
-    var stepDrag: com.agupta07505.smartisland.ui.expanded.StepDragState = com.agupta07505.smartisland.ui.expanded.StepDragState()
-    /** px the incoming card still has to travel; it starts on the side opposite to the swipe and runs to 0. */
+    val pillOpen = PillOpenDragState()
+    // A touch that starts during a reader scroll must not count as a tap.
+    var readerScroll: ReaderScrollTracker = ReaderScrollTracker()
+    var stepDrag: StepDragState = StepDragState()
+    /** px the incoming card still has to travel. */
     val pillEnter = Animatable(0f)
-    /** Set when a swipe changed the card: +1 = the next card comes in from the right, -1 = from the left, 0 = none waiting. */
     var pendingEnterSign by mutableIntStateOf(0)
-    /**
-     * Set by the idle widgets while they sit on the collapsed pill with no card: steps to the next (true) or the
-     * previous (false) widget and returns whether another widget took over (false = only one widget, the swipe
-     * springs back).
-     */
+    /** Set by the idle widgets while they sit on the collapsed pill with no card. */
     var idleWidgetCycle: ((forward: Boolean) -> Boolean)? = null
-    /** The idle widget frame the collapsed pill is drawing right now (null: none). */
     var idleFrameNow by mutableStateOf<IdleWidgetFrame?>(null)
-    /**
-     * The widget island's pause button: true holds the collapsed pill on its current idle widget (the automatic
-     * switch stops; swiping still steps it).
-     */
     var idleCyclePaused by mutableStateOf(false)
-    /**
-     * The widget island is open (set by [WidgetIslandLayer]): the pill holds its widget, a swipe on it moves the
-     * island, auto-hide waits.
-     */
     var widgetIslandOpen by mutableStateOf(false)
-    /**
-     * The widget island has grown out of the pill (set by [WidgetIslandLayer]): the collapsed cutout under it is not
-     * drawn while this holds.
-     */
     var widgetIslandShown by mutableStateOf(false)
-    /**
-     * True while the widget island is drawn, read in the draw phase so the pill comes back in the very frame the
-     * island is gone (set by [WidgetIslandLayer]).
-     */
+    /** Edge layout: the secondary bubble is out beside the pill (not merged into it). */
+    var edgeBubbleApart by mutableStateOf(false)
+    var edgeMergeScaleX by mutableFloatStateOf(1f)
+    var edgeMergeScaleY by mutableFloatStateOf(1f)
     var widgetIslandCovers: () -> Boolean = { false }
-    /**
-     * A tap on the idle widget's glyph slot (opens or closes the semi-expanded widget island). Also the outside tap
-     * that closes it. Set by the overlay.
-     */
     var onWidgetGlyphTap: (() -> Unit)? = null
-    /**
-     * A tap on the idle widget's value slot. Same job as [onWidgetGlyphTap] for now, a separate hook so it can differ
-     * later. Set by the overlay.
-     */
     var onWidgetValueTap: (() -> Unit)? = null
-    /**
-     * How far (px, signed) the whole island leans sideways with the finger on a left / right swipe. The card itself
-     * does not move under the finger.
-     */
     var cardDragX by mutableFloatStateOf(0f)
-    /**
-     * The swap of a swipe that brought another card, 0 at the lift to 1 when the new card has arrived (one spring).
-     */
     val cardPop = Animatable(1f)
-    /** The lean (px) the finger let go with; the swap lets it go with `1 - cardPop`. */
+    /** Lean (px) the finger let go with; the swap lets it go with `1 - cardPop`. */
     var cardLeanFromPx by mutableFloatStateOf(0f)
-    /** +1 = the swap's new card comes in from the right (the old one leaves to the left), -1 = the other way, 0 = no swap running. */
     var cardSwapSign by mutableIntStateOf(0)
-    /** Set when a swipe changed the expanded card: +1 = the next card comes in from the right, -1 = from the left, 0 = none waiting. */
     var pendingCardEnterSign by mutableIntStateOf(0)
-    /** The card swap of a swipe is in flight (from the lift until the new card has settled): the pager must jump, not slide too. */
     var cardSwipeSnap by mutableStateOf(false)
-    /**
-     * Key of the card a swipe left; until the island shows another key the card is hidden for the one frame it would
-     * flash at the old offset.
-     */
     var pendingCardFromKey: String? = null
-    /** When the last swipe switched a card (pill or expanded). The squash bounce skips switches the swipe's own slide already shows. */
     var lastCardSwipeMs: Long = 0L
-    /** Largest sideways slide (px) of the expanded card; set at the start of every touch. */
     var cardSlideMaxPx by mutableFloatStateOf(0f)
-    /** The ease-back and the "no card came" timer of the last expanded swipe; a new touch cancels them. */
-    var cardBackJob: kotlinx.coroutines.Job? = null
-    /**
-     * The one ease-back of the collapsed pill's drag (shell, lean, content, pull); a new touch cancels it so it
-     * cannot fight the finger.
-     */
-    var pillReleaseJob: kotlinx.coroutines.Job? = null
-    var cardWaitJob: kotlinx.coroutines.Job? = null
+    var cardBackJob: Job? = null
+    var pillReleaseJob: Job? = null
+    /** Finger down on the collapsed pill's gesture area (the release guard waits for it to lift). */
+    var pillTouchActive by mutableStateOf(false)
+    var pillSettleGuardJob: Job? = null
+    var cardWaitJob: Job? = null
 
-    /** Forgets every sideways move of the expanded card at once (island collapsed, touch cancelled, gesture restarted). */
     suspend fun resetCard() {
-        cardBackJob?.cancel(); cardWaitJob?.cancel()
+        cardBackJob?.cancel(); cardWaitJob?.cancel(); tapReplayJob?.cancel()
         pendingCardEnterSign = 0
         pendingCardFromKey = null
         cardSwipeSnap = false
         cardDragX = 0f
-        cleanSwapState()
+        cleanSwapState("reset")
     }
 
-    /** Puts the swap of a swipe back to rest (the swap spring at its end, no lean left over, no swap direction). */
-    suspend fun cleanSwapState() {
+    val tapSwapActive: Boolean get() = swapBusy
+    /** Whether a tap swap may run now (setting on and no 2 islands drawn side by side). */
+    var tapSwapAllowed: Boolean = false
+    /** Window bounds of the expanded shell (kept while no swap runs) and of the cutout beside it. */
+    var shellBoundsWin: Rect? = null
+    var cutoutBoundsWin: Rect? = null
+    /** Captured at the tap: where the cutout sits against the shell (px) and the shell's smallest scale. */
+    var tapSwapDx by mutableFloatStateOf(0f)
+    var tapSwapDy by mutableFloatStateOf(0f)
+    var tapSwapScaleX by mutableFloatStateOf(1f)
+    var tapSwapScaleY by mutableFloatStateOf(1f)
+    // Snapshot both rects on touch-down. The outgoing shell uses them throughout the swap.
+    var tapSwapShellRect: Rect? = null
+    var tapSwapCutoutRect: Rect? = null
+    // The outgoing shell can draw once the last card frame has been captured.
+    var tapSwapOutgoingLayer by mutableStateOf<androidx.compose.ui.graphics.layer.GraphicsLayer?>(null)
+    /** Progress the outgoing card was handed to the ghost shell at, its fade starts from there (0: the swap starts at rest). */
+    var tapSwapHandoffP: Float = 0f
+    var tapSwapSpeed: AnimationSpeed = AnimationSpeed.NORMAL
+    /** Blur of the card content while the swap runs (alpha-only where RenderEffect is not available). */
+    val swapBlur = SwapBlurEffects()
+    /**
+     * Which cutout was tapped ([com.agupta07505.smartisland.model.TapSwap] ids), only that one hides during the swap
+     */
+    var tapSwapCutoutId: Int = 0
+    var tapSwapGuardJob: Job? = null
+    val tapSwapReverse: Boolean get() = swap.reverse
+    /** Outgoing event is the selected one again (its card is live, no ghost), the coordinator's flag as state. */
+    var tapSwapBack by mutableStateOf(false)
+        private set
+    val tapSwapSettling: Boolean get() = swap.phase == SwapCoordinator.Phase.Settling
+    // Consume the click if touch-down already reversed the swap.
+    val swapTouch = SwapTouchGuard()
+    var tapSwapFromKey: String? = null
+    var tapSwapToKey: String? = null
+    var swapTraceFlags: String = ""
+
+    val swap = SwapCoordinator { tapSwapBack = it }
+    /** Tap rhythm of the swap, the spring is stiffer while taps come quickly. */
+    val swapBurst = SwapBurst()
+    /** The portrait picker's trade with the card: a swap does not start while it moves. */
+    val pickerMotion = PickerMotion()
+    /** The cutout tap waiting for the picker to rest, one at a time (the latest tap wins). */
+    var pickerWaitJob: Job? = null
+    var tapReplayJob: Job? = null
+    /** [swap] is busy, as state so what latches on it recomposes when the swap ends. */
+    var swapBusy by mutableStateOf(false)
+        private set
+    /** Told when a swap begins and ends, the view model keeps its picker out of the card changes in between. */
+    var onSwapBusy: ((Boolean) -> Unit)? = null
+
+    fun beginSwapPhase() {
+        if (!swap.begin()) return
+        swapBusy = true
+        onSwapBusy?.invoke(true)
+    }
+
+    private fun endSwapPhase() {
+        if (!swap.busy) return
+        swap.end()
+        swapBusy = false
+        onSwapBusy?.invoke(false)
+    }
+
+    /**
+     * Remembers the event the swap is heading away from, for when the swap has settled. There is 1 slot for what
+     * a tap wants after the swap: the newest tap replaces a third event remembered before it
+     */
+    fun rememberOppositeTap() {
+        val key = tapSwapOppositeKey() ?: return
+        tapMemory.remember(key)
+        shellSwap = shellSwap?.let { ShellSwap.withoutPending(it) }
+    }
+
+    /** Remembers a third event ([after] holds it) for when the swap has settled, replacing an older remembered tap. */
+    fun rememberThirdTap(after: ShellSwap.State) {
+        shellSwap = after
+        tapMemory.clear()
+    }
+
+    /** Event a touch during the swap asks for: the one the swap is heading away from. */
+    fun tapSwapOppositeKey(): String? = if (tapSwapReverse) tapSwapToKey else tapSwapFromKey
+
+    var openedFromBubble by mutableStateOf(false)
+    private var bubbleOriginSetMs: Long = 0L
+
+    fun markOpenedFromBubble() {
+        bubbleOriginSetMs = SystemClock.uptimeMillis()
+        openedFromBubble = true
+    }
+
+    fun clearBubbleOrigin() {
+        openedFromBubble = false
+    }
+
+    fun settleBubbleOrigin(expanded: Boolean, progress: Float, orientationFlipped: Boolean = false) {
+        if (!openedFromBubble) return
+        val age = SystemClock.uptimeMillis() - bubbleOriginSetMs
+        if (!BubbleOrigin.keeps(true, expanded, progress, orientationFlipped, age)) {
+            openedFromBubble = false
+        }
+    }
+
+    /** Expand progress as the shell really shows it (0 = pill, 1 = card). */
+    var expandProgressNow: () -> Float = { 0f }
+
+    val tapMemory = TapMemory()
+
+    /** Uptime (ms) until which the card takes no touch after a swap ended (see [SwapTouchGuard.POST_SWAP_LOCK_MS]). */
+    var cardTouchLockUntilMs: Long = 0L
+
+    /** The card takes no touch while a swap runs and for a moment after it: a tap meant for the cutout never opens the app. */
+    fun cardTouchLocked(nowMs: Long): Boolean = SwapTouchGuard.cardLocked(tapSwapActive, nowMs, cardTouchLockUntilMs)
+
+    fun islandPhase(expanded: Boolean): IslandPhase =
+        CutoutTapIntent.phase(expanded, expandProgressNow(), tapSwapActive)
+    var tapSwapSelectOld: (() -> Unit)? = null
+    var tapSwapSelectNew: (() -> Unit)? = null
+
+    /** The outgoing event was picked before the swap came back to it (see [TapSwap.selectionStep]). */
+    private var tapSwapOldPicked = false
+    private var swapFrames = 0
+    private var oldPickedAtFrame = 0
+
+    private fun pickOld() {
+        if (tapSwapOldPicked) return
+        tapSwapOldPicked = true
+        oldPickedAtFrame = swapFrames
+        tapSwapSelectOld?.invoke()
+    }
+
+    private fun pickNew() {
+        tapSwapOldPicked = false
+        tapSwapSelectNew?.invoke()
+    }
+
+    /**
+     * The swap is back at its start and the outgoing event is still to be picked: picks it unless it already is and
+     * returns the frames its card still needs before the live card can take over from the ghost
+     */
+    fun pickOldAtEnd(): Int {
+        val fresh = !tapSwapOldPicked
+        pickOld()
+        return if (fresh) TapSwap.OLD_CARD_COMPOSE_FRAMES else TapSwap.composeFramesLeft(swapFrames - oldPickedAtFrame)
+    }
+
+    private fun resetSwapSelection() {
+        tapSwapOldPicked = false
+        swapFrames = 0
+        oldPickedAtFrame = 0
+    }
+
+    fun syncTapSwapSelection(p: Float) {
+        swapFrames++
+        when (TapSwap.selectionStep(tapSwapBack, tapSwapReverse, tapSwapOldPicked, p)) {
+            TapSwap.SelectStep.PickOld -> {
+                SwapTrace.log("select-early") { "to=old ${swapTraceState()}" }
+                pickOld()
+            }
+            TapSwap.SelectStep.PickNew -> {
+                SwapTrace.log("select-early") { "to=new ${swapTraceState()}" }
+                pickNew()
+            }
+            TapSwap.SelectStep.None -> Unit
+        }
+        val next = TapSwap.backAfter(tapSwapBack, tapSwapReverse, p)
+        if (next == tapSwapBack) return
+        swap.setBack(next)
+        SwapTrace.log("select") { "to=${if (next) "old" else "new"} ${swapTraceState()}" }
+        if (next) pickOld() else pickNew()
+    }
+
+    fun swapTraceState(): String =
+        "p=${tapSwapP()} phase=${swap.phase} reverse=$tapSwapReverse back=$tapSwapBack " +
+            "pending=$pendingCardEnterSign shell=$shellSwap allowed=$tapSwapAllowed"
+
+    /** Ends a running tap swap at once: shell, cutout and card content go back to rest ([reason] is for the trace). */
+    fun endTapSwap(reason: String) {
+        if (tapSwapActive) {
+            SwapTrace.log("end") { "reason=$reason ${swapTraceState()}" }
+            cardTouchLockUntilMs = SystemClock.uptimeMillis() + SwapTouchGuard.POST_SWAP_LOCK_MS
+        }
+        tapSwapGuardJob?.cancel()
+        tapSwapGuardJob = null
+        tapSwapHandoffP = 0f
+        tapSwapShellRect = null
+        tapSwapCutoutRect = null
+        // The parked layers are shared with the left/right swipe, hand them back as a swipe expects
+        tapSwapOutgoingLayer?.resetSwapLook()
+        tapSwapOutgoingLayer = null
+        tapSwapSelectOld = null
+        tapSwapSelectNew = null
+        resetSwapSelection()
+        swapTouch.reset()
+        endSwapPhase()
+    }
+
+    /** Which event is where in a two-shell swap, and what a tap means (model/ShellSwap.kt), null when no swap runs. */
+    var shellSwap: ShellSwap.State? = null
+    /** Cutout of the remembered third tap, kept apart so it never moves the running swap. */
+    var pendingCutoutId: Int = 0
+    var pendingCutoutBounds: (() -> Rect?)? = null
+    /** Called once a swap has run to its end and been tidied up (starts a remembered tap). */
+    var onSwapSettled: (() -> Unit)? = null
+    /**
+     * Click on a picker button during a swap: flips the swap if the button sits on the swapping cutout, else nothing
+     */
+    var onPickerTapDuringSwap: ((Int) -> Unit)? = null
+
+    /** A cutout was tapped: remember which one and where it sits (null = unknown, the plain slide runs). */
+    fun markCutout(id: Int, bounds: () -> Rect?) {
+        if (tapSwapActive) {
+            // A tap during a swap: the running swap keeps its own cutout, this one is only for a remembered tap
+            pendingCutoutId = id
+            pendingCutoutBounds = bounds
+            return
+        }
+        tapSwapCutoutId = id
+        cutoutBoundsNow = bounds
+        cutoutBoundsWin = bounds()
+    }
+
+    var cutoutBoundsNow: (() -> Rect?)? = null
+
+    val flightHold = FlightTapHold()
+    var onFlightLanded: ((String) -> Unit)? = null
+
+    fun setBubbleFlight(active: Boolean) {
+        flightHold.setFlying(active)?.let { onFlightLanded?.invoke(it) }
+    }
+
+    /**
+     * How far the wide pulse over an open card covers cutout [id] (0..1): set by the pulse while it is drawn, it stands
+     * in for the cutout on that spot (see [pulseCoverFactor])
+     */
+    var pulseCoverOf: (Int) -> Float = NoPulseCover
+
+    /** What is left of cutout [id] while a pulse covers it: its own content is replaced by the pulse's, all of it. */
+    fun pulseCoverFactor(id: Int): Float = 1f - pulseCoverOf(id).coerceIn(0f, 1f)
+
+    /** Alpha of cutout [id]: hidden while a swap's shells sit on it, and while a pulse has taken its place. */
+    fun cutoutSwapAlpha(id: Int): Float = swapHideAlpha(id) * pulseCoverFactor(id)
+
+    /** Alpha of cutout [id] from the swap alone: hidden while a swap's shells sit on it. */
+    fun swapHideAlpha(id: Int): Float =
+        if (TapSwap.hidesWithSwap(tapSwapActive, tapSwapCutoutId, id)) {
+            // No outgoing card is parked (still preparing, or none was), so no shell lands on the cutout: it stays
+            if (tapSwapOutgoingLayer == null) 1f
+            else TwoShellSwap.cutoutAlpha(tapSwapBack, tapSwapP())
+        } else 1f
+
+    /** The swap's progress: 0 while it prepares (nothing has moved), then the one spring's value. */
+    fun tapSwapP(): Float = if (!tapSwapActive) 1f else if (pendingCardEnterSign != 0) 0f else cardPop.value
+
+    /**
+     * Stops a swap that has to end: the running motion heads for the nearest rest with the speed it has, and only
+     * what is left after [SwapClock.graceMs] is put back at once
+     */
+    suspend fun abortTapSwap(reason: String) {
+        if (!tapSwapActive) return
+        AppLogRecorder.w("SwapAbort", "Tap swap aborted ($reason): ${swapTraceState()}")
+        SwapTrace.log("abort") { "reason=$reason ${swapTraceState()}" }
+        swap.abort()
+        if (pendingCardEnterSign == 0 && cardPop.isRunning) {
+            swap.setReverse(SwapAbort.settlesBack(tapSwapP()))
+            // the running swap's loop picks the new direction up
+            cardPop.stop()
+            withTimeoutOrNull(SwapClock.graceMs(tapSwapStiffness(tapSwapSpeed))) { snapshotFlow { tapSwapActive }.first { !it } }
+            if (!tapSwapActive) return
+        }
+        cleanSwapState(reason)
+    }
+
+    suspend fun cleanSwapState(reason: String) {
+        endTapSwap(reason)
         cardLeanFromPx = 0f
         cardSwapSign = 0
         cardPop.snapTo(1f)
     }
-    /**
-     * Shows the lock cue for what is left of [swipeLock]: fades in, holds, and fades out so that it is gone the
-     * moment the lock ends (a new call restarts it). Call right after the lock started.
-     */
-    fun startLockCue(scope: kotlinx.coroutines.CoroutineScope) {
+    /** Shows the lock cue for what is left of [swipeLock]. */
+    fun startLockCue(scope: CoroutineScope) {
         lockCueJob?.cancel()
         lockCueJob = scope.launch {
-            val remaining = swipeLock.remainingMs(android.os.SystemClock.uptimeMillis())
-            lockCue.animateTo(1f, androidx.compose.animation.core.tween(LOCK_CUE_IN_MS))
-            kotlinx.coroutines.delay(
-                com.agupta07505.smartisland.util.lockCueHoldMs(remaining, LOCK_CUE_IN_MS.toLong(), LOCK_CUE_OUT_MS.toLong())
+            val remaining = swipeLock.remainingMs(SystemClock.uptimeMillis())
+            lockCue.animateTo(1f, tween(LOCK_CUE_IN_MS))
+            delay(
+                lockCueHoldMs(remaining, LOCK_CUE_IN_MS.toLong(), LOCK_CUE_OUT_MS.toLong())
             )
-            lockCue.animateTo(0f, androidx.compose.animation.core.tween(LOCK_CUE_OUT_MS))
+            lockCue.animateTo(0f, tween(LOCK_CUE_OUT_MS))
         }
     }
 
@@ -184,11 +421,17 @@ internal class IslandInteractionState {
         userInteractionTimestamp = System.currentTimeMillis()
     }
 
-    /** Called when a finger lands on the island itself (not the idle dot or the timers). Set by the overlay. */
     var onUserTouch: (() -> Unit)? = null
 
     fun userTouched() {
         touch()
         onUserTouch?.invoke()
+    }
+
+    var onSwipe: (() -> Unit)? = null
+
+    fun swipeTouched() {
+        touch()
+        onSwipe?.invoke()
     }
 }

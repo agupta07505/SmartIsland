@@ -7,10 +7,7 @@
 
 package com.agupta07505.smartisland.util
 
-/**
- * Which picker the island's plus button wants open: [APPS] is the pinned apps picker, [UTILITY] the "add a utility"
- * flow.
- */
+/** Which picker the plus button wants open: [APPS] is the pinned apps picker, [UTILITY] the "add a utility" flow. */
 object PickerRequest {
     const val APPS = "apps"
     const val UTILITY = "utility"
