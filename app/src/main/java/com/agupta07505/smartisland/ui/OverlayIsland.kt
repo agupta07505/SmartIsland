@@ -25,6 +25,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -148,14 +149,15 @@ fun OverlayIsland(
     )
     val veilVisible = rememberRotationVeil(rotationHidden, veilSpeed)
     val cardsOnIsland = notifications.isNotEmpty()
+    val autoHidden = remember { mutableStateOf(false) }
     val morph = rememberOverlayMorph(
         viewModel = viewModel,
         orientationState = orientationState,
         notifications = notifications,
         expanded = expanded,
         selectedIndex = selectedIndex,
-        widgetPill = widgetPill,
-        pillHidden = pillHidden,
+        widgetPill = widgetPill && !quiet,
+        pillHidden = pillHidden || autoHidden.value || fullscreenHidden,
         hasIdleStoredCards = hasIdleStoredCards,
         speed = veilSpeed
     )
@@ -292,6 +294,7 @@ fun OverlayIsland(
         collapsedPulse = collapsedPulse,
         pulseDriven = pulseDriven,
         pulseRedacted = isContentRedacted,
+        onAutoHiddenChange = { autoHidden.value = it },
         widgetIslandSnap = widgetIslandSnap,
         modifier = modifier.graphicsLayer {
             alpha = morph.islandAlpha(veilVisible.value)
@@ -379,7 +382,7 @@ private fun rememberOverlayMorph(
         hasContent = pillOnIsland(cardsOnIsland, widgetPill),
         hasCards = cardsOnIsland,
         edgeShown = orientationState.isLandscape && (cardsOnIsland || hasIdleStoredCards),
-        drawn = !pillHidden && !(rawForMorph.hideWhenIdle && !cardsOnIsland),
+        drawn = !pillHidden,
         cameraArea = morphCameraArea,
         hasCompanion = hasSecondaryCutout(
             cutoutCardCount(notifications, expanded, selectedIndex)

@@ -156,8 +156,7 @@ internal fun rememberIslandLayout(
         screenCenter, expandedWidth, expandedHeight, configuration
     )
     val alphaMs = springs.alphaMs
-    val isIdleHiding = settings.hideWhenIdle && notifications.isEmpty()
-    val isHiding = (isIdleHiding || userHidden || (settings.autoHidePill && isAutoHidden))
+    val isHiding = userHidden || (settings.autoHidePill && isAutoHidden)
     val sinks = HideSink.applies(isLandscape, settings.enableNotchMode, edgeStyle)
     val hidingAlphaState = rememberHidingAlpha(isHiding, animSpeed, alphaMs, sinks)
     val pillBackgroundColor = Color(settings.islandSurfaceColor)
@@ -174,7 +173,8 @@ internal fun rememberIslandLayout(
     val collapsedTopShift = collapsedTopShiftDp(isLandscape, settings.enableNotchMode, settings.yOffset).dp
     val anim = animateShell(
         transition, settings, expandedWidth, expandedHeight, expandedTopOffset, edgePlacement,
-        collapsedTopShift, springs, closeMotion, stretchSpec, collapseOnPill, isHiding, animSpeed, cardSwitching
+        collapsedTopShift, springs, closeMotion, stretchSpec, collapseOnPill,
+        isHiding || settings.idleCutout, animSpeed, cardSwitching
     )
 
     val pillHeightNow = settings.height.toFloat()
@@ -473,7 +473,7 @@ private fun rememberPillGeometry(
     val compactShapes = compactNotificationShapes(cutoutCards, expanded)
     val hasCompanion = hasSecondaryCutout(cutoutCards)
     // The hole the placement reads (null in landscape and notch mode); the settled pill and the pulse read the notch's too
-    val cameraArea = rememberCameraCutoutArea(settings, isLandscape)
+    val cameraArea = rememberCameraCutoutArea(settings, isLandscape).takeUnless { settings.idleCutout }
     val pulseHole = rememberCameraCutoutArea(settings, isLandscape, withNotchHole = true, assumeCentre = true)
     val cameraSide = SideCamera.sideOf(cameraArea?.centreXDp)
     val notchGeometry = if (settings.enableNotchMode) {
@@ -496,7 +496,7 @@ private fun rememberPillGeometry(
 
     val desiredMainLeft = desiredCollapsedLeft(cameraSide, cameraArea, settings, screenWidth, screenCenter)
     // landscape: the cutout may touch the screen edge (the camera sits right at it)
-    val edgeMargin = if (isLandscape && !settings.enableNotchMode) 0.dp else compactGap
+    val edgeMargin = if (settings.idleCutout || (isLandscape && !settings.enableNotchMode)) 0.dp else compactGap
     val (minMainLeft, maxMainLeft) = when {
         !hasCompanion -> edgeMargin to (screenWidth - edgeMargin - settings.width.dp).coerceAtLeast(edgeMargin)
         isCircleLeft -> (edgeMargin + circleSize + compactGap) to (screenWidth - edgeMargin - settings.width.dp)

@@ -154,11 +154,13 @@ fun IslandOverlayView(
     /** The collapsed pill pulses ([com.agupta07505.smartisland.data.collapsedPulses]); null: portrait only. */
     pulseDriven: Boolean? = null,
     /** Lock screen hides content: the wide pulse shows the glyph without the title. */
-    pulseRedacted: Boolean = false
+    pulseRedacted: Boolean = false,
+    onAutoHiddenChange: (Boolean) -> Unit = {}
 ) {
     val safeIndex = selectedIndex.coerceIn(0, (notifications.size - 1).coerceAtLeast(0))
     val scope = rememberCoroutineScope()
     val ui = remember { IslandInteractionState() }
+    SideEffect { onAutoHiddenChange(settings.autoHidePill && ui.isAutoHidden) }
     val onSwapBusyState = rememberUpdatedState(onSwapBusyChange)
     ui.onSwapBusy = { busy -> onSwapBusyState.value(busy) }
     // The service can outlive this composition. Clear its busy flag if the view goes away mid-swap.
@@ -246,8 +248,7 @@ fun IslandOverlayView(
         notchMode = settings.enableNotchMode || edgeStyleEarly,
         screenWidthDp = screenWidth.value,
         animSpeed = settings.animationSpeed(isLandscape),
-        pillOnScreen = !((settings.hideWhenIdle && notifications.isEmpty())
-            || (settings.autoHidePill && ui.isAutoHidden))
+        pillOnScreen = !pillHidden && !(settings.autoHidePill && ui.isAutoHidden)
     )
     @Suppress("NAME_SHADOWING")
     val settings = pillExit.frozenNow ?: settings
