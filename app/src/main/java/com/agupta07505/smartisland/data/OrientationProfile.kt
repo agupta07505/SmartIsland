@@ -7,12 +7,15 @@
 
 package com.agupta07505.smartisland.data
 
+import com.agupta07505.smartisland.model.CutoutArea
 import com.agupta07505.smartisland.model.EdgeCamera
 import com.agupta07505.smartisland.model.EdgePillLayoutMath
 import com.agupta07505.smartisland.model.EdgePillTuning
 import com.agupta07505.smartisland.model.FoldPosture
 import com.agupta07505.smartisland.model.LandscapeClassicPulse
 import com.agupta07505.smartisland.model.LandscapeLayoutStyle
+
+private const val FALLBACK_CUTOUT_SIZE_DP = 21f
 
 data class LandscapeCamera(
     val xOffsetDp: Float,
@@ -34,13 +37,44 @@ data class OrientationState(
     val rotationSide: String = SmartIslandSettings.LANDSCAPE_POSITION_LEFT,
     /** Reverse landscape (display rotation 270, the camera on the right). */
     val reversed: Boolean = false,
-    val posture: FoldPosture = FoldPosture.Standard
+    val posture: FoldPosture = FoldPosture.Standard,
+    val portraitCutout: CutoutArea? = null
 )
 
 fun SmartIslandSettings.forOrientation(
     state: OrientationState,
     hasContent: Boolean = false,
     hasCards: Boolean = hasContent
+): SmartIslandSettings {
+    val profile = orientationProfile(state, hasContent, hasCards)
+    if (hasContent || !hideWhenIdle) return profile
+    val hole = if (state.isLandscape) {
+        state.camera?.takeIf { it.widthDp > 0f && it.lengthDp > 0f }?.let {
+            CutoutArea(it.xOffsetDp, it.centerYDp - it.lengthDp / 2f, it.widthDp, it.lengthDp)
+        }
+    } else {
+        CutoutPlacement.placedFor(this, state.screenWidthDp) ?: state.portraitCutout
+    }
+    // Keep the orientation's idle placement when the display reports no camera.
+    val holeWidth = hole?.widthDp ?: FALLBACK_CUTOUT_SIZE_DP
+    val width = if (state.screenWidthDp > 0f) minOf(holeWidth, state.screenWidthDp) else holeWidth
+    val height = hole?.heightDp ?: FALLBACK_CUTOUT_SIZE_DP
+    val reach = (state.screenWidthDp - width).coerceAtLeast(0f) / 2f
+    return profile.copy(
+        idleCutout = true,
+        enableNotchMode = false,
+        width = width,
+        height = height,
+        cornerRadius = minOf(width, height) / 2f,
+        xOffset = (hole?.centreXDp ?: profile.xOffset).coerceIn(-reach, reach),
+        yOffset = (hole?.topDp ?: profile.yOffset).coerceAtLeast(0f)
+    )
+}
+
+private fun SmartIslandSettings.orientationProfile(
+    state: OrientationState,
+    hasContent: Boolean,
+    hasCards: Boolean
 ): SmartIslandSettings {
     if (!state.isLandscape) return if (hasContent) withContentPillWidth(state.screenWidthDp) else this
 
@@ -282,6 +316,7 @@ fun OrientationState.edgeCamera(
 }
 
 fun SmartIslandSettings.withEdgePill(camera: EdgeCamera): SmartIslandSettings = copy(
+    idleCutout = false,
     width = camera.pillWidthDp,
     height = camera.pillHeightDp,
     cornerRadius = camera.tuning.cornerRadiusDp,

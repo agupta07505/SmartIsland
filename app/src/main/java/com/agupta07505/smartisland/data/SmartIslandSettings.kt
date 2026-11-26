@@ -310,7 +310,9 @@ data class SmartIslandSettings(
     val hideAllOnLockScreen: Boolean = false,
     val hideOnLockScreenEvents: Set<String> = emptySet(),
     val notificationsEnabled: Boolean = true,
-    val hideOnLockScreenPackages: Set<String> = emptySet()
+    val hideOnLockScreenPackages: Set<String> = emptySet(),
+    /** Set by forOrientation when the display uses the camera dot. Never stored. */
+    val idleCutout: Boolean = false
 ) {
     val batteryColor: Long get() = modeColors.batteryColor
     val notificationDotColor: Long get() = modeColors.notificationDotColor

@@ -148,6 +148,10 @@ object RotationMorph {
             )
         }
         val eff = raw.forOrientation(state, hasContent, hasCards)
+        if (eff.idleCutout) {
+            return CutoutRect(state.screenWidthDp / 2f + eff.xOffset - eff.width / 2f,
+                eff.yOffset, eff.width, eff.height, eff.cornerRadius, eff.opacity)
+        }
         val w = eff.width
         val h = eff.height
         if (w <= 0f || h <= 0f) return null
