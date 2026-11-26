@@ -74,14 +74,12 @@ object LandscapeCameraDetector {
         val screenWidthDp = if (density > 0f) widthPx / density else 0f
         val screenHeightDp = if (density > 0f) heightPx / density else 0f
         if (!isLandscape) {
-            val hole = CameraCutoutDetector.detect(context)
-                .takeIf { it.hasHardwareCutout }
-                ?.holeWidthDp
-                ?: 0f
+            val hole = CameraCutoutDetector.detectedArea(CameraCutoutDetector.detect(context))
             return OrientationState(
                 isLandscape = false,
                 screenWidthDp = screenWidthDp,
-                portraitCameraWidthDp = hole,
+                portraitCameraWidthDp = hole?.widthDp ?: 0f,
+                portraitCutout = hole,
                 posture = FoldDetector.postureFor(context, minOf(screenWidthDp, screenHeightDp),
                     maxOf(screenWidthDp, screenHeightDp))
             )
