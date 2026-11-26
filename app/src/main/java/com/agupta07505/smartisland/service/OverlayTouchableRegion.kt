@@ -19,6 +19,7 @@ import com.agupta07505.smartisland.util.AppLogRecorder
 import com.agupta07505.smartisland.util.runCatchingLogged
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.lang.reflect.Proxy
+import kotlin.math.ceil
 
 /**
  * Internal insets listener, read by reflection, everything outside falls through to the app below
@@ -73,8 +74,8 @@ internal class OverlayTouchableRegion(
                         viewModel.exemptionNow() == ExemptMode.Static
                     val settingsVal = viewModel.displaySettings.value
                     val notificationsCount = viewModel.visibleNotifications.value.size
-                    val isIdleHidden = settingsVal.hideWhenIdle && notificationsCount == 0
-                        && !settingsVal.enableAppShortcuts
+                    val idleDot = settingsVal.idleCutout && !isExpanded && !viewModel.widgetIsland.open.value
+                    val isIdleHidden = idleDot && !settingsVal.enableAppShortcuts
                     if (viewModel.fullscreenHidden.value && !isGone && !isIdleHidden) {
                         // A fullscreen app is in front: only the camera cutout takes a touch, the rest is the app's
                         setTouchableInsetsMethod.invoke(insets, TOUCHABLE_INSETS_REGION)
@@ -124,6 +125,17 @@ internal class OverlayTouchableRegion(
                         geometry.edgeTouchRectPx(settingsVal, landscape, notificationsCount)?.let { edgeRect ->
                             val edgeRegion = touchableRegionField.get(insets) as Region
                             edgeRegion.set(edgeRect)
+                            return@newProxyInstance null
+                        }
+                        if (idleDot) {
+                            val width = settingsVal.width * density
+                            val left = geometry.placedMainLeftPx(settingsVal, landscape, screenWidth.toFloat(), density, width)
+                            val top = if (landscape) settingsVal.yOffset * density else 0f
+                            val region = touchableRegionField.get(insets) as Region
+                            region.set(
+                                left.toInt(), top.toInt(),
+                                ceil(left + width).toInt(), ceil(top + settingsVal.height * density).toInt()
+                            )
                             return@newProxyInstance null
                         }
                         val group = geometry.collapsedGroupTouchRect(settingsVal, landscape)

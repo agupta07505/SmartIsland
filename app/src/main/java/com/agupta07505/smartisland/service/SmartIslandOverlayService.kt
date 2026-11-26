@@ -960,7 +960,7 @@ class SmartIslandOverlayService : AccessibilityService() {
         val circleSizePx = collapsedCompanionSizeDp(settings) * density
         val compactGapPx = 8f * density
         // landscape: the cutout may touch the screen edge, the camera sits right at it
-        val edgePaddingPx = if (isLandscape && !settings.enableNotchMode) 0f else 8f * density
+        val edgePaddingPx = if (settings.idleCutout || (isLandscape && !settings.enableNotchMode)) 0f else 8f * density
         val groupWidthPx = mainWidthPx + if (isSplitMode) compactGapPx + circleSizePx else 0f
 
         val span = collapsedGroupSpan(
@@ -1073,7 +1073,9 @@ class SmartIslandOverlayService : AccessibilityService() {
         val watchOutside = if (expanded && !passiveOpen && !isInput && isTouchableRegionSupported.value) {
             WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
         } else 0
-        val noTouch = if (isStatic) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0
+        val decorativeDot = settings.idleCutout && !settings.enableAppShortcuts && !fullWindow &&
+            geometry.edgeHiddenTouchRectPx(settings, isLandscape, visibleCount) == null
+        val noTouch = if (isStatic || decorativeDot) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0
         val currentFlags = focusFlags or watchOutside or noTouch or
             WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or

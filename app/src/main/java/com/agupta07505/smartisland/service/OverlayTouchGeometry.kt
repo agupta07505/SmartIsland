@@ -91,6 +91,7 @@ internal class OverlayTouchGeometry(
     /** Collapsed pill's left edge before the screen-edge clamp (px). */
     fun placedMainLeftPx(settings: SmartIslandSettings, isLandscapeNow: Boolean, screenWidthPx: Float, density: Float,
             mainWidthPx: Float): Float {
+        if (settings.idleCutout) return screenWidthPx / 2f + settings.xOffset * density - mainWidthPx / 2f
         val (side, area) = sideCameraNow(settings, isLandscapeNow)
         if (side == CameraSide.Centre || area == null) {
             return screenWidthPx / 2f + settings.xOffset * density - mainWidthPx / 2f
