@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.agupta07505.smartisland.model.CutoutArea
 import com.agupta07505.smartisland.model.FoldPosture
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -168,6 +169,34 @@ class OrientationProfileTest {
         disabledEventsLandscape = setOf("call"),
         enableNotchMode = true
     )
+
+    @Test
+    fun idleDotAndRotationUseTheDetectedRectangle() {
+        val raw = base.copy(hideWhenIdle = true)
+        val state = OrientationState(screenWidthDp = 400f, portraitCutout = CutoutArea(-130f, 7f, 26f, 18f))
+        val dot = raw.forOrientation(state)
+        assertTrue(dot.idleCutout)
+        assertEquals(-130f, dot.xOffset)
+        assertEquals(7f, dot.yOffset)
+        assertEquals(CutoutRect(57f, 7f, 26f, 18f, 9f, raw.opacity),
+            RotationMorph.collapsedRect(raw, state, hasContent = false, hasCards = false, edgeShown = false))
+    }
+
+    @Test
+    fun missingCameraUses21DpDot() {
+        val raw = base.copy(hideWhenIdle = true)
+        val state = OrientationState(isLandscape = true, screenWidthDp = 800f, screenHeightDp = 400f)
+        val dot = raw.forOrientation(state)
+        assertEquals(21f, dot.width)
+        assertEquals(21f, dot.height)
+    }
+
+    @Test
+    fun landscapeWidgetKeepsTheContentPill() {
+        val raw = base.copy(hideWhenIdle = true)
+        val state = OrientationState(isLandscape = true, screenWidthDp = 800f, screenHeightDp = 400f)
+        assertFalse(raw.forOrientation(state, hasContent = true, hasCards = false).idleCutout)
+    }
 
     @Test
     fun orientationOverrides() {

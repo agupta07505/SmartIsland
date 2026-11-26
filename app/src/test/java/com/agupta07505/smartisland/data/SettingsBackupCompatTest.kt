@@ -28,7 +28,7 @@ import org.junit.Test
  */
 class SettingsBackupCompatTest {
 
-    private val notBackedUp = setOf("foldDisabledSomewhere", "weatherCustomKey", "cardEventColor")
+    private val notBackedUp = setOf("foldDisabledSomewhere", "weatherCustomKey", "cardEventColor", "idleCutout")
 
     private fun exported(settings: SmartIslandSettings): JSONObject =
         JSONObject(settings.toJson()).getJSONObject("settings")
