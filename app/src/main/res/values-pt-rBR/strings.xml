@@ -6,7 +6,7 @@
     <string name="accessibility_service_label">Serviço de ilha inteligente</string>
     <string name="accessibility_service_description">Permite que a sobreposição da Ilha Inteligente se sente em cima da barra de status para que você possa tocar na pílula em torno do recorte da câmera sem interferência de toque.</string>
     <string name="grant_accessibility">Permitir permissão de acessibilidade para iniciar sobreposição da barra de status</string>
-    <string name="made_by">Feita com o "O" de Animesh Gupta</string>
+    <string name="made_by">Feita com o \"O\" de Animesh Gupta</string>
     <string name="tab_studio">Principal</string>
     <string name="tab_position">Disposição</string>
     <string name="tab_settings">Configurações</string>
@@ -820,7 +820,7 @@
     <string name="idle_widget_clock_desc">Nenhum relógio (a barra de estado tem um). A cada hora completa a hora e os minutos passam no recorte, o que quer que ele mostre, 12 ou 24 horas como o sistema.</string>
     <string name="cal_cfg_title">Calendário: o próximo evento</string>
     <string name="cal_cfg_no_permission">Permitir o acesso ao calendário para que o próximo evento possa ser mostrado. Todos os dias, eventos cancelados e recusados são ignorados.</string>
-    <string name="cal_cfg_intro">O widget de data da ilha nomeia o seu próximo evento sob a data (por exemplo "Standup · 10:30", "em 25 min"). Os eventos são lidos apenas neste telefone.</string>
+    <string name="cal_cfg_intro">O widget de data da ilha nomeia o seu próximo evento sob a data (por exemplo \"Standup · 10:30\", \"em 25 min\"). Os eventos são lidos apenas neste telefone.</string>
     <string name="cal_cfg_allowed">O acesso ao calendário é permitido.</string>
     <string name="cal_cfg_allow">Permitir o acesso ao calendário</string>
     <string name="idle_battery_only_charging_title">Bateria: somente quando carregar</string>
@@ -1008,7 +1008,7 @@
     <string name="net_cfg_conn_any">Qualquer ligação</string>
     <string name="net_cfg_conn_wifi">Apenas Wi-Fi</string>
     <string name="net_cfg_conn_mobile">Apenas móvel</string>
-    <string name="net_cfg_conn_note">Wi-Fi só esconde o widget em dados móveis. O telemóvel só o mostra apenas em dados móveis. A ilha sempre mostra a conexão atual, o total de hoje para ela (contado enquanto este widget é ligado) e uma linha "Economia de dados ativada" enquanto a Economia de dados do Android estiver ativada.</string>
+    <string name="net_cfg_conn_note">Wi-Fi só esconde o widget em dados móveis. O telemóvel só o mostra apenas em dados móveis. A ilha sempre mostra a conexão atual, o total de hoje para ela (contado enquanto este widget é ligado) e uma linha \"Economia de dados ativada\" enquanto a Economia de dados do Android estiver ativada.</string>
     <string name="net_conn_wifi">Wi-Fi</string>
     <string name="net_conn_mobile">Dados móveis</string>
     <string name="net_conn_other">Rede</string>
